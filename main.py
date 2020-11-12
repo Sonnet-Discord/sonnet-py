@@ -43,6 +43,7 @@ async def on_error(event, *args, **kwargs):
     with open('err.log', 'a') as f:
         if event == 'on_message':
             f.write(f'Unhandled message: {args[0]}\n')
+            raise
         else:
             raise
 
@@ -64,7 +65,7 @@ async def on_message(message):
         return
 
     # Check if this is meant for us.
-    if message.content[0] != GLOBAL_PREFIX:
+    if not message.content.startswith(GLOBAL_PREFIX):
         return
 
     # Split into cmds and arguments.
