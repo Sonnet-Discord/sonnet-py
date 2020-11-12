@@ -16,10 +16,12 @@ TOKEN = os.getenv('RHEA_TOKEN')
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, os.getcwd() + '/cmds')
 
+# prefix for the bot
+GLOBAL_PREFIX = "!"
 
 # function to get prefix
 def get_prefix(client, message):
-    prefixes = "!"
+    prefixes = GLOBAL_PREFIX
     return commands.when_mentioned_or(*prefixes)(client, message)
 
 
@@ -32,6 +34,7 @@ Client = commands.Bot(
 
 # Import libraries. Make more efficient in future.
 import cmd_utils
+import cmd_moderation
 
 
 # Catch errors without being fatal - log them.
@@ -40,6 +43,7 @@ async def on_error(event, *args, **kwargs):
     with open('err.log', 'a') as f:
         if event == 'on_message':
             f.write(f'Unhandled message: {args[0]}\n')
+            raise
         else:
             raise
 
@@ -61,7 +65,7 @@ async def on_message(message):
         return
 
     # Check if this is meant for us.
-    if message.content[0] != "!":
+    if not message.content.startswith(GLOBAL_PREFIX):
         return
 
     # Split into cmds and arguments.
@@ -76,6 +80,11 @@ async def on_message(message):
         if command == entries:
             stats["end"] = int(round(time.time() * 1000))
             await cmd_utils.commands[entries]['execute'](message, Client, stats)
+
+    for entries in cmd_moderation.commands:
+        if command == entries:
+            stats["end"] = int(round(time.time() * 1000))
+            await cmd_moderation.commands[entries]['execute'](message, Client, stats)
 
 
 Client.run(TOKEN, bot=True, reconnect=True)
