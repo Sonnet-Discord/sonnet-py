@@ -5,15 +5,17 @@
 
 import discord
 
-async def pingFunction(message, client, stats):
-  embed=discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
-  embed.add_field(name="Process Time", value=str(stats["end"] - stats["start"]) + "ms", inline=False)
-  await message.channel.send(embed=embed)
+
+async def ping_function(message, client, stats):
+    embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
+    embed.add_field(name="Process Time", value=str(stats["end"] - stats["start"]) + "ms", inline=False)
+    await message.channel.send(embed=embed)
+
 
 commands = {
-  'ping' : {
-    'pretty_name': 'ping',
-    'description': 'Ping bot.',
-    'execute': pingFunction
-  }
+    'ping': {
+        'pretty_name': 'ping',
+        'description': 'Ping bot.',
+        'execute': ping_function
+    }
 }
