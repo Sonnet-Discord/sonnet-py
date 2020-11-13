@@ -48,7 +48,6 @@ command_modules = []
 for f in os.listdir('./cmds'):
   if "cmd_" in f:
     if ".py" in f.split('_')[1]:
-      print("pog")
       print(f.split('_')[1])
       command_modules.append(importlib.import_module(f[:-3]));
 
