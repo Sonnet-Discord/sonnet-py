@@ -42,11 +42,15 @@ Client = commands.Bot(
     intents=intents
 )
 
-# Import libraries. Make more efficient in future.
-import cmd_utils
-import cmd_moderation
+# Import libraries.
+command_modules = []
 
-command_modules = [cmd_utils, cmd_moderation]
+for f in os.listdir('./cmds'):
+  if "cmd_" in f:
+    if ".py" in f.split('_')[1]:
+      print("pog")
+      print(f.split('_')[1])
+      command_modules.append(importlib.import_module(f[:-3]));
 
 
 # Catch errors without being fatal - log them.
