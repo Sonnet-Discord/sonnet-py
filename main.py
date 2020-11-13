@@ -36,6 +36,7 @@ Client = commands.Bot(
 import cmd_utils
 import cmd_moderation
 
+command_modules = [cmd_utils, cmd_moderation]
 
 # Catch errors without being fatal - log them.
 @Client.event
@@ -75,16 +76,12 @@ async def on_message(message):
     # Remove command from the arguments.
     del arguments[0]
 
-    # Shoddy code for shoddy business.
-    for entries in cmd_utils.commands:
-        if command == entries:
-            stats["end"] = int(round(time.time() * 1000))
-            await cmd_utils.commands[entries]['execute'](message, Client, stats)
-
-    for entries in cmd_moderation.commands:
-        if command == entries:
-            stats["end"] = int(round(time.time() * 1000))
-            await cmd_moderation.commands[entries]['execute'](message, Client, stats)
+    # Shoddy code for shoddy business. Less shoddy then before, but still shoddy.
+    for module in command_modules:
+        for entries in module.commands:
+            if command == entries:
+                stats["end"] = int(round(time.time() * 1000))
+                await module.commands[entries]['execute'](message, Client, stats)
 
 
 Client.run(TOKEN, bot=True, reconnect=True)
