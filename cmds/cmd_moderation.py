@@ -1,7 +1,7 @@
 # Moderation commands
 # bredo, 2020
 
-import discord
+import discord, sqlite3
 
 
 def extract_id_from_mention(user_id):
