@@ -9,6 +9,8 @@ from discord.ext import commands
 import sys
 # Initialise time for health monitoring.
 import time
+# Import sqlite3
+import sqlite3
 
 # Get token from environment variables.
 TOKEN = os.getenv('RHEA_TOKEN')
@@ -19,17 +21,25 @@ sys.path.insert(1, os.getcwd() + '/cmds')
 # prefix for the bot
 GLOBAL_PREFIX = "!"
 
+
 # function to get prefix
 def get_prefix(client, message):
     prefixes = GLOBAL_PREFIX
     return commands.when_mentioned_or(*prefixes)(client, message)
 
 
+intents = discord.Intents.default()
+intents.typing = False
+intents.presences = False
+intents.guilds = True
+
+
 # Initialise Discord Client.
 Client = commands.Bot(
     command_prefix=get_prefix,
     case_insensitive=True,
-    status=discord.Status.online
+    status=discord.Status.online,
+    intents=intents
 )
 
 # Import libraries. Make more efficient in future.
@@ -37,6 +47,7 @@ import cmd_utils
 import cmd_moderation
 
 command_modules = [cmd_utils, cmd_moderation]
+
 
 # Catch errors without being fatal - log them.
 @Client.event
@@ -53,6 +64,16 @@ async def on_error(event, *args, **kwargs):
 @Client.event
 async def on_ready():
     print(f'{Client.user} has connected to Discord!')
+
+
+# Bot joins a guild
+@Client.event
+async def on_guild_join(guild):
+    con = sqlite3.connect(f'datastore/{guild.id}.db')
+    cur = con.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS config (property TEXT PRIMARY KEY, value TEXT)''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS infractions (infractionID INTEGER PRIMARY KEY, userID TEXT, moderatorID 
+    TEXT, type TEXT, reason TEXT, timestamp INTEGER)''')
 
 
 # Handle messages.
