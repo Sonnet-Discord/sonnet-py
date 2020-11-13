@@ -1,6 +1,9 @@
 # OS library.
 import os
 
+# Get importlib.
+import importlib
+
 # Start Discord.py
 import discord
 from discord.ext import commands
