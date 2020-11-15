@@ -79,6 +79,7 @@ async def on_guild_join(guild):
     cur.execute('''CREATE TABLE IF NOT EXISTS config (property TEXT PRIMARY KEY, value TEXT)''')
     cur.execute('''CREATE TABLE IF NOT EXISTS infractions (infractionID INTEGER PRIMARY KEY, userID TEXT, moderatorID 
     TEXT, type TEXT, reason TEXT, timestamp INTEGER)''')
+    con.close()
 
 
 # Handle messages.
