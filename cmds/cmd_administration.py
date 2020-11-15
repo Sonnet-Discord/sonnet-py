@@ -14,6 +14,7 @@ async def recreate_db(message, args, client, stats, cmds):
     con.close()
     await message.channel.send("done (unless something broke)")
 
+
 async def wb_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
     word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p97gh34pg43hg9734hg9374hg349gh3497gh3498gh3ouhwdf9"
@@ -47,34 +48,6 @@ async def wb_change(message, args, client, stats, cmds):
 
     await message.channel.send("Word blacklist updated successfully.")
 
-async def inflog_change(message, args, client, stats, cmds):
-    # Use original null string for cross-compatibility.
-    infraction_log = "0"
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-    
-    if len(args) == 1:
-        infraction_log = args[0]
-
-    # User is an admin and all arguments are correct. Send to database.
-    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
-    cur = con.cursor()
-    # Not sure if the following is PEP8 compliant.
-    cur.execute('''
-        INSERT INTO config (property, value)
-        VALUES (?, ?)
-        ON CONFLICT (property) DO UPDATE SET
-            value = excluded.value
-        WHERE property = ?
-    ''', ('infraction-log', infraction_log, 'infraction-log'))
-
-    # Commit new changes and then close connection.
-    con.commit()
-    con.close()
-
-    await message.channel.send("Infraction log channel ID updated successfully.")
 
 async def inflog_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
@@ -104,6 +77,37 @@ async def inflog_change(message, args, client, stats, cmds):
     con.close()
 
     await message.channel.send("Infraction log channel ID updated successfully.")
+
+
+async def inflog_change(message, args, client, stats, cmds):
+    # Use original null string for cross-compatibility.
+    infraction_log = "0"
+
+    if not message.author.permissions_in(message.channel).administrator:
+        await message.channel.send("Insufficient permissions.")
+        return
+    
+    if len(args) == 1:
+        infraction_log = args[0]
+
+    # User is an admin and all arguments are correct. Send to database.
+    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
+    cur = con.cursor()
+    # Not sure if the following is PEP8 compliant.
+    cur.execute('''
+        INSERT INTO config (property, value)
+        VALUES (?, ?)
+        ON CONFLICT (property) DO UPDATE SET
+            value = excluded.value
+        WHERE property = ?
+    ''', ('infraction-log', infraction_log, 'infraction-log'))
+
+    # Commit new changes and then close connection.
+    con.commit()
+    con.close()
+
+    await message.channel.send("Infraction log channel ID updated successfully.")
+
 
 async def joinlog_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
@@ -134,6 +138,7 @@ async def joinlog_change(message, args, client, stats, cmds):
 
     await message.channel.send("Join log channel ID updated successfully.")
 
+
 async def msglog_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
     message_log = "0"
@@ -163,11 +168,13 @@ async def msglog_change(message, args, client, stats, cmds):
 
     await message.channel.send("Message log channel ID updated successfully.")
 
+
 category_info = {
     'name': 'administration',
     'pretty_name': 'Administration',
     'description': 'Administration commands.'
 }
+
 
 commands = {
     'recreate-db': {
