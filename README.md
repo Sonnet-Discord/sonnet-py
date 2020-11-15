@@ -8,7 +8,7 @@ Before pushing, remember to execute ``prepare_push.bat`` - this may not be requi
 
 ## Roadmap
 
-- [ ] Fix shoddy command processing code.
+- [x] Fix shoddy command processing code.
 - [ ] Migrate all commands from Rhea to Sonnet codebase.
 - [ ] Ensure that data migration between Rhea and Sonnet is seamless (same DB types, accessing in same way etc.)
 - [ ] Stress-test and gather bugs, fix problems.
