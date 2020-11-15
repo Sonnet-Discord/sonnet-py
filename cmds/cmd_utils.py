@@ -19,12 +19,12 @@ def extract_id_from_mention(user_id):
             extracted_id = extracted_id[1:]
     return extracted_id
 
-async def ping_function(message, args, client, stats):
+async def ping_function(message, args, client, stats, cmds):
     embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
     embed.add_field(name="Process Time", value=str(stats["end"] - stats["start"]) + "ms", inline=False)
     await message.channel.send(embed=embed)
 
-async def profile_function(message, args, client, stats):
+async def profile_function(message, args, client, stats, cmds):
     # Get user ID from the message, otherwise use the author's ID.
     try:
         id_to_probe = int(extract_id_from_mention(args[0]))

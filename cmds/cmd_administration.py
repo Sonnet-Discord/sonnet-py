@@ -4,7 +4,7 @@
 import discord, sqlite3
 
 
-async def recreate_db(message, args, client, stats):
+async def recreate_db(message, args, client, stats, cmds):
     con = sqlite3.connect(f"datastore/{message.guild.id}.db")
     cur = con.cursor()
     cur.execute('''CREATE TABLE IF NOT EXISTS config (property TEXT PRIMARY KEY, value TEXT)''')
