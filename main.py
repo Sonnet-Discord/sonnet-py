@@ -33,8 +33,9 @@ def get_prefix(client, message):
 
 intents = discord.Intents.default()
 intents.typing = False
-intents.presences = False
+intents.presences = True
 intents.guilds = True
+intents.members = True
 
 
 # Initialise Discord Client.
@@ -108,7 +109,7 @@ async def on_message(message):
         for entries in module.commands:
             if command == entries:
                 stats["end"] = int(round(time.time() * 1000))
-                await module.commands[entries]['execute'](message, Client, stats)
+                await module.commands[entries]['execute'](message, arguments, Client, stats)
 
 
 Client.run(TOKEN, bot=True, reconnect=True)
