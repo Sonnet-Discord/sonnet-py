@@ -13,6 +13,12 @@ async def recreate_db(message, args, client, stats):
     con.close()
     await message.channel.send("done (unless something broke)")
 
+category_info = {
+    'name': 'administration',
+    'pretty_name': 'Administration',
+    'description': 'Administration commands.'
+}
+
 commands = {
     'recreate-db': {
         'pretty_name': 'recreate-db',
