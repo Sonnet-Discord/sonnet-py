@@ -14,7 +14,7 @@ def extract_id_from_mention(user_id):
     return extracted_id
 
 
-async def kick_user(message, client, stats):
+async def kick_user(message, args, client, stats, cmds):
     args = message.content.split()
 
     # Check that the user running the command has permissions to kick members
@@ -58,7 +58,7 @@ async def kick_user(message, client, stats):
     await message.channel.send(f"Kicked user with ID {id_to_kick} for {reason}")
 
 
-async def ban_user(message, client, stats):
+async def ban_user(message, args, client, stats, cmds):
     args = message.content.split()
 
     # Check if message author has ban permissions in the current guild.
@@ -100,6 +100,13 @@ async def ban_user(message, client, stats):
         return
 
     await message.channel.send(f"Banned user with ID {id_to_ban} for {reason}")
+
+
+category_info = {
+    'name': 'moderation',
+    'pretty_name': 'Moderation',
+    'description': 'Moderation commands.'
+}
 
 
 commands = {

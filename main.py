@@ -20,9 +20,13 @@ TOKEN = os.getenv('RHEA_TOKEN')
 
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, os.getcwd() + '/cmds')
+sys.path.insert(1, os.getcwd() + '/common')
+
+# Import configuration data.
+import sonnet_cfg
 
 # prefix for the bot
-GLOBAL_PREFIX = "!"
+GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 
 
 # function to get prefix
@@ -33,9 +37,9 @@ def get_prefix(client, message):
 
 intents = discord.Intents.default()
 intents.typing = False
-intents.presences = False
+intents.presences = True
 intents.guilds = True
-
+intents.members = True
 
 # Initialise Discord Client.
 Client = commands.Bot(
@@ -45,7 +49,7 @@ Client = commands.Bot(
     intents=intents
 )
 
-# Import libraries. Make more efficient in future.
+# Import libraries.
 command_modules = []
 
 for f in os.listdir('./cmds'):
@@ -108,7 +112,7 @@ async def on_message(message):
         for entries in module.commands:
             if command == entries:
                 stats["end"] = int(round(time.time() * 1000))
-                await module.commands[entries]['execute'](message, Client, stats)
+                await module.commands[entries]['execute'](message, arguments, Client, stats, command_modules)
 
 
 Client.run(TOKEN, bot=True, reconnect=True)

@@ -1,0 +1,9 @@
+# Get rid of Python caching.
+__pycache__
+
+# Remove all DB stuff.
+*.db
+
+# Remove error log.
+err.log
+

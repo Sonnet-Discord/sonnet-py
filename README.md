@@ -1,6 +1,11 @@
 # sonnet-py
 Rhea replacement, written in Python.
 
+## Initialising Development Environment
+On Windows, run ``init_env.bat`` which is located in ``build_tools\win`` and follow the instructions appropriately.
+
+Before pushing, remember to execute ``prepare_push.bat`` - this may not be required in the future but is a good thing to use in order to sanitize a build if you aren't using Git as your source control system.
+
 ## Roadmap
 
 - [ ] Fix shoddy command processing code.
