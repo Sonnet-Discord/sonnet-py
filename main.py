@@ -46,10 +46,12 @@ Client = commands.Bot(
 )
 
 # Import libraries. Make more efficient in future.
-import cmd_utils
-import cmd_moderation
+command_modules = []
 
-command_modules = [cmd_utils, cmd_moderation]
+for f in os.listdir('./cmds'):
+    if f.startswith("cmd_") and f.endswith(".py"):
+        print(f)
+        command_modules.append(importlib.import_module(f[:-3]))
 
 
 # Catch errors without being fatal - log them.
@@ -77,6 +79,7 @@ async def on_guild_join(guild):
     cur.execute('''CREATE TABLE IF NOT EXISTS config (property TEXT PRIMARY KEY, value TEXT)''')
     cur.execute('''CREATE TABLE IF NOT EXISTS infractions (infractionID INTEGER PRIMARY KEY, userID TEXT, moderatorID 
     TEXT, type TEXT, reason TEXT, timestamp INTEGER)''')
+    con.close()
 
 
 # Handle messages.

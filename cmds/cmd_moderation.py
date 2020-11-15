@@ -30,7 +30,12 @@ async def kick_user(message, client, stats):
     else:
         reason = "Sonnet Kick"
 
-    id_to_kick = extract_id_from_mention(args[1])
+    # Extract user ID from arguments, error if this is not provided.
+    try:
+        id_to_kick = extract_id_from_mention(args[1])
+    except IndexError:
+        await message.channel.send("ERROR: No User ID provided.")
+        return
 
     # make it so people can't kick themself
     if str(message.author.id) == id_to_kick:
@@ -69,7 +74,12 @@ async def ban_user(message, client, stats):
     else:
         reason = "Sonnet Ban"
 
-    id_to_ban = extract_id_from_mention(args[1])
+    # Extract User ID from arguments, handle error if it doesn't exist
+    try:
+        id_to_ban = extract_id_from_mention(args[1])
+    except IndexError:
+        await message.channel.send("ERROR: No User ID provided.")
+        return
 
     # Makes it so people can't ban themselves
     if str(message.author.id) == id_to_ban:
