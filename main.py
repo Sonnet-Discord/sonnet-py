@@ -24,19 +24,16 @@ sys.path.insert(1, os.getcwd() + '/cmds')
 # prefix for the bot
 GLOBAL_PREFIX = "!"
 
-
 # function to get prefix
 def get_prefix(client, message):
     prefixes = GLOBAL_PREFIX
     return commands.when_mentioned_or(*prefixes)(client, message)
-
 
 intents = discord.Intents.default()
 intents.typing = False
 intents.presences = True    
 intents.guilds = True
 intents.members = True
-
 
 # Initialise Discord Client.
 Client = commands.Bot(
@@ -46,14 +43,13 @@ Client = commands.Bot(
     intents=intents
 )
 
-# Import libraries. Make more efficient in future.
+# Import libraries.
 command_modules = []
 
 for f in os.listdir('./cmds'):
     if f.startswith("cmd_") and f.endswith(".py"):
         print(f)
         command_modules.append(importlib.import_module(f[:-3]))
-
 
 # Catch errors without being fatal - log them.
 @Client.event
@@ -65,12 +61,10 @@ async def on_error(event, *args, **kwargs):
         else:
             raise
 
-
 # Bot connected to Discord.
 @Client.event
 async def on_ready():
     print(f'{Client.user} has connected to Discord!')
-
 
 # Bot joins a guild
 @Client.event
@@ -81,7 +75,6 @@ async def on_guild_join(guild):
     cur.execute('''CREATE TABLE IF NOT EXISTS infractions (infractionID INTEGER PRIMARY KEY, userID TEXT, moderatorID 
     TEXT, type TEXT, reason TEXT, timestamp INTEGER)''')
     con.close()
-
 
 # Handle messages.
 @Client.event
@@ -110,6 +103,5 @@ async def on_message(message):
             if command == entries:
                 stats["end"] = int(round(time.time() * 1000))
                 await module.commands[entries]['execute'](message, arguments, Client, stats, command_modules)
-
 
 Client.run(TOKEN, bot=True, reconnect=True)
