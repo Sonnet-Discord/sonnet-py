@@ -28,14 +28,16 @@ import sonnet_cfg
 # prefix for the bot
 GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 
+
 # function to get prefix
 def get_prefix(client, message):
     prefixes = GLOBAL_PREFIX
     return commands.when_mentioned_or(*prefixes)(client, message)
 
+
 intents = discord.Intents.default()
 intents.typing = False
-intents.presences = True    
+intents.presences = True
 intents.guilds = True
 intents.members = True
 
@@ -46,7 +48,6 @@ Client = commands.Bot(
     status=discord.Status.online,
     intents=intents
 )
-
 
 # Import libraries.
 command_modules = []
@@ -72,6 +73,7 @@ async def on_error(event, *args, **kwargs):
 @Client.event
 async def on_ready():
     print(f'{Client.user} has connected to Discord!')
+
 
 # Bot joins a guild
 @Client.event

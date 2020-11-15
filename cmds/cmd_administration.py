@@ -17,7 +17,7 @@ async def recreate_db(message, args, client, stats, cmds):
 
 async def wb_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
-    word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p97gh34pg43hg9734hg9374hg349gh3497gh3498gh3ouhwdf9"
+    word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p"
 
     if not message.author.permissions_in(message.channel).administrator:
         await message.channel.send("Insufficient permissions.")
