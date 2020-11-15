@@ -63,8 +63,6 @@ async def help_function(message, args, client, stats, cmd_modules):
     # Lookup will now either be False or a module lookup.
     # If it's not a lookup, then we just want the category info.
 
-
-
     if lookup == False:
         # We're just doing category info.
 
@@ -105,17 +103,8 @@ async def help_function(message, args, client, stats, cmd_modules):
                 # Add field.
                 embed.add_field(name=GLOBAL_PREFIX + info['pretty_name'], value=info['description'], inline=False)
 
-
     # Now we have the final embed. Send it.
     await message.channel.send(embed=embed)
-
-
-
-
-    
-
-    
-
 
 category_info = {
     'name': 'utilities',
