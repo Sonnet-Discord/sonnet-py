@@ -6,8 +6,9 @@
 import discord
 from datetime import datetime
 import time
+import sonnet_cfg
 
-GLOBAL_PREFIX = "!"
+GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 
 def extract_id_from_mention(user_id):
     # Function to extract a user ID from a mention.

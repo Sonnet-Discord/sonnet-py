@@ -20,9 +20,13 @@ TOKEN = os.getenv('RHEA_TOKEN')
 
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, os.getcwd() + '/cmds')
+sys.path.insert(1, os.getcwd() + '/common')
+
+# Import configuration data.
+import sonnet_cfg
 
 # prefix for the bot
-GLOBAL_PREFIX = "!"
+GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 
 # function to get prefix
 def get_prefix(client, message):
