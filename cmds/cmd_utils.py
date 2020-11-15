@@ -8,7 +8,9 @@ from datetime import datetime
 import time
 import sonnet_cfg
 
+
 GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
+
 
 def extract_id_from_mention(user_id):
     # Function to extract a user ID from a mention.
@@ -19,10 +21,12 @@ def extract_id_from_mention(user_id):
             extracted_id = extracted_id[1:]
     return extracted_id
 
+
 async def ping_function(message, args, client, stats, cmds):
     embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
     embed.add_field(name="Process Time", value=str(stats["end"] - stats["start"]) + "ms", inline=False)
     await message.channel.send(embed=embed)
+
 
 async def profile_function(message, args, client, stats, cmds):
     # Get user ID from the message, otherwise use the author's ID.
@@ -53,6 +57,7 @@ async def profile_function(message, args, client, stats, cmds):
     embed.add_field(name="Created", value=created_string, inline=True)
     embed.timestamp = datetime.now()
     await message.channel.send(embed=embed)
+
 
 async def help_function(message, args, client, stats, cmd_modules):
     # Check arguments and such.
@@ -107,11 +112,13 @@ async def help_function(message, args, client, stats, cmd_modules):
     # Now we have the final embed. Send it.
     await message.channel.send(embed=embed)
 
+
 category_info = {
     'name': 'utilities',
     'pretty_name': 'Utilities',
     'description': 'Administration commands.'
 }
+
 
 commands = {
     'ping': {
