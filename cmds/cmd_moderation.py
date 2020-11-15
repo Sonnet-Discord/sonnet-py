@@ -101,11 +101,13 @@ async def ban_user(message, args, client, stats, cmds):
 
     await message.channel.send(f"Banned user with ID {id_to_ban} for {reason}")
 
+
 category_info = {
     'name': 'moderation',
     'pretty_name': 'Moderation',
     'description': 'Moderation commands.'
 }
+
 
 commands = {
     'kick': {
