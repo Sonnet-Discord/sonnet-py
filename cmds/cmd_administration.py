@@ -4,6 +4,7 @@
 import discord, sqlite3
 from datetime import datetime
 
+
 async def recreate_db(message, args, client, stats, cmds):
     con = sqlite3.connect(f"datastore/{message.guild.id}.db")
     cur = con.cursor()

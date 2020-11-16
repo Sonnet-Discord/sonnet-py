@@ -57,7 +57,8 @@ def dec_to_bin(num):
 async def log_infraction(message, client, user_id, infraction_reason, infraction_type):
     generated_id = gen_infraction_id(infraction_type)
     query = "SELECT * FROM config WHERE property = 'infraction-log'"
-    query_two = "INSERT INTO infractions (infractionID, userID, moderatorID, type, reason, timestamp) VALUES(?, ?, ?, ?, ?, ?)"
+    query_two = "INSERT INTO infractions (infractionID, userID, moderatorID, type, reason, timestamp) " \
+                "VALUES(?, ?, ?, ?, ?, ?)"
     con = sqlite3.connect(f"datastore/{message.guild.id}.db")
     cur = con.cursor()
     cur_two = con.cursor()
@@ -89,15 +90,16 @@ async def log_infraction(message, client, user_id, infraction_reason, infraction
 
     embed = discord.Embed(title="Sonnet", description=f"New infraction for <@{user_id}>:", color=0x758cff)
     # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
-    embed.add_field(name="Infraction ID", value=generated_id)
+    embed.add_field(name="Infraction ID", value=str(generated_id))
     embed.add_field(name="Moderator", value=f"{message.author.name}#{message.author.discriminator}")
     embed.add_field(name="User", value=f"{user.name}#{user.discriminator}")
     embed.add_field(name="Type", value=infraction_type)
     embed.add_field(name="Reason", value=infraction_reason)
 
-    dm_embed = discord.Embed(title="Sonnet", description=f"Your punishment in {message.guild.name} has been updated:", color=0x758cff)
+    dm_embed = discord.Embed(title="Sonnet", description=f"Your punishment in {message.guild.name} has been updated:",
+                             color=0x758cff)
     # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
-    dm_embed.add_field(name="Infraction ID", value=generated_id)
+    dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
     await log_channel.send(embed=embed)
