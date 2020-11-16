@@ -1,7 +1,7 @@
 # Moderation commands
 # bredo, 2020
 
-import discord, sqlite3
+import discord, sqlite3, datetime
 
 
 def extract_id_from_mention(user_id):
@@ -12,6 +12,39 @@ def extract_id_from_mention(user_id):
         if extracted_id.startswith("!"):
             extracted_id = extracted_id[1:]
     return extracted_id
+
+
+async def log_infraction(message, client, user_id, infraction_reason, infraction_type):
+
+    query = "SELECT * FROM config WHERE property = 'infraction-log'"
+    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
+    cur = con.cursor()
+    try:
+        cur.execute(query)
+    except sqlite3.OperationalError:
+        await message.channel.send("ERROR: No guild database. Run recreate-db to fix.")
+        return
+    except TypeError:
+        await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
+        return
+
+    try:
+        log_channel = client.get_channel(int(cur.fetchone()[1]))
+    except TypeError:
+        await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
+        return
+
+    con.close()
+
+    user = client.get_user(int(user_id))
+
+    embed = discord.Embed(title="Sonnet", description=f"New infraction for <@{user_id}>:", color=0x758cff)
+    # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
+    embed.add_field(name="Moderator", value=f"{message.author.name}#{message.author.discriminator}")
+    embed.add_field(name="User", value=f"{user.name}#{user.id}")
+    embed.add_field(name="Type", value=infraction_type)
+    embed.add_field(name="Reason", value=infraction_reason)
+    await log_channel.send(embed=embed)
 
 
 async def kick_user(message, args, client, stats, cmds):
@@ -56,6 +89,7 @@ async def kick_user(message, args, client, stats, cmds):
         return
 
     await message.channel.send(f"Kicked user with ID {id_to_kick} for {reason}")
+    await log_infraction(message, client, id_to_kick, reason, "kick")
 
 
 async def ban_user(message, args, client, stats, cmds):
@@ -100,6 +134,7 @@ async def ban_user(message, args, client, stats, cmds):
         return
 
     await message.channel.send(f"Banned user with ID {id_to_ban} for {reason}")
+    await log_infraction(message, client, id_to_ban, reason, "ban")
 
 
 category_info = {
