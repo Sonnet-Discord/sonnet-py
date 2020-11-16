@@ -2,6 +2,7 @@
 # bredo, 2020
 
 import discord, sqlite3
+from datetime import datetime
 
 
 async def recreate_db(message, args, client, stats, cmds):
@@ -13,7 +14,7 @@ async def recreate_db(message, args, client, stats, cmds):
     con.commit()
     con.close()
     await message.channel.send("done (unless something broke)")
-
+    
 
 async def wb_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
@@ -47,36 +48,6 @@ async def wb_change(message, args, client, stats, cmds):
     con.close()
 
     await message.channel.send("Word blacklist updated successfully.")
-
-
-async def inflog_change(message, args, client, stats, cmds):
-    # Use original null string for cross-compatibility.
-    infraction_log = "0"
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-    
-    if len(args) == 1:
-        infraction_log = args[0]
-
-    # User is an admin and all arguments are correct. Send to database.
-    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
-    cur = con.cursor()
-    # Not sure if the following is PEP8 compliant.
-    cur.execute('''
-        INSERT INTO config (property, value)
-        VALUES (?, ?)
-        ON CONFLICT (property) DO UPDATE SET
-            value = excluded.value
-        WHERE property = ?
-    ''', ('infraction-log', infraction_log, 'infraction-log'))
-
-    # Commit new changes and then close connection.
-    con.commit()
-    con.close()
-
-    await message.channel.send("Infraction log channel ID updated successfully.")
 
 
 async def inflog_change(message, args, client, stats, cmds):
