@@ -115,17 +115,30 @@ async def warn_user(message, args, client, stats, cmds):
 
     # construct string for warn reason
     reason = ""
-    if len(args) > 1:
-        for i in range(2, len(args)):
+    if len(args) > 0:
+        for i in range(1, len(args)):
             reason = f"{reason} {args[i]}"
     else:
         reason = "Sonnet Warn"
 
     # Extract user ID from arguments, error if this is not provided.
     try:
-        id_to_warn = extract_id_from_mention(args[1])
+        id_to_warn = extract_id_from_mention(args[0])
     except IndexError:
         await message.channel.send("ERROR: No User ID provided.")
+        return
+
+    # this serves no purpose but to yell at you
+    try:
+        does_this_person_actually_exist = client.get_user(int(id_to_warn))
+    except ValueError:
+        await message.channel.send("ERROR: Invalid ID")
+        return
+
+    try:
+        does_this_person_actually_exist.name
+    except AttributeError:
+        await message.channel.send("ERROR: Invalid User")
         return
 
     # Attempt to kick the user - excepts on some errors.
@@ -144,15 +157,15 @@ async def kick_user(message, args, client, stats, cmds):
 
     # construct string for kick reason
     reason = ""
-    if len(args) > 1:
-        for i in range(2, len(args)):
+    if len(args) > 0:
+        for i in range(1, len(args)):
             reason = f"{reason} {args[i]}"
     else:
         reason = "Sonnet Kick"
 
     # Extract user ID from arguments, error if this is not provided.
     try:
-        id_to_kick = extract_id_from_mention(args[1])
+        id_to_kick = extract_id_from_mention(args[0])
     except IndexError:
         await message.channel.send("ERROR: No User ID provided.")
         return
@@ -190,15 +203,15 @@ async def ban_user(message, args, client, stats, cmds):
 
     # Construct reason string
     reason = ""
-    if len(args) > 1:
-        for i in range(2, len(args)):
+    if len(args) > 0:
+        for i in range(1, len(args)):
             reason = f"{reason} {args[i]}"
     else:
         reason = "Sonnet Ban"
 
     # Extract User ID from arguments, handle error if it doesn't exist
     try:
-        id_to_ban = extract_id_from_mention(args[1])
+        id_to_ban = extract_id_from_mention(args[0])
     except IndexError:
         await message.channel.send("ERROR: No User ID provided.")
         return
