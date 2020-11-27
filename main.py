@@ -143,7 +143,10 @@ async def on_message(message):
             broke_blacklist = True
     
     # Check message against REGEXP blacklist
-    regex_blacklist = json.loads(blacklist["regex-blacklist"])["blacklist"]
+    if blacklist["regex-blacklist"]:
+        regex_blacklist = json.loads(blacklist["regex-blacklist"])["blacklist"]
+    else:
+        regex_blacklist = []
     for i in regex_blacklist:
         if re.findall(i.split(" ")[1][1:-2], message.content):
             broke_blacklist = True
