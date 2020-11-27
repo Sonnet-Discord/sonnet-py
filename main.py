@@ -18,6 +18,8 @@ import sqlite3
 import json
 # Import RegEx library
 import re
+# Import Globstar library
+import glob
 
 # Get token from environment variables.
 TOKEN = os.getenv('RHEA_TOKEN')
@@ -61,14 +63,18 @@ for f in os.listdir('./cmds'):
         print(f)
         command_modules.append(importlib.import_module(f[:-3]))
 
+# Clear cache because cache is volatile between versions
+for i in glob.glob("datastore/*.cache.db"):
+    os.remove(i)
+
 
 # Returns specified config from db
 def return_config(cur, target):
     try:
         cur.execute("SELECT value FROM config WHERE property = ?", (target,))
-        data = cur.fetchall()
+        data = cur.fetchone()
         if data:
-            return data[0][0]
+            return data[0]
         else:
             return ""
     except sqlite3.OperationalError:
@@ -88,6 +94,10 @@ def load_blacklist(guild_id):
             "regex-blacklist":return_config(cur, "regex-blacklist")
         }
         con.close()
+        if blacklist["regex-blacklist"]:
+            blacklist["regex-blacklist"] = [i.split(" ")[1][1:-2] for i in json.loads(blacklist["regex-blacklist"])["blacklist"]]
+        else:
+            blacklist["regex-blacklist"] = []           
         with open(f"datastore/{guild_id}.cache.db", "w") as blacklist_cache:
             json.dump(blacklist, blacklist_cache)
         return blacklist
@@ -143,12 +153,9 @@ async def on_message(message):
             broke_blacklist = True
     
     # Check message against REGEXP blacklist
-    if blacklist["regex-blacklist"]:
-        regex_blacklist = json.loads(blacklist["regex-blacklist"])["blacklist"]
-    else:
-        regex_blacklist = []
+    regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
-        if re.findall(i.split(" ")[1][1:-2], message.content):
+        if re.findall(i, message.content):
             broke_blacklist = True
     
     # If blacklist broken generate infraction
@@ -156,6 +163,7 @@ async def on_message(message):
         for module in command_modules:
             for entry in module.commands:
                 if "warn" == entry:
+                    await message.delete()
                     await module.commands["warn"]['execute'](message, [str(message.author.id), "[AUTOMOD] Blacklist"], Client, stats, command_modules)
     stats["end-blacklist"] = round(time.time() * 10000)
     
@@ -176,6 +184,4 @@ async def on_message(message):
             if command == entries:
                 stats["end"] = round(time.time() * 10000)
                 await module.commands[entries]['execute'](message, arguments, Client, stats, command_modules)
-
-
 Client.run(TOKEN, bot=True, reconnect=True)
