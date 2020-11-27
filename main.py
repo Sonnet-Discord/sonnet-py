@@ -156,7 +156,7 @@ async def on_message(message):
         for module in command_modules:
             for entry in module.commands:
                 if "warn" == entry:
-                    await module.commands["warn"]['execute'](message, ["warn", str(message.author.id), "[AUTOMOD] Blacklist"], Client, stats, command_modules)
+                    await module.commands["warn"]['execute'](message, [str(message.author.id), "[AUTOMOD] Blacklist"], Client, stats, command_modules)
     stats["end-blacklist"] = round(time.time() * 10000)
     
     # Check if this is meant for us.
