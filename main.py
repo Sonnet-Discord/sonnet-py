@@ -14,6 +14,10 @@ import sys
 import time
 # Import sqlite3
 import sqlite3
+# Import json
+import json
+# Import RegEx library
+import re
 
 # Get token from environment variables.
 TOKEN = os.getenv('RHEA_TOKEN')
@@ -58,6 +62,37 @@ for f in os.listdir('./cmds'):
         command_modules.append(importlib.import_module(f[:-3]))
 
 
+# Returns specified config from db
+def return_config(cur, target):
+    try:
+        cur.execute("SELECT value FROM config WHERE property = ?", (target,))
+        data = cur.fetchall()
+        if data:
+            return data[0][0]
+        else:
+            return ""
+    except sqlite3.OperationalError:
+        return ""
+
+
+# Load blacklist from cache, or load from db if cache isint existant
+def load_blacklist(guild_id):
+    try:
+        with open(f"datastore/{guild_id}.cache.db", "r") as blacklist_cache:
+            return json.load(blacklist_cache)
+    except FileNotFoundError:
+        con = sqlite3.connect(f"datastore/{guild_id}.db")
+        cur = con.cursor()
+        blacklist = {
+            "word-blacklist":return_config(cur, "word-blacklist"),
+            "regex-blacklist":return_config(cur, "regex-blacklist")
+        }
+        con.close()
+        with open(f"datastore/{guild_id}.cache.db", "w") as blacklist_cache:
+            json.dump(blacklist, blacklist_cache)
+        return blacklist
+
+
 # Catch errors without being fatal - log them.
 @Client.event
 async def on_error(event, *args, **kwargs):
@@ -90,12 +125,40 @@ async def on_guild_join(guild):
 @Client.event
 async def on_message(message):
     # Statistics.
-    stats = {"start": int(round(time.time() * 1000)), "end": 0}
+    stats = {"start": round(time.time() * 10000), "end": 0}
 
     # Make sure we don't start a feedback loop.
     if message.author == Client.user:
         return
 
+    # Load blacklist from cache or db
+    stats["start-blacklist"] = round(time.time() * 10000)
+    blacklist = (load_blacklist(message.guild.id))
+
+    # Check message agaist word blacklist
+    broke_blacklist = False
+    word_blacklist = blacklist["word-blacklist"].split(",")
+    for i in message.content.split(" "):
+        if i in word_blacklist:
+            broke_blacklist = True
+    
+    # Check message against REGEXP blacklist
+    if blacklist["regex-blacklist"]:
+        regex_blacklist = json.loads(blacklist["regex-blacklist"])["blacklist"]
+    else:
+        regex_blacklist = []
+    for i in regex_blacklist:
+        if re.findall(i.split(" ")[1][1:-2], message.content):
+            broke_blacklist = True
+    
+    # If blacklist broken generate infraction
+    if broke_blacklist:
+        for module in command_modules:
+            for entry in module.commands:
+                if "warn" == entry:
+                    await module.commands["warn"]['execute'](message, [str(message.author.id), "[AUTOMOD] Blacklist"], Client, stats, command_modules)
+    stats["end-blacklist"] = round(time.time() * 10000)
+    
     # Check if this is meant for us.
     if not message.content.startswith(GLOBAL_PREFIX):
         return
@@ -111,7 +174,7 @@ async def on_message(message):
     for module in command_modules:
         for entries in module.commands:
             if command == entries:
-                stats["end"] = int(round(time.time() * 1000))
+                stats["end"] = round(time.time() * 10000)
                 await module.commands[entries]['execute'](message, arguments, Client, stats, command_modules)
 
 

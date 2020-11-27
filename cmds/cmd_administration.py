@@ -3,7 +3,7 @@
 
 import discord, sqlite3
 from datetime import datetime
-
+import os
 
 async def recreate_db(message, args, client, stats, cmds):
     con = sqlite3.connect(f"datastore/{message.guild.id}.db")
@@ -46,6 +46,9 @@ async def wb_change(message, args, client, stats, cmds):
     # Commit new changes and then close connection.
     con.commit()
     con.close()
+    
+    # Wipe cache
+    os.remove(f"datastore/{message.guild.id}.cache.db")
 
     await message.channel.send("Word blacklist updated successfully.")
 

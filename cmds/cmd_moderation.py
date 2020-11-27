@@ -106,6 +106,47 @@ async def log_infraction(message, client, user_id, infraction_reason, infraction
     await user.send(embed=dm_embed)
 
 
+async def warn_user(message, args, client, stats, cmds):
+
+    # Check that the user running the command has permissions to kick members
+    if not message.author.permissions_in(message.channel).kick_members:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    # construct string for warn reason
+    reason = ""
+    if len(args) > 0:
+        for i in range(1, len(args)):
+            reason = f"{reason} {args[i]}"
+    else:
+        reason = "Sonnet Warn"
+
+    # Extract user ID from arguments, error if this is not provided.
+    try:
+        id_to_warn = extract_id_from_mention(args[0])
+    except IndexError:
+        await message.channel.send("ERROR: No User ID provided.")
+        return
+
+    # this serves no purpose but to yell at you
+    try:
+        does_this_person_actually_exist = client.get_user(int(id_to_warn))
+    except ValueError:
+        await message.channel.send("ERROR: Invalid ID")
+        return
+
+    try:
+        does_this_person_actually_exist.name
+    except AttributeError:
+        await message.channel.send("ERROR: Invalid User")
+        return
+
+    # Attempt to kick the user - excepts on some errors.
+    await log_infraction(message, client, id_to_warn, reason, "warn")
+
+    await message.channel.send(f"Warned user with ID {id_to_warn} for {reason}")
+
+
 async def kick_user(message, args, client, stats, cmds):
     args = message.content.split()
 
@@ -205,6 +246,11 @@ category_info = {
 
 
 commands = {
+    'warn': {
+        'pretty_name': 'warn',
+        'description': 'Warn a user',
+        'execute': warn_user
+    },
     'kick': {
         'pretty_name': 'kick',
         'description': 'Kick a user',
