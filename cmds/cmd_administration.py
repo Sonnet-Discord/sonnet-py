@@ -134,6 +134,9 @@ async def regexblacklist_add(message, args, client, stats, cmds):
         curlist = {"blacklist":[]}
     except json.decoder.JSONDecodeError:
         curlist = {"blacklist":[]}
+    except IndexError:
+        curlist = {"blacklist":[]}
+        
     
     # Check if valid RegEx
     new_data = args[0]

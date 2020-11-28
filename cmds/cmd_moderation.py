@@ -108,11 +108,19 @@ async def log_infraction(message, client, user_id, infraction_reason, infraction
 
 async def warn_user(message, args, client, stats, cmds):
 
+    automod = False
+    try:
+        if (str(type(args[0])) == "<class 'int'>"):
+            args[0] = str(args[0])
+            automod = True
+    except IndexError:
+        pass
+    
     # Check that the user running the command has permissions to kick members
-    if not message.author.permissions_in(message.channel).kick_members:
-        await message.channel.send("Insufficient permissions.")
-        return
-
+    if not(message.author.permissions_in(message.channel).kick_members) and not(automod):
+            await message.channel.send("Insufficient permissions.")
+            return
+    
     # construct string for warn reason
     reason = ""
     if len(args) > 0:
@@ -143,8 +151,9 @@ async def warn_user(message, args, client, stats, cmds):
 
     # Attempt to kick the user - excepts on some errors.
     await log_infraction(message, client, id_to_warn, reason, "warn")
-
-    await message.channel.send(f"Warned user with ID {id_to_warn} for {reason}")
+    
+    if not automod:
+        await message.channel.send(f"Warned user with ID {id_to_warn} for {reason}")
 
 
 async def kick_user(message, args, client, stats, cmds):
