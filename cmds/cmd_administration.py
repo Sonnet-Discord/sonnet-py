@@ -124,6 +124,11 @@ async def regexblacklist_add(message, args, client, stats, cmds):
         await message.channel.send("Insufficient permissions.")
         return
 
+    # Test if args supplied
+    if not args:
+        await message.channel.send("ERROR: no RegEx supplied")
+        return
+
     # Load DB
     sqldb = sql_handler(f"datastore/{message.guild.id}.db")
     
@@ -167,6 +172,11 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
 
     if not message.author.permissions_in(message.channel).administrator:
         await message.channel.send("Insufficient permissions.")
+        return
+
+    # Test if args supplied
+    if not args:
+        await message.channel.send("ERROR: no RegEx supplied")
         return
 
     # Load DB
