@@ -1,9 +1,11 @@
 # Administration commands.
 # bredo, 2020
 
-import discord, sqlite3
+import discord, sqlite3, os
 from datetime import datetime
-import os
+import json
+
+from lib_sql_handler import sql_handler
 
 async def recreate_db(message, args, client, stats, cmds):
     con = sqlite3.connect(f"datastore/{message.guild.id}.db")
@@ -31,26 +33,20 @@ async def wb_change(message, args, client, stats, cmds):
     if len(args) == 1:
         word_blacklist = args[0]
 
-    # User is an admin and all arguments are correct. Send to database.
-    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
-    cur = con.cursor()
-    # Not sure if the following is PEP8 compliant.
-    cur.execute('''
-        INSERT INTO config (property, value)
-        VALUES (?, ?)
-        ON CONFLICT (property) DO UPDATE SET
-            value = excluded.value
-        WHERE property = ?
-    ''', ('word-blacklist', word_blacklist, 'word-blacklist'))
-
-    # Commit new changes and then close connection.
-    con.commit()
-    con.close()
+    # Update word-blacklist in DB
+    try:
+        with sql_handler(f"datastore/{message.guild.id}.db") as sqldb:
+            sqldb.add_to_table("config", [
+                ["property", "word-blacklist"],
+                ["value", word_blacklist]
+                ])
+        await message.channel.send("Word blacklist updated successfully.")
+    except sqlite3.OperationalError:
+        await message.channel.send("SQL Error, run recreate-db")
     
     # Wipe cache
     os.remove(f"datastore/{message.guild.id}.cache.db")
-
-    await message.channel.send("Word blacklist updated successfully.")
+    
 
 
 async def inflog_change(message, args, client, stats, cmds):
@@ -64,23 +60,16 @@ async def inflog_change(message, args, client, stats, cmds):
     if len(args) == 1:
         infraction_log = args[0]
 
-    # User is an admin and all arguments are correct. Send to database.
-    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
-    cur = con.cursor()
-    # Not sure if the following is PEP8 compliant.
-    cur.execute('''
-        INSERT INTO config (property, value)
-        VALUES (?, ?)
-        ON CONFLICT (property) DO UPDATE SET
-            value = excluded.value
-        WHERE property = ?
-    ''', ('infraction-log', infraction_log, 'infraction-log'))
-
-    # Commit new changes and then close connection.
-    con.commit()
-    con.close()
-
-    await message.channel.send("Infraction log channel ID updated successfully.")
+    # Update infraction-log location in DB
+    try:
+        with sql_handler(f"datastore/{message.guild.id}.db") as sqldb:
+            sqldb.add_to_table("config", [
+                ["property", "infraction-log"],
+                ["value", infraction_log]
+                ])
+        await message.channel.send("Infraction log channel ID updated successfully.")
+    except sqlite3.OperationalError:
+        await message.channel.send("SQL Error, run recreate-db")
 
 
 async def joinlog_change(message, args, client, stats, cmds):
@@ -95,22 +84,15 @@ async def joinlog_change(message, args, client, stats, cmds):
         join_log = args[0]
 
     # User is an admin and all arguments are correct. Send to database.
-    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
-    cur = con.cursor()
-    # Not sure if the following is PEP8 compliant.
-    cur.execute('''
-        INSERT INTO config (property, value)
-        VALUES (?, ?)
-        ON CONFLICT (property) DO UPDATE SET
-            value = excluded.value
-        WHERE property = ?
-    ''', ('join-log', join_log, 'join-log'))
-
-    # Commit new changes and then close connection.
-    con.commit()
-    con.close()
-
-    await message.channel.send("Join log channel ID updated successfully.")
+    try:
+        with sql_handler(f"datastore/{message.guild.id}.db") as sqldb:
+            sqldb.add_to_table("config", [
+                ["property", "join-log"],
+                ["value", join_log]
+                ])
+        await message.channel.send("Join log channel ID updated successfully.")
+    except sqlite3.OperationalError:
+        await message.channel.send("SQL Error, run recreate-db")
 
 
 async def msglog_change(message, args, client, stats, cmds):
@@ -125,23 +107,122 @@ async def msglog_change(message, args, client, stats, cmds):
         message_log = args[0]
 
     # User is an admin and all arguments are correct. Send to database.
-    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
-    cur = con.cursor()
-    # Not sure if the following is PEP8 compliant.
-    cur.execute('''
-        INSERT INTO config (property, value)
-        VALUES (?, ?)
-        ON CONFLICT (property) DO UPDATE SET
-            value = excluded.value
-        WHERE property = ?
-    ''', ('message-log', message_log, 'message-log'))
+    try:
+        with sql_handler(f"datastore/{message.guild.id}.db") as sqldb:
+            sqldb.add_to_table("config", [
+                ["property", "message-log"],
+                ["value", message_log]
+                ])
+        await message.channel.send("Message log channel ID updated successfully.")
+    except sqlite3.OperationalError:
+        await message.channel.send("SQL Error, run recreate-db")
 
-    # Commit new changes and then close connection.
-    con.commit()
-    con.close()
 
-    await message.channel.send("Message log channel ID updated successfully.")
+async def regexblacklist_add(message, args, client, stats, cmds):
 
+    if not message.author.permissions_in(message.channel).administrator:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    # Test if args supplied
+    if not args:
+        await message.channel.send("ERROR: no RegEx supplied")
+        return
+
+    # Load DB
+    sqldb = sql_handler(f"datastore/{message.guild.id}.db")
+    
+    # Attempt to read blacklist if exists
+    try:
+        curlist = json.loads(sqldb.fetch_rows_from_table("config",["property","regex-blacklist"])[0][1])
+    except sqlite3.OperationalError:
+        curlist = {"blacklist":[]}
+    except json.decoder.JSONDecodeError:
+        curlist = {"blacklist":[]}
+    except IndexError:
+        curlist = {"blacklist":[]}
+        
+    
+    # Check if valid RegEx
+    new_data = args[0]
+    if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
+        curlist["blacklist"].append("__REGEXP "+new_data)
+    else:
+        await message.channel.send("ERROR: Malformed RegEx")
+        sqldb.close()
+        return
+    
+    try:
+        sqldb.add_to_table("config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
+    except sqlite3.OperationalError:
+        await message.channel.send("ERROR: SQL Error: run recreate-db")
+        sqldb.close()
+        return
+        
+    # Wipe cache
+    os.remove(f"datastore/{message.guild.id}.cache.db")
+    
+    # Close db
+    sqldb.close()
+    
+    await message.channel.send("Sucessfully Updated RegEx")
+    
+    
+async def regexblacklist_remove(message, args, client, stats, cmds):
+
+    if not message.author.permissions_in(message.channel).administrator:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    # Test if args supplied
+    if not args:
+        await message.channel.send("ERROR: no RegEx supplied")
+        return
+
+    # Load DB
+    sqldb = sql_handler(f"datastore/{message.guild.id}.db")
+    
+    # Attempt to read blacklist if exists
+    try:
+        curlist = json.loads(sqldb.fetch_rows_from_table("config",["property","regex-blacklist"])[0][1])
+    except sqlite3.OperationalError:
+        await message.channel.send("ERROR: There is no RegEx")
+        sqldb.close()
+        return
+    except json.decoder.JSONDecodeError:
+        await message.channel.send("ERROR: There is no RegEx")
+        sqldb.close()
+        return
+    except IndexError:
+        await message.channel.send("ERROR: There is no RegEx")
+        sqldb.close()
+        return
+        
+    # Check if in list
+    remove_data = "__REGEXP "+args[0]
+    if remove_data in curlist["blacklist"]:
+        del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
+    else:
+        await message.channel.send("ERROR: Pattern not found in RegEx")
+        sqldb.close()   
+        return
+    
+    # Update DB
+    try:
+        sqldb.add_to_table("config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
+    except sqlite3.OperationalError:
+        await message.channel.send("ERROR: SQL Error: run recreate-db")
+        sqldb.close()
+        return
+        
+    # Wipe cache
+    os.remove(f"datastore/{message.guild.id}.cache.db")
+    
+    # Close db
+    sqldb.close()
+    
+    await message.channel.send("Sucessfully Updated RegEx")
+    
 
 category_info = {
     'name': 'administration',
@@ -175,5 +256,15 @@ commands = {
         'pretty_name': 'join-log',
         'description': 'Change join log for this guild.',
         'execute': joinlog_change
+    },
+        'add-regexblacklist': {
+        'pretty_name': 'add-regexblacklist',
+        'description': 'Add an item to regex blacklist.',
+        'execute': regexblacklist_add
+    },
+        'remove-regexblacklist': {
+        'pretty_name': 'remove-regexblacklist',
+        'description': 'Remove an item from regex blacklist.',
+        'execute': regexblacklist_remove
     }
 }
