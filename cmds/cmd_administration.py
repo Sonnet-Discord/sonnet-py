@@ -193,6 +193,10 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
         await message.channel.send("ERROR: There is no RegEx")
         sqldb.close()
         return
+    except IndexError:
+        await message.channel.send("ERROR: There is no RegEx")
+        sqldb.close()
+        return
         
     # Check if in list
     remove_data = "__REGEXP "+args[0]
