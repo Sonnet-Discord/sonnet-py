@@ -2,13 +2,39 @@
 # Ultrabear 2020
 
 import sqlite3
-class sql_handler:  # Im sorry I OOP'd it :c -ultrabear
+
+class db_error: # DB error codes
+    OperationalError = sqlite3.OperationalError
+
+class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __init__(self, dbloc):
         self.con = sqlite3.connect(dbloc)
         self.cur = self.con.cursor()
         
     def __enter__(self):
         return self
+    
+    def make_new_table(self, tablename, data):
+        
+        # Load hashmap of python datatypes to SQLite3 datatypes
+        datamap = {int:"INTEGER", None:"NULL", float:"REAL", str:"TEXT", bytes:"TEXT"}
+        
+        # Add table addition
+        db_inputStr = f'CREATE TABLE IF NOT EXISTS {tablename} ('
+        
+        # Parse through table items, item with 3 entries is primary key
+        inlist = []
+        for i in data:
+            if len(i) >= 3 and i[2] == 1:
+                inlist.append(f"{i[0]} {datamap[i[1]]} PRIMARY KEY")
+            else:
+                inlist.append(f"{i[0]} {datamap[i[1]]}")
+        
+        # Add parsed inputs to inputStr 
+        db_inputStr += ", ".join(inlist) + ")"
+        
+        # Exectute table generation
+        self.cur.execute(db_inputStr)
     
     def add_to_table(self, table, data):
         
