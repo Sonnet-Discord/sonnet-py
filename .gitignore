@@ -7,3 +7,5 @@ __pycache__
 # Remove error log.
 err.log
 
+# Remove mariadb login
+.login-info.txt
