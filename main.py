@@ -110,6 +110,10 @@ async def on_error(event, *args, **kwargs):
 @Client.event
 async def on_ready():
     print(f'{Client.user} has connected to Discord!')
+    
+    # Warn if user is not bot
+    if not Client.user.bot:
+        print("WARNING: The connected account is not a bot, as it is against ToS we do not condone user botting")
 
 
 # Bot joins a guild
@@ -135,6 +139,10 @@ async def on_message(message):
 
     # Make sure we don't start a feedback loop.
     if message.author == Client.user:
+        return
+        
+    # Ignore message if author is a bot
+    if message.author.bot:
         return
 
     # Load blacklist from cache or db
