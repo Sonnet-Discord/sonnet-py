@@ -143,10 +143,11 @@ async def on_message(message):
 
     # Check message agaist word blacklist
     broke_blacklist = False
-    word_blacklist = blacklist["word-blacklist"].split(",")
-    for i in message.content.split(" "):
-        if i in word_blacklist:
-            broke_blacklist = True
+    if blacklist["word-blacklist"]:
+        word_blacklist = blacklist["word-blacklist"].split(",")
+        for i in message.content.split(" "):
+            if i in word_blacklist:
+                broke_blacklist = True
     
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
