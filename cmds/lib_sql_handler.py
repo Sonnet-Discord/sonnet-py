@@ -39,7 +39,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def add_to_table(self, table, data):
         
         # Add insert data and generate base tables
-        db_inputStr = f"INSERT INTO {table} ("
+        db_inputStr = f"REPLACE INTO {table} ("
         db_inputList = []
         db_inputStr += ", ".join([i[0] for i in data])+ ")\n"
         
@@ -47,13 +47,6 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         db_inputStr += "VALUES ("
         db_inputList.extend([i[1] for i in data])
         db_inputStr += ", ".join(["?" for i in range(len(data))])+ ")\n"
-        
-        # Insert on conflict data
-        db_inputStr += f"ON CONFLICT ({data[0][0]}) DO UPDATE SET\n    VALUE = excluded.value\n"
-        
-        # Insert WHERE data
-        db_inputStr += f"WHERE {data[0][0]} = ?"
-        db_inputList.append(data[0][1])
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
     

@@ -1,8 +1,9 @@
 # Moderation commands
 # bredo, 2020
 
-import discord, sqlite3, datetime, time, random
+import discord, datetime, time, random
 
+from lib_sql_handler import db_handler, db_error
 
 def extract_id_from_mention(user_id):
     # Function to extract a user ID from a mention.
@@ -54,37 +55,51 @@ def dec_to_bin(num):
     return num % 2
 
 
-async def log_infraction(message, client, user_id, infraction_reason, infraction_type):
+async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
     generated_id = gen_infraction_id(infraction_type)
-    query = "SELECT * FROM config WHERE property = 'infraction-log'"
-    query_two = "INSERT INTO infractions (infractionID, userID, moderatorID, type, reason, timestamp) " \
-                "VALUES(?, ?, ?, ?, ?, ?)"
-    con = sqlite3.connect(f"datastore/{message.guild.id}.db")
-    cur = con.cursor()
-    cur_two = con.cursor()
+    database = db_handler(f"datastore/{message.guild.id}.db")
+    
+    # Grab log channel id from db
     try:
-        cur.execute(query)
-    except sqlite3.OperationalError:
+        channel_id = database.fetch_rows_from_table("config", ["property", "infraction-log"])[0][1]
+    except db_error.OperationalError:
         await message.channel.send("ERROR: No guild database. Run recreate-db to fix.")
+        database.close()
         return
     except TypeError:
         await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
+        database.close()
         return
-
+    except IndexError:
+        await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
+        database.close()
+        return
+    
+    # Generate log channel object
     try:
-        log_channel = client.get_channel(int(cur.fetchone()[1]))
+        log_channel = client.get_channel(int(channel_id))
     except TypeError:
         await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
+        database.close()
         return
 
+    
+    # Send infraction to database
     try:
-        cur_two.execute(query_two, (generated_id, user_id, message.author.id, infraction_type, infraction_reason, round(time.time())))
+        database.add_to_table("infractions", [
+            ["infractionID", generated_id],
+            ["userID", user_id],
+            ["moderatorID", moderator_id],
+            ["type", infraction_type],
+            ["reason", infraction_reason],
+            ["timestamp", round(time.time())]
+            ])
     except TypeError:
         await message.channel.send("ERROR: Failed to add infraction to database.")
+        database.close()
         return
 
-    con.commit()
-    con.close()
+    database.close()
 
     user = client.get_user(int(user_id))
 
@@ -110,7 +125,7 @@ async def warn_user(message, args, client, stats, cmds):
 
     automod = False
     try:
-        if (str(type(args[0])) == "<class 'int'>"):
+        if (type(args[0]) == int):
             args[0] = str(args[0])
             automod = True
     except IndexError:
@@ -121,11 +136,15 @@ async def warn_user(message, args, client, stats, cmds):
             await message.channel.send("Insufficient permissions.")
             return
     
+    # If automod then moderator id is the bots id
+    if automod:
+        moderator_id = client.user.id
+    else:
+        moderator_id = message.author.id
+    
     # construct string for warn reason
-    reason = ""
     if len(args) > 0:
-        for i in range(1, len(args)):
-            reason = f"{reason} {args[i]}"
+        reason = " ".join(args[1:])
     else:
         reason = "Sonnet Warn"
 
@@ -150,7 +169,7 @@ async def warn_user(message, args, client, stats, cmds):
         return
 
     # Attempt to kick the user - excepts on some errors.
-    await log_infraction(message, client, id_to_warn, reason, "warn")
+    await log_infraction(message, client, id_to_warn, moderator_id, reason, "warn")
     
     if not automod:
         await message.channel.send(f"Warned user with ID {id_to_warn} for {reason}")
@@ -165,10 +184,8 @@ async def kick_user(message, args, client, stats, cmds):
         return
 
     # construct string for kick reason
-    reason = ""
     if len(args) > 1:
-        for i in range(2, len(args)):
-            reason = f"{reason} {args[i]}"
+        reason = " ".join(args[1:])
     else:
         reason = "Sonnet Kick"
 
@@ -185,7 +202,7 @@ async def kick_user(message, args, client, stats, cmds):
         return
 
     # Attempt to kick the user - excepts on some errors.
-    await log_infraction(message, client, id_to_kick, reason, "kick")
+    await log_infraction(message, client, id_to_kick, message.author.id, reason, "kick")
 
     try:
         await message.guild.kick(client.get_user(int(id_to_kick)), reason=reason)
@@ -211,10 +228,8 @@ async def ban_user(message, args, client, stats, cmds):
         return
 
     # Construct reason string
-    reason = ""
     if len(args) > 1:
-        for i in range(2, len(args)):
-            reason = f"{reason} {args[i]}"
+        reason = " ".join(args[1:])
     else:
         reason = "Sonnet Ban"
 
@@ -244,7 +259,7 @@ async def ban_user(message, args, client, stats, cmds):
         return
 
     await message.channel.send(f"Banned user with ID {id_to_ban} for {reason}")
-    await log_infraction(message, client, id_to_ban, reason, "ban")
+    await log_infraction(message, client, id_to_ban, message.author.id, reason, "ban")
 
 
 category_info = {

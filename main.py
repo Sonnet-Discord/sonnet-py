@@ -12,8 +12,6 @@ from discord.ext import commands
 import sys
 # Initialise time for health monitoring.
 import time
-# Import sqlite3
-import sqlite3
 # Import json
 import json
 # Import RegEx library
@@ -39,6 +37,10 @@ GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 def get_prefix(client, message):
     prefixes = GLOBAL_PREFIX
     return commands.when_mentioned_or(*prefixes)(client, message)
+
+
+# Get db handling library
+from lib_sql_handler import db_handler, db_error
 
 
 intents = discord.Intents.default()
@@ -68,38 +70,28 @@ for i in glob.glob("datastore/*.cache.db"):
     os.remove(i)
 
 
-# Returns specified config from db
-def return_config(cur, target):
-    try:
-        cur.execute("SELECT value FROM config WHERE property = ?", (target,))
-        data = cur.fetchone()
-        if data:
-            return data[0]
-        else:
-            return ""
-    except sqlite3.OperationalError:
-        return ""
-
-
 # Load blacklist from cache, or load from db if cache isint existant
 def load_blacklist(guild_id):
     try:
         with open(f"datastore/{guild_id}.cache.db", "r") as blacklist_cache:
             return json.load(blacklist_cache)
     except FileNotFoundError:
-        con = sqlite3.connect(f"datastore/{guild_id}.db")
-        cur = con.cursor()
-        blacklist = {
-            "word-blacklist":return_config(cur, "word-blacklist"),
-            "regex-blacklist":return_config(cur, "regex-blacklist")
-        }
-        con.close()
+        db = db_handler(f"datastore/{guild_id}.db")
+        blacklist = {}
+        for i in ["word-blacklist","regex-blacklist"]:
+            try:
+                blacklist[i] = db.fetch_rows_from_table("config", ["property",i])[0][1]
+            except db_error.OperationalError:
+                blacklist[i] = ""
+            except IndexError:
+                blacklist[i] = ""
         if blacklist["regex-blacklist"]:
             blacklist["regex-blacklist"] = [i.split(" ")[1][1:-2] for i in json.loads(blacklist["regex-blacklist"])["blacklist"]]
         else:
-            blacklist["regex-blacklist"] = []           
+            blacklist["regex-blacklist"] = []
         with open(f"datastore/{guild_id}.cache.db", "w") as blacklist_cache:
             json.dump(blacklist, blacklist_cache)
+        db.close()
         return blacklist
 
 
@@ -123,12 +115,16 @@ async def on_ready():
 # Bot joins a guild
 @Client.event
 async def on_guild_join(guild):
-    con = sqlite3.connect(f'datastore/{guild.id}.db')
-    cur = con.cursor()
-    cur.execute('''CREATE TABLE IF NOT EXISTS config (property TEXT PRIMARY KEY, value TEXT)''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS infractions (infractionID INTEGER PRIMARY KEY, userID TEXT, moderatorID 
-    TEXT, type TEXT, reason TEXT, timestamp INTEGER)''')
-    con.close()
+    with db_handler(f"datastore/{message.guild.id}.db") as db:
+        db.make_new_table("config",[["property", str, 1], ["value", str]])
+        db.make_new_table("infractions", [
+        ["infractionID", int, 1],
+        ["userID", str],
+        ["moderatorID", str], 
+        ["type", str],
+        ["reason", str], 
+        ["timestamp", int]
+        ])
 
 
 # Handle messages.
