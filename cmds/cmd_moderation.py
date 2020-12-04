@@ -106,8 +106,8 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     embed = discord.Embed(title="Sonnet", description=f"New infraction for <@{user_id}>:", color=0x758cff)
     # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
     embed.add_field(name="Infraction ID", value=str(generated_id))
-    embed.add_field(name="Moderator", value=f"{message.author.name}#{message.author.discriminator}")
-    embed.add_field(name="User", value=f"{user.name}#{user.discriminator}")
+    embed.add_field(name="Moderator", value=f"{client.get_user(int(moderator_id))}")
+    embed.add_field(name="User", value=f"{user}")
     embed.add_field(name="Type", value=infraction_type)
     embed.add_field(name="Reason", value=infraction_reason)
 

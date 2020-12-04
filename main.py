@@ -156,12 +156,24 @@ async def on_message(message):
         for i in message.content.split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
+                infraction_type = "Word"
     
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         if re.findall(i, message.content):
             broke_blacklist = True
+            infraction_type = "RegEx"
+            
+    # Check against filetype blacklist ##NOT IMPLEMENTED YET##
+    filetype_blacklist = []
+    if filetype_blacklist and message.attachments:
+        for i in message.attachments:
+            for a in filetype_blacklist:
+                if i.filename.endswith(a):
+                    broke_blacklist = True
+                    infraction_type = "FileType"
+    stats["end-blacklist"] = round(time.time() * 10000)
     
     # If blacklist broken generate infraction
     if broke_blacklist:
@@ -169,8 +181,7 @@ async def on_message(message):
             for entry in module.commands:
                 if "warn" == entry:
                     await message.delete()
-                    await module.commands["warn"]['execute'](message, [int(message.author.id), "[AUTOMOD] Blacklist"], Client, stats, command_modules)
-    stats["end-blacklist"] = round(time.time() * 10000)
+                    await module.commands["warn"]['execute'](message, [int(message.author.id), "[AUTOMOD]", infraction_type, "Blacklist"], Client, stats, command_modules)
     
     # Check if this is meant for us.
     if not message.content.startswith(GLOBAL_PREFIX):
