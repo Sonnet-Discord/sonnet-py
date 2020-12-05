@@ -32,7 +32,7 @@ def load_blacklist(guild_id):
         # Loads word, filetype blacklist
         for i in ["word-blacklist","filetype-blacklist"]:
             if blacklist[i]:
-                blacklist[i] = blacklist[i].split(",")
+                blacklist[i] = blacklist[i].lower().split(",")
 
         with open(f"datastore/{guild_id}.cache.db", "w") as blacklist_cache:
             json.dump(blacklist, blacklist_cache)

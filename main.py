@@ -131,7 +131,7 @@ async def on_message(message):
     infraction_type = []
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
-        for i in message.content.split(" "):
+        for i in message.content.lower().split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
                 infraction_type.append("Word")
@@ -148,7 +148,7 @@ async def on_message(message):
     if filetype_blacklist and message.attachments:
         for i in message.attachments:
             for a in filetype_blacklist:
-                if i.filename.endswith(a):
+                if i.filename.lower().endswith(a):
                     broke_blacklist = True
                     infraction_type.append("FileType")
     stats["end-blacklist"] = round(time.time() * 100000)
