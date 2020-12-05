@@ -7,16 +7,17 @@ class db_error: # DB error codes
     OperationalError = mariadb.Error
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
-    def __init__(self, database_file):
+    def __init__(self):
         with open(".login-info.txt") as login_info_file:  # Grab login data
             login_info = json.load(login_info_file)
         
         # Connect to database with login info
         self.con = mariadb.connect(
-            user =login_info["login"], 
+            user = login_info["login"], 
             password = login_info["password"], 
             host = login_info["server"], 
-            database = database_file )
+            database = login_info["db_name"],
+            port = int(login_info["port"]) )
         
         # Generate Cursor
         self.cur = self.con.cursor()
