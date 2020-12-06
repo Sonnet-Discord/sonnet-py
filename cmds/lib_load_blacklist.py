@@ -1,7 +1,7 @@
 # Blacklist cache generation tool
 # Ultabear 2020
 
-from lib_sql_handler import db_handler, db_error
+from lib_mdb_handler import db_handler, db_error
 import json
 
 # Load blacklist from cache, or load from db if cache isint existant
@@ -10,13 +10,13 @@ def load_blacklist(guild_id):
         with open(f"datastore/{guild_id}.cache.db", "r") as blacklist_cache:
             return json.load(blacklist_cache)
     except FileNotFoundError:
-        db = db_handler(f"datastore/{guild_id}.db")
+        db = db_handler()
         blacklist = {}
 
         # Loads base db
         for i in ["word-blacklist","regex-blacklist","filetype-blacklist"]:
             try:
-                blacklist[i] = db.fetch_rows_from_table("config", ["property",i])[0][1]
+                blacklist[i] = db.fetch_rows_from_table(f"{guild_id}_config", ["property",i])[0][1]
             except db_error.OperationalError:
                 blacklist[i] = []
             except IndexError:

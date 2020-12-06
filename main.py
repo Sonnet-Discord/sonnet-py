@@ -38,7 +38,7 @@ def get_prefix(client, message):
 
 
 # Get db handling library
-from lib_sql_handler import db_handler, db_error
+from lib_mdb_handler import db_handler, db_error
 
 
 intents = discord.Intents.default()
@@ -65,9 +65,6 @@ for f in os.listdir('./cmds'):
 for module in command_modules:
     command_modules_dict.update(module.commands)
 
-# Clear cache because cache is volatile between versions
-for i in glob.glob("datastore/*.cache.db"):
-    os.remove(i)
 
 # Import blacklist loader
 from lib_load_blacklist import load_blacklist
@@ -97,10 +94,10 @@ async def on_ready():
 # Bot joins a guild
 @Client.event
 async def on_guild_join(guild):
-    with db_handler(f"datastore/{message.guild.id}.db") as db:
-        db.make_new_table("config",[["property", str, 1], ["value", str]])
-        db.make_new_table("infractions", [
-        ["infractionID", int, 1],
+    with db_handler() as db:
+        db.make_new_table(f"{message.guild.id}_config",[["property", str, 1], ["value", str]])
+        db.make_new_table(f"{message.guild.id}_infractions", [
+        ["infractionID", str, 1],
         ["userID", str],
         ["moderatorID", str],
         ["type", str],
@@ -176,3 +173,7 @@ async def on_message(message):
 
 
 Client.run(TOKEN, bot=True, reconnect=True)
+
+# Clear cache at exit
+for i in glob.glob("datastore/*.cache.db"):
+    os.remove(i)

@@ -5,14 +5,14 @@ import discord, os
 from datetime import datetime
 import json
 
-from lib_sql_handler import db_handler, db_error
+from lib_mdb_handler import db_handler, db_error
 from lib_load_blacklist import load_blacklist
 
 async def recreate_db(message, args, client, stats, cmds):
-    with db_handler(f"datastore/{message.guild.id}.db") as db:
-        db.make_new_table("config",[["property", str, 1], ["value", str]])
-        db.make_new_table("infractions", [
-        ["infractionID", int, 1],
+    with db_handler() as db:
+        db.make_new_table(f"{message.guild.id}_config",[["property", str, 1], ["value", str]])
+        db.make_new_table(f"{message.guild.id}_infractions", [
+        ["infractionID", str, 1],
         ["userID", str],
         ["moderatorID", str],
         ["type", str],
@@ -39,8 +39,8 @@ async def wb_change(message, args, client, stats, cmds):
 
     # Update word-blacklist in DB
     try:
-        with db_handler(f"datastore/{message.guild.id}.db") as db:
-            db.add_to_table("config", [
+        with db_handler() as db:
+            db.add_to_table(f"{message.guild.id}_config", [
                 ["property", "word-blacklist"],
                 ["value", word_blacklist]
                 ])
@@ -70,8 +70,8 @@ async def ftb_change(message, args, client, stats, cmds):
 
     # Update word-blacklist in DB
     try:
-        with db_handler(f"datastore/{message.guild.id}.db") as db:
-            db.add_to_table("config", [
+        with db_handler() as db:
+            db.add_to_table(f"{message.guild.id}_config", [
                 ["property", "filetype-blacklist"],
                 ["value", filetype_blacklist]
                 ])
@@ -96,8 +96,8 @@ async def inflog_change(message, args, client, stats, cmds):
 
     # Update infraction-log location in DB
     try:
-        with db_handler(f"datastore/{message.guild.id}.db") as db:
-            db.add_to_table("config", [
+        with db_handler() as db:
+            db.add_to_table(f"{message.guild.id}_config", [
                 ["property", "infraction-log"],
                 ["value", infraction_log]
                 ])
@@ -119,8 +119,8 @@ async def joinlog_change(message, args, client, stats, cmds):
 
     # User is an admin and all arguments are correct. Send to database.
     try:
-        with db_handler(f"datastore/{message.guild.id}.db") as db:
-            db.add_to_table("config", [
+        with db_handler() as db:
+            db.add_to_table(f"{message.guild.id}_config", [
                 ["property", "join-log"],
                 ["value", join_log]
                 ])
@@ -142,8 +142,8 @@ async def msglog_change(message, args, client, stats, cmds):
 
     # User is an admin and all arguments are correct. Send to database.
     try:
-        with db_handler(f"datastore/{message.guild.id}.db") as db:
-            db.add_to_table("config", [
+        with db_handler() as db:
+            db.add_to_table(f"{message.guild.id}_config", [
                 ["property", "message-log"],
                 ["value", message_log]
                 ])
@@ -164,11 +164,11 @@ async def regexblacklist_add(message, args, client, stats, cmds):
         return
 
     # Load DB
-    db = db_handler(f"datastore/{message.guild.id}.db")
+    db = db_handler()
 
     # Attempt to read blacklist if exists
     try:
-        curlist = json.loads(db.fetch_rows_from_table("config",["property","regex-blacklist"])[0][1])
+        curlist = json.loads(db.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
     except db_error.OperationalError:
         curlist = {"blacklist":[]}
     except json.decoder.JSONDecodeError:
@@ -187,7 +187,7 @@ async def regexblacklist_add(message, args, client, stats, cmds):
         return
 
     try:
-        db.add_to_table("config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
+        db.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
     except db_error.OperationalError:
         await message.channel.send("ERROR: DB Error: run recreate-db")
         db.close()
@@ -214,11 +214,11 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
         return
 
     # Load DB
-    db = db_handler(f"datastore/{message.guild.id}.db")
+    db = db_handler()
 
     # Attempt to read blacklist if exists
     try:
-        curlist = json.loads(db.fetch_rows_from_table("config",["property","regex-blacklist"])[0][1])
+        curlist = json.loads(db.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
     except db_error.OperationalError:
         await message.channel.send("ERROR: There is no RegEx")
         db.close()
@@ -243,7 +243,7 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
 
     # Update DB
     try:
-        db.add_to_table("config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
+        db.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
     except db_error.OperationalError:
         await message.channel.send("ERROR: DB Error: run recreate-db")
         db.close()
