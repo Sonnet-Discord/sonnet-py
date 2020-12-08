@@ -24,8 +24,8 @@ def extract_id_from_mention(user_id):
 
 async def ping_function(message, args, client, stats, cmds):
     embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
-    embed.add_field(name="Process Time", value=str((stats["end"] - stats["start"])/10) + "ms", inline=False)
-    embed.add_field(name="Blacklist Process Time", value=str((stats["end-blacklist"] - stats["start-blacklist"])/10) + "ms", inline=False)
+    embed.add_field(name="Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
+    embed.add_field(name="Blacklist Process Time", value=str((stats["end-blacklist"] - stats["start-blacklist"])/100) + "ms", inline=False)
     await message.channel.send(embed=embed)
 
 

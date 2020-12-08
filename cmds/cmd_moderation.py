@@ -3,7 +3,7 @@
 
 import discord, datetime, time, random
 
-from lib_sql_handler import db_handler, db_error
+from lib_mdb_handler import db_handler, db_error
 
 def extract_id_from_mention(user_id):
     # Function to extract a user ID from a mention.
@@ -57,11 +57,11 @@ def dec_to_bin(num):
 
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
     generated_id = gen_infraction_id(infraction_type)
-    database = db_handler(f"datastore/{message.guild.id}.db")
+    database = db_handler()
     
     # Grab log channel id from db
     try:
-        channel_id = database.fetch_rows_from_table("config", ["property", "infraction-log"])[0][1]
+        channel_id = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "infraction-log"])[0][1]
     except db_error.OperationalError:
         await message.channel.send("ERROR: No guild database. Run recreate-db to fix.")
         database.close()
@@ -86,7 +86,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     
     # Send infraction to database
     try:
-        database.add_to_table("infractions", [
+        database.add_to_table(f"{message.guild.id}_infractions", [
             ["infractionID", generated_id],
             ["userID", user_id],
             ["moderatorID", moderator_id],
@@ -106,8 +106,8 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     embed = discord.Embed(title="Sonnet", description=f"New infraction for <@{user_id}>:", color=0x758cff)
     # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
     embed.add_field(name="Infraction ID", value=str(generated_id))
-    embed.add_field(name="Moderator", value=f"{message.author.name}#{message.author.discriminator}")
-    embed.add_field(name="User", value=f"{user.name}#{user.discriminator}")
+    embed.add_field(name="Moderator", value=f"{client.get_user(int(moderator_id))}")
+    embed.add_field(name="User", value=f"{user}")
     embed.add_field(name="Type", value=infraction_type)
     embed.add_field(name="Reason", value=infraction_reason)
 

@@ -12,8 +12,6 @@ from discord.ext import commands
 import sys
 # Initialise time for health monitoring.
 import time
-# Import json
-import json
 # Import RegEx library
 import re
 # Import Globstar library
@@ -40,7 +38,7 @@ def get_prefix(client, message):
 
 
 # Get db handling library
-from lib_sql_handler import db_handler, db_error
+from lib_mdb_handler import db_handler, db_error
 
 
 intents = discord.Intents.default()
@@ -59,40 +57,17 @@ Client = commands.Bot(
 
 # Import libraries.
 command_modules = []
-
+command_modules_dict = {}
 for f in os.listdir('./cmds'):
     if f.startswith("cmd_") and f.endswith(".py"):
         print(f)
         command_modules.append(importlib.import_module(f[:-3]))
-
-# Clear cache because cache is volatile between versions
-for i in glob.glob("datastore/*.cache.db"):
-    os.remove(i)
+for module in command_modules:
+    command_modules_dict.update(module.commands)
 
 
-# Load blacklist from cache, or load from db if cache isint existant
-def load_blacklist(guild_id):
-    try:
-        with open(f"datastore/{guild_id}.cache.db", "r") as blacklist_cache:
-            return json.load(blacklist_cache)
-    except FileNotFoundError:
-        db = db_handler(f"datastore/{guild_id}.db")
-        blacklist = {}
-        for i in ["word-blacklist","regex-blacklist"]:
-            try:
-                blacklist[i] = db.fetch_rows_from_table("config", ["property",i])[0][1]
-            except db_error.OperationalError:
-                blacklist[i] = ""
-            except IndexError:
-                blacklist[i] = ""
-        if blacklist["regex-blacklist"]:
-            blacklist["regex-blacklist"] = [i.split(" ")[1][1:-2] for i in json.loads(blacklist["regex-blacklist"])["blacklist"]]
-        else:
-            blacklist["regex-blacklist"] = []
-        with open(f"datastore/{guild_id}.cache.db", "w") as blacklist_cache:
-            json.dump(blacklist, blacklist_cache)
-        db.close()
-        return blacklist
+# Import blacklist loader
+from lib_load_blacklist import load_blacklist
 
 
 # Catch errors without being fatal - log them.
@@ -110,7 +85,7 @@ async def on_error(event, *args, **kwargs):
 @Client.event
 async def on_ready():
     print(f'{Client.user} has connected to Discord!')
-    
+
     # Warn if user is not bot
     if not Client.user.bot:
         print("WARNING: The connected account is not a bot, as it is against ToS we do not condone user botting")
@@ -119,14 +94,14 @@ async def on_ready():
 # Bot joins a guild
 @Client.event
 async def on_guild_join(guild):
-    with db_handler(f"datastore/{message.guild.id}.db") as db:
-        db.make_new_table("config",[["property", str, 1], ["value", str]])
-        db.make_new_table("infractions", [
-        ["infractionID", int, 1],
+    with db_handler() as db:
+        db.make_new_table(f"{message.guild.id}_config",[["property", str, 1], ["value", str]])
+        db.make_new_table(f"{message.guild.id}_infractions", [
+        ["infractionID", str, 1],
         ["userID", str],
-        ["moderatorID", str], 
+        ["moderatorID", str],
         ["type", str],
-        ["reason", str], 
+        ["reason", str],
         ["timestamp", int]
         ])
 
@@ -135,43 +110,51 @@ async def on_guild_join(guild):
 @Client.event
 async def on_message(message):
     # Statistics.
-    stats = {"start": round(time.time() * 10000), "end": 0}
-
+    stats = {"start": round(time.time() * 100000), "end": 0}
     # Make sure we don't start a feedback loop.
     if message.author == Client.user:
         return
-        
+
     # Ignore message if author is a bot
     if message.author.bot:
         return
 
     # Load blacklist from cache or db
-    stats["start-blacklist"] = round(time.time() * 10000)
+    stats["start-blacklist"] = round(time.time() * 100000)
     blacklist = (load_blacklist(message.guild.id))
 
     # Check message agaist word blacklist
     broke_blacklist = False
-    if blacklist["word-blacklist"]:
-        word_blacklist = blacklist["word-blacklist"].split(",")
-        for i in message.content.split(" "):
+    infraction_type = []
+    word_blacklist = blacklist["word-blacklist"]
+    if word_blacklist:
+        for i in message.content.lower().split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
-    
+                infraction_type.append("Word")
+
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         if re.findall(i, message.content):
             broke_blacklist = True
-    
+            infraction_type.append("RegEx")
+
+    # Check against filetype blacklist ##NOT IMPLEMENTED YET##
+    filetype_blacklist = blacklist["filetype-blacklist"]
+    if filetype_blacklist and message.attachments:
+        for i in message.attachments:
+            for a in filetype_blacklist:
+                if i.filename.lower().endswith(a):
+                    broke_blacklist = True
+                    infraction_type.append("FileType")
+    stats["end-blacklist"] = round(time.time() * 100000)
+
     # If blacklist broken generate infraction
     if broke_blacklist:
-        for module in command_modules:
-            for entry in module.commands:
-                if "warn" == entry:
-                    await message.delete()
-                    await module.commands["warn"]['execute'](message, [int(message.author.id), "[AUTOMOD] Blacklist"], Client, stats, command_modules)
-    stats["end-blacklist"] = round(time.time() * 10000)
-    
+        await message.delete()
+        await command_modules_dict['warn']['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules)
+
     # Check if this is meant for us.
     if not message.content.startswith(GLOBAL_PREFIX):
         return
@@ -184,9 +167,13 @@ async def on_message(message):
     del arguments[0]
 
     # Shoddy code for shoddy business. Less shoddy then before, but still shoddy.
-    for module in command_modules:
-        for entries in module.commands:
-            if command == entries:
-                stats["end"] = round(time.time() * 10000)
-                await module.commands[entries]['execute'](message, arguments, Client, stats, command_modules)
+    if command in command_modules_dict.keys():
+        stats["end"] = round(time.time() * 100000)
+        await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+
+
 Client.run(TOKEN, bot=True, reconnect=True)
+
+# Clear cache at exit
+for i in glob.glob("datastore/*.cache.db"):
+    os.remove(i)
