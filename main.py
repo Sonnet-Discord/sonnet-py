@@ -67,7 +67,7 @@ for module in command_modules:
 
 
 # Import blacklist loader
-from lib_load_blacklist import load_blacklist
+from lib_loaders import load_blacklist
 
 
 # Catch errors without being fatal - log them.

@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 
 from lib_mdb_handler import db_handler, db_error
-from lib_load_blacklist import load_blacklist
+from lib_loaders import load_blacklist
 
 async def recreate_db(message, args, client, stats, cmds):
     with db_handler() as db:
