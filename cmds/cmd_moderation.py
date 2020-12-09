@@ -4,6 +4,7 @@
 import discord, datetime, time, random
 
 from lib_mdb_handler import db_handler, db_error
+from lib_loaders import generate_infractionid_file
 
 def extract_id_from_mention(user_id):
     # Function to extract a user ID from a mention.
@@ -15,48 +16,8 @@ def extract_id_from_mention(user_id):
     return extracted_id
 
 
-def gen_infraction_id(infraction_type):
-    # Type is based on binary. Truth table below:
-    # Warn: 0001
-    # Kick: 0010
-    # Ban: 0011
-    # Mute: 0100
-
-    inf_type = 0
-
-    if infraction_type == "warn":
-        inf_type = '0001'
-    elif infraction_type == "kick":
-        inf_type = '0010'
-    elif infraction_type == "ban":
-        inf_type = '0011'
-    elif infraction_type == "mute":
-        inf_type = '0100'
-
-    # Now generate the timestamp.
-    current_time = int(round(time.time()))
-
-    # Convert type and time to binary.
-    current_time = bin(current_time)[2:]
-
-    # Now with both converted to binary, concatenate.
-    inf_id = str(current_time) + str(inf_type) + bin(random.randint(0,9999))[2:]
-
-    # Finally, convert back to denary.
-    inf_id = int(inf_id, 2)
-
-    return inf_id
-
-
-def dec_to_bin(num):
-    if num > 1:
-        dec_to_bin(num // 2)
-
-    return num % 2
-
-
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
-    generated_id = gen_infraction_id(infraction_type)
+    generated_id = generate_infractionid_file()
     database = db_handler()
     
     # Grab log channel id from db
