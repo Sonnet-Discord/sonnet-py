@@ -120,10 +120,12 @@ async def on_message(message):
         return
 
     # Load blacklist from cache or db
-    stats["start-blacklist"] = round(time.time() * 100000)
+    stats["start-load-blacklist"] = round(time.time() * 100000)
     blacklist = (load_blacklist(message.guild.id))
+    stats["end-load-blacklist"] = round(time.time() * 100000)
 
     # Check message agaist word blacklist
+    stats["start-blacklist"] = round(time.time() * 100000)
     broke_blacklist = False
     infraction_type = []
     word_blacklist = blacklist["word-blacklist"]
