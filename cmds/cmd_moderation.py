@@ -4,7 +4,7 @@
 import discord, datetime, time, random
 
 from lib_mdb_handler import db_handler, db_error
-from lib_loaders import generate_infractionid_file
+from lib_loaders import generate_infractionid
 
 def extract_id_from_mention(user_id):
     # Function to extract a user ID from a mention.
@@ -17,7 +17,7 @@ def extract_id_from_mention(user_id):
 
 
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
-    generated_id = generate_infractionid_file()
+    generated_id = generate_infractionid()
     database = db_handler()
     
     # Grab log channel id from db

@@ -112,7 +112,7 @@ def load_blacklist_old(guild_id):
         return blacklist
 
 
-def generate_infractionid_file():
+def generate_infractionid():
     try:
         num_words = os.path.getsize("datastore/wordlist.cache.db")-1
         with open("datastore/wordlist.cache.db","rb") as words:
@@ -141,7 +141,7 @@ def generate_infractionid_file():
         return generate_infractionid_file()
 
 
-def generate_infractionid_memory():
+def generate_infractionid_old():
     with open("common/wordlist.txt", "r") as words:
         wordlist = words.read().split("\n")
         output = ""
