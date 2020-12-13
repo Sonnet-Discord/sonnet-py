@@ -138,7 +138,7 @@ def generate_infractionid():
             structured_data_file.write(bytes([maxval]))
             for i in structured_data:
                 structured_data_file.write(i+bytes(maxval-len(i)))
-        return generate_infractionid_file()
+        return generate_infractionid()
 
 
 def generate_infractionid_old():
