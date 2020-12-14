@@ -12,29 +12,24 @@ import sonnet_cfg
 GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 
 
-def extract_id_from_mention(user_id):
-    # Function to extract a user ID from a mention.
-    extracted_id = user_id
-    if user_id.startswith("<@") and user_id.endswith(">"):
-        extracted_id = user_id[2:-1]
-        if extracted_id.startswith("!"):
-            extracted_id = extracted_id[1:]
-    return extracted_id
-
-
 async def ping_function(message, args, client, stats, cmds):
-    embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
-    embed.add_field(name="Total Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
-    embed.add_field(name="Load Blacklist", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
-    embed.add_field(name="Process Blacklist", value=str((stats["end-blacklist"] - stats["start-blacklist"])/100) + "ms", inline=False)
-    await message.channel.send(embed=embed)
+    ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
+    ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
+    ping_embed.add_field(name="Load Blacklist", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
+    ping_embed.add_field(name="Process Blacklist", value=str((stats["end-blacklist"] - stats["start-blacklist"])/100) + "ms", inline=False)
+    time_to_send = round(time.time()*10000)
+    sent_message = await message.channel.send(embed=ping_embed)
+    ping_embed.add_field(name="Send Message", value=str((round(time.time()*10000) - time_to_send)/100) + "ms", inline=False)
+    await sent_message.edit(embed=ping_embed)
 
 
 async def profile_function(message, args, client, stats, cmds):
     # Get user ID from the message, otherwise use the author's ID.
     try:
-        id_to_probe = int(extract_id_from_mention(args[0]))
+        id_to_probe = int(args[0].strip("<@!>"))
     except IndexError:
+        id_to_probe = message.author.id
+    except ValueError:
         id_to_probe = message.author.id
 
     # Get the Member object by user ID, otherwise fail.
@@ -77,7 +72,7 @@ async def help_function(message, args, client, stats, cmd_modules):
         # Initialise embed.
         embed=discord.Embed(title="Category Listing", color=0x00db87)
         embed.set_author(name="Sonnet Help")
-        
+
         # Start creating module listing.
         for modules in cmd_modules:
             embed.add_field(name=modules.category_info['pretty_name']+ " (" + modules.category_info['name'] + ")", value=modules.category_info['description'], inline=False)
@@ -99,7 +94,7 @@ async def help_function(message, args, client, stats, cmd_modules):
                         'pretty_name': modules.commands[commands]['pretty_name'],
                         'description': modules.commands[commands]['description']
                     })
-                
+
                 # We can now break out of this for loop.
                 break
 

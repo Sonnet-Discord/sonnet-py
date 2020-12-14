@@ -22,9 +22,6 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Generate Cursor
         self.cur = self.con.cursor()
 
-        # Disable autocommit
-        self.con.autocommit = False
-
     def __enter__(self):
         return self
 

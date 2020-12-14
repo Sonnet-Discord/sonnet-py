@@ -12,8 +12,6 @@ from discord.ext import commands
 import sys
 # Initialise time for health monitoring.
 import time
-# Import RegEx library
-import re
 # Import Globstar library
 import glob
 
@@ -69,6 +67,8 @@ for module in command_modules:
 # Import blacklist loader
 from lib_loaders import load_blacklist
 
+# Import blacklist parser and message skip parser
+from lib_parsers import parse_blacklist, parse_skip_message
 
 # Catch errors without being fatal - log them.
 @Client.event
@@ -106,50 +106,71 @@ async def on_guild_join(guild):
         ])
 
 
+# Handle message deletions
+@Client.event
+async def on_message_delete(message):
+
+    # Ignore bots
+    if parse_skip_message(Client, message):
+        return
+
+    # Add to log
+    with db_handler() as db:
+       message_log = db.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "message-log"])
+    if message_log:
+        message_log = Client.get_channel(int(message_log[0][1]))
+        message_embed = discord.Embed(title="Message Deleted", description=f"Deleted Message in <#{message.channel.id}>", color=0xd62d20)
+        message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
+        message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
+        message_embed.add_field(name="Message", value=message.content, inline=False)
+        await message_log.send(embed=message_embed)
+
+
+@Client.event
+async def on_message_edit(old_message, message):
+
+    # Ignore bots
+    if parse_skip_message(Client, message):
+        return
+
+    # Add to log
+    with db_handler() as db:
+       message_log = db.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "message-log"])
+    if message_log:
+        message_log = Client.get_channel(int(message_log[0][1]))
+        message_embed = discord.Embed(title="Message Edited", description=f"Edited Message in <#{message.channel.id}>", color=0x0057e7)
+        message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
+        message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
+        message_embed.add_field(name="Old Message", value=old_message.content, inline=False)
+        message_embed.add_field(name="Edited Message", value=message.content, inline=False)
+        await message_log.send(embed=message_embed)
+
+    # Check against blacklist
+    blacklist = load_blacklist(message.guild.id)
+    broke_blacklist, infraction_type = parse_blacklist(message, blacklist)
+
+    if broke_blacklist:
+        await message.delete()
+        await command_modules_dict['warn']['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules)
+
+
 # Handle messages.
 @Client.event
 async def on_message(message):
     # Statistics.
     stats = {"start": round(time.time() * 100000), "end": 0}
-    # Make sure we don't start a feedback loop.
-    if message.author == Client.user:
+
+    if parse_skip_message(Client, message):
         return
 
-    # Ignore message if author is a bot
-    if message.author.bot:
-        return
-
-    # Load blacklist from cache or db
+    # Load blacklist
     stats["start-load-blacklist"] = round(time.time() * 100000)
-    blacklist = (load_blacklist(message.guild.id))
+    blacklist = load_blacklist(message.guild.id)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
-    # Check message agaist word blacklist
+    # Check message against blacklist
     stats["start-blacklist"] = round(time.time() * 100000)
-    broke_blacklist = False
-    infraction_type = []
-    word_blacklist = blacklist["word-blacklist"]
-    if word_blacklist:
-        for i in message.content.lower().split(" "):
-            if i in word_blacklist:
-                broke_blacklist = True
-                infraction_type.append("Word")
-
-    # Check message against REGEXP blacklist
-    regex_blacklist = blacklist["regex-blacklist"]
-    for i in regex_blacklist:
-        if re.findall(i, message.content):
-            broke_blacklist = True
-            infraction_type.append("RegEx")
-
-    # Check against filetype blacklist ##NOT IMPLEMENTED YET##
-    filetype_blacklist = blacklist["filetype-blacklist"]
-    if filetype_blacklist and message.attachments:
-        for i in message.attachments:
-            for a in filetype_blacklist:
-                if i.filename.lower().endswith(a):
-                    broke_blacklist = True
-                    infraction_type.append("FileType")
+    broke_blacklist, infraction_type = parse_blacklist(message, blacklist)
     stats["end-blacklist"] = round(time.time() * 100000)
 
     # If blacklist broken generate infraction
@@ -163,12 +184,12 @@ async def on_message(message):
 
     # Split into cmds and arguments.
     arguments = message.content.split()
-    command = arguments[0][1:len(arguments[0])]
+    command = arguments[0][1:]
 
     # Remove command from the arguments.
     del arguments[0]
 
-    # Shoddy code for shoddy business. Less shoddy then before, but still shoddy.
+    # Process commands
     if command in command_modules_dict.keys():
         stats["end"] = round(time.time() * 100000)
         await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
@@ -179,3 +200,4 @@ Client.run(TOKEN, bot=True, reconnect=True)
 # Clear cache at exit
 for i in glob.glob("datastore/*.cache.db"):
     os.remove(i)
+print("\rCache Cleared, Thank you for Using Sonnet")

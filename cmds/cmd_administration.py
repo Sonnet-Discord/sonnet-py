@@ -83,73 +83,74 @@ async def ftb_change(message, args, client, stats, cmds):
     os.remove(f"datastore/{message.guild.id}.cache.db")
 
 
-async def inflog_change(message, args, client, stats, cmds):
-    # Use original null string for cross-compatibility.
-    infraction_log = "0"
+# Put channel item in DB, and check for collisions
+async def update_log_channel(message, args, client, log_name):
 
     if not message.author.permissions_in(message.channel).administrator:
         await message.channel.send("Insufficient permissions.")
-        return
+        raise RuntimeError("Insufficient permissions.")
 
-    if len(args) == 1:
-        infraction_log = args[0]
+    if len(args) >= 1:
+        log_channel = args[0].strip("<#!>")
+    else:
+        await message.channel.send("No Channel supplied")
+        raise RuntimeError("No Channel supplied")
 
-    # Update infraction-log location in DB
+    try:
+        log_channel = int(log_channel)
+    except ValueError:
+        await message.channel.send("Channel is not a valid channel")
+        raise RuntimeError("Channel is not a valid channel")
+
+    discord_channel = client.get_channel(log_channel)
+    if not discord_channel:
+        await message.channel.send("Channel is not a valid channel")
+        raise RuntimeError("Channel is not a valid channel")
+
+    if discord_channel.guild.id != message.channel.guild.id:
+        await message.channel.send("Channel is not in guild")
+        raise RuntimeError("Channel is not in guild")
+
+    # Nothing failed so send to db
     try:
         with db_handler() as db:
             db.add_to_table(f"{message.guild.id}_config", [
-                ["property", "infraction-log"],
-                ["value", infraction_log]
+                ["property", log_name],
+                ["value", log_channel]
                 ])
-        await message.channel.send("Infraction log channel ID updated successfully.")
     except db_error.OperationalError:
-        await message.channel.send("DB Error, run recreate-db")
+        await message.channel.send("Database error, run recreate-db")
+        raise RuntimeError("Database error, run recreate-db")
+
+    await message.channel.send(f"Successfully updated {log_name}")
+
+
+async def inflog_change(message, args, client, stats, cmds):
+    try:
+        await update_log_channel(message, args, client, "infraction-log")
+    except RuntimeError:
+        return
 
 
 async def joinlog_change(message, args, client, stats, cmds):
-    # Use original null string for cross-compatibility.
-    join_log = "0"
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-
-    if len(args) == 1:
-        join_log = args[0]
-
-    # User is an admin and all arguments are correct. Send to database.
     try:
-        with db_handler() as db:
-            db.add_to_table(f"{message.guild.id}_config", [
-                ["property", "join-log"],
-                ["value", join_log]
-                ])
-        await message.channel.send("Join log channel ID updated successfully.")
-    except db_error.OperationalError:
-        await message.channel.send("DB Error, run recreate-db")
+        await update_log_channel(message, args, client, "join-log")
+    except RuntimeError:
+        return
 
 
 async def msglog_change(message, args, client, stats, cmds):
-    # Use original null string for cross-compatibility.
-    message_log = "0"
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
+    try:
+        await update_log_channel(message, args, client, "message-log")
+    except RuntimeError:
         return
 
-    if len(args) == 1:
-        message_log = args[0]
-
-    # User is an admin and all arguments are correct. Send to database.
+async def archivelog_change(message, args, client, stats, cmds):
     try:
-        with db_handler() as db:
-            db.add_to_table(f"{message.guild.id}_config", [
-                ["property", "message-log"],
-                ["value", message_log]
-                ])
-        await message.channel.send("Message log channel ID updated successfully.")
-    except db_error.OperationalError:
-        await message.channel.send("DB Error, run recreate-db")
+        await update_log_channel(message, args, client, "archive-channel")
+    except RuntimeError:
+        return
+
 
 
 async def regexblacklist_add(message, args, client, stats, cmds):
@@ -269,7 +270,7 @@ async def list_blacklist(message, args, client, stats, cmds):
     blacklist["regex-blacklist"] = ["/"+i+"/g" for i in blacklist["regex-blacklist"]]
     blacklist["word-blacklist"] = ",".join(blacklist["word-blacklist"])
     blacklist["filetype-blacklist"] = ",".join(blacklist["filetype-blacklist"])
-    
+
     # If word blacklist or filetype blacklist then load them
     for i in ["word-blacklist","filetype-blacklist"]:
         if blacklist[i]:
@@ -320,6 +321,11 @@ commands = {
         'pretty_name': 'join-log',
         'description': 'Change join log for this guild.',
         'execute': joinlog_change
+    },
+    'archive-channel': {
+        'pretty_name': 'archive-channel',
+        'description': 'Change archive log for this guild. (starboard)',
+        'execute': archivelog_change
     },
     'add-regexblacklist': {
         'pretty_name': 'add-regexblacklist',

@@ -1,7 +1,7 @@
 # Moderation commands
 # bredo, 2020
 
-import discord, datetime, time, random
+import discord, datetime, time, random, asyncio
 
 from lib_mdb_handler import db_handler, db_error
 from lib_loaders import generate_infractionid
@@ -19,7 +19,7 @@ def extract_id_from_mention(user_id):
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
     generated_id = generate_infractionid()
     database = db_handler()
-    
+
     # Grab log channel id from db
     try:
         channel_id = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "infraction-log"])[0][1]
@@ -35,7 +35,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
         database.close()
         return
-    
+
     # Generate log channel object
     try:
         log_channel = client.get_channel(int(channel_id))
@@ -44,7 +44,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         database.close()
         return
 
-    
+
     # Send infraction to database
     try:
         database.add_to_table(f"{message.guild.id}_infractions", [
@@ -79,11 +79,14 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
     await log_channel.send(embed=embed)
-    await user.send(embed=dm_embed)
+    try: # If the user is a bot it cannot be DM'd
+        await user.send(embed=dm_embed)
+    except AttributeError:
+        pass
 
+async def process_infraction(message, args, client, perms, infraction_type):
 
-async def warn_user(message, args, client, stats, cmds):
-
+    # Check if automod
     automod = False
     try:
         if (type(args[0]) == int):
@@ -91,136 +94,100 @@ async def warn_user(message, args, client, stats, cmds):
             automod = True
     except IndexError:
         pass
-    
-    # Check that the user running the command has permissions to kick members
-    if not(message.author.permissions_in(message.channel).kick_members) and not(automod):
-            await message.channel.send("Insufficient permissions.")
-            return
-    
-    # If automod then moderator id is the bots id
+
+    # Check perms
+    if not(perms) and not(automod):
+        await message.channel.send("Insufficient permissions.")
+        raise RuntimeError("Invalid User")
+
+    if len(args) > 1:
+        reason = " ".join(args[1:])
+    else:
+        reason = "No Reason Specified"
+
+    # Parse moderatorID
     if automod:
         moderator_id = client.user.id
     else:
         moderator_id = message.author.id
-    
-    # construct string for warn reason
-    if len(args) > 0:
-        reason = " ".join(args[1:])
-    else:
-        reason = "Sonnet Warn"
 
-    # Extract user ID from arguments, error if this is not provided.
+    # Test if user is valid
     try:
-        id_to_warn = extract_id_from_mention(args[0])
-    except IndexError:
-        await message.channel.send("ERROR: No User ID provided.")
-        return
-
-    # this serves no purpose but to yell at you
-    try:
-        does_this_person_actually_exist = client.get_user(int(id_to_warn))
+        user = client.get_user(int(args[0].strip("<@!>")))
     except ValueError:
-        await message.channel.send("ERROR: Invalid ID")
-        return
+        await message.channel.send("Invalid User")
+        raise RuntimeError("Invalid User")
+    except IndexError:
+        await message.channel.send("No user specified")
+        raise RuntimeError("No user specified")
+
+    if not user:
+        await message.channel.send("Invalid User")
+        raise RuntimeError("Invalid User")
+
+    # Test if user is self
+    if moderator_id == user.id:
+        await message.channel.send(f"{infraction_type[0].upper()+infraction_type[1:]}ing yourself is not allowed")
+        raise RuntimeError(f"Attempted self {infraction_type}")
+
+
+    # Log infraction
+    await log_infraction(message, client, user.id, moderator_id, reason, infraction_type)
+
+    return (automod, user, reason)
+
+
+async def warn_user(message, args, client, stats, cmds):
+
+    required_perms = message.author.permissions_in(message.channel).kick_members
 
     try:
-        does_this_person_actually_exist.name
-    except AttributeError:
-        await message.channel.send("ERROR: Invalid User")
+        automod, user, reason = await process_infraction(message, args, client, required_perms, "warn")
+    except RuntimeError:
         return
 
-    # Attempt to kick the user - excepts on some errors.
-    await log_infraction(message, client, id_to_warn, moderator_id, reason, "warn")
-    
     if not automod:
-        await message.channel.send(f"Warned user with ID {id_to_warn} for {reason}")
+        await message.channel.send(f"Warned user with ID {user.id} for {reason}")
 
 
 async def kick_user(message, args, client, stats, cmds):
-    args = message.content.split()
 
-    # Check that the user running the command has permissions to kick members
-    if not message.author.permissions_in(message.channel).kick_members:
-        await message.channel.send("Insufficient permissions.")
-        return
-
-    # construct string for kick reason
-    if len(args) > 1:
-        reason = " ".join(args[1:])
-    else:
-        reason = "Sonnet Kick"
-
-    # Extract user ID from arguments, error if this is not provided.
-    try:
-        id_to_kick = extract_id_from_mention(args[1])
-    except IndexError:
-        await message.channel.send("ERROR: No User ID provided.")
-        return
-
-    # make it so people can't kick themself
-    if str(message.author.id) == id_to_kick:
-        await message.channel.send("ERROR: You can't kick yourself. Stop trying :)")
-        return
-
-    # Attempt to kick the user - excepts on some errors.
-    await log_infraction(message, client, id_to_kick, message.author.id, reason, "kick")
+    required_perms =  message.author.permissions_in(message.channel).kick_members
 
     try:
-        await message.guild.kick(client.get_user(int(id_to_kick)), reason=reason)
-    except AttributeError:
-        await message.channel.send("ERROR: Invalid User.")
+        automod, user, reason = await process_infraction(message, args, client, required_perms, "kick")
+    except RuntimeError:
         return
-    except ValueError:
-        await message.channel.send("ERROR: Not an ID.")
-        return
+
+    # Attempt to kick user
+    try:
+        await message.guild.kick((user), reason=reason)
     except discord.errors.Forbidden:
-        await message.channel.send("ERROR: The bot does not have permission to kick this user.")
+        await message.channel.send("The bot does not have permission to kick this user.")
         return
 
-    await message.channel.send(f"Kicked user with ID {id_to_kick} for {reason}")
+    if not automod:
+        await message.channel.send(f"Kicked user with ID {user.id} for {reason}")
 
 
 async def ban_user(message, args, client, stats, cmds):
-    args = message.content.split()
 
-    # Check if message author has ban permissions in the current guild.
-    if not message.author.permissions_in(message.channel).ban_members:
-        await message.channel.send("Insufficient permissions.")
-        return
+    required_perms =  message.author.permissions_in(message.channel).ban_members
 
-    # Construct reason string
-    if len(args) > 1:
-        reason = " ".join(args[1:])
-    else:
-        reason = "Sonnet Ban"
-
-    # Extract User ID from arguments, handle error if it doesn't exist
     try:
-        id_to_ban = extract_id_from_mention(args[1])
-    except IndexError:
-        await message.channel.send("ERROR: No User ID provided.")
+        automod, user, reason = await process_infraction(message, args, client, required_perms, "ban")
+    except RuntimeError:
         return
 
-    # Makes it so people can't ban themselves
-    if str(message.author.id) == id_to_ban:
-        await message.channel.send("ERROR: You can't ban yourself. Stop trying :)")
-        return
-
-    # Attempts to ban the user
+    # Attempt to ban user
     try:
-        await message.guild.ban(client.get_user(int(id_to_ban)), reason=reason, delete_message_days=0)
-    except AttributeError:
-        await message.channel.send("ERROR: Invalid User.")
-        return
-    except ValueError:
-        await message.channel.send("ERROR: Not an ID")
-        return
+        await message.guild.ban(user, reason=reason, delete_message_days=0)
     except discord.errors.Forbidden:
-        await message.channel.send("ERROR: The bot does not have permission to ban this user.")
+        await message.channel.send("The bot does not have permission to ban this user.")
         return
 
-    await message.channel.send(f"Banned user with ID {id_to_ban} for {reason}")
-    await log_infraction(message, client, id_to_ban, message.author.id, reason, "ban")
+    if not automod:
+        await message.channel.send(f"Banned user with ID {user.id} for {reason}")
 
 
 category_info = {
