@@ -96,11 +96,13 @@ def generate_infractionid():
             maxval = 0
             structured_data = []
             for i in words.read().split("\n"):
-                structured_data.append(bytes([len(i)])+i.encode("utf8"))
-                if len(i)+1 > maxval:
-                    maxval = len(i)+1
+                a = i.encode("utf8")
+                structured_data.append(bytes([len(a)])+a)
+                if len(a)+1 > maxval:
+                    maxval = len(a)+1
         with open("datastore/wordlist.cache.db","wb") as structured_data_file:
             structured_data_file.write(bytes([maxval]))
             for i in structured_data:
                 structured_data_file.write(i+bytes(maxval-len(i)))
+
         return generate_infractionid()
