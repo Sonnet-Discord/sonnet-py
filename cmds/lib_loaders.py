@@ -95,11 +95,10 @@ def generate_infractionid():
         with open("common/wordlist.txt", "r") as words:
             maxval = 0
             structured_data = []
-            for i in words.read().split("\n"):
-                a = i.encode("utf8")
-                structured_data.append(bytes([len(a)])+a)
-                if len(a)+1 > maxval:
-                    maxval = len(a)+1
+            for i in words.read().encode("utf8").split(b"\n"):
+                structured_data.append(bytes([len(i)])+i)
+                if len(i)+1 > maxval:
+                    maxval = len(i)+1
         with open("datastore/wordlist.cache.db","wb") as structured_data_file:
             structured_data_file.write(bytes([maxval]))
             for i in structured_data:
