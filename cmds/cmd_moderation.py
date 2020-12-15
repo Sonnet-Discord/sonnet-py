@@ -6,19 +6,14 @@ import discord, datetime, time, random, asyncio
 from lib_mdb_handler import db_handler, db_error
 from lib_loaders import generate_infractionid
 
-def extract_id_from_mention(user_id):
-    # Function to extract a user ID from a mention.
-    extracted_id = user_id
-    if user_id.startswith("<@") and user_id.endswith(">"):
-        extracted_id = user_id[2:-1]
-        if extracted_id.startswith("!"):
-            extracted_id = extracted_id[1:]
-    return extracted_id
-
 
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
-    generated_id = generate_infractionid()
     database = db_handler()
+
+    # Collision test
+    generated_id = generate_infractionid()
+    while database.fetch_rows_from_table(f"{message.guild.id}_infractions", ["infractionID", generated_id]):
+        generated_id = generate_infractionid()
 
     # Grab log channel id from db
     try:
