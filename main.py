@@ -177,7 +177,7 @@ async def on_message(message):
 
     # If blacklist broken generate infraction
     if broke_blacklist:
-        await message.delete()
+        await message.delete()  # Change warn to variable later, so you can pick any
         await command_modules_dict['warn']['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules)
 
     # Check if this is meant for us.

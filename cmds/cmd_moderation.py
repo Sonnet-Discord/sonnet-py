@@ -204,6 +204,8 @@ async def mute_user(message, args, client, stats, cmds):
 
     if not automod:
         await message.channel.send(f"Muted user with ID {user.id} for {reason}")
+    
+    # add auto unmute, mute database, default mute length, mute length
 
 
 
