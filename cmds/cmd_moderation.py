@@ -229,5 +229,10 @@ commands = {
         'pretty_name': 'ban',
         'description': 'Ban a user',
         'execute': ban_user
+    },
+    'mute': {
+        'pretty_name': 'mute',
+        'description': 'Mute a user',
+        'execute': mute_user
     }
 }
