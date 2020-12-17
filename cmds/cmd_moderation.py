@@ -173,7 +173,7 @@ async def ban_user(message, args, client, stats, cmds):
         await message.channel.send(f"Banned user with ID {user.id} for {reason}")
 
 
-def mute_user(message, args, client, stats, cmds):
+async def mute_user(message, args, client, stats, cmds):
     
     required_perms =  message.author.permissions_in(message.channel).manage_roles
 
