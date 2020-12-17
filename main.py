@@ -119,11 +119,12 @@ async def on_message_delete(message):
        message_log = db.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "message-log"])
     if message_log:
         message_log = Client.get_channel(int(message_log[0][1]))
-        message_embed = discord.Embed(title="Message Deleted", description=f"Deleted Message in <#{message.channel.id}>", color=0xd62d20)
-        message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
-        message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
-        message_embed.add_field(name="Message", value=message.content, inline=False)
-        await message_log.send(embed=message_embed)
+        if message_log:
+            message_embed = discord.Embed(title="Message Deleted", description=f"Deleted Message in <#{message.channel.id}>", color=0xd62d20)
+            message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
+            message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
+            message_embed.add_field(name="Message", value=message.content, inline=False)
+            await message_log.send(embed=message_embed)
 
 
 @Client.event
@@ -138,12 +139,13 @@ async def on_message_edit(old_message, message):
        message_log = db.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "message-log"])
     if message_log:
         message_log = Client.get_channel(int(message_log[0][1]))
-        message_embed = discord.Embed(title="Message Edited", description=f"Edited Message in <#{message.channel.id}>", color=0x0057e7)
-        message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
-        message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
-        message_embed.add_field(name="Old Message", value=old_message.content, inline=False)
-        message_embed.add_field(name="Edited Message", value=message.content, inline=False)
-        await message_log.send(embed=message_embed)
+        if message_log:
+            message_embed = discord.Embed(title="Message Edited", description=f"Edited Message in <#{message.channel.id}>", color=0x0057e7)
+            message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
+            message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
+            message_embed.add_field(name="Old Message", value=old_message.content, inline=False)
+            message_embed.add_field(name="Edited Message", value=message.content, inline=False)
+            await message_log.send(embed=message_embed)
 
     # Check against blacklist
     blacklist = load_blacklist(message.guild.id)
@@ -192,7 +194,11 @@ async def on_message(message):
     # Process commands
     if command in command_modules_dict.keys():
         stats["end"] = round(time.time() * 100000)
-        await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+        try:
+            await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+        except Exception as e:
+            await message.channel.send(f"FATAL ERROR in {command}\nPlease contact bot owner")
+            raise e
 
 
 Client.run(TOKEN, bot=True, reconnect=True)

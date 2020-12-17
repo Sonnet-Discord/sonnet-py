@@ -81,6 +81,15 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Send data
         returndata = list(self.cur)
         return returndata
+    
+    def delete_rows_from_table(self, table, collum_search):
+        
+        # Do deletion setup
+        db_inputStr = f"DELETE FROM {table} WHERE {collum_search[0]}=?"
+        db_inputList = [collum_search[1]]
+
+        # Execute
+        self.cur.execute(db_inputStr, tuple(db_inputList))
 
     def commit(self):  # Commits data to db
         self.con.commit()

@@ -8,40 +8,34 @@ from lib_loaders import generate_infractionid
 
 
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
-    database = db_handler()
+    send_message = True
+    with db_handler() as database:
 
-    # Collision test
-    generated_id = generate_infractionid()
-    while database.fetch_rows_from_table(f"{message.guild.id}_infractions", ["infractionID", generated_id]):
+        # Collision test
         generated_id = generate_infractionid()
+        while database.fetch_rows_from_table(f"{message.guild.id}_infractions", ["infractionID", generated_id]):
+            generated_id = generate_infractionid()
 
-    # Grab log channel id from db
-    try:
-        channel_id = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "infraction-log"])[0][1]
-    except db_error.OperationalError:
-        await message.channel.send("ERROR: No guild database. Run recreate-db to fix.")
-        database.close()
-        return
-    except TypeError:
-        await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
-        database.close()
-        return
-    except IndexError:
-        await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
-        database.close()
-        return
-
-    # Generate log channel object
-    try:
-        log_channel = client.get_channel(int(channel_id))
-    except TypeError:
-        await message.channel.send("ERROR: Please specify a channel for infraction logs using infraction-log")
-        database.close()
-        return
+        # Grab log channel id from db
+        try:
+            channel_id = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "infraction-log"])
+        except db_error.OperationalError:
+            await message.channel.send("ERROR: No guild database. Run recreate-db to fix.")
+            return
 
 
-    # Send infraction to database
-    try:
+        # Generate log channel object
+        if channel_id:  # If ID exists then use it
+            log_channel = client.git_channel(int(channel_id[0][1]))
+        else:
+            send_message = False
+
+        # If channel doesnt exist simply skip it
+        if not log_channel:
+            send_message = False
+
+
+        # Send infraction to database
         database.add_to_table(f"{message.guild.id}_infractions", [
             ["infractionID", generated_id],
             ["userID", user_id],
@@ -50,12 +44,6 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
             ["reason", infraction_reason],
             ["timestamp", round(time.time())]
             ])
-    except TypeError:
-        await message.channel.send("ERROR: Failed to add infraction to database.")
-        database.close()
-        return
-
-    database.close()
 
     user = client.get_user(int(user_id))
 
@@ -67,13 +55,13 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     embed.add_field(name="Type", value=infraction_type)
     embed.add_field(name="Reason", value=infraction_reason)
 
-    dm_embed = discord.Embed(title="Sonnet", description=f"Your punishment in {message.guild.name} has been updated:",
-                             color=0x758cff)
+    dm_embed = discord.Embed(title="Sonnet", description=f"Your punishment in {message.guild.name} has been updated:", color=0x758cff)
     # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
-    await log_channel.send(embed=embed)
+    if send_message:
+        await log_channel.send(embed=embed)
     try: # If the user is a bot it cannot be DM'd
         await user.send(embed=dm_embed)
     except AttributeError:
@@ -183,6 +171,40 @@ async def ban_user(message, args, client, stats, cmds):
 
     if not automod:
         await message.channel.send(f"Banned user with ID {user.id} for {reason}")
+
+
+def mute_user(message, args, client, stats, cmds):
+    
+    required_perms =  message.author.permissions_in(message.channel).manage_roles
+
+    try:
+        automod, user, reason = await process_infraction(message, args, client, required_perms, "mute")
+    except RuntimeError:
+        return
+    
+    # Get muterole from DB
+    with db_handler() as database:
+        mute_role = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property","mute-role"])
+    
+    if mute_role:
+        mute_role = message.guild.get_role(mute_role[0][1])
+        if not mute_role:
+            await message.channel.send("ERROR: no muterole set")
+            return
+    else:
+        await message.channel.send("ERROR: no muterole set")
+        return
+
+    # Attempt to mute user
+    try:
+        await message.author.add_roles(mute_role)
+    except discord.errors.Forbidden:
+        await message.channel.send("The bot does not have permission to mute this user.")
+        return
+
+    if not automod:
+        await message.channel.send(f"Muted user with ID {user.id} for {reason}")
+
 
 
 category_info = {
