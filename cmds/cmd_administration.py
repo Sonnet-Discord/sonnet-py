@@ -294,31 +294,26 @@ class gdpr_functions:
 
     async def delete(message, guild_id):
 
-        database = db_handler()
+        with db_handler() as database:
+            for i in ["_config","_infractions"]:
+                database.delete_table(f"{guild_id}{i}")
 
-        for i in ["_config","_infractions"]:
-            database.delete_table(f"{guild_id}{i}")
-
-        database.close()
         os.remove(f"datastore/{guild_id}.cache.db")
         await message.channel.send(f"Deleted database for guild {message.guild.id}")
 
     async def download(message, guild_id):
-
-        database = db_handler()
 
         dbdict = {
             "config":[["property","value"]],
             "infractions":[["infractionID","userID","moderatorID","type","reason","timestamp"]]
             }
 
-        for i in ["config","infractions"]:
-            try:
-                dbdict[i].extend(database.fetch_table(f"{guild_id}_{i}"))
-            except db_error.OperationalError:
-                await message.channel.send(f"Could not grab {i}, it may not exist")
-
-        database.close()
+        with db_handler() as database:
+            for i in ["config","infractions"]:
+                try:
+                    dbdict[i].extend(database.fetch_table(f"{guild_id}_{i}"))
+                except db_error.OperationalError:
+                    await message.channel.send(f"Could not grab {i}, it may not exist")
 
         with gzip.open(f"datastore/{guild_id}.dump.json.gz", "wb") as txt:
             txt.write(json.dumps(dbdict, indent=4).encode("utf8"))
