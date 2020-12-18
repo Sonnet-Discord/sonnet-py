@@ -48,7 +48,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     user = client.get_user(int(user_id))
 
     embed = discord.Embed(title="Sonnet", description=f"New infraction for <@{user_id}>:", color=0x758cff)
-    # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
+    embed.set_thumbnail(url=user.avatar_url)
     embed.add_field(name="Infraction ID", value=str(generated_id))
     embed.add_field(name="Moderator", value=f"{client.get_user(int(moderator_id))}")
     embed.add_field(name="User", value=f"{user}")
@@ -56,7 +56,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     embed.add_field(name="Reason", value=infraction_reason)
 
     dm_embed = discord.Embed(title="Sonnet", description=f"Your punishment in {message.guild.name} has been updated:", color=0x758cff)
-    # embed.set_thumbnail(url="") TODO: avatar thing it's 2am i can't be bothered
+    dm_embed.set_thumbnail(url=user.avatar_url)
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)

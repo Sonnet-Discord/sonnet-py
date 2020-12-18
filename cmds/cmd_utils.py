@@ -12,6 +12,25 @@ import sonnet_cfg
 GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 
 
+def parse_userid(message, args):
+    
+    # Get user ID from the message, otherwise use the author's ID.
+    try:
+        id_to_probe = int(args[0].strip("<@!>"))
+    except IndexError:
+        id_to_probe = message.author.id
+    except ValueError:
+        id_to_probe = message.author.id
+
+    # Get the Member object by user ID, otherwise fail.
+    user_object = message.guild.get_member(id_to_probe)
+    # Secondary catch if actually getting the member succeeds but passes nothing to the variable.
+    if not user_object:
+        user_object = message.author
+
+    return user_object
+
+
 async def ping_function(message, args, client, stats, cmds):
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
     ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
@@ -24,34 +43,34 @@ async def ping_function(message, args, client, stats, cmds):
 
 
 async def profile_function(message, args, client, stats, cmds):
-    # Get user ID from the message, otherwise use the author's ID.
-    try:
-        id_to_probe = int(args[0].strip("<@!>"))
-    except IndexError:
-        id_to_probe = message.author.id
-    except ValueError:
-        id_to_probe = message.author.id
-
-    # Get the Member object by user ID, otherwise fail.
-    user_object = message.guild.get_member(id_to_probe)
-    print(user_object)
-    print(id_to_probe)
-    # Secondary catch if actually getting the member succeeds but passes nothing to the variable.
-    if not user_object:
-        await message.channel.send(f"Failed to find user in this guild.")
-        return
+    
+    user_object = parse_userid(message, args)
 
     # Put here to comply with formatting guidelines.
     created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
-    created_string = created_string + " (" + str((datetime.utcnow() - user_object.created_at).days) + " days ago)"
+    created_string += f" ({(datetime.utcnow() - user_object.created_at).days} days ago)"
+    
+    joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
+    joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
 
-    embed=discord.Embed(title="User Information", description="Cached user information for " + user_object.mention + ":", color=0x758cff)
+    embed=discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
     embed.add_field(name="User ID", value=user_object.id, inline=True)
     embed.add_field(name="Status", value=user_object.raw_status, inline=True)
-    embed.add_field(name="Highest Rank", value=user_object.top_role.name, inline=True)
+    embed.add_field(name="Highest Rank", value=f"{user_object.top_role.mention}", inline=True)
     embed.add_field(name="Created", value=created_string, inline=True)
+    embed.add_field(name="Joined", value=joined_string, inline=True)
+    embed.timestamp = datetime.now()
+    await message.channel.send(embed=embed)
+
+
+async def avatar_function(message, args, client, stats, cmd_modules):
+    
+    user_object = parse_userid(message, args)
+    
+    embed=discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
+    embed.set_image(url=user_object.avatar_url)
     embed.timestamp = datetime.now()
     await message.channel.send(embed=embed)
 
@@ -132,5 +151,10 @@ commands = {
         'pretty_name': 'help',
         'description': 'Get help.',
         'execute': help_function
+    },
+    'avatar': {
+        'pretty_name': 'avatar',
+        'description': 'Get Avatar',
+        'execute': avatar_function
     }
 }
