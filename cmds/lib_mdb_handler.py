@@ -22,9 +22,6 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Generate Cursor
         self.cur = self.con.cursor()
 
-        # Disable autocommit
-        self.con.autocommit = False
-
     def __enter__(self):
         return self
 
@@ -49,8 +46,8 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
                     inlist.append(f"{i[0]} VARCHAR(255) PRIMARY KEY")
                 else:
                     inlist.append(f"{i[0]} {datamap[i[1]]} PRIMARY KEY")
-        else:
-            inlist.append(f"{i[0]} {datamap[i[1]]}")
+            else:
+                inlist.append(f"{i[0]} {datamap[i[1]]}")
 
         # Add parsed inputs to inputStr
         db_inputStr += ", ". join(inlist) + ")"
@@ -84,6 +81,28 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Send data
         returndata = list(self.cur)
         return returndata
+
+    def delete_rows_from_table(self, table, collum_search):
+
+        # Do deletion setup
+        db_inputStr = f"DELETE FROM {table} WHERE {collum_search[0]}=?"
+        db_inputList = [collum_search[1]]
+
+        # Execute
+        self.cur.execute(db_inputStr, tuple(db_inputList))
+
+    def delete_table(self, table):
+
+        self.cur.execute(f"DROP TABLE IF EXISTS {table};")
+
+    def fetch_table(self, table):
+
+        self.cur.execute(f"SELECT * FROM {table};")
+
+        # Send data
+        returndata = list(self.cur)
+        return returndata
+
 
     def commit(self):  # Commits data to db
         self.con.commit()
