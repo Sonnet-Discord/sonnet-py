@@ -28,6 +28,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         if channel_id:  # If ID exists then use it
             log_channel = client.get_channel(int(channel_id[0][1]))
         else:
+            log_channel = None
             send_message = False
 
         # If channel doesnt exist simply skip it
@@ -174,18 +175,18 @@ async def ban_user(message, args, client, stats, cmds):
 
 
 async def mute_user(message, args, client, stats, cmds):
-    
+
     required_perms =  message.author.permissions_in(message.channel).manage_roles
 
     try:
         automod, user, reason = await process_infraction(message, args, client, required_perms, "mute")
     except RuntimeError:
         return
-    
+
     # Get muterole from DB
     with db_handler() as database:
         mute_role = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property","mute-role"])
-    
+
     if mute_role:
         mute_role = message.guild.get_role(mute_role[0][1])
         if not mute_role:
@@ -204,7 +205,7 @@ async def mute_user(message, args, client, stats, cmds):
 
     if not automod:
         await message.channel.send(f"Muted user with ID {user.id} for {reason}")
-    
+
     # add auto unmute, mute database, default mute length, mute length
 
 
