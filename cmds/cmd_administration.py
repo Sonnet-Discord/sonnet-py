@@ -7,6 +7,7 @@ import json, gzip, io, time
 
 from sonnet_cfg import GLOBAL_PREFIX
 from lib_mdb_handler import db_handler, db_error
+from lib_parsers import parse_boolean
 
 
 async def recreate_db(message, args, client, stats, cmds):
@@ -159,6 +160,27 @@ async def gdpr_database(message, args, client, stats, cmds):
         await message.channel.send(embed=message_embed)
 
 
+async def set_view_infractions(message, args, client, stats, cmds):
+
+    if not message.author.permissions_in(message.channel).administrator:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    if args:
+        gate = parse_boolean(args[0])
+    else:
+        gate = False
+
+    try:
+        with db_handler() as database:
+            database.add_to_table(f"{message.guild.id}_config",[["property", "member-view-infractions"],["value", int(gate)]])
+    except db_error.OperationalError:
+        await message.channel.send("Database error, run recreate-db")
+        return
+
+    await message.channel.send(f"Member View Own Infractions set to {gate}")
+
+
 category_info = {
     'name': 'administration',
     'pretty_name': 'Administration',
@@ -196,5 +218,10 @@ commands = {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
         'execute': gdpr_database
+    },    
+    'member-view-infractions': {
+        'pretty_name': 'member-view-infractions',
+        'description': 'Set whether members of the guild can view their own infraction count',
+        'execute': set_view_infractions
     }
 }

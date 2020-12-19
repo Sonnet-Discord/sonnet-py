@@ -47,3 +47,17 @@ def parse_skip_message(Client, message):
         return True
 
     return False
+
+
+# Parse a boolean datatype from a string
+def parse_boolean(instr):
+
+    yeslist = ["yes","true","y","t"]
+    nolist = ["no","false","n","f"]
+
+    if instr.lower() in yeslist:
+        return True
+    elif instr.lower() in nolist:
+        return False
+
+    return 0
