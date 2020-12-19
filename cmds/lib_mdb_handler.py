@@ -109,7 +109,48 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         self.con.close()
 
     def __exit__(self, err_type, err_value, err_traceback):
-        if err_type:
-            raise err_type(err_value)
         self.con.commit()
         self.con.close()
+        if err_type:
+            raise err_type(err_value)
+
+
+# Because being lazy writes good code
+class db_hlapi:
+
+    def __init__(self, guild_id):
+        self.database = db_handler()
+        self.guild = guild_id
+
+    def __enter__(self):
+        return self
+
+    def grab_config(self, config):
+
+        try:
+            data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property",config])
+        except db_error.OperationalError:
+            data = []
+
+        if data:
+            return data[0][1]
+        else:
+            return []
+
+    def grab_user_infractions(self, userid):
+
+        try:
+            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID",userid])
+        except db_error.OperationalError:
+            data = []
+
+        return data
+
+
+    def close(self):
+        self.database.close()
+
+    def __exit__(self, err_type, err_value, err_traceback):
+        self.database.close()
+        if err_type:
+            raise err_type(err_value)

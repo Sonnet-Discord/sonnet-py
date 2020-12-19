@@ -8,6 +8,7 @@ from datetime import datetime
 import time
 import sonnet_cfg
 
+from lib_mdb_handler import db_hlapi
 
 GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
 
@@ -61,6 +62,18 @@ async def profile_function(message, args, client, stats, cmds):
     embed.add_field(name="Highest Rank", value=f"{user_object.top_role.mention}", inline=True)
     embed.add_field(name="Created", value=created_string, inline=True)
     embed.add_field(name="Joined", value=joined_string, inline=True)
+    
+    # Parse adding infraction count
+    with db_hlapi(message.guild.id) as db:
+        viewinfs = db.grab_config("member-view-infractions")
+        if viewinfs:
+            viewinfs = bool(int(viewinfs))
+        else:
+            viewinfs = False
+        moderator = message.author.permissions_in(message.channel).kick_members
+        if moderator or (viewinfs and user_object.id == message.author.id):
+            embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
+    
     embed.timestamp = datetime.now()
     await message.channel.send(embed=embed)
 
