@@ -14,6 +14,8 @@ import sys
 import time
 # Import Globstar library
 import glob
+# Import datetime for message logging
+from datetime import datetime
 
 # Get token from environment variables.
 TOKEN = os.getenv('RHEA_TOKEN')
@@ -95,14 +97,14 @@ async def on_ready():
 @Client.event
 async def on_guild_join(guild):
     with db_handler() as db:
-        db.make_new_table(f"{message.guild.id}_config",[["property", str, 1], ["value", str]])
-        db.make_new_table(f"{message.guild.id}_infractions", [
-        ["infractionID", str, 1],
+        db.make_new_table(f"{guild.id}_config",[["property", tuple, 1], ["value", str]])
+        db.make_new_table(f"{guild.id}_infractions", [
+        ["infractionID", tuple, 1],
         ["userID", str],
         ["moderatorID", str],
         ["type", str],
         ["reason", str],
-        ["timestamp", int]
+        ["timestamp", int(64)]
         ])
 
 
@@ -120,10 +122,10 @@ async def on_message_delete(message):
     if message_log:
         message_log = Client.get_channel(int(message_log[0][1]))
         if message_log:
-            message_embed = discord.Embed(title="Message Deleted", description=f"Deleted Message in <#{message.channel.id}>", color=0xd62d20)
-            message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
-            message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
-            message_embed.add_field(name="Message", value=message.content, inline=False)
+            message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
+            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
+            message_embed.set_footer(text=f"Message ID: {message.id}")
+            message_embed.timestamp = datetime.now()
             await message_log.send(embed=message_embed)
 
 
@@ -140,11 +142,12 @@ async def on_message_edit(old_message, message):
     if message_log:
         message_log = Client.get_channel(int(message_log[0][1]))
         if message_log:
-            message_embed = discord.Embed(title="Message Edited", description=f"Edited Message in <#{message.channel.id}>", color=0x0057e7)
-            message_embed.add_field(name="User", value=f"<@!{message.author.id}>", inline=False)
-            message_embed.add_field(name="Message ID", value=f"{message.id}", inline=False)
+            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
+            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
             message_embed.add_field(name="Old Message", value=old_message.content, inline=False)
-            message_embed.add_field(name="Edited Message", value=message.content, inline=False)
+            message_embed.add_field(name="New Message", value=message.content, inline=False)
+            message_embed.set_footer(text=f"Message ID: {message.id}")
+            message_embed.timestamp = datetime.now()
             await message_log.send(embed=message_embed)
 
     # Check against blacklist
@@ -152,7 +155,10 @@ async def on_message_edit(old_message, message):
     broke_blacklist, infraction_type = parse_blacklist(message, blacklist)
 
     if broke_blacklist:
-        await message.delete()
+        try:
+            await message.delete()
+        except discord.errors.Forbidden:
+            pass
         await command_modules_dict['warn']['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules)
 
 
@@ -177,7 +183,10 @@ async def on_message(message):
 
     # If blacklist broken generate infraction
     if broke_blacklist:
-        await message.delete()  # Change warn to variable later, so you can pick any
+        try:
+            await message.delete()
+        except discord.errors.Forbidden:
+            pass
         await command_modules_dict['warn']['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules)
 
     # Check if this is meant for us.
