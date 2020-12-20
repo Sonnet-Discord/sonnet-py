@@ -23,6 +23,7 @@ TOKEN = os.getenv('RHEA_TOKEN')
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, os.getcwd() + '/cmds')
 sys.path.insert(1, os.getcwd() + '/common')
+sys.path.insert(1, os.getcwd() + '/libs')
 
 # Import configuration data.
 import sonnet_cfg
@@ -46,6 +47,7 @@ intents.typing = False
 intents.presences = True
 intents.guilds = True
 intents.members = True
+intents.reactions = True
 
 # Initialise Discord Client.
 Client = commands.Bot(

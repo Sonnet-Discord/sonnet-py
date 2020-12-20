@@ -1,7 +1,7 @@
 # cache generation tools
 # Ultabear 2020
 
-from cmds.lib_mdb_handler import db_handler, db_error
+from lib_mdb_handler import db_handler, db_error
 from sonnet_cfg import GLOBAL_PREFIX
 import json, random, os, math
 
