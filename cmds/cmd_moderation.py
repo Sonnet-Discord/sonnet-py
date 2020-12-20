@@ -176,7 +176,7 @@ async def ban_user(message, args, client, stats, cmds):
 
 async def mute_user(message, args, client, stats, cmds):
 
-    required_perms =  message.author.permissions_in(message.channel).manage_roles
+    required_perms =  message.author.permissions_in(message.channel).kick_members
 
     try:
         automod, user, reason = await process_infraction(message, args, client, required_perms, "mute")

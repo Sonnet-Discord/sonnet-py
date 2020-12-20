@@ -2,6 +2,7 @@
 # Ultabear 2020
 
 from cmds.lib_mdb_handler import db_handler, db_error
+from sonnet_cfg import GLOBAL_PREFIX
 import json, random, os, math
 
 
@@ -10,8 +11,8 @@ def directBinNumber(inData,length):
     return tuple([(inData >> (8*i) & 0xff ) for i in range(length)])
 
 
-# Load blacklist from cache, or load from db if cache isint existant
-def load_blacklist(guild_id):
+# Load config from cache, or load from db if cache isint existant
+def load_message_config(guild_id):
     try:
         with open(f"datastore/{guild_id}.cache.db", "rb") as blacklist_cache:
             blacklist = {}
@@ -21,6 +22,8 @@ def load_blacklist(guild_id):
                     blacklist[i] = blacklist[i].split(",")
                 else:
                     blacklist[i] = []
+            for i in ["prefix"]:
+                blacklist[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
             for regex in ["regex-blacklist"]:
                 prelist = []
                 for i in range(int.from_bytes(blacklist_cache.read(2), "little")):
@@ -34,7 +37,7 @@ def load_blacklist(guild_id):
         blacklist = {}
 
         # Loads base db
-        for i in ["word-blacklist","regex-blacklist","filetype-blacklist"]:
+        for i in ["word-blacklist","regex-blacklist","filetype-blacklist","prefix"]:
             try:
                 blacklist[i] = db.fetch_rows_from_table(f"{guild_id}_config", ["property",i])[0][1]
             except db_error.OperationalError:
@@ -54,15 +57,27 @@ def load_blacklist(guild_id):
             if blacklist[i]:
                 blacklist[i] = blacklist[i].lower().split(",")
 
+        # Generate prefix
+        for i in ["prefix"]:
+            if not blacklist[i]:
+                blacklist[i] = GLOBAL_PREFIX
+
         # Generate SNOWFLAKE DBCACHE
         with open(f"datastore/{guild_id}.cache.db", "wb") as blacklist_cache:
-            # ORDER : word blacklist, filetype blacklist, regex blacklist
+            # ORDER : word blacklist, filetype blacklist, prefix, regex blacklist
             for i in ["word-blacklist","filetype-blacklist"]:
                 if blacklist[i]:
                     outdat = ",".join(blacklist[i])
                     blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat.encode("utf8"))
                 else:
                     blacklist_cache.write(bytes(2))
+
+            # Add prefix
+            for i in ["prefix"]:
+                if blacklist[i]:
+                    outdat = blacklist[i]
+                    blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat.encode("utf8"))
+
 
             # Serialize regex blacklist
             for i in ["regex-blacklist"]:

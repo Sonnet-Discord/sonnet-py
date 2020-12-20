@@ -2,7 +2,7 @@
 
 import os, json
 
-from lib_loaders import load_blacklist
+from lib_loaders import load_message_config
 from lib_mdb_handler import db_handler, db_error
 
 
@@ -179,10 +179,11 @@ async def list_blacklist(message, args, client, stats, cmds):
         return
 
     # Format blacklist
-    blacklist = load_blacklist(message.guild.id)
-    blacklist["regex-blacklist"] = ["/"+i+"/g" for i in blacklist["regex-blacklist"]]
-    blacklist["word-blacklist"] = ",".join(blacklist["word-blacklist"])
-    blacklist["filetype-blacklist"] = ",".join(blacklist["filetype-blacklist"])
+    mconf = load_message_config(message.guild.id)
+    blacklist = {}
+    blacklist["regex-blacklist"] = ["/"+i+"/g" for i in mconf["regex-blacklist"]]
+    blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
+    blacklist["filetype-blacklist"] = ",".join(mconf["filetype-blacklist"])
 
     # If word blacklist or filetype blacklist then load them
     for i in ["word-blacklist","filetype-blacklist"]:

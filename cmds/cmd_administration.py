@@ -8,6 +8,7 @@ import json, gzip, io, time
 from sonnet_cfg import GLOBAL_PREFIX
 from lib_mdb_handler import db_handler, db_error
 from lib_parsers import parse_boolean
+from lib_loaders import load_message_config
 
 
 async def recreate_db(message, args, client, stats, cmds):
@@ -118,7 +119,7 @@ class gdpr_functions:
                     dbdict[i].extend(database.fetch_table(f"{guild_id}_{i}"))
                 except db_error.OperationalError:
                     await message.channel.send(f"Could not grab {i}, it may not exist")
-    
+
         # Convert to compressed json
         file_to_upload = io.BytesIO()
         with gzip.GzipFile(filename=f"{guild_id}.db.json.gz", mode="wb", fileobj=file_to_upload) as txt:
@@ -126,7 +127,7 @@ class gdpr_functions:
         file_to_upload.seek(0)
         # Finalize discord file obj
         fileobj = discord.File(file_to_upload, filename="database.gz")
-        
+
         await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", file=fileobj)
 
 
@@ -146,17 +147,18 @@ async def gdpr_database(message, args, client, stats, cmds):
     else:
         command = None
 
+    PREFIX = load_message_config(message.guild.id)["prefix"]
 
     commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
     if command and command in commands_dict.keys():
         if confirmation and confirmation == str(message.guild.id):
             await commands_dict[command](message, message.guild.id)
         else:
-            await message.channel.send(f"Please provide the guildid to confirm\nEx: `{GLOBAL_PREFIX}gdpr {command} {message.guild.id}`")
+            await message.channel.send(f"Please provide the guildid to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
         message_embed = discord.Embed(title="GDPR COMMANDS", color=0xADD8E6)
-        message_embed.add_field(name=f"{GLOBAL_PREFIX}gdpr download <guildid>", value="Download the infraction and config databases of this guild", inline=False)
-        message_embed.add_field(name=f"{GLOBAL_PREFIX}gdpr delete <guildid>", value="Delete the infraction and config databases of this guild and clear cache", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr download <guildid>", value="Download the infraction and config databases of this guild", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr delete <guildid>", value="Delete the infraction and config databases of this guild and clear cache", inline=False)
         await message.channel.send(embed=message_embed)
 
 
@@ -179,6 +181,27 @@ async def set_view_infractions(message, args, client, stats, cmds):
         return
 
     await message.channel.send(f"Member View Own Infractions set to {gate}")
+
+async def set_prefix(message, args, client, stats, cmds):
+
+    if not message.author.permissions_in(message.channel).administrator:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    if args:
+        prefix = args[0]
+    else:
+        prefix = GLOBAL_PREFIX
+
+    try:
+        with db_handler() as database:
+            database.add_to_table(f"{message.guild.id}_config", [["property","prefix"],["value",prefix]])
+    except db_error.OperationalError:
+        await message.channel.send("Database error, run recreate-db")
+        return
+
+    os.remove(f"datastore/{message.guild.id}.cache.db")
+    await message.channel.send(f"Updated prefix to `{prefix}`")
 
 
 category_info = {
@@ -218,10 +241,15 @@ commands = {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
         'execute': gdpr_database
-    },    
+    },
     'member-view-infractions': {
         'pretty_name': 'member-view-infractions',
         'description': 'Set whether members of the guild can view their own infraction count',
         'execute': set_view_infractions
+    },
+    'set-prefix': {
+        'pretty_name': 'set-prefix',
+        'description': 'Set the Guild prefix',
+        'execute': set_prefix
     }
 }

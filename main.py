@@ -67,7 +67,7 @@ for module in command_modules:
 
 
 # Import blacklist loader
-from lib_loaders import load_blacklist
+from lib_loaders import load_message_config
 
 # Import blacklist parser and message skip parser
 from lib_parsers import parse_blacklist, parse_skip_message
@@ -151,8 +151,8 @@ async def on_message_edit(old_message, message):
             await message_log.send(embed=message_embed)
 
     # Check against blacklist
-    blacklist = load_blacklist(message.guild.id)
-    broke_blacklist, infraction_type = parse_blacklist(message, blacklist)
+    mconf = load_message_config(message.guild.id)
+    broke_blacklist, infraction_type = parse_blacklist(message, mconf)
 
     if broke_blacklist:
         try:
@@ -171,14 +171,14 @@ async def on_message(message):
     if parse_skip_message(Client, message):
         return
 
-    # Load blacklist
+    # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
-    blacklist = load_blacklist(message.guild.id)
+    mconf = load_message_config(message.guild.id)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
     # Check message against blacklist
     stats["start-blacklist"] = round(time.time() * 100000)
-    broke_blacklist, infraction_type = parse_blacklist(message, blacklist)
+    broke_blacklist, infraction_type = parse_blacklist(message, mconf)
     stats["end-blacklist"] = round(time.time() * 100000)
 
     # If blacklist broken generate infraction
@@ -190,7 +190,7 @@ async def on_message(message):
         await command_modules_dict['warn']['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules)
 
     # Check if this is meant for us.
-    if not message.content.startswith(GLOBAL_PREFIX):
+    if not message.content.startswith(mconf["prefix"]):
         return
 
     # Split into cmds and arguments.
