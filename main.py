@@ -39,7 +39,7 @@ def get_prefix(client, message):
 
 
 # Get db handling library
-from lib_mdb_handler import db_handler, db_error
+from lib_mdb_handler import db_handler, db_error, db_hlapi
 
 
 intents = discord.Intents.default()
@@ -108,6 +108,19 @@ async def on_guild_join(guild):
         ["reason", str],
         ["timestamp", int(64)]
         ])
+
+
+# Handle starboard system
+@Client.event
+async def on_reaction_add(reaction, user):
+    mconf = load_message_config(reaction.message.guild.id)
+    if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"]:
+        with db_hlapi(reaction.message.guild.id) as db:
+            try:
+                if reaction.count >= int(db.grab_config("starboard-count")):
+                    pass # TODO add starboard-count to cache
+            except TypeError:
+                pass
 
 
 # Handle message deletions

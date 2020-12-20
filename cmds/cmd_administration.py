@@ -45,12 +45,6 @@ async def msglog_change(message, args, client, stats, cmds):
     except RuntimeError:
         return
 
-async def archivelog_change(message, args, client, stats, cmds):
-    try:
-        await update_log_channel(message, args, client, "archive-channel")
-    except RuntimeError:
-        return
-
 
 class gdpr_functions:
 
@@ -189,11 +183,6 @@ commands = {
         'pretty_name': 'join-log',
         'description': 'Change join log for this guild.',
         'execute': joinlog_change
-    },
-    'archive-channel': {
-        'pretty_name': 'archive-channel',
-        'description': 'Change archive log for this guild. (starboard)',
-        'execute': archivelog_change
     },
     'gdpr': {
         'pretty_name': 'gdpr',
