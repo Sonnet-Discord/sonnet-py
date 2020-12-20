@@ -202,6 +202,32 @@ async def list_blacklist(message, args, client, stats, cmds):
     await message.channel.send(f"```\n{formatted}```")
 
 
+async def set_blacklist_infraction_level(message, args, client, stats, cmds):
+
+    if not message.author.permissions_in(message.channel).administrator:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    if args:
+        action = args[0].lower()
+    else:
+        action = ""
+
+    if not action in ["warn","kick","mute","ban"]:
+        await message.channel.send("Blacklist action is not valid")
+        return
+
+    try:
+        with db_handler() as database:
+            database.add_to_table(f"{message.guild.id}_config", [["property","blacklist-action"],["value", action]])
+    except db_error.OperationalError:
+        await message.channel.send("Database error, run recreate-db")
+        return
+
+    os.remove(f"datastore/{message.guild.id}.cache.db")
+    await message.channel.send(f"Updated blacklist action to `{action}`")
+
+
 category_info = {
     'name': 'blacklist',
     'pretty_name': 'Blacklist',
@@ -234,5 +260,10 @@ commands = {
         'pretty_name': 'list-blacklist',
         'description': 'List all blacklists for this guild.',
         'execute': list_blacklist
+    },
+    'blacklist-action': {
+        'pretty_name': 'blacklist-action',
+        'description': 'Set the action to occur when blacklist is broken',
+        'execute': set_blacklist_infraction_level
     }
 }

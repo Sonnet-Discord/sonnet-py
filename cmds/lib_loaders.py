@@ -22,7 +22,7 @@ def load_message_config(guild_id):
                     blacklist[i] = blacklist[i].split(",")
                 else:
                     blacklist[i] = []
-            for i in ["prefix"]:
+            for i in ["prefix","blacklist-action"]:
                 blacklist[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
             for regex in ["regex-blacklist"]:
                 prelist = []
@@ -37,7 +37,7 @@ def load_message_config(guild_id):
         blacklist = {}
 
         # Loads base db
-        for i in ["word-blacklist","regex-blacklist","filetype-blacklist","prefix"]:
+        for i in ["word-blacklist","regex-blacklist","filetype-blacklist","prefix","blacklist-action"]:
             try:
                 blacklist[i] = db.fetch_rows_from_table(f"{guild_id}_config", ["property",i])[0][1]
             except db_error.OperationalError:
@@ -58,13 +58,16 @@ def load_message_config(guild_id):
                 blacklist[i] = blacklist[i].lower().split(",")
 
         # Generate prefix
-        for i in ["prefix"]:
-            if not blacklist[i]:
-                blacklist[i] = GLOBAL_PREFIX
+        if not blacklist["prefix"]:
+            blacklist["prefix"] = GLOBAL_PREFIX
+
+        if not blacklist["blacklist-action"]:
+            blacklist["blacklist-action"] = "warn"
+
 
         # Generate SNOWFLAKE DBCACHE
         with open(f"datastore/{guild_id}.cache.db", "wb") as blacklist_cache:
-            # ORDER : word blacklist, filetype blacklist, prefix, regex blacklist
+            # ORDER : word blacklist, filetype blacklist, prefix, blacklist-action, regex blacklist
             for i in ["word-blacklist","filetype-blacklist"]:
                 if blacklist[i]:
                     outdat = ",".join(blacklist[i])
@@ -72,8 +75,8 @@ def load_message_config(guild_id):
                 else:
                     blacklist_cache.write(bytes(2))
 
-            # Add prefix
-            for i in ["prefix"]:
+            # Add prefix, blacklist action
+            for i in ["prefix","blacklist-action"]:
                 if blacklist[i]:
                     outdat = blacklist[i]
                     blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat.encode("utf8"))
