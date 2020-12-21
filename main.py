@@ -116,19 +116,22 @@ async def on_guild_join(guild):
 @Client.event
 async def on_reaction_add(reaction, user):
     mconf = load_message_config(reaction.message.guild.id)
+
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
             channel_id = db.grab_config("archive-channel")
             if channel_id:
+
                 channel = Client.get_channel(int(channel_id))
                 in_board = db.in_starboard(reaction.message.id)
                 if channel and not(in_board):
+
                     db.add_to_starboard(reaction.message.id)
                     starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content, url=reaction.message.jump_url, color=0xffa700)
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
                     starboard_embed.timestamp = datetime.now()
+
                     await channel.send(embed=starboard_embed)
-                    
 
 
 # Handle message deletions
