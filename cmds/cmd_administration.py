@@ -22,6 +22,8 @@ async def recreate_db(message, args, client, stats, cmds):
         ["reason", str],
         ["timestamp", int(64)]
         ])
+        db.make_new_table(f"{message.guild.id}_starboard", [["messageID", tuple, 1]])
+        db.make_new_table(f"{message.guild.id}_mutes", [["infractionID", tuple, 1],["userID", str],["endMute",int(64)]])
     await message.channel.send("done (unless something broke)")
 
 
@@ -51,7 +53,7 @@ class gdpr_functions:
     async def delete(message, guild_id):
 
         with db_handler() as database:
-            for i in ["_config","_infractions"]:
+            for i in ["_config","_infractions","_mutes","_starboard"]:
                 database.delete_table(f"{guild_id}{i}")
 
         os.remove(f"datastore/{guild_id}.cache.db")
@@ -62,7 +64,9 @@ class gdpr_functions:
         timestart = time.time()
         dbdict = {
             "config":[["property","value"]],
-            "infractions":[["infractionID","userID","moderatorID","type","reason","timestamp"]]
+            "infractions":[["infractionID","userID","moderatorID","type","reason","timestamp"]],
+            "mutes":[["infractionID","userID","endMute"]],
+            "starboard":[["messageID"]]
             }
 
         with db_handler() as database:

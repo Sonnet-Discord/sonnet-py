@@ -84,11 +84,7 @@ async def regexblacklist_add(message, args, client, stats, cmds):
     # Attempt to read blacklist if exists
     try:
         curlist = json.loads(db.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
-    except db_error.OperationalError:
-        curlist = {"blacklist":[]}
-    except json.decoder.JSONDecodeError:
-        curlist = {"blacklist":[]}
-    except IndexError:
+    except (db_error.OperationalError, json.decoder.JSONDecodeError, IndexError):
         curlist = {"blacklist":[]}
 
     # Check if valid RegEx
@@ -133,15 +129,7 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
     # Attempt to read blacklist if exists
     try:
         curlist = json.loads(db.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
-    except db_error.OperationalError:
-        await message.channel.send("ERROR: There is no RegEx")
-        db.close()
-        return
-    except json.decoder.JSONDecodeError:
-        await message.channel.send("ERROR: There is no RegEx")
-        db.close()
-        return
-    except IndexError:
+    except (json.decoder.JSONDecodeError, IndexError, db_error.OperationalError):
         await message.channel.send("ERROR: There is no RegEx")
         db.close()
         return

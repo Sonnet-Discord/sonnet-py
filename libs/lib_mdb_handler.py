@@ -6,6 +6,7 @@ import mariadb, json
 class db_error: # DB error codes
     OperationalError = mariadb.Error
 
+
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __init__(self):
         with open(".login-info.txt") as login_info_file:  # Grab login data
@@ -62,7 +63,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Insert values data
         db_inputStr += "VALUES ("
         db_inputList.extend([i[1] for i in data])
-        db_inputStr += ", ".join(["?" for i in range(len(data))])+ ")\n"
+        db_inputStr += ", ".join(["?" for i in data])+ ")\n"
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
@@ -79,11 +80,11 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = list(self.cur)
         return returndata
 
-    def delete_rows_from_table(self, table, collum_search):
+    def delete_rows_from_table(self, table, collumn_search):
 
         # Do deletion setup
-        db_inputStr = f"DELETE FROM {table} WHERE {collum_search[0]}=?"
-        db_inputList = [collum_search[1]]
+        db_inputStr = f"DELETE FROM {table} WHERE {collumn_search[0]}=?"
+        db_inputList = [collumn_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
@@ -99,7 +100,6 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Send data
         returndata = list(self.cur)
         return returndata
-
 
     def commit(self):  # Commits data to db
         self.con.commit()
@@ -146,6 +146,27 @@ class db_hlapi:
 
         return data
 
+    # Check if a message is on the starboard already
+    def in_starboard(self, message_id):
+        
+        try:
+            data = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
+        except db_error.OperationalError:
+            data = True
+        
+        if data:
+            return True
+        else:
+            return False
+        
+    def add_to_starboard(self, message_id):
+        
+        try:
+            self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
+        except db_error.OperationalError:
+            return False
+        
+        return True
 
     def close(self):
         self.database.close()
