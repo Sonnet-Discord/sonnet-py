@@ -12,6 +12,13 @@ from lib_loaders import load_message_config
 
 
 async def recreate_db(message, args, client, stats, cmds):
+    
+    perms = message.author.permissions_in(message.channel).administrator  
+    
+    if not(perms) or not(args and args[0] == 1):
+        await message.channel.send("Insufficient permissions.")
+        return
+    
     with db_handler() as db:
         db.make_new_table(f"{message.guild.id}_config",[["property", tuple, 1], ["value", str]])
         db.make_new_table(f"{message.guild.id}_infractions", [
