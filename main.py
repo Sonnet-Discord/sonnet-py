@@ -221,7 +221,7 @@ async def on_message(message):
 
     # Split into cmds and arguments.
     arguments = message.content.split()
-    command = arguments[0][1:]
+    command = arguments[0][len(mconf["prefix"]):]
 
     # Remove command from the arguments.
     del arguments[0]
