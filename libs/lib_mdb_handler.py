@@ -67,11 +67,11 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table, collum_search):
+    def fetch_rows_from_table(self, table, collumn_search):
 
         # Add SELECT data
-        db_inputStr = f"SELECT * FROM {table} WHERE {collum_search[0]}=?"
-        db_inputList = [collum_search[1]]
+        db_inputStr = f"SELECT * FROM {table} WHERE {collumn_search[0]}=?"
+        db_inputList = [collumn_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
@@ -160,13 +160,32 @@ class db_hlapi:
             return False
         
     def add_to_starboard(self, message_id):
-        
+
         try:
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
         except db_error.OperationalError:
             return False
-        
+
         return True
+
+    def grab_infraction(self, infractionID):
+
+        try:
+            infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions",["infractionID",infractionID])
+        except db_error.OperationalError:
+            infraction = None
+
+        if infraction:
+            return infraction[0]
+        else:
+            return False
+
+    def delete_infraction(self, infraction_id):
+
+        try:
+            self.database.delete_rows_from_table(f"{self.guild}_infractions",["infractionID",infraction_id])
+        except db_error.OperationalError:
+            pass
 
     def close(self):
         self.database.close()

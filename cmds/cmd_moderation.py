@@ -3,7 +3,7 @@
 
 import discord, datetime, time, random, asyncio
 
-from lib_mdb_handler import db_handler
+from lib_mdb_handler import db_handler, db_hlapi
 from lib_loaders import generate_infractionid
 
 
@@ -206,6 +206,95 @@ async def mute_user(message, args, client, stats, cmds):
     # add auto unmute, mute database, default mute length, mute length
 
 
+async def search_infractions(message, args, client, stats, cmds):
+
+    required_perms =  message.author.permissions_in(message.channel).kick_members
+
+    if not required_perms:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    try:
+        user = client.get_user(int(args[0].strip("<@!>")))
+    except ValueError:
+        await message.channel.send("Invalid User")
+        return
+    except IndexError:
+        await message.channel.send("No user specified")
+        return
+
+    if not user:
+        await message.channel.send("Invalid User")
+        return
+
+    with db_hlapi(message.guild.id) as db:
+        infractions = db.grab_user_infractions(user.id)
+
+    return
+    # TODO
+        
+
+async def get_detailed_infraction(message, args, client, stats, cmds):
+
+    required_perms =  message.author.permissions_in(message.channel).kick_members
+
+    if not required_perms:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    if args:
+        with db_hlapi(message.guild.id) as db:
+            infraction = db.grab_infraction(args[0])
+        if not infraction:
+            await message.channel.send("Infraction ID does not exist")
+            return
+    else:
+        await message.channel.send("No argument supplied")
+        return
+
+    infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
+
+
+    infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=0x758cff)
+    infraction_embed.add_field(name="Infraction ID", value=infraction_id)
+    infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
+    infraction_embed.add_field(name="Type", value=infraction_type)
+    infraction_embed.add_field(name="Reason", value=reason)
+    infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
+
+    await message.channel.send(embed=infraction_embed)
+
+
+async def delete_infraction(message, args, client, stats, cmds):
+
+    required_perms =  message.author.permissions_in(message.channel).administrator
+
+    if not required_perms:
+        await message.channel.send("Insufficient permissions.")
+        return
+
+    if args:
+        with db_hlapi(message.guild.id) as db:
+            infraction = db.grab_infraction(args[0])
+            db.delete_infraction(infraction[0])
+        if not infraction:
+            await message.channel.send("Infraction ID does not exist")
+            return
+    else:
+        await message.channel.send("No argument supplied")
+        return
+
+    infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
+
+    infraction_embed = discord.Embed(title="Infraction Deleted", description=f"Infraction for <@{user_id}>:", color=0xd62d20)
+    infraction_embed.add_field(name="Infraction ID", value=infraction_id)
+    infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
+    infraction_embed.add_field(name="Type", value=infraction_type)
+    infraction_embed.add_field(name="Reason", value=reason)
+    infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
+
+    await message.channel.send(embed=infraction_embed)
+
 
 category_info = {
     'name': 'moderation',
@@ -234,5 +323,21 @@ commands = {
         'pretty_name': 'mute',
         'description': 'Mute a user',
         'execute': mute_user
+    },
+    'grab-infractions': {
+        'pretty_name': 'grab-infractions',
+        'description': 'Grab infractions of a user',
+        'execute': search_infractions
+    },
+    'infraction-details': {
+        'pretty_name': 'infraction-details',
+        'description': 'Grab details of an infractionID',
+        'execute': get_detailed_infraction
+    },
+    'delete-infraction': {
+        'pretty_name': 'delete-infraction',
+        'description': 'Delete an infraction by infractionID',
+        'execute': delete_infraction
     }
+    
 }
