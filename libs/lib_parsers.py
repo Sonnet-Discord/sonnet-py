@@ -67,10 +67,6 @@ def parse_boolean(instr):
 # Put channel item in DB, and check for collisions
 async def update_log_channel(message, args, client, log_name):
 
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        raise RuntimeError("Insufficient permissions.")
-
     if len(args) >= 1:
         log_channel = args[0].strip("<#!>")
     else:
@@ -100,3 +96,21 @@ async def update_log_channel(message, args, client, log_name):
             ])
 
     await message.channel.send(f"Successfully updated {log_name}")
+
+async def parse_permissions(message, perms):
+
+    you_shall_pass = False
+    if perms == "everyone":
+        you_shall_pass =  True
+    elif perms == "moderator":
+        you_shall_pass = message.author.permissions_in(message.channel).ban_members
+    elif perms == "administrator":
+        you_shall_pass = message.author.permissions_in(message.channel).administrator
+    elif perms == "owner":
+        you_shall_pass = message.author.id == message.channel.guild.owner.id
+
+    if you_shall_pass:
+        return True
+    else:
+        await message.channel.send(f"You need permission group {perms} to run this command")
+        return False

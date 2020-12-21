@@ -16,10 +16,6 @@ async def starboard_channel_change(message, args, client, stats, cmds):
 
 async def set_starboard_emoji(message, args, client, stats, cmds):
 
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-
     if args:
         emoji = args[0]
     else:
@@ -34,10 +30,6 @@ async def set_starboard_emoji(message, args, client, stats, cmds):
 
 async def set_starboard_use(message, args, client, stats, cmds):
 
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-
     if args:
         gate = parse_boolean(args[0])
     else:
@@ -51,10 +43,6 @@ async def set_starboard_use(message, args, client, stats, cmds):
 
 
 async def set_starboard_count(message, args, client, stats, cmds):
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     if args:
         try:
@@ -84,21 +72,25 @@ commands = {
     'starboard-channel': {
         'pretty_name': 'starboard-channel',
         'description': 'Change Starboard for this guild.',
+        'permission':'administrator',
         'execute': starboard_channel_change
     },
     'starboard-emoji': {
         'pretty_name': 'starboard-emoji',
         'description': 'Set the starboard emoji',
+        'permission':'administrator',
         'execute': set_starboard_emoji
     },
     'starboard-enabled': {
         'pretty_name': 'starboard-enabled',
         'description': 'Toggle starboard on or off',
+        'permission':'administrator',
         'execute': set_starboard_use
     },
     'starboard-count': {
         'pretty_name': 'starboard-count',
         'description': 'Set starboard reaction count',
+        'permission':'administrator',
         'execute': set_starboard_count
     }        
 }

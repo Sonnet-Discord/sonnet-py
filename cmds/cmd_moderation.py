@@ -65,7 +65,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     except AttributeError:
         pass
 
-async def process_infraction(message, args, client, perms, infraction_type):
+async def process_infraction(message, args, client, infraction_type):
 
     # Check if automod
     automod = False
@@ -75,11 +75,6 @@ async def process_infraction(message, args, client, perms, infraction_type):
             automod = True
     except IndexError:
         pass
-
-    # Check perms
-    if not(perms) and not(automod):
-        await message.channel.send("Insufficient permissions.")
-        raise RuntimeError("Invalid User")
 
     if len(args) > 1:
         reason = " ".join(args[1:])
@@ -120,10 +115,8 @@ async def process_infraction(message, args, client, perms, infraction_type):
 
 async def warn_user(message, args, client, stats, cmds):
 
-    required_perms = message.author.permissions_in(message.channel).kick_members
-
     try:
-        automod, user, reason = await process_infraction(message, args, client, required_perms, "warn")
+        automod, user, reason = await process_infraction(message, args, client, "warn")
     except RuntimeError:
         return
 
@@ -133,10 +126,8 @@ async def warn_user(message, args, client, stats, cmds):
 
 async def kick_user(message, args, client, stats, cmds):
 
-    required_perms =  message.author.permissions_in(message.channel).kick_members
-
     try:
-        automod, user, reason = await process_infraction(message, args, client, required_perms, "kick")
+        automod, user, reason = await process_infraction(message, args, client, "kick")
     except RuntimeError:
         return
 
@@ -153,10 +144,8 @@ async def kick_user(message, args, client, stats, cmds):
 
 async def ban_user(message, args, client, stats, cmds):
 
-    required_perms =  message.author.permissions_in(message.channel).ban_members
-
     try:
-        automod, user, reason = await process_infraction(message, args, client, required_perms, "ban")
+        automod, user, reason = await process_infraction(message, args, client, "ban")
     except RuntimeError:
         return
 
@@ -173,10 +162,8 @@ async def ban_user(message, args, client, stats, cmds):
 
 async def mute_user(message, args, client, stats, cmds):
 
-    required_perms =  message.author.permissions_in(message.channel).kick_members
-
     try:
-        automod, user, reason = await process_infraction(message, args, client, required_perms, "mute")
+        automod, user, reason = await process_infraction(message, args, client, "mute")
     except RuntimeError:
         return
 
@@ -207,12 +194,6 @@ async def mute_user(message, args, client, stats, cmds):
 
 
 async def search_infractions(message, args, client, stats, cmds):
-
-    required_perms =  message.author.permissions_in(message.channel).kick_members
-
-    if not required_perms:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     try:
         user = client.get_user(int(args[0].strip("<@!>")))
@@ -263,12 +244,6 @@ async def search_infractions(message, args, client, stats, cmds):
 
 async def get_detailed_infraction(message, args, client, stats, cmds):
 
-    required_perms =  message.author.permissions_in(message.channel).kick_members
-
-    if not required_perms:
-        await message.channel.send("Insufficient permissions.")
-        return
-
     if args:
         with db_hlapi(message.guild.id) as db:
             infraction = db.grab_infraction(args[0])
@@ -293,12 +268,6 @@ async def get_detailed_infraction(message, args, client, stats, cmds):
 
 
 async def delete_infraction(message, args, client, stats, cmds):
-
-    required_perms =  message.author.permissions_in(message.channel).administrator
-
-    if not required_perms:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -334,36 +303,43 @@ commands = {
     'warn': {
         'pretty_name': 'warn',
         'description': 'Warn a user',
+        'permission':'moderator',
         'execute': warn_user
     },
     'kick': {
         'pretty_name': 'kick',
         'description': 'Kick a user',
+        'permission':'moderator',
         'execute': kick_user
     },
     'ban': {
         'pretty_name': 'ban',
         'description': 'Ban a user',
+        'permission':'moderator',
         'execute': ban_user
     },
     'mute': {
         'pretty_name': 'mute',
         'description': 'Mute a user',
+        'permission':'moderator',
         'execute': mute_user
     },
     'search-infractions': {
         'pretty_name': 'search-infractions',
         'description': 'Grab infractions of a user',
+        'permission':'moderator',
         'execute': search_infractions
     },
     'infraction-details': {
         'pretty_name': 'infraction-details',
         'description': 'Grab details of an infractionID',
+        'permission':'moderator',
         'execute': get_detailed_infraction
     },
     'delete-infraction': {
         'pretty_name': 'delete-infraction',
         'description': 'Delete an infraction by infractionID',
+        'permission':'administrator',
         'execute': delete_infraction
     }
     

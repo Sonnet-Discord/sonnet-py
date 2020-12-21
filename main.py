@@ -72,7 +72,7 @@ for module in command_modules:
 from lib_loaders import load_message_config
 
 # Import blacklist parser and message skip parser
-from lib_parsers import parse_blacklist, parse_skip_message
+from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 # Catch errors without being fatal - log them.
 @Client.event
@@ -229,12 +229,16 @@ async def on_message(message):
     # Process commands
     if command in command_modules_dict.keys():
         stats["end"] = round(time.time() * 100000)
+        permission = await parse_permissions(message, command_modules_dict[command]['permission'])
         try:
-            await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+            if permission:
+                await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+        # Correct dberrors
         except db_error.OperationalError:
             await message.channel.send("Database missing components, rebuilding")
             await command_modules_dict["recreate-db"]['execute'](message, 1, Client, stats, command_modules)
-            await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+            if permission:
+                await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
         except Exception as e:
             await message.channel.send(f"FATAL ERROR in {command}\nPlease contact bot owner")
             raise e

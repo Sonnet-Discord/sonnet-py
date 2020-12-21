@@ -155,21 +155,25 @@ commands = {
     'ping': {
         'pretty_name': 'ping',
         'description': 'Ping bot.',
+        'permission':'everyone',
         'execute': ping_function
     },
     'profile': {
         'pretty_name': 'profile',
         'description': 'Profile.',
+        'permission':'everyone',
         'execute': profile_function
     },
     'help': {
         'pretty_name': 'help',
         'description': 'Get help.',
+        'permission':'everyone',
         'execute': help_function
     },
     'avatar': {
         'pretty_name': 'avatar',
         'description': 'Get Avatar',
+        'permission':'everyone',
         'execute': avatar_function
     }
 }

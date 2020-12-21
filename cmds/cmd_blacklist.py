@@ -10,9 +10,6 @@ async def wb_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
     word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p"
 
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     if len(args) > 1:
         await message.channel.send("Malformed word blacklist.")
@@ -34,10 +31,6 @@ async def wb_change(message, args, client, stats, cmds):
 
 
 async def ftb_change(message, args, client, stats, cmds):
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     if len(args) > 1:
         await message.channel.send("Malformed filetype blacklist.")
@@ -62,10 +55,6 @@ async def ftb_change(message, args, client, stats, cmds):
 
 
 async def regexblacklist_add(message, args, client, stats, cmds):
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     # Test if args supplied
     if not args:
@@ -98,10 +87,6 @@ async def regexblacklist_add(message, args, client, stats, cmds):
 
 
 async def regexblacklist_remove(message, args, client, stats, cmds):
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     # Test if args supplied
     if not args:
@@ -137,10 +122,6 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
 
 async def list_blacklist(message, args, client, stats, cmds):
 
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-
     # Format blacklist
     mconf = load_message_config(message.guild.id)
     blacklist = {}
@@ -167,10 +148,6 @@ async def list_blacklist(message, args, client, stats, cmds):
 
 async def set_blacklist_infraction_level(message, args, client, stats, cmds):
 
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-
     if args:
         action = args[0].lower()
     else:
@@ -188,6 +165,11 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds):
     await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
+async def add_rolewhitelist(message, args, client, stats, cmds):
+
+    pass
+
+
 category_info = {
     'name': 'blacklist',
     'pretty_name': 'Blacklist',
@@ -199,31 +181,37 @@ commands = {
     'wb-change': {
         'pretty_name': 'wb-change',
         'description': 'Change word blacklist for this guild.',
+        'permission':'administrator',
         'execute': wb_change
     },
     'add-regexblacklist': {
         'pretty_name': 'add-regexblacklist',
         'description': 'Add an item to regex blacklist.',
+        'permission':'administrator',
         'execute': regexblacklist_add
     },
     'remove-regexblacklist': {
         'pretty_name': 'remove-regexblacklist',
         'description': 'Remove an item from regex blacklist.',
+        'permission':'administrator',
         'execute': regexblacklist_remove
     },
     'ftb-change': {
         'pretty_name': 'ftb-change',
         'description': 'Change filetype blacklist for this guild.',
+        'permission':'administrator',
         'execute': ftb_change
     },
     'list-blacklist': {
         'pretty_name': 'list-blacklist',
         'description': 'List all blacklists for this guild.',
+        'permission':'administrator',
         'execute': list_blacklist
     },
     'blacklist-action': {
         'pretty_name': 'blacklist-action',
         'description': 'Set the action to occur when blacklist is broken',
+        'permission':'administrator',
         'execute': set_blacklist_infraction_level
     }
 }

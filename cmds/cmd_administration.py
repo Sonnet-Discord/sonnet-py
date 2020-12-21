@@ -13,12 +13,6 @@ from lib_loaders import load_message_config
 
 async def recreate_db(message, args, client, stats, cmds):
     
-    perms = message.author.permissions_in(message.channel).administrator  
-    
-    if not(perms) or not(args and args == 1):
-        await message.channel.send("Insufficient permissions.")
-        return
-    
     with db_handler() as db:
         db.make_new_table(f"{message.guild.id}_config",[["property", tuple, 1], ["value", str]])
         db.make_new_table(f"{message.guild.id}_infractions", [
@@ -96,11 +90,6 @@ class gdpr_functions:
 
 async def gdpr_database(message, args, client, stats, cmds):
 
-    has_perms = (message.author.id == message.channel.guild.owner.id)
-    if not has_perms:
-        await message.channel.send("Only the Server Owner may run this command")
-        return
-
     if len(args) >= 2:
         command = args[0]
         confirmation = args[1]
@@ -127,10 +116,6 @@ async def gdpr_database(message, args, client, stats, cmds):
 
 async def set_view_infractions(message, args, client, stats, cmds):
 
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
-
     if args:
         gate = parse_boolean(args[0])
     else:
@@ -142,10 +127,6 @@ async def set_view_infractions(message, args, client, stats, cmds):
     await message.channel.send(f"Member View Own Infractions set to {gate}")
 
 async def set_prefix(message, args, client, stats, cmds):
-
-    if not message.author.permissions_in(message.channel).administrator:
-        await message.channel.send("Insufficient permissions.")
-        return
 
     if args:
         prefix = args[0]
@@ -170,36 +151,43 @@ commands = {
     'recreate-db': {
         'pretty_name': 'recreate-db',
         'description': 'Recreate the database if it doesn\'t exist',
+        'permission':'administrator',
         'execute': recreate_db
     },
     'message-log': {
         'pretty_name': 'message-log',
         'description': 'Change message log for this guild.',
+        'permission':'administrator',
         'execute': msglog_change
     },
     'infraction-log': {
         'pretty_name': 'infraction-log',
         'description': 'Change infraction log for this guild.',
+        'permission':'administrator',
         'execute': inflog_change
     },
     'join-log': {
         'pretty_name': 'join-log',
         'description': 'Change join log for this guild.',
+        'permission':'administrator',
         'execute': joinlog_change
     },
     'gdpr': {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
+        'permission':'owner',
         'execute': gdpr_database
     },
     'member-view-infractions': {
         'pretty_name': 'member-view-infractions',
         'description': 'Set whether members of the guild can view their own infraction count',
+        'permission':'administrator',
         'execute': set_view_infractions
     },
     'set-prefix': {
         'pretty_name': 'set-prefix',
         'description': 'Set the Guild prefix',
+        'permission':'administrator',
         'execute': set_prefix
     }
 }
