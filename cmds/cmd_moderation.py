@@ -3,7 +3,7 @@
 
 import discord, datetime, time, random, asyncio
 
-from lib_mdb_handler import db_handler, db_error
+from lib_mdb_handler import db_handler
 from lib_loaders import generate_infractionid
 
 
@@ -17,11 +17,8 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
             generated_id = generate_infractionid()
 
         # Grab log channel id from db
-        try:
-            channel_id = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "infraction-log"])
-        except db_error.OperationalError:
-            await message.channel.send("ERROR: No guild database. Run recreate-db to fix.")
-            return
+        channel_id = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "infraction-log"])
+
 
 
         # Generate log channel object

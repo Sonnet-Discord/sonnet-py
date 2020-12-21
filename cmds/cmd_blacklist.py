@@ -3,7 +3,7 @@
 import os, json
 
 from lib_loaders import load_message_config
-from lib_mdb_handler import db_handler, db_error
+from lib_mdb_handler import db_handler
 
 
 async def wb_change(message, args, client, stats, cmds):
@@ -22,15 +22,12 @@ async def wb_change(message, args, client, stats, cmds):
         word_blacklist = args[0]
 
     # Update word-blacklist in DB
-    try:
-        with db_handler() as db:
-            db.add_to_table(f"{message.guild.id}_config", [
-                ["property", "word-blacklist"],
-                ["value", word_blacklist]
-                ])
-        await message.channel.send("Word blacklist updated successfully.")
-    except db_error.OperationalError:
-        await message.channel.send("DB Error, run recreate-db")
+    with db_handler() as db:
+        db.add_to_table(f"{message.guild.id}_config", [
+            ["property", "word-blacklist"],
+            ["value", word_blacklist]
+            ])
+    await message.channel.send("Word blacklist updated successfully.")
 
     # Wipe cache
     os.remove(f"datastore/{message.guild.id}.cache.db")
@@ -53,15 +50,12 @@ async def ftb_change(message, args, client, stats, cmds):
         return
 
     # Update word-blacklist in DB
-    try:
-        with db_handler() as db:
-            db.add_to_table(f"{message.guild.id}_config", [
-                ["property", "filetype-blacklist"],
-                ["value", filetype_blacklist]
-                ])
-        await message.channel.send("FileType blacklist updated successfully.")
-    except db_error.OperationalError:
-        await message.channel.send("DB Error, run recreate-db")
+    with db_handler() as db:
+        db.add_to_table(f"{message.guild.id}_config", [
+            ["property", "filetype-blacklist"],
+            ["value", filetype_blacklist]
+            ])
+    await message.channel.send("FileType blacklist updated successfully.")
 
     # Wipe cache
     os.remove(f"datastore/{message.guild.id}.cache.db")
@@ -79,35 +73,26 @@ async def regexblacklist_add(message, args, client, stats, cmds):
         return
 
     # Load DB
-    db = db_handler()
+    with db_handler() as database:
 
-    # Attempt to read blacklist if exists
-    try:
-        curlist = json.loads(db.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
-    except (db_error.OperationalError, json.decoder.JSONDecodeError, IndexError):
-        curlist = {"blacklist":[]}
+        # Attempt to read blacklist if exists
+        try:
+            curlist = json.loads(database.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
+        except (json.decoder.JSONDecodeError, IndexError):
+            curlist = {"blacklist":[]}
 
-    # Check if valid RegEx
-    new_data = args[0]
-    if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
-        curlist["blacklist"].append("__REGEXP "+new_data)
-    else:
-        await message.channel.send("ERROR: Malformed RegEx")
-        db.close()
-        return
+        # Check if valid RegEx
+        new_data = args[0]
+        if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
+            curlist["blacklist"].append("__REGEXP "+new_data)
+        else:
+            await message.channel.send("ERROR: Malformed RegEx")
+            return
 
-    try:
-        db.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
-    except db_error.OperationalError:
-        await message.channel.send("ERROR: DB Error: run recreate-db")
-        db.close()
-        return
+        database.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
 
     # Wipe cache
     os.remove(f"datastore/{message.guild.id}.cache.db")
-
-    # Close db
-    db.close()
 
     await message.channel.send("Sucessfully Updated RegEx")
 
@@ -124,38 +109,28 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
         return
 
     # Load DB
-    db = db_handler()
+    with db_handler() as database:
 
-    # Attempt to read blacklist if exists
-    try:
-        curlist = json.loads(db.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
-    except (json.decoder.JSONDecodeError, IndexError, db_error.OperationalError):
-        await message.channel.send("ERROR: There is no RegEx")
-        db.close()
-        return
+        # Attempt to read blacklist if exists
+        try:
+            curlist = json.loads(database.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
+        except (json.decoder.JSONDecodeError, IndexError):
+            await message.channel.send("ERROR: There is no RegEx")
+            return
 
-    # Check if in list
-    remove_data = "__REGEXP "+args[0]
-    if remove_data in curlist["blacklist"]:
-        del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
-    else:
-        await message.channel.send("ERROR: Pattern not found in RegEx")
-        db.close()
-        return
+        # Check if in list
+        remove_data = "__REGEXP "+args[0]
+        if remove_data in curlist["blacklist"]:
+            del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
+        else:
+            await message.channel.send("ERROR: Pattern not found in RegEx")
+            return
 
-    # Update DB
-    try:
-        db.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
-    except db_error.OperationalError:
-        await message.channel.send("ERROR: DB Error: run recreate-db")
-        db.close()
-        return
-
+        # Update DB
+        database.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
+        
     # Wipe cache
     os.remove(f"datastore/{message.guild.id}.cache.db")
-
-    # Close db
-    db.close()
 
     await message.channel.send("Sucessfully Updated RegEx")
 
@@ -205,12 +180,9 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds):
         await message.channel.send("Blacklist action is not valid")
         return
 
-    try:
-        with db_handler() as database:
-            database.add_to_table(f"{message.guild.id}_config", [["property","blacklist-action"],["value", action]])
-    except db_error.OperationalError:
-        await message.channel.send("Database error, run recreate-db")
-        return
+    with db_handler() as database:
+        database.add_to_table(f"{message.guild.id}_config", [["property","blacklist-action"],["value", action]])
+
 
     os.remove(f"datastore/{message.guild.id}.cache.db")
     await message.channel.send(f"Updated blacklist action to `{action}`")

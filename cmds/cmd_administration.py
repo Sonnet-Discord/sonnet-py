@@ -129,12 +129,8 @@ async def set_view_infractions(message, args, client, stats, cmds):
     else:
         gate = False
 
-    try:
-        with db_handler() as database:
-            database.add_to_table(f"{message.guild.id}_config",[["property", "member-view-infractions"],["value", int(gate)]])
-    except db_error.OperationalError:
-        await message.channel.send("Database error, run recreate-db")
-        return
+    with db_handler() as database:
+        database.add_to_table(f"{message.guild.id}_config",[["property", "member-view-infractions"],["value", int(gate)]])
 
     await message.channel.send(f"Member View Own Infractions set to {gate}")
 
@@ -149,12 +145,8 @@ async def set_prefix(message, args, client, stats, cmds):
     else:
         prefix = GLOBAL_PREFIX
 
-    try:
-        with db_handler() as database:
-            database.add_to_table(f"{message.guild.id}_config", [["property","prefix"],["value",prefix]])
-    except db_error.OperationalError:
-        await message.channel.send("Database error, run recreate-db")
-        return
+    with db_handler() as database:
+        database.add_to_table(f"{message.guild.id}_config", [["property","prefix"],["value",prefix]])
 
     os.remove(f"datastore/{message.guild.id}.cache.db")
     await message.channel.send(f"Updated prefix to `{prefix}`")

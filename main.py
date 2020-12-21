@@ -231,6 +231,10 @@ async def on_message(message):
         stats["end"] = round(time.time() * 100000)
         try:
             await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+        except db_error.OperationalError:
+            await message.channel.send("Database missing components, rebuilding")
+            await command_modules_dict["recreate-db"]['execute'](message, arguments, Client, stats, command_modules)
+            await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
         except Exception as e:
             await message.channel.send(f"FATAL ERROR in {command}\nPlease contact bot owner")
             raise e
