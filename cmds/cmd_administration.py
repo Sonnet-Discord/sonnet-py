@@ -15,7 +15,7 @@ async def recreate_db(message, args, client, stats, cmds):
     
     perms = message.author.permissions_in(message.channel).administrator  
     
-    if not(perms) or not(args and args[0] == 1):
+    if not(perms) or not(args and args == 1):
         await message.channel.send("Insufficient permissions.")
         return
     
