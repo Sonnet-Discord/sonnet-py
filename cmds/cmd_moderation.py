@@ -230,9 +230,36 @@ async def search_infractions(message, args, client, stats, cmds):
     with db_hlapi(message.guild.id) as db:
         infractions = db.grab_user_infractions(user.id)
 
-    return
-    # TODO
-        
+    # Generate chunks from infractions
+    do_not_exceed = 1950  # Discord message length limits
+    chunks = [""]
+    curchunk = 0
+    for i in infractions:
+        infraction_data = ", ".join([i[0],i[3],i[4]]) + "\n"
+        if (len(chunks[curchunk]) + len(infraction_data)) > do_not_exceed:
+            curchunk += 1
+            chunks.append("")
+        else:
+            chunks[curchunk] = chunks[curchunk] + infraction_data
+
+    # Parse pager
+    if len(args) >= 2:
+        try:
+            selected_chunk = int(float(args[1]))-1
+        except ValueError:
+            selected_chunk = 0
+    else:
+        selected_chunk = 0
+
+    # Test if valid page
+    try:
+        outdata = chunks[selected_chunk]
+    except IndexError:
+        outdata = chunks[0]
+        selected_chunk = 0
+
+    await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)}\n```css\nID, Type, Reason\n{outdata}```")
+
 
 async def get_detailed_infraction(message, args, client, stats, cmds):
 
@@ -324,8 +351,8 @@ commands = {
         'description': 'Mute a user',
         'execute': mute_user
     },
-    'grab-infractions': {
-        'pretty_name': 'grab-infractions',
+    'search-infractions': {
+        'pretty_name': 'search-infractions',
         'description': 'Grab infractions of a user',
         'execute': search_infractions
     },
