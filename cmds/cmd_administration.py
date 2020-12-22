@@ -70,7 +70,7 @@ class gdpr_functions:
             }
 
         with db_handler() as database:
-            for i in ["config","infractions"]:
+            for i in ["config","infractions","starboard","mutes"]:
                 try:
                     dbdict[i].extend(database.fetch_table(f"{guild_id}_{i}"))
                 except db_error.OperationalError:
