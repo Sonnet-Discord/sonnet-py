@@ -237,13 +237,13 @@ async def on_message(message):
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
-                await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+                await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules, ramfs)
         # Correct dberrors
         except db_error.OperationalError:
             await message.channel.send("Database missing components, rebuilding")
-            await command_modules_dict["recreate-db"]['execute'](message, 1, Client, stats, command_modules)
+            await command_modules_dict["recreate-db"]['execute'](message, 1, Client, stats, command_modules, ramfs)
             if permission:
-                await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
+                await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules, ramfs)
         except Exception as e:
             await message.channel.send(f"FATAL ERROR in {command}\nPlease contact bot owner")
             raise e

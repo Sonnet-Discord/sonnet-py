@@ -4,9 +4,9 @@ import os, json
 
 from lib_loaders import load_message_config
 from lib_mdb_handler import db_handler
-from lib_ramfs import ram_filesystem
 
-async def wb_change(message, args, client, stats, cmds):
+
+async def wb_change(message, args, client, stats, cmds, ramfs):
     # Use original null string for cross-compatibility.
     word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p"
 
@@ -27,7 +27,7 @@ async def wb_change(message, args, client, stats, cmds):
     await message.channel.send("Word blacklist updated successfully.")
 
 
-async def word_in_word_change(message, args, client, stats, cmds):
+async def word_in_word_change(message, args, client, stats, cmds, ramfs):
     # Use original null string for cross-compatibility.
     word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p"
 
@@ -48,7 +48,7 @@ async def word_in_word_change(message, args, client, stats, cmds):
     await message.channel.send("Word in word blacklist updated successfully.")
 
 
-async def ftb_change(message, args, client, stats, cmds):
+async def ftb_change(message, args, client, stats, cmds, ramfs):
 
     if len(args) > 1:
         await message.channel.send("Malformed filetype blacklist.")
@@ -69,7 +69,7 @@ async def ftb_change(message, args, client, stats, cmds):
     await message.channel.send("FileType blacklist updated successfully.")
 
 
-async def regexblacklist_add(message, args, client, stats, cmds):
+async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
 
     # Test if args supplied
     if not args:
@@ -98,7 +98,7 @@ async def regexblacklist_add(message, args, client, stats, cmds):
     await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def regexblacklist_remove(message, args, client, stats, cmds):
+async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
 
     # Test if args supplied
     if not args:
@@ -129,12 +129,10 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
     await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def list_blacklist(message, args, client, stats, cmds):
+async def list_blacklist(message, args, client, stats, cmds, ramfs):
 
     # Load temp ramfs to avoid passing as args
-    tempramfs = ram_filesystem()
-    mconf = load_message_config(message.guild.id, tempramfs)
-    del tempramfs
+    mconf = load_message_config(message.guild.id, ramfs)
 
     # Format blacklist
     blacklist = {}
@@ -160,7 +158,7 @@ async def list_blacklist(message, args, client, stats, cmds):
     await message.channel.send(f"```\n{formatted}```")
 
 
-async def set_blacklist_infraction_level(message, args, client, stats, cmds):
+async def set_blacklist_infraction_level(message, args, client, stats, cmds, ramfs):
 
     if args:
         action = args[0].lower()
@@ -177,7 +175,7 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds):
     await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
-async def change_rolewhitelist(message, args, client, stats, cmds):
+async def change_rolewhitelist(message, args, client, stats, cmds, ramfs):
 
     if args:
         role = args[0].strip("<@&>")

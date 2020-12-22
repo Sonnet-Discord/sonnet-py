@@ -10,7 +10,6 @@ import sonnet_cfg
 
 from lib_mdb_handler import db_hlapi
 from lib_loaders import load_message_config
-from lib_ramfs import ram_filesystem
 
 
 def parse_userid(message, args):
@@ -32,7 +31,7 @@ def parse_userid(message, args):
     return user_object
 
 
-async def ping_function(message, args, client, stats, cmds):
+async def ping_function(message, args, client, stats, cmds, ramfs):
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
     ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
     ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
@@ -43,7 +42,7 @@ async def ping_function(message, args, client, stats, cmds):
     await sent_message.edit(embed=ping_embed)
 
 
-async def profile_function(message, args, client, stats, cmds):
+async def profile_function(message, args, client, stats, cmds, ramfs):
 
     user_object = parse_userid(message, args)
 
@@ -78,7 +77,7 @@ async def profile_function(message, args, client, stats, cmds):
     await message.channel.send(embed=embed)
 
 
-async def avatar_function(message, args, client, stats, cmd_modules):
+async def avatar_function(message, args, client, stats, cmd_modules, ramfs):
 
     user_object = parse_userid(message, args)
 
@@ -88,7 +87,7 @@ async def avatar_function(message, args, client, stats, cmd_modules):
     await message.channel.send(embed=embed)
 
 
-async def help_function(message, args, client, stats, cmd_modules):
+async def help_function(message, args, client, stats, cmd_modules, ramfs):
     # Check arguments and such.
     lookup = False
 
@@ -131,9 +130,7 @@ async def help_function(message, args, client, stats, cmd_modules):
                 break
 
         # Load prefix
-        tempramfs = ram_filesystem()
-        PREFIX = load_message_config(message.guild.id, tempramfs)["prefix"]
-        del tempramfs
+        PREFIX = load_message_config(message.guild.id, ramfs)["prefix"]
 
         # Now we generate the actual embed.
         if len(cmds) < 1:

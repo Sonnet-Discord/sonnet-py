@@ -9,10 +9,9 @@ from sonnet_cfg import GLOBAL_PREFIX
 from lib_mdb_handler import db_handler, db_error
 from lib_parsers import parse_boolean, update_log_channel
 from lib_loaders import load_message_config
-from lib_ramfs import ram_filesystem
 
 
-async def recreate_db(message, args, client, stats, cmds):
+async def recreate_db(message, args, client, stats, cmds, ramfs):
     
     with db_handler() as db:
         db.make_new_table(f"{message.guild.id}_config",[["property", tuple, 1], ["value", str]])
@@ -29,21 +28,21 @@ async def recreate_db(message, args, client, stats, cmds):
     await message.channel.send("done (unless something broke)")
 
 
-async def inflog_change(message, args, client, stats, cmds):
+async def inflog_change(message, args, client, stats, cmds, ramfs):
     try:
         await update_log_channel(message, args, client, "infraction-log")
     except RuntimeError:
         return
 
 
-async def joinlog_change(message, args, client, stats, cmds):
+async def joinlog_change(message, args, client, stats, cmds, ramfs):
     try:
         await update_log_channel(message, args, client, "join-log")
     except RuntimeError:
         return
 
 
-async def msglog_change(message, args, client, stats, cmds):
+async def msglog_change(message, args, client, stats, cmds, ramfs):
     try:
         await update_log_channel(message, args, client, "message-log")
     except RuntimeError:
@@ -88,7 +87,7 @@ class gdpr_functions:
         await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", file=fileobj)
 
 
-async def gdpr_database(message, args, client, stats, cmds):
+async def gdpr_database(message, args, client, stats, cmds, ramfs):
 
     if len(args) >= 2:
         command = args[0]
@@ -99,9 +98,7 @@ async def gdpr_database(message, args, client, stats, cmds):
     else:
         command = None
 
-    tempramfs = ram_filesystem()
-    PREFIX = load_message_config(message.guild.id, tempramfs)["prefix"]
-    del tempramfs
+    PREFIX = load_message_config(message.guild.id, ramfs)["prefix"]
 
     commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
     if command and command in commands_dict.keys():
@@ -116,7 +113,7 @@ async def gdpr_database(message, args, client, stats, cmds):
         await message.channel.send(embed=message_embed)
 
 
-async def set_view_infractions(message, args, client, stats, cmds):
+async def set_view_infractions(message, args, client, stats, cmds, ramfs):
 
     if args:
         gate = parse_boolean(args[0])
@@ -129,7 +126,7 @@ async def set_view_infractions(message, args, client, stats, cmds):
     await message.channel.send(f"Member View Own Infractions set to {gate}")
 
 
-async def set_prefix(message, args, client, stats, cmds):
+async def set_prefix(message, args, client, stats, cmds, ramfs):
 
     if args:
         prefix = args[0]

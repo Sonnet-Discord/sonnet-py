@@ -113,7 +113,7 @@ async def process_infraction(message, args, client, infraction_type):
     return (automod, user, reason)
 
 
-async def warn_user(message, args, client, stats, cmds):
+async def warn_user(message, args, client, stats, cmds, ramfs):
 
     try:
         automod, user, reason = await process_infraction(message, args, client, "warn")
@@ -124,7 +124,7 @@ async def warn_user(message, args, client, stats, cmds):
         await message.channel.send(f"Warned user with ID {user.id} for {reason}")
 
 
-async def kick_user(message, args, client, stats, cmds):
+async def kick_user(message, args, client, stats, cmds, ramfs):
 
     try:
         automod, user, reason = await process_infraction(message, args, client, "kick")
@@ -142,7 +142,7 @@ async def kick_user(message, args, client, stats, cmds):
         await message.channel.send(f"Kicked user with ID {user.id} for {reason}")
 
 
-async def ban_user(message, args, client, stats, cmds):
+async def ban_user(message, args, client, stats, cmds, ramfs):
 
     try:
         automod, user, reason = await process_infraction(message, args, client, "ban")
@@ -160,7 +160,7 @@ async def ban_user(message, args, client, stats, cmds):
         await message.channel.send(f"Banned user with ID {user.id} for {reason}")
 
 
-async def mute_user(message, args, client, stats, cmds):
+async def mute_user(message, args, client, stats, cmds, ramfs):
 
     try:
         automod, user, reason = await process_infraction(message, args, client, "mute")
@@ -193,7 +193,7 @@ async def mute_user(message, args, client, stats, cmds):
     # add auto unmute, mute database, default mute length, mute length
 
 
-async def search_infractions(message, args, client, stats, cmds):
+async def search_infractions(message, args, client, stats, cmds, ramfs):
 
     try:
         user = client.get_user(int(args[0].strip("<@!>")))
@@ -242,7 +242,7 @@ async def search_infractions(message, args, client, stats, cmds):
     await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)}\n```css\nID, Type, Reason\n{outdata}```")
 
 
-async def get_detailed_infraction(message, args, client, stats, cmds):
+async def get_detailed_infraction(message, args, client, stats, cmds, ramfs):
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -267,7 +267,7 @@ async def get_detailed_infraction(message, args, client, stats, cmds):
     await message.channel.send(embed=infraction_embed)
 
 
-async def delete_infraction(message, args, client, stats, cmds):
+async def delete_infraction(message, args, client, stats, cmds, ramfs):
 
     if args:
         with db_hlapi(message.guild.id) as db:

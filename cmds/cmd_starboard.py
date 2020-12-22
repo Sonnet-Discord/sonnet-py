@@ -7,14 +7,14 @@ from lib_parsers import parse_boolean, update_log_channel
 from lib_mdb_handler import db_handler
 from sonnet_cfg import STARBOARD_EMOJI
 
-async def starboard_channel_change(message, args, client, stats, cmds):
+async def starboard_channel_change(message, args, client, stats, cmds, ramfs):
     try:
         await update_log_channel(message, args, client, "archive-channel")
     except RuntimeError:
         return
 
 
-async def set_starboard_emoji(message, args, client, stats, cmds):
+async def set_starboard_emoji(message, args, client, stats, cmds, ramfs):
 
     if args:
         emoji = args[0]
@@ -27,7 +27,7 @@ async def set_starboard_emoji(message, args, client, stats, cmds):
     await message.channel.send(f"Updated starboard emoji to {emoji}")
 
 
-async def set_starboard_use(message, args, client, stats, cmds):
+async def set_starboard_use(message, args, client, stats, cmds, ramfs):
 
     if args:
         gate = parse_boolean(args[0])
@@ -40,7 +40,7 @@ async def set_starboard_use(message, args, client, stats, cmds):
     await message.channel.send(f"Starboard set to {bool(gate)}")
 
 
-async def set_starboard_count(message, args, client, stats, cmds):
+async def set_starboard_count(message, args, client, stats, cmds, ramfs):
 
     if args:
         try:
