@@ -17,6 +17,14 @@ def parse_blacklist(message, blacklist):
                 broke_blacklist = True
                 infraction_type.append("Word")
 
+    # Check message agaist word in word blacklist
+    word_blacklist = blacklist["word-in-word-blacklist"]
+    if word_blacklist:
+        for i in word_blacklist:
+            if i in message.content.lower():
+                broke_blacklist = True
+                infraction_type.append("WordInWord")
+
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
@@ -32,6 +40,9 @@ def parse_blacklist(message, blacklist):
                 if i.filename.lower().endswith(a):
                     broke_blacklist = True
                     infraction_type.append("FileType")
+
+    if int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
+        broke_blacklist = False
 
     return (broke_blacklist, infraction_type)
 

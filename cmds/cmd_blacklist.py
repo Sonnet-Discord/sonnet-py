@@ -30,6 +30,30 @@ async def wb_change(message, args, client, stats, cmds):
     os.remove(f"datastore/{message.guild.id}.cache.db")
 
 
+async def word_in_word_change(message, args, client, stats, cmds):
+    # Use original null string for cross-compatibility.
+    word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p"
+
+
+    if len(args) > 1:
+        await message.channel.send("Malformed word blacklist.")
+        return
+
+    if len(args) == 1:
+        word_blacklist = args[0]
+
+    # Update word-blacklist in DB
+    with db_handler() as db:
+        db.add_to_table(f"{message.guild.id}_config", [
+            ["property", "word-in-word-blacklist"],
+            ["value", word_blacklist]
+            ])
+    await message.channel.send("Word in word blacklist updated successfully.")
+
+    # Wipe cache
+    os.remove(f"datastore/{message.guild.id}.cache.db")
+
+
 async def ftb_change(message, args, client, stats, cmds):
 
     if len(args) > 1:
@@ -165,9 +189,24 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds):
     await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
-async def add_rolewhitelist(message, args, client, stats, cmds):
+async def change_rolewhitelist(message, args, client, stats, cmds):
 
-    pass
+    if args:
+        role = args[0].strip("<@&>")
+    else:
+        await message.channel.send("No role supplied")
+        return
+
+    try:
+        role = int(role)
+    except ValueError:
+        await message.channel.send("Invalid role")
+        return
+
+    with db_handler() as database:
+        database.add_to_table(f"{message.guild.id}_config",[["property","blacklist-whitelist"],["value",role]])
+
+    await message.channel.send(f"Updated role whitelist to {role}")
 
 
 category_info = {
@@ -189,6 +228,12 @@ commands = {
         'description': 'Add an item to regex blacklist.',
         'permission':'administrator',
         'execute': regexblacklist_add
+    },
+    'wiwb-change': {
+        'pretty_name': 'wiwb-change',
+        'description': 'Change the WordInWord blacklist.',
+        'permission':'administrator',
+        'execute': word_in_word_change
     },
     'remove-regexblacklist': {
         'pretty_name': 'remove-regexblacklist',
@@ -213,5 +258,12 @@ commands = {
         'description': 'Set the action to occur when blacklist is broken',
         'permission':'administrator',
         'execute': set_blacklist_infraction_level
+    },
+    'blacklist-whitelist': {
+        'pretty_name': 'blacklist-whitelist',
+        'description': 'Set a role that grants immunity from blacklisting',
+        'permission':'administrator',
+        'execute': change_rolewhitelist
     }
+    
 }

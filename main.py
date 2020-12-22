@@ -228,10 +228,10 @@ async def on_message(message):
 
     # Process commands
     if command in command_modules_dict.keys():
-        stats["end"] = round(time.time() * 100000)
         permission = await parse_permissions(message, command_modules_dict[command]['permission'])
         try:
             if permission:
+                stats["end"] = round(time.time() * 100000)
                 await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules)
         # Correct dberrors
         except db_error.OperationalError:

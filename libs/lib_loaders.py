@@ -16,13 +16,13 @@ def load_message_config(guild_id):
     try:
         with open(f"datastore/{guild_id}.cache.db", "rb") as blacklist_cache:
             message_config = {}
-            for i in ["word-blacklist","filetype-blacklist"]:
+            for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
                 message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
                 if message_config[i]:
                     message_config[i] = message_config[i].split(",")
                 else:
                     message_config[i] = []
-            for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count"]:
+            for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
                 message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
             for regex in ["regex-blacklist"]:
                 prelist = []
@@ -37,7 +37,7 @@ def load_message_config(guild_id):
         message_config = {}
 
         # Loads base db
-        for i in ["word-blacklist","regex-blacklist","filetype-blacklist","prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count"]:
+        for i in ["word-blacklist","regex-blacklist","filetype-blacklist","prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","word-in-word-blacklist","blacklist-whitelist"]:
             try:
                 message_config[i] = db.fetch_rows_from_table(f"{guild_id}_config", ["property",i])[0][1]
             except db_error.OperationalError:
@@ -53,7 +53,7 @@ def load_message_config(guild_id):
             message_config["regex-blacklist"] = []
 
         # Loads word, filetype blacklist
-        for i in ["word-blacklist","filetype-blacklist"]:
+        for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
             if message_config[i]:
                 message_config[i] = message_config[i].lower().split(",")
 
@@ -76,7 +76,7 @@ def load_message_config(guild_id):
         # Generate SNOWFLAKE DBCACHE
         with open(f"datastore/{guild_id}.cache.db", "wb") as blacklist_cache:
             # ORDER : word blacklist, filetype blacklist, prefix, blacklist-action, starboard-count, regex blacklist
-            for i in ["word-blacklist","filetype-blacklist"]:
+            for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
                 if message_config[i]:
                     outdat = ",".join(message_config[i]).encode("utf8")
                     blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
@@ -84,7 +84,7 @@ def load_message_config(guild_id):
                     blacklist_cache.write(bytes(2))
 
             # Add prefix, blacklist action, starboard emoji, starboard enabled
-            for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count"]:
+            for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
                 if message_config[i]:
                     outdat = message_config[i].encode("utf8")
                     blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
