@@ -10,6 +10,7 @@ import sonnet_cfg
 
 from lib_mdb_handler import db_hlapi
 from lib_loaders import load_message_config
+from lib_ramfs import ram_filesystem
 
 
 def parse_userid(message, args):
@@ -130,7 +131,9 @@ async def help_function(message, args, client, stats, cmd_modules):
                 break
 
         # Load prefix
-        PREFIX = load_message_config(message.guild.id)["prefix"]
+        tempramfs = ram_filesystem()
+        PREFIX = load_message_config(message.guild.id, tempramfs)["prefix"]
+        del tempramfs
 
         # Now we generate the actual embed.
         if len(cmds) < 1:
@@ -156,24 +159,28 @@ commands = {
         'pretty_name': 'ping',
         'description': 'Ping bot.',
         'permission':'everyone',
+        'cache':'keep',
         'execute': ping_function
     },
     'profile': {
         'pretty_name': 'profile',
         'description': 'Profile.',
         'permission':'everyone',
+        'cache':'keep',
         'execute': profile_function
     },
     'help': {
         'pretty_name': 'help',
         'description': 'Get help.',
         'permission':'everyone',
+        'cache':'keep',
         'execute': help_function
     },
     'avatar': {
         'pretty_name': 'avatar',
         'description': 'Get Avatar',
         'permission':'everyone',
+        'cache':'keep',
         'execute': avatar_function
     }
 }

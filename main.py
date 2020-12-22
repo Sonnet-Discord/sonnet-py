@@ -74,6 +74,11 @@ from lib_loaders import load_message_config
 # Import blacklist parser and message skip parser
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
+# Initalize RAM FS
+from lib_ramfs import ram_filesystem
+ramfs = ram_filesystem()
+ramfs.mkdir("datastore")
+
 # Catch errors without being fatal - log them.
 @Client.event
 async def on_error(event, *args, **kwargs):
@@ -115,7 +120,7 @@ async def on_guild_join(guild):
 # Handle starboard system
 @Client.event
 async def on_reaction_add(reaction, user):
-    mconf = load_message_config(reaction.message.guild.id)
+    mconf = load_message_config(reaction.message.guild.id, ramfs)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
@@ -177,7 +182,7 @@ async def on_message_edit(old_message, message):
             await message_log.send(embed=message_embed)
 
     # Check against blacklist
-    mconf = load_message_config(message.guild.id)
+    mconf = load_message_config(message.guild.id, ramfs)
     broke_blacklist, infraction_type = parse_blacklist(message, mconf)
 
     if broke_blacklist:
@@ -199,7 +204,7 @@ async def on_message(message):
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
-    mconf = load_message_config(message.guild.id)
+    mconf = load_message_config(message.guild.id, ramfs)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
     # Check message against blacklist
@@ -242,7 +247,10 @@ async def on_message(message):
         except Exception as e:
             await message.channel.send(f"FATAL ERROR in {command}\nPlease contact bot owner")
             raise e
-
+        if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
+            ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
+            if command_modules_dict[command]['cache'] == "regenerate":
+                load_message_config(message.guild.id, ramfs)
 
 Client.run(TOKEN, bot=True, reconnect=True)
 

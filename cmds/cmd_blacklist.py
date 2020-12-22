@@ -4,7 +4,7 @@ import os, json
 
 from lib_loaders import load_message_config
 from lib_mdb_handler import db_handler
-
+from lib_ramfs import ram_filesystem
 
 async def wb_change(message, args, client, stats, cmds):
     # Use original null string for cross-compatibility.
@@ -25,9 +25,6 @@ async def wb_change(message, args, client, stats, cmds):
             ["value", word_blacklist]
             ])
     await message.channel.send("Word blacklist updated successfully.")
-
-    # Wipe cache
-    os.remove(f"datastore/{message.guild.id}.cache.db")
 
 
 async def word_in_word_change(message, args, client, stats, cmds):
@@ -50,9 +47,6 @@ async def word_in_word_change(message, args, client, stats, cmds):
             ])
     await message.channel.send("Word in word blacklist updated successfully.")
 
-    # Wipe cache
-    os.remove(f"datastore/{message.guild.id}.cache.db")
-
 
 async def ftb_change(message, args, client, stats, cmds):
 
@@ -73,9 +67,6 @@ async def ftb_change(message, args, client, stats, cmds):
             ["value", filetype_blacklist]
             ])
     await message.channel.send("FileType blacklist updated successfully.")
-
-    # Wipe cache
-    os.remove(f"datastore/{message.guild.id}.cache.db")
 
 
 async def regexblacklist_add(message, args, client, stats, cmds):
@@ -103,9 +94,6 @@ async def regexblacklist_add(message, args, client, stats, cmds):
             return
 
         database.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
-
-    # Wipe cache
-    os.remove(f"datastore/{message.guild.id}.cache.db")
 
     await message.channel.send("Sucessfully Updated RegEx")
 
@@ -137,24 +125,26 @@ async def regexblacklist_remove(message, args, client, stats, cmds):
 
         # Update DB
         database.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
-        
-    # Wipe cache
-    os.remove(f"datastore/{message.guild.id}.cache.db")
 
     await message.channel.send("Sucessfully Updated RegEx")
 
 
 async def list_blacklist(message, args, client, stats, cmds):
 
+    # Load temp ramfs to avoid passing as args
+    tempramfs = ram_filesystem()
+    mconf = load_message_config(message.guild.id, tempramfs)
+    del tempramfs
+
     # Format blacklist
-    mconf = load_message_config(message.guild.id)
     blacklist = {}
     blacklist["regex-blacklist"] = ["/"+i+"/g" for i in mconf["regex-blacklist"]]
     blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
+    blacklist["word-in-word-blacklist"] = ",".join(mconf["word-in-word-blacklist"])
     blacklist["filetype-blacklist"] = ",".join(mconf["filetype-blacklist"])
 
     # If word blacklist or filetype blacklist then load them
-    for i in ["word-blacklist","filetype-blacklist"]:
+    for i in ["word-blacklist","filetype-blacklist", "word-in-word-blacklist"]:
         if blacklist[i]:
             blacklist[i] = [blacklist[i]]
 
@@ -184,8 +174,6 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds):
     with db_handler() as database:
         database.add_to_table(f"{message.guild.id}_config", [["property","blacklist-action"],["value", action]])
 
-
-    os.remove(f"datastore/{message.guild.id}.cache.db")
     await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
@@ -206,7 +194,6 @@ async def change_rolewhitelist(message, args, client, stats, cmds):
     with db_handler() as database:
         database.add_to_table(f"{message.guild.id}_config",[["property","blacklist-whitelist"],["value",role]])
 
-    os.remove(f"datastore/{message.guild.id}.cache.db")
     await message.channel.send(f"Updated role whitelist to {role}")
 
 
@@ -222,48 +209,56 @@ commands = {
         'pretty_name': 'wb-change',
         'description': 'Change word blacklist for this guild.',
         'permission':'administrator',
+        'cache':'regenerate',
         'execute': wb_change
     },
     'add-regexblacklist': {
         'pretty_name': 'add-regexblacklist',
         'description': 'Add an item to regex blacklist.',
         'permission':'administrator',
+        'cache':'regenerate',
         'execute': regexblacklist_add
     },
     'wiwb-change': {
         'pretty_name': 'wiwb-change',
         'description': 'Change the WordInWord blacklist.',
         'permission':'administrator',
+        'cache':'keep',
         'execute': word_in_word_change
     },
     'remove-regexblacklist': {
         'pretty_name': 'remove-regexblacklist',
         'description': 'Remove an item from regex blacklist.',
         'permission':'administrator',
+        'cache':'regenerate',
         'execute': regexblacklist_remove
     },
     'ftb-change': {
         'pretty_name': 'ftb-change',
         'description': 'Change filetype blacklist for this guild.',
         'permission':'administrator',
+        'cache':'regenerate',
         'execute': ftb_change
     },
     'list-blacklist': {
         'pretty_name': 'list-blacklist',
         'description': 'List all blacklists for this guild.',
         'permission':'administrator',
+        'cache':'keep',
         'execute': list_blacklist
     },
     'blacklist-action': {
         'pretty_name': 'blacklist-action',
         'description': 'Set the action to occur when blacklist is broken',
         'permission':'administrator',
+        'cache':'regenerate',
         'execute': set_blacklist_infraction_level
     },
     'blacklist-whitelist': {
         'pretty_name': 'blacklist-whitelist',
         'description': 'Set a role that grants immunity from blacklisting',
         'permission':'administrator',
+        'cache':'regenerate',
         'execute': change_rolewhitelist
     }
     

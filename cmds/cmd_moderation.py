@@ -304,42 +304,49 @@ commands = {
         'pretty_name': 'warn',
         'description': 'Warn a user',
         'permission':'moderator',
+        'cache':'keep',
         'execute': warn_user
     },
     'kick': {
         'pretty_name': 'kick',
         'description': 'Kick a user',
         'permission':'moderator',
+        'cache':'keep',
         'execute': kick_user
     },
     'ban': {
         'pretty_name': 'ban',
         'description': 'Ban a user',
         'permission':'moderator',
+        'cache':'keep',
         'execute': ban_user
     },
     'mute': {
         'pretty_name': 'mute',
         'description': 'Mute a user',
         'permission':'moderator',
+        'cache':'keep',
         'execute': mute_user
     },
     'search-infractions': {
         'pretty_name': 'search-infractions',
         'description': 'Grab infractions of a user',
         'permission':'moderator',
+        'cache':'keep',
         'execute': search_infractions
     },
     'infraction-details': {
         'pretty_name': 'infraction-details',
         'description': 'Grab details of an infractionID',
         'permission':'moderator',
+        'cache':'keep',
         'execute': get_detailed_infraction
     },
     'delete-infraction': {
         'pretty_name': 'delete-infraction',
         'description': 'Delete an infraction by infractionID',
         'permission':'administrator',
+        'cache':'keep',
         'execute': delete_infraction
     }
     

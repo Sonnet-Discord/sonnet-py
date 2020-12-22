@@ -12,23 +12,24 @@ def directBinNumber(inData,length):
 
 
 # Load config from cache, or load from db if cache isint existant
-def load_message_config(guild_id):
+def load_message_config(guild_id, ramfs):
     try:
-        with open(f"datastore/{guild_id}.cache.db", "rb") as blacklist_cache:
-            message_config = {}
-            for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
-                message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
-                if message_config[i]:
-                    message_config[i] = message_config[i].split(",")
-                else:
-                    message_config[i] = []
-            for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
-                message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
-            for regex in ["regex-blacklist"]:
-                prelist = []
-                for i in range(int.from_bytes(blacklist_cache.read(2), "little")):
-                    prelist.append(blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8"))
-                message_config[regex] = prelist
+        blacklist_cache = ramfs.read_f(f"datastore/{guild_id}.cache.db")
+        blacklist_cache.seek(0)
+        message_config = {}
+        for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
+            message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
+            if message_config[i]:
+                message_config[i] = message_config[i].split(",")
+            else:
+                message_config[i] = []
+        for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
+            message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
+        for regex in ["regex-blacklist"]:
+            prelist = []
+            for i in range(int.from_bytes(blacklist_cache.read(2), "little")):
+                prelist.append(blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8"))
+            message_config[regex] = prelist
 
         return message_config
 
@@ -74,32 +75,32 @@ def load_message_config(guild_id):
             message_config["starboard-count"] = STARBOARD_COUNT
 
         # Generate SNOWFLAKE DBCACHE
-        with open(f"datastore/{guild_id}.cache.db", "wb") as blacklist_cache:
-            # ORDER : word blacklist, filetype blacklist, prefix, blacklist-action, starboard-count, regex blacklist
-            for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
-                if message_config[i]:
-                    outdat = ",".join(message_config[i]).encode("utf8")
-                    blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
-                else:
-                    blacklist_cache.write(bytes(2))
+        blacklist_cache = ramfs.create_f(f"datastore/{guild_id}.cache.db")
+        # ORDER : word blacklist, filetype blacklist, prefix, blacklist-action, starboard-count, regex blacklist
+        for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
+            if message_config[i]:
+                outdat = ",".join(message_config[i]).encode("utf8")
+                blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
+            else:
+                blacklist_cache.write(bytes(2))
 
-            # Add prefix, blacklist action, starboard emoji, starboard enabled
-            for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
-                if message_config[i]:
-                    outdat = message_config[i].encode("utf8")
-                    blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
-                else:
-                    blacklist_cache.write(bytes(2))
+        # Add prefix, blacklist action, starboard emoji, starboard enabled
+        for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
+            if message_config[i]:
+                outdat = message_config[i].encode("utf8")
+                blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
+            else:
+                blacklist_cache.write(bytes(2))
 
-            # Serialize regex blacklist
-            for i in ["regex-blacklist"]:
-                if message_config[i]:
-                    preout = b""
-                    for regex in message_config[i]:
-                        preout += bytes(directBinNumber(len(regex.encode("utf8")),2))+regex.encode("utf8")
-                    blacklist_cache.write(bytes(directBinNumber(len(message_config[i]),2))+preout)
-                else:
-                    blacklist_cache.write(bytes(2))
+        # Serialize regex blacklist
+        for i in ["regex-blacklist"]:
+            if message_config[i]:
+                preout = b""
+                for regex in message_config[i]:
+                    preout += bytes(directBinNumber(len(regex.encode("utf8")),2))+regex.encode("utf8")
+                blacklist_cache.write(bytes(directBinNumber(len(message_config[i]),2))+preout)
+            else:
+                blacklist_cache.write(bytes(2))
 
         return message_config
 
