@@ -41,7 +41,7 @@ def parse_blacklist(message, blacklist):
                     broke_blacklist = True
                     infraction_type.append("FileType")
 
-    if int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
+    if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
         broke_blacklist = False
 
     return (broke_blacklist, infraction_type)
