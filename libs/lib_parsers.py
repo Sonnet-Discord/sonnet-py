@@ -12,7 +12,7 @@ def parse_blacklist(message, blacklist):
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
-        for i in message.content.lower().split(" "):
+        for i in message.content.lower().replace("\n"," ").split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
                 infraction_type.append("Word")
