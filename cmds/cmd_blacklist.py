@@ -206,6 +206,7 @@ async def change_rolewhitelist(message, args, client, stats, cmds):
     with db_handler() as database:
         database.add_to_table(f"{message.guild.id}_config",[["property","blacklist-whitelist"],["value",role]])
 
+    os.remove(f"datastore/{message.guild.id}.cache.db")
     await message.channel.send(f"Updated role whitelist to {role}")
 
 
