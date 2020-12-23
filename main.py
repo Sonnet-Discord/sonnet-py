@@ -132,7 +132,8 @@ async def on_reaction_add(reaction, user):
                 if channel and not(in_board):
 
                     db.add_to_starboard(reaction.message.id)
-                    starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content, url=reaction.message.jump_url, color=0xffa700)
+                    jump = f"\n\n[(Link)]({reaction.message.jump_url})"
+                    starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content[: 2048 - len(jump)] + jump, color=0xffa700)
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
                     starboard_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
 
