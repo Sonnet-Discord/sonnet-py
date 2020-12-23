@@ -2,8 +2,13 @@
 
 import json
 
+from sonnet_cfg import DB_TYPE
 from lib_loaders import load_message_config
-from lib_mdb_handler import db_handler
+
+if DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_handler
+elif DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_handler
 
 
 async def wb_change(message, args, client, stats, cmds, ramfs):

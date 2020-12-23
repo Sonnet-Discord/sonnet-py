@@ -39,8 +39,10 @@ def get_prefix(client, message):
 
 
 # Get db handling library
-from lib_mdb_handler import db_handler, db_error, db_hlapi
-
+if sonnet_cfg.DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_handler, db_error, db_hlapi
+elif sonnet_cfg.DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_handler, db_error, db_hlapi
 
 intents = discord.Intents.default()
 intents.typing = False

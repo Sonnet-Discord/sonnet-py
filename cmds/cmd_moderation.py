@@ -3,8 +3,13 @@
 
 import discord, datetime, time, asyncio
 
-from lib_mdb_handler import db_handler, db_hlapi
 from lib_loaders import generate_infractionid
+
+from sonnet_cfg import DB_TYPE
+if DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_handler, db_hlapi
+elif DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_handler, db_hlapi
 
 
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):

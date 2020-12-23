@@ -1,9 +1,13 @@
 # cache generation tools
 # Ultabear 2020
 
-from lib_mdb_handler import db_handler, db_error
 from sonnet_cfg import *
 import json, random, os
+
+if DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_handler, db_error
+elif DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_handler, db_error
 
 
 # LCIF system ported for blacklist loader, converted to little endian

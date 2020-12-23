@@ -2,7 +2,14 @@
 # Ultrabear 2020
 
 import re
-from lib_mdb_handler import db_handler, db_error
+from sonnet_cfg import DB_TYPE
+
+if DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_handler, db_error
+elif DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_handler, db_error
+
+
 
 def parse_blacklist(message, blacklist):
     # Preset values

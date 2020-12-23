@@ -8,8 +8,12 @@ from datetime import datetime
 import time
 import sonnet_cfg
 
-from lib_mdb_handler import db_hlapi
 from lib_loaders import load_message_config
+
+if sonnet_cfg.DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_hlapi
+elif sonnet_cfg.DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_hlapi
 
 
 def parse_userid(message, args):

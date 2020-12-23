@@ -5,10 +5,14 @@ import discord, os
 from datetime import datetime
 import json, gzip, io, time
 
-from sonnet_cfg import GLOBAL_PREFIX
-from lib_mdb_handler import db_handler, db_error
+from sonnet_cfg import GLOBAL_PREFIX, DB_TYPE
 from lib_parsers import parse_boolean, update_log_channel
 from lib_loaders import load_message_config
+
+if DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_handler, db_error
+elif DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_handler, db_error
 
 
 async def recreate_db(message, args, client, stats, cmds, ramfs):

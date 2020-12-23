@@ -2,8 +2,14 @@
 # Ultrabear 2020
 
 from lib_parsers import parse_boolean, update_log_channel
-from lib_mdb_handler import db_handler
-from sonnet_cfg import STARBOARD_EMOJI
+from sonnet_cfg import STARBOARD_EMOJI, DB_TYPE
+
+if DB_TYPE == "mariadb":
+    from lib_mdb_handler import db_handler
+elif DB_TYPE == "sqlite3":
+    from lib_sql_handler import db_handler
+
+
 
 async def starboard_channel_change(message, args, client, stats, cmds, ramfs):
     try:
