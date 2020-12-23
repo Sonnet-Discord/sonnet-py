@@ -1,6 +1,6 @@
 # Blacklist commands
 
-import os, json
+import json
 
 from lib_loaders import load_message_config
 from lib_mdb_handler import db_handler

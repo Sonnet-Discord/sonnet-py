@@ -1,8 +1,6 @@
 # Starboard system
 # Ultrabear 2020
 
-import os
-
 from lib_parsers import parse_boolean, update_log_channel
 from lib_mdb_handler import db_handler
 from sonnet_cfg import STARBOARD_EMOJI

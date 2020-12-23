@@ -1,7 +1,7 @@
 # Moderation commands
 # bredo, 2020
 
-import discord, datetime, time, random, asyncio
+import discord, datetime, time, asyncio
 
 from lib_mdb_handler import db_handler, db_hlapi
 from lib_loaders import generate_infractionid
