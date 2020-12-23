@@ -173,7 +173,7 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
             else:
                 mutetime = int(tmptime[:-1])*multiplicative_factor[tmptime[-1]]
                 del args[0]
-        except ValueError:
+        except (ValueError, TypeError):
             mutetime = 300
 
     try:

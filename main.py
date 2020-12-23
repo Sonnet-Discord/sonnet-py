@@ -218,7 +218,7 @@ async def on_message(message):
             await message.delete()
         except discord.errors.Forbidden:
             pass
-        await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules)
+        await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules, ramfs)
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
