@@ -174,7 +174,7 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
                 mutetime = int(tmptime[:-1])*multiplicative_factor[tmptime[-1]]
                 del args[0]
         except (ValueError, TypeError):
-            mutetime = 300
+            mutetime = 0
 
     try:
         automod, user, reason, infractionID = await process_infraction(message, args, client, "mute")
@@ -200,24 +200,64 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to mute this user.")
         return
-
-    # add to mutedb
-    with db_hlapi(message.guild.id) as db:
-        db.mute_user(user.id, time.time()+mutetime, infractionID)
-
-    if not automod:
-        await message.channel.send(f"Muted user with ID {user.id} for {reason}")
-
-    await asyncio.sleep(mutetime)
-
-    # unmute in db
-    with db_hlapi(message.guild.id) as db:
-        db.unmute_user(infractionID)
     
+    if not automod:
+            await message.channel.send(f"Muted user with ID {user.id} for {reason}")
+
+    if mutetime:
+        # add to mutedb
+        with db_hlapi(message.guild.id) as db:
+            db.mute_user(user.id, time.time()+mutetime, infractionID)
+
+        await asyncio.sleep(mutetime)
+
+        # unmute in db
+        with db_hlapi(message.guild.id) as db:
+            db.unmute_user(infractionID)
+
+        try:
+            await user.remove_roles(mute_role)
+        except discord.errors.Forbidden:
+            pass
+
+
+async def unmute_user(message, args, client, stats, cmds, ramfs):
+
+    # Test if user is valid
+    try:
+        user = message.channel.guild.get_member(int(args[0].strip("<@!>")))
+    except ValueError:
+        await message.channel.send("Invalid User")
+        return
+    except IndexError:
+        await message.channel.send("No user specified")
+        return
+
+    if not user:
+        await message.channel.send("Invalid User")
+        return
+
+    # Get muterole from DB
+    with db_hlapi(message.guild.id) as db:
+        mute_role = db.grab_config("mute-role")
+    
+    if mute_role:
+        mute_role = message.guild.get_role(int(mute_role))
+        if not mute_role:
+            await message.channel.send("ERROR: no muterole set")
+            return
+    else:
+        await message.channel.send("ERROR: no muterole set")
+        return
+
+    # Attempt to unmute user
     try:
         await user.remove_roles(mute_role)
     except discord.errors.Forbidden:
-        pass
+        await message.channel.send("The bot does not have permission to unmute this user.")
+        return
+    
+    await message.channel.send(f"Unmuted user with ID {user.id}")
 
 
 async def search_infractions(message, args, client, stats, cmds, ramfs):
@@ -352,11 +392,18 @@ commands = {
         'execute': ban_user
     },
     'mute': {
-        'pretty_name': 'mute [time[h|m|s]] <uid>',
-        'description': 'Mute a user, defaults to 5 min',
+        'pretty_name': 'mute [time[h|m|S]] <uid>',
+        'description': 'Mute a user, defaults to no unmute (0s)',
         'permission':'moderator',
         'cache':'keep',
         'execute': mute_user
+    },
+    'unmute': {
+        'pretty_name': 'unmute <uid>',
+        'description': 'Unmute a user',
+        'permission':'moderator',
+        'cache':'keep',
+        'execute': unmute_user
     },
     'search-infractions': {
         'pretty_name': 'search-infractions <uid>',
