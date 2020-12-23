@@ -124,7 +124,7 @@ async def on_reaction_add(reaction, user):
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
-            channel_id = db.grab_config("archive-channel")
+            channel_id = db.grab_config("starboard-channel")
             if channel_id:
 
                 channel = Client.get_channel(int(channel_id))
@@ -134,7 +134,7 @@ async def on_reaction_add(reaction, user):
                     db.add_to_starboard(reaction.message.id)
                     starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content, url=reaction.message.jump_url, color=0xffa700)
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
-                    starboard_embed.timestamp = datetime.now()
+                    starboard_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
 
                     await channel.send(embed=starboard_embed)
 
@@ -156,7 +156,7 @@ async def on_message_delete(message):
             message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
             message_embed.set_footer(text=f"Message ID: {message.id}")
-            message_embed.timestamp = datetime.now()
+            message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
             await message_log.send(embed=message_embed)
 
 
@@ -178,7 +178,7 @@ async def on_message_edit(old_message, message):
             message_embed.add_field(name="Old Message", value=old_message.content, inline=False)
             message_embed.add_field(name="New Message", value=message.content, inline=False)
             message_embed.set_footer(text=f"Message ID: {message.id}")
-            message_embed.timestamp = datetime.now()
+            message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
             await message_log.send(embed=message_embed)
 
     # Check against blacklist

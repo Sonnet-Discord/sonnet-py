@@ -7,7 +7,7 @@ from sonnet_cfg import STARBOARD_EMOJI
 
 async def starboard_channel_change(message, args, client, stats, cmds, ramfs):
     try:
-        await update_log_channel(message, args, client, "archive-channel")
+        await update_log_channel(message, args, client, "starboard-channel")
     except RuntimeError:
         return
 
