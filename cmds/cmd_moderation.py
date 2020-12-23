@@ -238,6 +238,9 @@ async def search_infractions(message, args, client, stats, cmds, ramfs):
     with db_hlapi(message.guild.id) as db:
         infractions = db.grab_user_infractions(user.id)
 
+    # Sort newest first
+    infractions.sort(reverse=True, key=lambda a: a[5])
+
     # Generate chunks from infractions
     do_not_exceed = 1950  # Discord message length limits
     chunks = [""]
