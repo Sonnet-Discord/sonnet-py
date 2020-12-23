@@ -64,6 +64,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         await user.send(embed=dm_embed)
     except AttributeError:
         pass
+    return generated_id
 
 async def process_infraction(message, args, client, infraction_type):
 
@@ -89,7 +90,7 @@ async def process_infraction(message, args, client, infraction_type):
 
     # Test if user is valid
     try:
-        user = client.get_user(int(args[0].strip("<@!>")))
+        user = message.channel.guild.get_member(int(args[0].strip("<@!>")))
     except ValueError:
         await message.channel.send("Invalid User")
         raise RuntimeError("Invalid User")
@@ -108,15 +109,15 @@ async def process_infraction(message, args, client, infraction_type):
 
 
     # Log infraction
-    await log_infraction(message, client, user.id, moderator_id, reason, infraction_type)
+    infraction_id = await log_infraction(message, client, user.id, moderator_id, reason, infraction_type)
 
-    return (automod, user, reason)
+    return (automod, user, reason, infraction_id)
 
 
 async def warn_user(message, args, client, stats, cmds, ramfs):
 
     try:
-        automod, user, reason = await process_infraction(message, args, client, "warn")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "warn")
     except RuntimeError:
         return
 
@@ -127,7 +128,7 @@ async def warn_user(message, args, client, stats, cmds, ramfs):
 async def kick_user(message, args, client, stats, cmds, ramfs):
 
     try:
-        automod, user, reason = await process_infraction(message, args, client, "kick")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "kick")
     except RuntimeError:
         return
 
@@ -145,7 +146,7 @@ async def kick_user(message, args, client, stats, cmds, ramfs):
 async def ban_user(message, args, client, stats, cmds, ramfs):
 
     try:
-        automod, user, reason = await process_infraction(message, args, client, "ban")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "ban")
     except RuntimeError:
         return
 
@@ -162,17 +163,30 @@ async def ban_user(message, args, client, stats, cmds, ramfs):
 
 async def mute_user(message, args, client, stats, cmds, ramfs):
 
+    if args:
+        try:
+            multiplicative_factor = {"s":1,"m":60,"h":3600}
+            tmptime = args[0]
+            if not tmptime[-1] in ["s","m","h"]:
+                mutetime = int(tmptime)
+                del args[0]
+            else:
+                mutetime = int(tmptime[:-1])*multiplicative_factor[tmptime[-1]]
+                del args[0]
+        except ValueError:
+            mutetime = 300
+
     try:
-        automod, user, reason = await process_infraction(message, args, client, "mute")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "mute")
     except RuntimeError:
         return
 
     # Get muterole from DB
-    with db_handler() as database:
-        mute_role = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property","mute-role"])
-
+    with db_hlapi(message.guild.id) as db:
+        mute_role = db.grab_config("mute-role")
+    
     if mute_role:
-        mute_role = message.guild.get_role(mute_role[0][1])
+        mute_role = message.guild.get_role(int(mute_role))
         if not mute_role:
             await message.channel.send("ERROR: no muterole set")
             return
@@ -182,15 +196,28 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
 
     # Attempt to mute user
     try:
-        await message.author.add_roles(mute_role)
+        await user.add_roles(mute_role)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to mute this user.")
         return
 
+    # add to mutedb
+    with db_hlapi(message.guild.id) as db:
+        db.mute_user(user.id, time.time()+mutetime, infractionID)
+
     if not automod:
         await message.channel.send(f"Muted user with ID {user.id} for {reason}")
 
-    # add auto unmute, mute database, default mute length, mute length
+    await asyncio.sleep(mutetime)
+
+    # unmute in db
+    with db_hlapi(message.guild.id) as db:
+        db.unmute_user(infractionID)
+    
+    try:
+        await user.remove_roles(mute_role)
+    except discord.errors.Forbidden:
+        pass
 
 
 async def search_infractions(message, args, client, stats, cmds, ramfs):
@@ -301,49 +328,49 @@ category_info = {
 
 commands = {
     'warn': {
-        'pretty_name': 'warn',
+        'pretty_name': 'warn <uid>',
         'description': 'Warn a user',
         'permission':'moderator',
         'cache':'keep',
         'execute': warn_user
     },
     'kick': {
-        'pretty_name': 'kick',
+        'pretty_name': 'kick <uid>',
         'description': 'Kick a user',
         'permission':'moderator',
         'cache':'keep',
         'execute': kick_user
     },
     'ban': {
-        'pretty_name': 'ban',
+        'pretty_name': 'ban <uid>',
         'description': 'Ban a user',
         'permission':'moderator',
         'cache':'keep',
         'execute': ban_user
     },
     'mute': {
-        'pretty_name': 'mute',
-        'description': 'Mute a user',
+        'pretty_name': 'mute [time[h|m|s]] <uid>',
+        'description': 'Mute a user, defaults to 5 min',
         'permission':'moderator',
         'cache':'keep',
         'execute': mute_user
     },
     'search-infractions': {
-        'pretty_name': 'search-infractions',
+        'pretty_name': 'search-infractions <uid>',
         'description': 'Grab infractions of a user',
         'permission':'moderator',
         'cache':'keep',
         'execute': search_infractions
     },
     'infraction-details': {
-        'pretty_name': 'infraction-details',
+        'pretty_name': 'infraction-details <infractionID>',
         'description': 'Grab details of an infractionID',
         'permission':'moderator',
         'cache':'keep',
         'execute': get_detailed_infraction
     },
     'delete-infraction': {
-        'pretty_name': 'delete-infraction',
+        'pretty_name': 'delete-infraction <infractionID>',
         'description': 'Delete an infraction by infractionID',
         'permission':'administrator',
         'cache':'keep',

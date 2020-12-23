@@ -139,6 +139,25 @@ async def set_prefix(message, args, client, stats, cmds, ramfs):
     await message.channel.send(f"Updated prefix to `{prefix}`")
 
 
+async def set_mute_role(message, args, client, stats, cmds, ramfs):
+    
+    if args:
+        role = args[0].strip("<@&>")
+    else:
+        await message.channel.send("No role supplied")
+        return
+
+    try:
+        role = int(role)
+    except ValueError:
+        await message.channel.send("Invalid role")
+        return
+
+    with db_handler() as database:
+        database.add_to_table(f"{message.guild.id}_config",[["property","mute-role"],["value",role]])
+
+    await message.channel.send(f"Updated Mute role to {role}")
+
 category_info = {
     'name': 'administration',
     'pretty_name': 'Administration',
@@ -195,5 +214,12 @@ commands = {
         'permission':'administrator',
         'cache':'regenerate',
         'execute': set_prefix
+    },
+    'set-muterole': {
+        'pretty_name': 'set-muterole',
+        'description': 'Set the mute role',
+        'permission':'administrator',
+        'cache':'keep',
+        'execute': set_mute_role
     }
 }

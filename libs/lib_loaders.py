@@ -3,7 +3,7 @@
 
 from lib_mdb_handler import db_handler, db_error
 from sonnet_cfg import *
-import json, random, os, math
+import json, random, os
 
 
 # LCIF system ported for blacklist loader, converted to little endian

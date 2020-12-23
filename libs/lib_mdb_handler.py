@@ -187,6 +187,15 @@ class db_hlapi:
         except db_error.OperationalError:
             pass
 
+    def mute_user(self, user, endtime, infractionID):
+        
+        self.database.add_to_table(f"{self.guild}_mutes",[["infractionID", infractionID],["userID", user],["endMute",endtime]])
+
+    def unmute_user(self, infractionID):
+        
+        self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionID])
+
+
     def close(self):
         self.database.close()
 

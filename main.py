@@ -18,7 +18,7 @@ import glob
 from datetime import datetime
 
 # Get token from environment variables.
-TOKEN = os.getenv('RHEA_TOKEN')
+TOKEN = os.environ.get('RHEA_TOKEN')
 
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, os.getcwd() + '/cmds')
@@ -244,6 +244,8 @@ async def on_message(message):
             await command_modules_dict["recreate-db"]['execute'](message, 1, Client, stats, command_modules, ramfs)
             if permission:
                 await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules, ramfs)
+        except discord.errors.Forbidden:
+            pass # Nothing we can do if we lack perms to speak
         except Exception as e:
             await message.channel.send(f"FATAL ERROR in {command}\nPlease contact bot owner")
             raise e
