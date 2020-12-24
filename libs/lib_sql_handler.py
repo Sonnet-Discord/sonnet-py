@@ -49,7 +49,7 @@ class db_handler:
     def add_to_table(self, table, data):
 
         # Add insert data and generate base tables
-        db_inputStr = f"REPLACE INTO {table} ("
+        db_inputStr = f"REPLACE INTO '{table}' ("
         db_inputList = []
         db_inputStr += ", ".join([i[0] for i in data])+ ")\n"
 
@@ -63,7 +63,7 @@ class db_handler:
     def fetch_rows_from_table(self, table, collumn_search):
 
         # Add SELECT data
-        db_inputStr = f"SELECT * FROM {table} WHERE {collumn_search[0]} = ?"
+        db_inputStr = f"SELECT * FROM '{table}' WHERE {collumn_search[0]} = ?"
         db_inputList = [collumn_search[1]]
 
         # Execute
@@ -74,7 +74,7 @@ class db_handler:
     def delete_rows_from_table(self, table, collumn_search): 
 
         # Do deletion setup
-        db_inputStr = f"DELETE FROM {table} WHERE {collumn_search[0]}=?"
+        db_inputStr = f"DELETE FROM '{table}' WHERE {collumn_search[0]}=?"
         db_inputList = [collumn_search[1]]
 
         # Execute
@@ -82,11 +82,11 @@ class db_handler:
 
     def delete_table(self, table): # drops the table specified
 
-        self.cur.execute(f"DROP TABLE IF EXISTS {table};")
+        self.cur.execute(f"DROP TABLE IF EXISTS '{table}';")
 
     def fetch_table(self, table): # Fetches a full table
 
-        self.cur.execute(f"SELECT * FROM {table};")
+        self.cur.execute(f"SELECT * FROM '{table}';")
 
         # Send data
         returndata = list(self.cur.fetchall())
