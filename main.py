@@ -59,13 +59,22 @@ Client = commands.Bot(
 # Import libraries.
 command_modules = []
 command_modules_dict = {}
-for f in os.listdir('./cmds'):
-    if f.startswith("cmd_") and f.endswith(".py"):
-        print(f)
-        command_modules.append(importlib.import_module(f[:-3]))
-for module in command_modules:
-    command_modules_dict.update(module.commands)
 
+def sonnet_load_command_modules():
+    print("Loading Kernel Modules")
+    global command_modules, command_modules_dict
+    command_modules = []
+    command_modules_dict = {}
+    for f in os.listdir('./cmds'):
+        if f.startswith("cmd_") and f.endswith(".py"):
+            print(f)
+            command_modules.append(importlib.import_module(f[:-3]))
+    for module in command_modules:
+        command_modules_dict.update(module.commands)
+sonnet_load_command_modules()
+
+# Generate debug command subset
+debug_commands = {"debug-livepatch-modules":sonnet_load_command_modules}
 
 # Import blacklist loader
 from lib_loaders import load_message_config
@@ -236,6 +245,10 @@ async def on_message(message):
             ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
             if command_modules_dict[command]['cache'] == "regenerate":
                 load_message_config(message.guild.id, ramfs)
+
+    elif command in debug_commands.keys() and sonnet_cfg.BOT_OWNER and message.author.id == int(sonnet_cfg.BOT_OWNER):
+        debug_commands[command]()
+        await message.channel.send("Debug command has run")
 
 Client.run(TOKEN, bot=True, reconnect=True)
 

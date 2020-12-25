@@ -15,3 +15,6 @@ DB_TYPE = "mariadb"
 SQLITE3_LOCATION = "datastore/sonnetdb.db"
 # SQLdb style, for rhea/sonnet connections
 SQLITE3_TYPE = "sonnet"
+
+# Set the bot owner by userid, allows debug tools
+BOT_OWNER = ""

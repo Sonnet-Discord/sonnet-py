@@ -113,7 +113,7 @@ async def set_prefix(message, args, client, stats, cmds, ramfs):
     else:
         prefix = GLOBAL_PREFIX
 
-    with db_hlapi() as database:
+    with db_hlapi(message.guild.id) as database:
         database.add_config("prefix", prefix)
 
     await message.channel.send(f"Updated prefix to `{prefix}`")
