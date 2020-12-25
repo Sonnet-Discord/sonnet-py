@@ -74,8 +74,18 @@ def sonnet_load_command_modules():
         command_modules_dict.update(module.commands)
 sonnet_load_command_modules()
 
+def sonnet_reload_command_modules():
+    print("Reloading Kernel Modules")
+    global command_modules, command_modules_dict
+    command_modules_dict = {}
+    for i in range(len(command_modules)):
+            command_modules[i] = (importlib.reload(command_modules[i]))
+    for module in command_modules:
+        command_modules_dict.update(module.commands)
+
+
 # Generate debug command subset
-debug_commands = {"debug-livepatch-modules":sonnet_load_command_modules}
+debug_commands = {"debug-modules-load":sonnet_load_command_modules, "debug-modules-reload":sonnet_reload_command_modules}
 
 # Import blacklist loader
 from lib_loaders import load_message_config
