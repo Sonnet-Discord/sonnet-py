@@ -44,8 +44,8 @@ class gdpr_functions:
 
     async def delete(message, guild_id):
 
-        with db_hlapi(message.guild.id) as database:
-            database.delete_guild_db()
+        database = db_hlapi(message.guild.id)
+        database.delete_guild_db()
 
         await message.channel.send(f"Deleted database for guild {message.guild.id}")
 

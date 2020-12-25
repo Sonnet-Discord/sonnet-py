@@ -155,6 +155,7 @@ class db_hlapi:
                 self.database.delete_table(f"{self.guild}_{i}")
             except db_error.OperationalError:
                 pass
+        self.close()
 
     def add_infraction(self, infractionid, userid, moderatorid, infractiontype, reason, timestamp):
 

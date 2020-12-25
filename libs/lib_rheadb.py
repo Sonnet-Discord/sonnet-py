@@ -144,6 +144,7 @@ class db_hlapi:
 
     def delete_guild_db(self):
 
+        self.close()
         try:
             os.remove(f"datastore/{self.guild}.db")
         except FileNotFoundError:
