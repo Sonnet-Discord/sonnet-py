@@ -13,7 +13,7 @@ from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 
 
-def parse_userid(message, args):
+async def parse_userid(message, args):
 
     # Get user ID from the message, otherwise use the author's ID.
     try:
@@ -21,13 +21,15 @@ def parse_userid(message, args):
     except IndexError:
         id_to_probe = message.author.id
     except ValueError:
-        id_to_probe = message.author.id
+        await message.channel.send("Invalid userid")
+        raise RuntimeError
 
     # Get the Member object by user ID, otherwise fail.
     user_object = message.guild.get_member(id_to_probe)
     # Secondary catch if actually getting the member succeeds but passes nothing to the variable.
     if not user_object:
-        user_object = message.author
+        await message.channel.send("Invalid userid")
+        raise RuntimeError
 
     return user_object
 
@@ -45,7 +47,10 @@ async def ping_function(message, args, client, stats, cmds, ramfs):
 
 async def profile_function(message, args, client, stats, cmds, ramfs):
 
-    user_object = parse_userid(message, args)
+    try:
+        user_object = await parse_userid(message, args)
+    except RuntimeError:
+        return
 
     # Put here to comply with formatting guidelines.
     created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
@@ -80,7 +85,10 @@ async def profile_function(message, args, client, stats, cmds, ramfs):
 
 async def avatar_function(message, args, client, stats, cmd_modules, ramfs):
 
-    user_object = parse_userid(message, args)
+    try:
+        user_object = await parse_userid(message, args)
+    except RuntimeError:
+        return
 
     embed=discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
     embed.set_image(url=user_object.avatar_url)
