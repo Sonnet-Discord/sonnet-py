@@ -4,10 +4,7 @@
 from sonnet_cfg import *
 import json, random, os
 
-if DB_TYPE == "mariadb":
-    from lib_mdb_handler import db_handler, db_error
-elif DB_TYPE == "sqlite3":
-    from lib_sql_handler import db_handler, db_error
+from lib_db_obfuscator import db_hlapi
 
 
 # LCIF system ported for blacklist loader, converted to little endian
@@ -38,17 +35,12 @@ def load_message_config(guild_id, ramfs):
         return message_config
 
     except FileNotFoundError:
-        db = db_handler()
+        db = db_hlapi(guild_id)
         message_config = {}
 
         # Loads base db
         for i in ["word-blacklist","regex-blacklist","filetype-blacklist","prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","word-in-word-blacklist","blacklist-whitelist"]:
-            try:
-                message_config[i] = db.fetch_rows_from_table(f"{guild_id}_config", ["property",i])[0][1]
-            except db_error.OperationalError:
-                message_config[i] = []
-            except IndexError:
-                message_config[i] = []
+            message_config[i] = db.grab_config(i)
         db.close()
 
         # Loads regex

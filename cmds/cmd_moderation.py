@@ -4,25 +4,20 @@
 import discord, datetime, time, asyncio
 
 from lib_loaders import generate_infractionid
-
-from sonnet_cfg import DB_TYPE
-if DB_TYPE == "mariadb":
-    from lib_mdb_handler import db_handler, db_hlapi
-elif DB_TYPE == "sqlite3":
-    from lib_sql_handler import db_handler, db_hlapi
+from lib_db_obfuscator import db_hlapi
 
 
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
     send_message = True
-    with db_handler() as database:
+    with db_hlapi(message.guild.id) as database:
 
         # Collision test
         generated_id = generate_infractionid()
-        while database.fetch_rows_from_table(f"{message.guild.id}_infractions", ["infractionID", generated_id]):
+        while database.grab_infraction(generated_id):
             generated_id = generate_infractionid()
 
         # Grab log channel id from db
-        channel_id = database.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "infraction-log"])
+        channel_id = database.grab_config("infraction-log")
 
 
 
@@ -39,14 +34,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
 
 
         # Send infraction to database
-        database.add_to_table(f"{message.guild.id}_infractions", [
-            ["infractionID", generated_id],
-            ["userID", user_id],
-            ["moderatorID", moderator_id],
-            ["type", infraction_type],
-            ["reason", infraction_reason],
-            ["timestamp", round(time.time())]
-            ])
+        database.add_infraction(generated_id, user_id, moderator_id, infraction_type, infraction_reason, round(time.time()))
 
     user = client.get_user(int(user_id))
 
@@ -67,7 +55,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         await log_channel.send(embed=embed)
     try: # If the user is a bot it cannot be DM'd
         await user.send(embed=dm_embed)
-    except AttributeError:
+    except (AttributeError, discord.errors.HTTPException):
         pass
     return generated_id
 

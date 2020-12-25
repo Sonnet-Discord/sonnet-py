@@ -39,10 +39,7 @@ def get_prefix(client, message):
 
 
 # Get db handling library
-if sonnet_cfg.DB_TYPE == "mariadb":
-    from lib_mdb_handler import db_handler, db_error, db_hlapi
-elif sonnet_cfg.DB_TYPE == "sqlite3":
-    from lib_sql_handler import db_handler, db_error, db_hlapi
+from lib_db_obfuscator import db_hlapi
 
 intents = discord.Intents.default()
 intents.typing = False
@@ -105,19 +102,8 @@ async def on_ready():
 # Bot joins a guild
 @Client.event
 async def on_guild_join(guild):
-    with db_handler() as db:
-        db.make_new_table(f"{guild.id}_config",[["property", tuple, 1], ["value", str]])
-        db.make_new_table(f"{guild.id}_infractions", [
-        ["infractionID", tuple, 1],
-        ["userID", str],
-        ["moderatorID", str],
-        ["type", str],
-        ["reason", str],
-        ["timestamp", int(64)]
-        ])
-        db.make_new_table(f"{guild.id}_starboard", [["messageID", tuple, 1]])
-        db.make_new_table(f"{guild.id}_mutes", [["infractionID", tuple, 1],["userID", str],["endMute",int(64)]])
-
+    with db_hlapi(guild.id) as db:
+        db.create_guild_db()
 
 # Handle starboard system
 @Client.event
@@ -151,8 +137,8 @@ async def on_message_delete(message):
         return
 
     # Add to log
-    with db_handler() as db:
-       message_log = db.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "message-log"])
+    with db_hlapi(message.guild.id) as db:
+       message_log = db.grab_config("message-log")
     if message_log:
         message_log = Client.get_channel(int(message_log[0][1]))
         if message_log:
@@ -171,8 +157,8 @@ async def on_message_edit(old_message, message):
         return
 
     # Add to log
-    with db_handler() as db:
-       message_log = db.fetch_rows_from_table(f"{message.guild.id}_config", ["property", "message-log"])
+    with db_hlapi(message.guild.id) as db:
+       message_log = db.grab_config("message-log")
     if message_log:
         message_log = Client.get_channel(int(message_log[0][1]))
         if message_log:
@@ -240,12 +226,6 @@ async def on_message(message):
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
-                await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules, ramfs)
-        # Correct dberrors
-        except db_error.OperationalError:
-            await message.channel.send("Database missing components, rebuilding")
-            await command_modules_dict["recreate-db"]['execute'](message, 1, Client, stats, command_modules, ramfs)
-            if permission:
                 await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules, ramfs)
         except discord.errors.Forbidden:
             pass # Nothing we can do if we lack perms to speak

@@ -2,76 +2,43 @@
 
 import json
 
-from sonnet_cfg import DB_TYPE
 from lib_loaders import load_message_config
+from lib_db_obfuscator import db_hlapi
 
-if DB_TYPE == "mariadb":
-    from lib_mdb_handler import db_handler
-elif DB_TYPE == "sqlite3":
-    from lib_sql_handler import db_handler
 
+async def update_csv_blacklist(message, args, name):
+
+    if not(args) or len(args) != 1:
+        await message.channel.send(f"Malformed {name}")
+        raise RuntimeError(f"Malformed {name}")
+
+    with db_hlapi(message.guild.id) as db:
+        db.add_config(name, args[0])
+
+    await message.channel.send(f"Updated {name} sucessfully")
 
 async def wb_change(message, args, client, stats, cmds, ramfs):
-    # Use original null string for cross-compatibility.
-    word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p"
 
-
-    if len(args) > 1:
-        await message.channel.send("Malformed word blacklist.")
-        return
-
-    if len(args) == 1:
-        word_blacklist = args[0]
-
-    # Update word-blacklist in DB
-    with db_handler() as db:
-        db.add_to_table(f"{message.guild.id}_config", [
-            ["property", "word-blacklist"],
-            ["value", word_blacklist]
-            ])
-    await message.channel.send("Word blacklist updated successfully.")
+    try:
+        update_csv_blacklist(message, args, "word-blacklist")
+    except RuntimeError:
+        pass
 
 
 async def word_in_word_change(message, args, client, stats, cmds, ramfs):
-    # Use original null string for cross-compatibility.
-    word_blacklist = "wsjg0operuyhg0834rjhg3408ghyu3goijwrgp9jgpoeij43p"
 
-
-    if len(args) > 1:
-        await message.channel.send("Malformed word blacklist.")
-        return
-
-    if len(args) == 1:
-        word_blacklist = args[0]
-
-    # Update word-blacklist in DB
-    with db_handler() as db:
-        db.add_to_table(f"{message.guild.id}_config", [
-            ["property", "word-in-word-blacklist"],
-            ["value", word_blacklist]
-            ])
-    await message.channel.send("Word in word blacklist updated successfully.")
+    try:
+        update_csv_blacklist(message, args, "word-in-word-blacklist")
+    except RuntimeError:
+        pass
 
 
 async def ftb_change(message, args, client, stats, cmds, ramfs):
 
-    if len(args) > 1:
-        await message.channel.send("Malformed filetype blacklist.")
-        return
-
-    if len(args) == 1:
-        filetype_blacklist = args[0]
-    else:
-        await message.channel.send("ERROR: No blacklist supplied")
-        return
-
-    # Update word-blacklist in DB
-    with db_handler() as db:
-        db.add_to_table(f"{message.guild.id}_config", [
-            ["property", "filetype-blacklist"],
-            ["value", filetype_blacklist]
-            ])
-    await message.channel.send("FileType blacklist updated successfully.")
+    try:
+        update_csv_blacklist(message, args, "filetype-blacklist")
+    except RuntimeError:
+        pass
 
 
 async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
@@ -82,12 +49,12 @@ async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
         return
 
     # Load DB
-    with db_handler() as database:
+    with db_hlapi(message.guild.id) as database:
 
         # Attempt to read blacklist if exists
         try:
-            curlist = json.loads(database.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
-        except (json.decoder.JSONDecodeError, IndexError):
+            curlist = json.loads(database.grab_config("regex-blacklist"))
+        except json.decoder.JSONDecodeError:
             curlist = {"blacklist":[]}
 
         # Check if valid RegEx
@@ -98,7 +65,7 @@ async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
             await message.channel.send("ERROR: Malformed RegEx")
             return
 
-        database.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
+        database.add_config("regex-blacklist", json.dumps(curlist))
 
     await message.channel.send("Sucessfully Updated RegEx")
 
@@ -111,12 +78,12 @@ async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
         return
 
     # Load DB
-    with db_handler() as database:
+    with db_hlapi(message.guild.id) as database:
 
         # Attempt to read blacklist if exists
         try:
-            curlist = json.loads(database.fetch_rows_from_table(f"{message.guild.id}_config",["property","regex-blacklist"])[0][1])
-        except (json.decoder.JSONDecodeError, IndexError):
+            curlist = json.loads(database.grab_config("regex-blacklist"))
+        except json.decoder.JSONDecodeError:
             await message.channel.send("ERROR: There is no RegEx")
             return
 
@@ -129,7 +96,7 @@ async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
             return
 
         # Update DB
-        database.add_to_table(f"{message.guild.id}_config",[["property","regex-blacklist"],["value",json.dumps(curlist)]])
+        database.add_config("regex-blacklist", json.dumps(curlist))
 
     await message.channel.send("Sucessfully Updated RegEx")
 
@@ -171,11 +138,11 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds, ram
         action = ""
 
     if not action in ["warn","kick","mute","ban"]:
-        await message.channel.send("Blacklist action is not valid")
+        await message.channel.send("Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
         return
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config", [["property","blacklist-action"],["value", action]])
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("blacklist-action", action)
 
     await message.channel.send(f"Updated blacklist action to `{action}`")
 
@@ -194,8 +161,8 @@ async def change_rolewhitelist(message, args, client, stats, cmds, ramfs):
         await message.channel.send("Invalid role")
         return
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config",[["property","blacklist-whitelist"],["value",role]])
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("blacklist-whitelist", role)
 
     await message.channel.send(f"Updated role whitelist to {role}")
 

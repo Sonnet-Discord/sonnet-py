@@ -4,11 +4,7 @@
 import re
 from sonnet_cfg import DB_TYPE
 
-if DB_TYPE == "mariadb":
-    from lib_mdb_handler import db_handler, db_error
-elif DB_TYPE == "sqlite3":
-    from lib_sql_handler import db_handler, db_error
-
+from lib_db_obfuscator import db_hlapi
 
 
 def parse_blacklist(message, blacklist):
@@ -107,11 +103,8 @@ async def update_log_channel(message, args, client, log_name):
         raise RuntimeError("Channel is not in guild")
 
     # Nothing failed so send to db
-    with db_handler() as db:
-        db.add_to_table(f"{message.guild.id}_config", [
-            ["property", log_name],
-            ["value", log_channel]
-            ])
+    with db_hlapi(message.guild.id) as db:
+        db.add_config(log_name, log_channel)
 
     await message.channel.send(f"Successfully updated {log_name}")
 

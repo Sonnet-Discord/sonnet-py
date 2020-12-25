@@ -3,12 +3,7 @@
 
 from lib_parsers import parse_boolean, update_log_channel
 from sonnet_cfg import STARBOARD_EMOJI, DB_TYPE
-
-if DB_TYPE == "mariadb":
-    from lib_mdb_handler import db_handler
-elif DB_TYPE == "sqlite3":
-    from lib_sql_handler import db_handler
-
+from lib_db_obfuscator import db_hlapi
 
 
 async def starboard_channel_change(message, args, client, stats, cmds, ramfs):
@@ -25,8 +20,8 @@ async def set_starboard_emoji(message, args, client, stats, cmds, ramfs):
     else:
         emoji = STARBOARD_EMOJI
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config",[["property", "starboard-emoji"],["value", emoji]])
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("starboard-emoji", emoji)
 
     await message.channel.send(f"Updated starboard emoji to {emoji}")
 
@@ -38,8 +33,8 @@ async def set_starboard_use(message, args, client, stats, cmds, ramfs):
     else:
         gate = False
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config",[["property", "starboard-enabled"],["value", int(gate)]])
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("starboard-enabled", int(gate))
 
     await message.channel.send(f"Starboard set to {bool(gate)}")
 
@@ -56,8 +51,8 @@ async def set_starboard_count(message, args, client, stats, cmds, ramfs):
         await message.channel.send("No input")
         return
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config",[["property","starboard-count"],["value",count]])
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("starboard-count", count)
 
     await message.channel.send(f"Updated starboard count to {count}")
 

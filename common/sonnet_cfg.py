@@ -8,7 +8,10 @@ BLACKLIST_ACTION = "warn"
 STARBOARD_EMOJI = "⭐"
 # Default starboard reaction threshhold, can be set per server
 STARBOARD_COUNT = "5"
+
 # chose between using mariadb or sqlite3
-DB_TYPE = "mariadb"
-# only needs to be set if using sqlite3 db, mariadb login is stored in .login-info.txt
+DB_TYPE = "sqlite3"
+# only needs to be set if using sqlite3 db in sonnet mode, mariadb login is stored in .login-info.txt
 SQLITE3_LOCATION = "datastore/sonnetdb.db"
+# SQLdb style, for rhea/sonnet connections
+SQLITE3_TYPE = "rhea"

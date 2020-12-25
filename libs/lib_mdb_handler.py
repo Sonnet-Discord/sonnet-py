@@ -8,9 +8,7 @@ class db_error: # DB error codes
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
-    def __init__(self):
-        with open(".login-info.txt") as login_info_file:  # Grab login data
-            login_info = json.load(login_info_file)
+    def __init__(self, login_info):
 
         # Connect to database with login info
         self.con = mariadb.connect(
@@ -111,95 +109,5 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __exit__(self, err_type, err_value, err_traceback):
         self.con.commit()
         self.con.close()
-        if err_type:
-            raise err_type(err_value)
-
-
-# Because being lazy writes good code
-class db_hlapi:
-
-    def __init__(self, guild_id):
-        self.database = db_handler()
-        self.guild = guild_id
-
-    def __enter__(self):
-        return self
-
-    def grab_config(self, config):
-
-        try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property",config])
-        except db_error.OperationalError:
-            data = []
-
-        if data:
-            return data[0][1]
-        else:
-            return []
-
-    def grab_user_infractions(self, userid):
-
-        try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID",userid])
-        except db_error.OperationalError:
-            data = []
-
-        return data
-
-    # Check if a message is on the starboard already
-    def in_starboard(self, message_id):
-        
-        try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
-        except db_error.OperationalError:
-            data = True
-        
-        if data:
-            return True
-        else:
-            return False
-        
-    def add_to_starboard(self, message_id):
-
-        try:
-            self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-        except db_error.OperationalError:
-            return False
-
-        return True
-
-    def grab_infraction(self, infractionID):
-
-        try:
-            infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions",["infractionID",infractionID])
-        except db_error.OperationalError:
-            infraction = None
-
-        if infraction:
-            return infraction[0]
-        else:
-            return False
-
-    def delete_infraction(self, infraction_id):
-
-        try:
-            self.database.delete_rows_from_table(f"{self.guild}_infractions",["infractionID",infraction_id])
-        except db_error.OperationalError:
-            pass
-
-    def mute_user(self, user, endtime, infractionID):
-        
-        self.database.add_to_table(f"{self.guild}_mutes",[["infractionID", infractionID],["userID", user],["endMute",endtime]])
-
-    def unmute_user(self, infractionID):
-        
-        self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionID])
-
-
-    def close(self):
-        self.database.close()
-
-    def __exit__(self, err_type, err_value, err_traceback):
-        self.database.close()
         if err_type:
             raise err_type(err_value)

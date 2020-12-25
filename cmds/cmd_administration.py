@@ -5,31 +5,18 @@ import discord, os
 from datetime import datetime
 import json, gzip, io, time
 
-from sonnet_cfg import GLOBAL_PREFIX, DB_TYPE
+from sonnet_cfg import GLOBAL_PREFIX
 from lib_parsers import parse_boolean, update_log_channel
 from lib_loaders import load_message_config
-
-if DB_TYPE == "mariadb":
-    from lib_mdb_handler import db_handler, db_error
-elif DB_TYPE == "sqlite3":
-    from lib_sql_handler import db_handler, db_error
+from lib_db_obfuscator import db_hlapi
 
 
 async def recreate_db(message, args, client, stats, cmds, ramfs):
-    
-    with db_handler() as db:
-        db.make_new_table(f"{message.guild.id}_config",[["property", tuple, 1], ["value", str]])
-        db.make_new_table(f"{message.guild.id}_infractions", [
-        ["infractionID", tuple, 1],
-        ["userID", str],
-        ["moderatorID", str],
-        ["type", str],
-        ["reason", str],
-        ["timestamp", int(64)]
-        ])
-        db.make_new_table(f"{message.guild.id}_starboard", [["messageID", tuple, 1]])
-        db.make_new_table(f"{message.guild.id}_mutes", [["infractionID", tuple, 1],["userID", str],["endMute",int(64)]])
-    await message.channel.send("done (unless something broke)")
+
+    with db_hlapi(message.guild.id) as db:
+        db.create_guild_db()
+
+    await message.channel.send("Done")
 
 
 async def inflog_change(message, args, client, stats, cmds, ramfs):
@@ -57,34 +44,23 @@ class gdpr_functions:
 
     async def delete(message, guild_id):
 
-        with db_handler() as database:
-            for i in ["_config","_infractions","_mutes","_starboard"]:
-                database.delete_table(f"{guild_id}{i}")
+        with db_hlapi(message.guild.id) as database:
+            database.delete_guild_db()
 
         await message.channel.send(f"Deleted database for guild {message.guild.id}")
 
     async def download(message, guild_id):
 
         timestart = time.time()
-        dbdict = {
-            "config":[["property","value"]],
-            "infractions":[["infractionID","userID","moderatorID","type","reason","timestamp"]],
-            "mutes":[["infractionID","userID","endMute"]],
-            "starboard":[["messageID"]]
-            }
-
-        with db_handler() as database:
-            for i in ["config","infractions","starboard","mutes"]:
-                try:
-                    dbdict[i].extend(database.fetch_table(f"{guild_id}_{i}"))
-                except db_error.OperationalError:
-                    await message.channel.send(f"Could not grab {i}, it may not exist")
+        with db_hlapi(guild_id) as database:
+            dbdict = database.download_guild_db()
 
         # Convert to compressed json
         file_to_upload = io.BytesIO()
         with gzip.GzipFile(filename=f"{guild_id}.db.json.gz", mode="wb", fileobj=file_to_upload) as txt:
             txt.write(json.dumps(dbdict, indent=4).encode("utf8"))
         file_to_upload.seek(0)
+
         # Finalize discord file obj
         fileobj = discord.File(file_to_upload, filename="database.gz")
 
@@ -124,8 +100,8 @@ async def set_view_infractions(message, args, client, stats, cmds, ramfs):
     else:
         gate = False
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config",[["property", "member-view-infractions"],["value", int(gate)]])
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("member-view-infractions", int(gate))
 
     await message.channel.send(f"Member View Own Infractions set to {gate}")
 
@@ -137,8 +113,8 @@ async def set_prefix(message, args, client, stats, cmds, ramfs):
     else:
         prefix = GLOBAL_PREFIX
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config", [["property","prefix"],["value",prefix]])
+    with db_hlapi() as database:
+        database.add_config("prefix", prefix)
 
     await message.channel.send(f"Updated prefix to `{prefix}`")
 
@@ -157,8 +133,8 @@ async def set_mute_role(message, args, client, stats, cmds, ramfs):
         await message.channel.send("Invalid role")
         return
 
-    with db_handler() as database:
-        database.add_to_table(f"{message.guild.id}_config",[["property","mute-role"],["value",role]])
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("mute-role", role)
 
     await message.channel.send(f"Updated Mute role to {role}")
 
