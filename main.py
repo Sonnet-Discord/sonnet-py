@@ -68,6 +68,7 @@ def sonnet_load_command_modules():
     for f in os.listdir('./cmds'):
         if f.startswith("cmd_") and f.endswith(".py"):
             print(f)
+            importlib.invalidate_caches()
             command_modules.append(importlib.import_module(f[:-3]))
     for module in command_modules:
         command_modules_dict.update(module.commands)
