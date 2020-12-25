@@ -47,7 +47,7 @@ class gdpr_functions:
         database = db_hlapi(message.guild.id)
         database.delete_guild_db()
 
-        await message.channel.send(f"Deleted database for guild {message.guild.id}")
+        await message.channel.send(f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache file and db again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server")
 
     async def download(message, guild_id):
 
@@ -88,8 +88,8 @@ async def gdpr_database(message, args, client, stats, cmds, ramfs):
             await message.channel.send(f"Please provide the guildid to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
         message_embed = discord.Embed(title="GDPR COMMANDS", color=0xADD8E6)
-        message_embed.add_field(name=f"{PREFIX}gdpr download <guildid>", value="Download the infraction and config databases of this guild", inline=False)
-        message_embed.add_field(name=f"{PREFIX}gdpr delete <guildid>", value="Delete the infraction and config databases of this guild and clear cache", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr download <guildid>", value="Download the databases of this guild", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr delete <guildid>", value="Delete the databases of this guild and clear cache", inline=False)
         await message.channel.send(embed=message_embed)
 
 
