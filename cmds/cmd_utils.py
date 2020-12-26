@@ -58,7 +58,7 @@ async def profile_function(message, args, client, stats, cmds, ramfs):
 
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
     joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
-
+s
     embed=discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
@@ -79,7 +79,7 @@ async def profile_function(message, args, client, stats, cmds, ramfs):
         if moderator or (viewinfs and user_object.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
 
-    embed.timestamp = datetime.now()
+    embed.timestamp = datetime.utcnow()
     await message.channel.send(embed=embed)
 
 
@@ -92,7 +92,7 @@ async def avatar_function(message, args, client, stats, cmd_modules, ramfs):
 
     embed=discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
     embed.set_image(url=user_object.avatar_url)
-    embed.timestamp = datetime.now()
+    embed.timestamp = datetime.utcnow()
     await message.channel.send(embed=embed)
 
 
