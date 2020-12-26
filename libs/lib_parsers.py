@@ -31,7 +31,7 @@ def parse_blacklist(message, blacklist):
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
-        if re.findall(i, message.content):
+        if re.findall(i, message.content.lower()):
             broke_blacklist = True
             infraction_type.append("RegEx")
 
