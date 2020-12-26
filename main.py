@@ -160,7 +160,7 @@ async def on_message_delete(message):
     with db_hlapi(message.guild.id) as db:
        message_log = db.grab_config("message-log")
     if message_log:
-        message_log = Client.get_channel(int(message_log[0][1]))
+        message_log = Client.get_channel(int(message_log))
         if message_log:
             message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
@@ -180,7 +180,7 @@ async def on_message_edit(old_message, message):
     with db_hlapi(message.guild.id) as db:
        message_log = db.grab_config("message-log")
     if message_log:
-        message_log = Client.get_channel(int(message_log[0][1]))
+        message_log = Client.get_channel(int(message_log))
         if message_log:
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
