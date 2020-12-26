@@ -1,2 +1,2 @@
-discord.py
-mariadb
+discord.py >= 1.5.1
+mariadb >= 1.0.5

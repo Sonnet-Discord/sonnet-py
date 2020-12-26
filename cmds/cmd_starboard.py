@@ -1,0 +1,96 @@
+# Starboard system
+# Ultrabear 2020
+
+from lib_parsers import parse_boolean, update_log_channel
+from sonnet_cfg import STARBOARD_EMOJI, DB_TYPE
+from lib_db_obfuscator import db_hlapi
+
+
+async def starboard_channel_change(message, args, client, stats, cmds, ramfs):
+    try:
+        await update_log_channel(message, args, client, "starboard-channel")
+    except RuntimeError:
+        return
+
+
+async def set_starboard_emoji(message, args, client, stats, cmds, ramfs):
+
+    if args:
+        emoji = args[0]
+    else:
+        emoji = STARBOARD_EMOJI
+
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("starboard-emoji", emoji)
+
+    await message.channel.send(f"Updated starboard emoji to {emoji}")
+
+
+async def set_starboard_use(message, args, client, stats, cmds, ramfs):
+
+    if args:
+        gate = parse_boolean(args[0])
+    else:
+        gate = False
+
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("starboard-enabled", int(gate))
+
+    await message.channel.send(f"Starboard set to {bool(gate)}")
+
+
+async def set_starboard_count(message, args, client, stats, cmds, ramfs):
+
+    if args:
+        try:
+            count = int(float(args[0]))
+        except ValueError:
+            await message.channel.send("Invalid input, please enter a number")
+            return
+    else:
+        await message.channel.send("No input")
+        return
+
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("starboard-count", count)
+
+    await message.channel.send(f"Updated starboard count to {count}")
+
+
+category_info = {
+    'name': 'starboard',
+    'pretty_name': 'Starboard',
+    'description': 'Starboard commands.'
+}
+
+
+commands = {
+    'starboard-channel': {
+        'pretty_name': 'starboard-channel <channel>',
+        'description': 'Change Starboard for this guild.',
+        'permission':'administrator',
+        'cache':'keep',
+        'execute': starboard_channel_change
+    },
+    'starboard-emoji': {
+        'pretty_name': 'starboard-emoji <emoji>',
+        'description': 'Set the starboard emoji',
+        'permission':'administrator',
+        'cache':'regenerate',
+        'execute': set_starboard_emoji
+    },
+    'starboard-enabled': {
+        'pretty_name': 'starboard-enabled <boolean value>',
+        'description': 'Toggle starboard on or off',
+        'permission':'administrator',
+        'cache':'regenerate',
+        'execute': set_starboard_use
+    },
+    'starboard-count': {
+        'pretty_name': 'starboard-count <number>',
+        'description': 'Set starboard reaction count threshold',
+        'permission':'administrator',
+        'cache':'regenerate',
+        'execute': set_starboard_count
+    }        
+}

@@ -8,33 +8,36 @@ from datetime import datetime
 import time
 import sonnet_cfg
 
+from lib_loaders import load_message_config
 
-GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
+from lib_db_obfuscator import db_hlapi
 
 
-def parse_userid(message, args):
-    
+async def parse_userid(message, args):
+
     # Get user ID from the message, otherwise use the author's ID.
     try:
         id_to_probe = int(args[0].strip("<@!>"))
     except IndexError:
         id_to_probe = message.author.id
     except ValueError:
-        id_to_probe = message.author.id
+        await message.channel.send("Invalid userid")
+        raise RuntimeError
 
     # Get the Member object by user ID, otherwise fail.
     user_object = message.guild.get_member(id_to_probe)
     # Secondary catch if actually getting the member succeeds but passes nothing to the variable.
     if not user_object:
-        user_object = message.author
+        await message.channel.send("Invalid userid")
+        raise RuntimeError
 
     return user_object
 
 
-async def ping_function(message, args, client, stats, cmds):
+async def ping_function(message, args, client, stats, cmds, ramfs):
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
     ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
-    ping_embed.add_field(name="Load Blacklist", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
+    ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
     ping_embed.add_field(name="Process Blacklist", value=str((stats["end-blacklist"] - stats["start-blacklist"])/100) + "ms", inline=False)
     time_to_send = round(time.time()*10000)
     sent_message = await message.channel.send(embed=ping_embed)
@@ -42,14 +45,17 @@ async def ping_function(message, args, client, stats, cmds):
     await sent_message.edit(embed=ping_embed)
 
 
-async def profile_function(message, args, client, stats, cmds):
-    
-    user_object = parse_userid(message, args)
+async def profile_function(message, args, client, stats, cmds, ramfs):
+
+    try:
+        user_object = await parse_userid(message, args)
+    except RuntimeError:
+        return
 
     # Put here to comply with formatting guidelines.
     created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
     created_string += f" ({(datetime.utcnow() - user_object.created_at).days} days ago)"
-    
+
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
     joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
 
@@ -61,21 +67,36 @@ async def profile_function(message, args, client, stats, cmds):
     embed.add_field(name="Highest Rank", value=f"{user_object.top_role.mention}", inline=True)
     embed.add_field(name="Created", value=created_string, inline=True)
     embed.add_field(name="Joined", value=joined_string, inline=True)
+
+    # Parse adding infraction count
+    with db_hlapi(message.guild.id) as db:
+        viewinfs = db.grab_config("member-view-infractions")
+        if viewinfs:
+            viewinfs = bool(int(viewinfs))
+        else:
+            viewinfs = False
+        moderator = message.author.permissions_in(message.channel).kick_members
+        if moderator or (viewinfs and user_object.id == message.author.id):
+            embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
+
     embed.timestamp = datetime.now()
     await message.channel.send(embed=embed)
 
 
-async def avatar_function(message, args, client, stats, cmd_modules):
-    
-    user_object = parse_userid(message, args)
-    
+async def avatar_function(message, args, client, stats, cmd_modules, ramfs):
+
+    try:
+        user_object = await parse_userid(message, args)
+    except RuntimeError:
+        return
+
     embed=discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
     embed.set_image(url=user_object.avatar_url)
     embed.timestamp = datetime.now()
     await message.channel.send(embed=embed)
 
 
-async def help_function(message, args, client, stats, cmd_modules):
+async def help_function(message, args, client, stats, cmd_modules, ramfs):
     # Check arguments and such.
     lookup = False
 
@@ -117,13 +138,16 @@ async def help_function(message, args, client, stats, cmd_modules):
                 # We can now break out of this for loop.
                 break
 
+        # Load prefix
+        PREFIX = load_message_config(message.guild.id, ramfs)["prefix"]
+
         # Now we generate the actual embed.
         if len(cmds) < 1:
             embed.add_field(name="No commands found in this category.", value="Maybe you misspelled?", inline=False)
         else:
             for info in cmds:
                 # Add field.
-                embed.add_field(name=GLOBAL_PREFIX + info['pretty_name'], value=info['description'], inline=False)
+                embed.add_field(name=PREFIX + info['pretty_name'], value=info['description'], inline=False)
 
     # Now we have the final embed. Send it.
     await message.channel.send(embed=embed)
@@ -140,21 +164,29 @@ commands = {
     'ping': {
         'pretty_name': 'ping',
         'description': 'Ping bot.',
+        'permission':'everyone',
+        'cache':'keep',
         'execute': ping_function
     },
     'profile': {
-        'pretty_name': 'profile',
+        'pretty_name': 'profile [user]',
         'description': 'Profile.',
+        'permission':'everyone',
+        'cache':'keep',
         'execute': profile_function
     },
     'help': {
         'pretty_name': 'help',
         'description': 'Get help.',
+        'permission':'everyone',
+        'cache':'keep',
         'execute': help_function
     },
     'avatar': {
-        'pretty_name': 'avatar',
+        'pretty_name': 'avatar [user]',
         'description': 'Get Avatar',
+        'permission':'everyone',
+        'cache':'keep',
         'execute': avatar_function
     }
 }
