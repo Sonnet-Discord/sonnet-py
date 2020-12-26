@@ -160,7 +160,7 @@ class db_hlapi:
     def add_infraction(self, infractionid, userid, moderatorid, infractiontype, reason, timestamp):
 
             try:
-                self.database.add_to_table(f"{message.guild.id}_infractions", [
+                self.database.add_to_table(f"{self.guild}_infractions", [
                 ["infractionID", infractionid],
                 ["userID", userid],
                 ["moderatorID", moderatorid],
@@ -170,7 +170,7 @@ class db_hlapi:
                 ])
             except db_error.OperationalError:
                 self.create_guild_db()
-                self.database.add_to_table(f"{message.guild.id}_infractions", [
+                self.database.add_to_table(f"{self.guild}_infractions", [
                 ["infractionID", infractionid],
                 ["userID", userid],
                 ["moderatorID", moderatorid],
