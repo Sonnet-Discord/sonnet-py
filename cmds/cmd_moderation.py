@@ -176,6 +176,9 @@ async def unban_user(message, args, client, stats, cmds, ramfs):
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unban this user.")
         return
+    except discord.errors.NotFound:
+        await message.channel.send("This user is not banned")
+        return
 
 
 async def mute_user(message, args, client, stats, cmds, ramfs):
