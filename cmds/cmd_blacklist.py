@@ -193,7 +193,7 @@ commands = {
         'pretty_name': 'wiwb-change <csv list>',
         'description': 'Change the WordInWord blacklist.',
         'permission':'administrator',
-        'cache':'keep',
+        'cache':'regenerate',
         'execute': word_in_word_change
     },
     'remove-regexblacklist': {
