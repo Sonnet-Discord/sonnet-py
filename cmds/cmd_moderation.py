@@ -23,7 +23,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
 
         # Generate log channel object
         if channel_id:  # If ID exists then use it
-            log_channel = client.get_channel(int(channel_id[0][1]))
+            log_channel = client.get_channel(int(channel_id))
         else:
             log_channel = None
             send_message = False
