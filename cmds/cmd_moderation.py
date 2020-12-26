@@ -154,6 +154,30 @@ async def ban_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send(f"Banned user with ID {user.id} for {reason}")
 
 
+async def unban_user(message, args, client, stats, cmds, ramfs):
+
+    # Test if user is valid
+    try:
+        user = client.fetch_user(int(args[0].strip("<@!>")))
+    except ValueError:
+        await message.channel.send("Invalid User")
+        return
+    except IndexError:
+        await message.channel.send("No user specified")
+        return
+
+    if not user:
+        await message.channel.send("Invalid User")
+        return
+
+    # Attempt to unban user
+    try:
+        await message.guild.unban(user)
+    except discord.errors.Forbidden:
+        await message.channel.send("The bot does not have permission to unban this user.")
+        return
+
+
 async def mute_user(message, args, client, stats, cmds, ramfs):
 
     if args:
@@ -383,6 +407,13 @@ commands = {
         'permission':'moderator',
         'cache':'keep',
         'execute': ban_user
+    },
+    'unban': {
+        'pretty_name': 'unban <uid>',
+        'description': 'Unban a user',
+        'permission':'moderator',
+        'cache':'keep',
+        'execute': unban_user
     },
     'mute': {
         'pretty_name': 'mute [time[h|m|S]] <uid>',
