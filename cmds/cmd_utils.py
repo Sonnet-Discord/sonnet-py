@@ -58,7 +58,6 @@ async def profile_function(message, args, client, stats, cmds, ramfs):
 
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
     joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
-s
     embed=discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
