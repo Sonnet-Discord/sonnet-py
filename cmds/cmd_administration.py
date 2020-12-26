@@ -11,14 +11,6 @@ from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 
 
-async def recreate_db(message, args, client, stats, cmds, ramfs):
-
-    with db_hlapi(message.guild.id) as db:
-        db.create_guild_db()
-
-    await message.channel.send("Done")
-
-
 async def inflog_change(message, args, client, stats, cmds, ramfs):
     try:
         await update_log_channel(message, args, client, "infraction-log")
@@ -146,29 +138,22 @@ category_info = {
 
 
 commands = {
-    'recreate-db': {
-        'pretty_name': 'recreate-db',
-        'description': 'Recreate the database if it doesn\'t exist',
-        'permission':'administrator',
-        'cache':'keep',
-        'execute': recreate_db
-    },
     'message-log': {
-        'pretty_name': 'message-log',
+        'pretty_name': 'message-log <channel>',
         'description': 'Change message log for this guild.',
         'permission':'administrator',
         'cache':'keep',
         'execute': msglog_change
     },
     'infraction-log': {
-        'pretty_name': 'infraction-log',
+        'pretty_name': 'infraction-log <channel>',
         'description': 'Change infraction log for this guild.',
         'permission':'administrator',
         'cache':'keep',
         'execute': inflog_change
     },
     'join-log': {
-        'pretty_name': 'join-log',
+        'pretty_name': 'join-log <channel>',
         'description': 'Change join log for this guild.',
         'permission':'administrator',
         'cache':'keep',
@@ -182,21 +167,21 @@ commands = {
         'execute': gdpr_database
     },
     'member-view-infractions': {
-        'pretty_name': 'member-view-infractions',
+        'pretty_name': 'member-view-infractions <boolean value>',
         'description': 'Set whether members of the guild can view their own infraction count',
         'permission':'administrator',
         'cache':'keep',
         'execute': set_view_infractions
     },
     'set-prefix': {
-        'pretty_name': 'set-prefix',
+        'pretty_name': 'set-prefix <prefix>',
         'description': 'Set the Guild prefix',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': set_prefix
     },
     'set-muterole': {
-        'pretty_name': 'set-muterole',
+        'pretty_name': 'set-muterole <role>',
         'description': 'Set the mute role',
         'permission':'administrator',
         'cache':'keep',

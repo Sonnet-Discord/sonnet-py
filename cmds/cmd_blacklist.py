@@ -176,35 +176,35 @@ category_info = {
 
 commands = {
     'wb-change': {
-        'pretty_name': 'wb-change',
+        'pretty_name': 'wb-change <csv list>',
         'description': 'Change word blacklist for this guild.',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': wb_change
     },
     'add-regexblacklist': {
-        'pretty_name': 'add-regexblacklist',
+        'pretty_name': 'add-regexblacklist <regex>',
         'description': 'Add an item to regex blacklist.',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': regexblacklist_add
     },
     'wiwb-change': {
-        'pretty_name': 'wiwb-change',
+        'pretty_name': 'wiwb-change <csv list>',
         'description': 'Change the WordInWord blacklist.',
         'permission':'administrator',
         'cache':'keep',
         'execute': word_in_word_change
     },
     'remove-regexblacklist': {
-        'pretty_name': 'remove-regexblacklist',
+        'pretty_name': 'remove-regexblacklist <regex>',
         'description': 'Remove an item from regex blacklist.',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': regexblacklist_remove
     },
     'ftb-change': {
-        'pretty_name': 'ftb-change',
+        'pretty_name': 'ftb-change <csv list>',
         'description': 'Change filetype blacklist for this guild.',
         'permission':'administrator',
         'cache':'regenerate',
@@ -218,14 +218,14 @@ commands = {
         'execute': list_blacklist
     },
     'blacklist-action': {
-        'pretty_name': 'blacklist-action',
+        'pretty_name': 'blacklist-action <warn|mute|kick|ban>',
         'description': 'Set the action to occur when blacklist is broken',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': set_blacklist_infraction_level
     },
     'blacklist-whitelist': {
-        'pretty_name': 'blacklist-whitelist',
+        'pretty_name': 'blacklist-whitelist <role>',
         'description': 'Set a role that grants immunity from blacklisting',
         'permission':'administrator',
         'cache':'regenerate',

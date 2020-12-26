@@ -169,7 +169,7 @@ commands = {
         'execute': ping_function
     },
     'profile': {
-        'pretty_name': 'profile',
+        'pretty_name': 'profile [user]',
         'description': 'Profile.',
         'permission':'everyone',
         'cache':'keep',
@@ -183,7 +183,7 @@ commands = {
         'execute': help_function
     },
     'avatar': {
-        'pretty_name': 'avatar',
+        'pretty_name': 'avatar [user]',
         'description': 'Get Avatar',
         'permission':'everyone',
         'cache':'keep',
