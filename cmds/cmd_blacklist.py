@@ -20,7 +20,7 @@ async def update_csv_blacklist(message, args, name):
 async def wb_change(message, args, client, stats, cmds, ramfs):
 
     try:
-        update_csv_blacklist(message, args, "word-blacklist")
+        await update_csv_blacklist(message, args, "word-blacklist")
     except RuntimeError:
         pass
 
@@ -28,7 +28,7 @@ async def wb_change(message, args, client, stats, cmds, ramfs):
 async def word_in_word_change(message, args, client, stats, cmds, ramfs):
 
     try:
-        update_csv_blacklist(message, args, "word-in-word-blacklist")
+        await update_csv_blacklist(message, args, "word-in-word-blacklist")
     except RuntimeError:
         pass
 
@@ -36,7 +36,7 @@ async def word_in_word_change(message, args, client, stats, cmds, ramfs):
 async def ftb_change(message, args, client, stats, cmds, ramfs):
 
     try:
-        update_csv_blacklist(message, args, "filetype-blacklist")
+        await update_csv_blacklist(message, args, "filetype-blacklist")
     except RuntimeError:
         pass
 
@@ -54,7 +54,7 @@ async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
         # Attempt to read blacklist if exists
         try:
             curlist = json.loads(database.grab_config("regex-blacklist"))
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, TypeError):
             curlist = {"blacklist":[]}
 
         # Check if valid RegEx
@@ -83,7 +83,7 @@ async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
         # Attempt to read blacklist if exists
         try:
             curlist = json.loads(database.grab_config("regex-blacklist"))
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, TypeError):
             await message.channel.send("ERROR: There is no RegEx")
             return
 
