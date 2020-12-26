@@ -98,6 +98,13 @@ from lib_ramfs import ram_filesystem
 ramfs = ram_filesystem()
 ramfs.mkdir("datastore")
 
+def regenerate_ramfs():
+    global ramfs
+    ramfs = ram_filesystem()
+    ramfs.mkdir("datastore")
+
+debug_commands["debug-drop-cache"] = regenerate_ramfs
+
 # Catch errors without being fatal - log them.
 @Client.event
 async def on_error(event, *args, **kwargs):
@@ -229,6 +236,8 @@ async def on_message(message):
             pass
         await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], Client, stats, command_modules, ramfs)
 
+    # Check for antispam 
+
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
         return
@@ -247,15 +256,16 @@ async def on_message(message):
             if permission:
                 stats["end"] = round(time.time() * 100000)
                 await command_modules_dict[command]['execute'](message, arguments, Client, stats, command_modules, ramfs)
+                # Regenerate cache
+                if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
+                    ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
+                    if command_modules_dict[command]['cache'] == "regenerate":
+                        load_message_config(message.guild.id, ramfs)
         except discord.errors.Forbidden:
             pass # Nothing we can do if we lack perms to speak
         except Exception as e:
             await message.channel.send(f"FATAL ERROR in {command}\nPlease contact bot owner")
             raise e
-        if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
-            ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
-            if command_modules_dict[command]['cache'] == "regenerate":
-                load_message_config(message.guild.id, ramfs)
 
     elif command in debug_commands.keys() and sonnet_cfg.BOT_OWNER and message.author.id == int(sonnet_cfg.BOT_OWNER):
         debug_commands[command]()
