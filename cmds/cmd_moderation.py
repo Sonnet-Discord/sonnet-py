@@ -158,7 +158,7 @@ async def unban_user(message, args, client, stats, cmds, ramfs):
 
     # Test if user is valid
     try:
-        user = client.fetch_user(int(args[0].strip("<@!>")))
+        user = await client.fetch_user(int(args[0].strip("<@!>")))
     except ValueError:
         await message.channel.send("Invalid User")
         return
