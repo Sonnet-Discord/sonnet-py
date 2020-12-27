@@ -84,7 +84,9 @@ async def update_log_channel(message, args, client, log_name):
     if len(args) >= 1:
         log_channel = args[0].strip("<#!>")
     else:
-        await message.channel.send("No Channel supplied")
+        with db_hlapi(message.guild.id) as db:
+            log_channel = db.grab_config(log_name) or "nothing"
+        await message.channel.send(f"{log_name} is set to {log_channel}")
         raise RuntimeError("No Channel supplied")
 
     try:
@@ -123,5 +125,5 @@ async def parse_permissions(message, perms):
     if you_shall_pass:
         return True
     else:
-        await message.channel.send(f"You need permission group {perms} to run this command")
+        await message.channel.send(f"You need permission type `{perms}` to run this command")
         return False
