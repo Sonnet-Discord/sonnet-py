@@ -180,6 +180,8 @@ async def unban_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send("This user is not banned")
         return
 
+    await message.channel.send(f"Unbanned user with ID {user.id}")
+
 
 async def mute_user(message, args, client, stats, cmds, ramfs):
 
