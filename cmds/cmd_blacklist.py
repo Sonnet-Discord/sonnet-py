@@ -177,42 +177,42 @@ category_info = {
 commands = {
     'wb-change': {
         'pretty_name': 'wb-change <csv list>',
-        'description': 'Change word blacklist for this guild.',
+        'description': 'Change word blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': wb_change
     },
     'add-regexblacklist': {
         'pretty_name': 'add-regexblacklist <regex>',
-        'description': 'Add an item to regex blacklist.',
+        'description': 'Add an item to regex blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': regexblacklist_add
     },
     'wiwb-change': {
         'pretty_name': 'wiwb-change <csv list>',
-        'description': 'Change the WordInWord blacklist.',
+        'description': 'Change the WordInWord blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': word_in_word_change
     },
     'remove-regexblacklist': {
         'pretty_name': 'remove-regexblacklist <regex>',
-        'description': 'Remove an item from regex blacklist.',
+        'description': 'Remove an item from regex blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': regexblacklist_remove
     },
     'ftb-change': {
         'pretty_name': 'ftb-change <csv list>',
-        'description': 'Change filetype blacklist for this guild.',
+        'description': 'Change filetype blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': ftb_change
     },
     'list-blacklist': {
         'pretty_name': 'list-blacklist',
-        'description': 'List all blacklists for this guild.',
+        'description': 'List all blacklists',
         'permission':'administrator',
         'cache':'keep',
         'execute': list_blacklist

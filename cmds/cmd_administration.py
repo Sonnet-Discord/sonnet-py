@@ -140,14 +140,14 @@ category_info = {
 commands = {
     'message-log': {
         'pretty_name': 'message-log <channel>',
-        'description': 'Change message log for this guild.',
+        'description': 'Change message log',
         'permission':'administrator',
         'cache':'keep',
         'execute': msglog_change
     },
     'infraction-log': {
         'pretty_name': 'infraction-log <channel>',
-        'description': 'Change infraction log for this guild.',
+        'description': 'Change infraction log',
         'permission':'administrator',
         'cache':'keep',
         'execute': inflog_change

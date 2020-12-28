@@ -179,6 +179,17 @@ class db_hlapi:
                 ["timestamp", timestamp]
                 ])
 
+    def fetch_all_mutes(self):
+
+        # Grab list of tables
+        tablelist = self.database.list_tables("%_mutes")
+
+        mutetable = []
+        for i in tablelist:
+            mutetable.extend([ [i[0][:-6]] + list(a) for a in self.database.fetch_table(i[0])])
+
+        return mutetable
+
     def close(self):
         self.database.close()
 

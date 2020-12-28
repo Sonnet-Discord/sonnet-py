@@ -14,11 +14,9 @@ import sys
 import time
 # Import Globstar library
 import glob
-# Import datetime for message logging
-from datetime import datetime
 
 # Get token from environment variables.
-TOKEN = os.environ.get('RHEA_TOKEN')
+TOKEN = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
 
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, os.getcwd() + '/cmds')
@@ -141,18 +139,13 @@ async def on_error(event, *args, **kwargs):
 # Bot connected to Discord.
 @Client.event
 async def on_ready():
-    print(f'{Client.user} has connected to Discord!')
-
-    # Warn if user is not bot
-    if not Client.user.bot:
-        print("WARNING: The connected account is not a bot, as it is against ToS we do not condone user botting")
+    await dynamiclib_modules_dict["on-ready"](Client, bot_start_time)
 
 
 # Bot joins a guild
 @Client.event
 async def on_guild_join(guild):
-    with db_hlapi(guild.id) as db:
-        db.create_guild_db()
+    await dynamiclib_modules_dict["on-guild-join"](guild)
 
 
 # Handle starboard system
@@ -201,7 +194,12 @@ async def on_message(message):
         raise e
 
 
-Client.run(TOKEN, bot=True, reconnect=True)
+bot_start_time = time.time()
+if TOKEN:
+    Client.run(TOKEN, bot=True, reconnect=True)
+else:
+    print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables to use sonnet")
+
 
 # Clear cache at exit
 for i in glob.glob("datastore/*.cache.db"):

@@ -11,11 +11,12 @@ def parse_blacklist(message, blacklist):
     # Preset values
     broke_blacklist = False
     infraction_type = []
+    text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace("\n"," "))
 
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
-        for i in message.content.lower().replace("\n"," ").split(" "):
+        for i in text_to_blacklist.split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
                 infraction_type.append("Word")
@@ -24,7 +25,7 @@ def parse_blacklist(message, blacklist):
     word_blacklist = blacklist["word-in-word-blacklist"]
     if word_blacklist:
         for i in word_blacklist:
-            if i in message.content.lower():
+            if i in text_to_blacklist:
                 broke_blacklist = True
                 infraction_type.append("WordInWord")
 

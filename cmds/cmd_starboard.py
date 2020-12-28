@@ -70,7 +70,7 @@ category_info = {
 commands = {
     'starboard-channel': {
         'pretty_name': 'starboard-channel <channel>',
-        'description': 'Change Starboard for this guild.',
+        'description': 'Change Starboard',
         'permission':'administrator',
         'cache':'keep',
         'execute': starboard_channel_change

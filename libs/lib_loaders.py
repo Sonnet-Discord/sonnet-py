@@ -14,23 +14,40 @@ def directBinNumber(inData,length):
 
 # Load config from cache, or load from db if cache isint existant
 def load_message_config(guild_id, ramfs):
+    datatypes = {
+        "csv":["word-blacklist","filetype-blacklist","word-in-word-blacklist"],
+        "text":["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"],
+        "list":["regex-blacklist"]
+        }
     try:
+
+        # Loads fileio object
         blacklist_cache = ramfs.read_f(f"datastore/{guild_id}.cache.db")
         blacklist_cache.seek(0)
         message_config = {}
-        for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
+
+        # Imports csv style data
+        for i in datatypes["csv"]:
             message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
             if message_config[i]:
                 message_config[i] = message_config[i].split(",")
             else:
                 message_config[i] = []
-        for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
-            message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
-        for regex in ["regex-blacklist"]:
+
+        # Imports text style data
+        for i in datatypes["text"]:
+            preout = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little"))
+            if preout:
+                message_config[i] = preout.decode("utf8")
+            else:
+                message_config[i] = ""
+
+        # Imports list style data
+        for lists in datatypes["list"]:
             prelist = []
             for i in range(int.from_bytes(blacklist_cache.read(2), "little")):
                 prelist.append(blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8"))
-            message_config[regex] = prelist
+            message_config[lists] = prelist
 
         return message_config
 
@@ -39,7 +56,7 @@ def load_message_config(guild_id, ramfs):
         message_config = {}
 
         # Loads base db
-        for i in ["word-blacklist","regex-blacklist","filetype-blacklist","prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","word-in-word-blacklist","blacklist-whitelist"]:
+        for i in datatypes["csv"]+datatypes["text"]+datatypes["list"]:
             message_config[i] = db.grab_config(i)
         db.close()
 
@@ -50,7 +67,7 @@ def load_message_config(guild_id, ramfs):
             message_config["regex-blacklist"] = []
 
         # Loads word, filetype blacklist
-        for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
+        for i in datatypes["csv"]:
             if message_config[i]:
                 message_config[i] = message_config[i].lower().split(",")
 
@@ -72,24 +89,24 @@ def load_message_config(guild_id, ramfs):
 
         # Generate SNOWFLAKE DBCACHE
         blacklist_cache = ramfs.create_f(f"datastore/{guild_id}.cache.db")
-        # ORDER : word blacklist, filetype blacklist, prefix, blacklist-action, starboard-count, regex blacklist
-        for i in ["word-blacklist","filetype-blacklist","word-in-word-blacklist"]:
+        # Add csv based configs
+        for i in datatypes["csv"]:
             if message_config[i]:
                 outdat = ",".join(message_config[i]).encode("utf8")
                 blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
             else:
                 blacklist_cache.write(bytes(2))
 
-        # Add prefix, blacklist action, starboard emoji, starboard enabled
-        for i in ["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"]:
+        # Add text based configs
+        for i in datatypes["text"]:
             if message_config[i]:
                 outdat = message_config[i].encode("utf8")
                 blacklist_cache.write(bytes(directBinNumber(len(outdat),2))+outdat)
             else:
                 blacklist_cache.write(bytes(2))
 
-        # Serialize regex blacklist
-        for i in ["regex-blacklist"]:
+        # Add list based configs
+        for i in datatypes["list"]:
             if message_config[i]:
                 preout = b""
                 for regex in message_config[i]:

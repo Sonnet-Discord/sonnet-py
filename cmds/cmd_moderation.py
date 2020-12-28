@@ -59,7 +59,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         pass
     return generated_id
 
-async def process_infraction(message, args, client, infraction_type):
+async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
 
     # Check if automod
     automod = False
@@ -97,7 +97,7 @@ async def process_infraction(message, args, client, infraction_type):
 
     # Test if user is self
     if moderator_id == user.id:
-        await message.channel.send(f"{infraction_type[0].upper()+infraction_type[1:]}ing yourself is not allowed")
+        await message.channel.send(f"{pretty_infraction_type} yourself is not allowed")
         raise RuntimeError(f"Attempted self {infraction_type}")
 
 
@@ -110,7 +110,7 @@ async def process_infraction(message, args, client, infraction_type):
 async def warn_user(message, args, client, stats, cmds, ramfs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "warn")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "warn", "Warning")
     except RuntimeError:
         return
 
@@ -121,7 +121,7 @@ async def warn_user(message, args, client, stats, cmds, ramfs):
 async def kick_user(message, args, client, stats, cmds, ramfs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "kick")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "kick", "Kicking")
     except RuntimeError:
         return
 
@@ -139,7 +139,7 @@ async def kick_user(message, args, client, stats, cmds, ramfs):
 async def ban_user(message, args, client, stats, cmds, ramfs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "ban")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "ban", "Banning")
     except RuntimeError:
         return
 
@@ -197,7 +197,7 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
             mutetime = 0
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "mute")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "mute", "Muting")
     except RuntimeError:
         return
 

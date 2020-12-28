@@ -162,28 +162,28 @@ category_info = {
 commands = {
     'ping': {
         'pretty_name': 'ping',
-        'description': 'Ping bot.',
+        'description': 'Test connection to bot',
         'permission':'everyone',
         'cache':'keep',
         'execute': ping_function
     },
     'profile': {
         'pretty_name': 'profile [user]',
-        'description': 'Profile.',
+        'description': 'Get a users profile',
         'permission':'everyone',
         'cache':'keep',
         'execute': profile_function
     },
     'help': {
-        'pretty_name': 'help',
-        'description': 'Get help.',
+        'pretty_name': 'help [category]',
+        'description': 'Print helptext',
         'permission':'everyone',
         'cache':'keep',
         'execute': help_function
     },
     'avatar': {
         'pretty_name': 'avatar [user]',
-        'description': 'Get Avatar',
+        'description': 'Get avatar of a user',
         'permission':'everyone',
         'cache':'keep',
         'execute': avatar_function

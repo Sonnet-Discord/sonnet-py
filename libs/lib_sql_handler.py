@@ -111,6 +111,14 @@ class db_handler:
         returndata = list(self.cur.fetchall())
         return returndata
 
+    def list_tables(self, searchterm):
+
+        self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm,))
+
+        # Send data
+        returndata = list(self.cur.fetchall())
+        return returndata
+
     def commit(self):  # Commits data to db
         self.con.commit()
 
