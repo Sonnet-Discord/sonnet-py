@@ -39,6 +39,7 @@ async def ping_function(message, args, client, stats, cmds, ramfs):
     ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
     ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
     ping_embed.add_field(name="Process Blacklist", value=str((stats["end-blacklist"] - stats["start-blacklist"])/100) + "ms", inline=False)
+    ping_embed.add_field(name="Process Antispam", value=str((stats["end-antispam"] - stats["start-antispam"])/100) + "ms", inline=False)
     time_to_send = round(time.time()*10000)
     sent_message = await message.channel.send(embed=ping_embed)
     ping_embed.add_field(name="Send Message", value=str((round(time.time()*10000) - time_to_send)/100) + "ms", inline=False)
@@ -155,7 +156,7 @@ async def help_function(message, args, client, stats, cmd_modules, ramfs):
 category_info = {
     'name': 'utilities',
     'pretty_name': 'Utilities',
-    'description': 'Administration commands.'
+    'description': 'Utility commands.'
 }
 
 

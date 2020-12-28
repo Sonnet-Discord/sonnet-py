@@ -1,6 +1,6 @@
 # Blacklist commands
 
-import json
+import json, io, discord
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
@@ -124,10 +124,18 @@ async def list_blacklist(message, args, client, stats, cmds, ramfs):
             del blacklist[i]
 
     # Format to str
-    formatted = json.dumps(blacklist, indent=4).replace('\\\\','\\')
+    formatted = json.dumps(blacklist, indent=4)
 
     # Print blacklist
-    await message.channel.send(f"```\n{formatted}```")
+    formatted_pretty = "```json\n" + formatted.replace('\\\\','\\') + "```"
+    if len(formatted_pretty) <= 2000:
+        await message.channel.send(formatted_pretty)
+    else:
+        file_to_upload = io.BytesIO()
+        file_to_upload.write(formatted.encode("utf8"))
+        file_to_upload.seek(0)
+        fileobj = discord.File(file_to_upload, filename="blacklist.json")
+        await message.channel.send("Total Blacklist too large to be previewed", file=fileobj)
 
 
 async def set_blacklist_infraction_level(message, args, client, stats, cmds, ramfs):

@@ -4,7 +4,7 @@
 import discord, time, asyncio
 from datetime import datetime
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config
+from lib_loaders import load_message_config, directBinNumber
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 
@@ -13,12 +13,8 @@ async def on_reaction_add(reaction, client, ramfs):
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
-            channel_id = db.grab_config("starboard-channel")
-            if channel_id:
-
-                channel = client.get_channel(int(channel_id))
-                in_board = db.in_starboard(reaction.message.id)
-                if channel and not(in_board):
+            if channel_id := db.grab_config("starboard-channel"):
+                if channel := client.get_channel(int(channel_id)) and not(db.in_starboard(reaction.message.id)):
 
                     db.add_to_starboard(reaction.message.id)
                     jump = f"\n\n[(Link)]({reaction.message.jump_url})"
@@ -82,6 +78,40 @@ async def on_message_edit(old_message, message, client, command_modules, command
         await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, stats, command_modules, ramfs)
 
 
+def antispam_check(guildid, userid, ramfs, **kargs):
+    messagecount = kargs["messages"]
+    timecount = kargs["time"]*1000
+    try:
+        messages = ramfs.read_f(f"antispam/{guildid}.cache.asam")
+        messages.seek(0)
+        droptime = round(time.time()*1000) - timecount
+        userlist = []
+        ismute = 1
+
+        while a := messages.read(16):
+            uid = int.from_bytes(a[:8], "little")
+            mtime = int.from_bytes(a[8:], "little")
+            if mtime > droptime:
+                userlist.append([uid, mtime])
+                if uid == userid:
+                    ismute += 1
+
+        userlist.append([userid, round(time.time()*1000)])
+        messages.seek(0)
+        for i in userlist:
+            messages.write(bytes(directBinNumber(i[0], 8) + directBinNumber(i[1], 8)))
+        messages.truncate()
+        if ismute > messagecount:
+            return True
+        else:
+            return False
+
+    except FileNotFoundError:
+        messages = ramfs.create_f(f"antispam/{guildid}.cache.asam")
+        messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time()*1000), 8)))
+        return False
+
+
 async def on_message(message, client, command_modules, command_modules_dict, ramfs):
     # Statistics.
     stats = {"start": round(time.time() * 100000), "end": 0}
@@ -107,7 +137,19 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
             pass
         await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, stats, command_modules, ramfs)
 
-    # Check for antispam 
+    # Check for antispam
+    stats["start-antispam"] = round(time.time() * 100000)
+    spammer = (antispam_check(message.channel.guild.id, message.author.id, ramfs, messages=3, time=2))
+    stats["end-antispam"] = round(time.time() * 100000)
+
+    if spammer:
+        try:
+            await message.delete()
+        except discord.errors.Forbidden:
+            pass
+        with db_hlapi(message.guild.id) as db:
+            if not db.is_muted(userid=message.author.id):
+                await command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]",  "Antispam"], client, stats, command_modules, ramfs)
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
@@ -139,7 +181,7 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
 async def attempt_unmute(Client, mute_entry):
 
     with db_hlapi(mute_entry[0]) as db:
-        db.unmute_user(mute_entry[1])
+        db.unmute_user(infractionid=mute_entry[1])
         mute_role = db.grab_config("mute-role")
     guild = Client.get_guild(int(mute_entry[0]))
     if guild and mute_role:
@@ -188,12 +230,16 @@ async def on_guild_join(guild):
         db.create_guild_db()
 
 
+async def on_raw_reaction_add(payload, client, ramfs):
+    pass # ENDPOINT FOR SONNET 1.1.0
+
 
 commands = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
     "on-reaction-add": on_reaction_add,
+    "on-raw-reaction-add": on_raw_reaction_add,
     "on-ready": on_ready,
     "on-guild-join": on_guild_join
     }

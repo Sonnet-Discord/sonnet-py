@@ -117,6 +117,7 @@ from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 from lib_ramfs import ram_filesystem
 ramfs = ram_filesystem()
 ramfs.mkdir("datastore")
+ramfs.mkdir("antispam")
 
 def regenerate_ramfs():
     global ramfs
@@ -149,6 +150,15 @@ async def on_guild_join(guild):
 
 
 # Handle starboard system
+@Client.event
+async def on_raw_reaction_add(payload):
+    try:
+        await dynamiclib_modules_dict["on-raw-reaction-add"](payload, Client, ramfs)
+    except Exception as e:
+        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-add\nPlease contact bot owner")
+        raise e
+
+
 @Client.event
 async def on_reaction_add(reaction, user):
     try:

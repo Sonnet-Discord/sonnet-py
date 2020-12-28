@@ -11,7 +11,7 @@ def parse_blacklist(message, blacklist):
     # Preset values
     broke_blacklist = False
     infraction_type = []
-    text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace("\n"," "))
+    text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":"," ").replace("\n"," "))
 
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
@@ -25,7 +25,7 @@ def parse_blacklist(message, blacklist):
     word_blacklist = blacklist["word-in-word-blacklist"]
     if word_blacklist:
         for i in word_blacklist:
-            if i in text_to_blacklist:
+            if i in text_to_blacklist.strip(" "):
                 broke_blacklist = True
                 infraction_type.append("WordInWord")
 
@@ -126,5 +126,5 @@ async def parse_permissions(message, perms):
     if you_shall_pass:
         return True
     else:
-        await message.channel.send(f"You need permission type `{perms}` to run this command")
+        await message.channel.send(f"You need permissions `{perms}` to run this command")
         return False

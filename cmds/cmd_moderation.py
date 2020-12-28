@@ -19,8 +19,6 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         # Grab log channel id from db
         channel_id = database.grab_config("infraction-log")
 
-
-
         # Generate log channel object
         if channel_id:  # If ID exists then use it
             log_channel = client.get_channel(int(channel_id))
@@ -223,10 +221,12 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send("The bot does not have permission to mute this user.")
         return
     
-    if not automod:
-            await message.channel.send(f"Muted user with ID {user.id} for {reason}")
+    if not automod and not mutetime:
+        await message.channel.send(f"Muted user with ID {user.id} for {reason}")
 
     if mutetime:
+        if not automod:
+            await message.channel.send(f"Muted user with ID {user.id} for {mutetime}s for {reason}")
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
             db.mute_user(user.id, time.time()+mutetime, infractionID)
@@ -235,12 +235,13 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
 
         # unmute in db
         with db_hlapi(message.guild.id) as db:
-            db.unmute_user(infractionID)
+            if db.is_muted(infractionid=infractionID):
+                db.unmute_user(infractionid=infractionID)
 
-        try:
-            await user.remove_roles(mute_role)
-        except discord.errors.Forbidden:
-            pass
+                try:
+                    await user.remove_roles(mute_role)
+                except discord.errors.Forbidden:
+                    pass
 
 
 async def unmute_user(message, args, client, stats, cmds, ramfs):
@@ -262,7 +263,8 @@ async def unmute_user(message, args, client, stats, cmds, ramfs):
     # Get muterole from DB
     with db_hlapi(message.guild.id) as db:
         mute_role = db.grab_config("mute-role")
-    
+        db.unmute_user(userid=user.id)
+
     if mute_role:
         mute_role = message.guild.get_role(int(mute_role))
         if not mute_role:
@@ -278,7 +280,7 @@ async def unmute_user(message, args, client, stats, cmds, ramfs):
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unmute this user.")
         return
-    
+
     await message.channel.send(f"Unmuted user with ID {user.id}")
 
 
