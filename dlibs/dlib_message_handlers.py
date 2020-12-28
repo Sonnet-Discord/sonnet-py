@@ -14,7 +14,7 @@ async def on_reaction_add(reaction, client, ramfs):
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
             if channel_id := db.grab_config("starboard-channel"):
-                if channel := client.get_channel(int(channel_id)) and not(db.in_starboard(reaction.message.id)) and not(channel_id == reaction.message.channel):
+                if bool(channel := client.get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(channel_id == reaction.message.channel):
 
                     db.add_to_starboard(reaction.message.id)
                     jump = f"\n\n[(Link)]({reaction.message.jump_url})"
