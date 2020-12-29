@@ -34,29 +34,40 @@ async def msglog_change(message, args, client, stats, cmds, ramfs):
 
 class gdpr_functions:
 
-    async def delete(message, guild_id):
+    async def delete(message, guild_id, ramfs):
 
         database = db_hlapi(message.guild.id)
         database.delete_guild_db()
+        ramfs.remove_f(f"antispam/{guild_id}.cache.asam")
 
         await message.channel.send(f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache file and db again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server")
 
-    async def download(message, guild_id):
+    async def download(message, guild_id, ramfs):
 
         timestart = time.time()
+
         with db_hlapi(guild_id) as database:
             dbdict = database.download_guild_db()
 
-        # Convert to compressed json
-        file_to_upload = io.BytesIO()
-        with gzip.GzipFile(filename=f"{guild_id}.db.json.gz", mode="wb", fileobj=file_to_upload) as txt:
+        # Convert db to compressed json
+        db = io.BytesIO()
+        with gzip.GzipFile(filename=f"{guild_id}.db.json.gz", mode="wb", fileobj=db) as txt:
             txt.write(json.dumps(dbdict, indent=4).encode("utf8"))
-        file_to_upload.seek(0)
+        db.seek(0)
 
-        # Finalize discord file obj
-        fileobj = discord.File(file_to_upload, filename="database.gz")
+        # Add cache files
+        cache = ramfs.read_f(f"datastore/{guild_id}.cache.db")
+        cache.seek(0)
+        antispam = ramfs.read_f(f"antispam/{guild_id}.cache.asam")
+        antispam.seek(0)
 
-        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", file=fileobj)
+        # Finalize discord file objs
+        fileobj_db = discord.File(db, filename="database.gz")
+        fileobj_cache = discord.File(cache, filename="cache.sfdbc.bin")
+        fileobj_antispam = discord.File(antispam, filename="antispam.u8_u8.bin")
+
+        # Send data
+        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_cache, fileobj_antispam])
 
 
 async def gdpr_database(message, args, client, stats, cmds, ramfs):
@@ -75,7 +86,7 @@ async def gdpr_database(message, args, client, stats, cmds, ramfs):
     commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
     if command and command in commands_dict.keys():
         if confirmation and confirmation == str(message.guild.id):
-            await commands_dict[command](message, message.guild.id)
+            await commands_dict[command](message, message.guild.id, ramfs)
         else:
             await message.channel.send(f"Please provide the guildid to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:

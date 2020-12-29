@@ -72,7 +72,7 @@ async def on_message_edit(old_message, message, client, command_modules, command
     if broke_blacklist:
         try:
             await message.delete()
-        except discord.errors.Forbidden:
+        except (discord.errors.Forbidden, discord.errors.NotFound):
             pass
         stats = {}
         await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, stats, command_modules, ramfs)
@@ -133,7 +133,7 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
     if broke_blacklist:
         try:
             await message.delete()
-        except discord.errors.Forbidden:
+        except (discord.errors.Forbidden, discord.errors.NotFound):
             pass
         await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, stats, command_modules, ramfs)
 
@@ -145,7 +145,7 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
     if spammer:
         try:
             await message.delete()
-        except discord.errors.Forbidden:
+        except (discord.errors.Forbidden, discord.errors.NotFound):
             pass
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
