@@ -11,21 +11,21 @@ from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 
 
-async def inflog_change(message, args, client, stats, cmds, ramfs):
+async def inflog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "infraction-log")
     except RuntimeError:
         return
 
 
-async def joinlog_change(message, args, client, stats, cmds, ramfs):
+async def joinlog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "join-log")
     except RuntimeError:
         return
 
 
-async def msglog_change(message, args, client, stats, cmds, ramfs):
+async def msglog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "message-log")
     except RuntimeError:
@@ -70,7 +70,9 @@ class gdpr_functions:
         await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_cache, fileobj_antispam])
 
 
-async def gdpr_database(message, args, client, stats, cmds, ramfs):
+async def gdpr_database(message, args, client, **kwargs):
+    
+    ramfs = kwargs["ramfs"]
 
     if len(args) >= 2:
         command = args[0]
@@ -96,7 +98,7 @@ async def gdpr_database(message, args, client, stats, cmds, ramfs):
         await message.channel.send(embed=message_embed)
 
 
-async def set_view_infractions(message, args, client, stats, cmds, ramfs):
+async def set_view_infractions(message, args, client, **kwargs):
 
     if args:
         gate = parse_boolean(args[0])
@@ -109,7 +111,7 @@ async def set_view_infractions(message, args, client, stats, cmds, ramfs):
     await message.channel.send(f"Member View Own Infractions set to {gate}")
 
 
-async def set_prefix(message, args, client, stats, cmds, ramfs):
+async def set_prefix(message, args, client, **kwargs):
 
     if args:
         prefix = args[0]
@@ -122,7 +124,7 @@ async def set_prefix(message, args, client, stats, cmds, ramfs):
     await message.channel.send(f"Updated prefix to `{prefix}`")
 
 
-async def set_mute_role(message, args, client, stats, cmds, ramfs):
+async def set_mute_role(message, args, client, **kwargs):
     
     if args:
         role = args[0].strip("<@&>")
@@ -140,6 +142,7 @@ async def set_mute_role(message, args, client, stats, cmds, ramfs):
         database.add_config("mute-role", role)
 
     await message.channel.send(f"Updated Mute role to {role}")
+
 
 category_info = {
     'name': 'administration',
@@ -199,3 +202,6 @@ commands = {
         'execute': set_mute_role
     }
 }
+
+
+version_info = "1.0.1"

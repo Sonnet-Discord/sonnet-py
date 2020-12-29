@@ -75,7 +75,7 @@ async def on_message_edit(old_message, message, client, command_modules, command
         except (discord.errors.Forbidden, discord.errors.NotFound):
             pass
         stats = {}
-        await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, stats, command_modules, ramfs)
+        await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
 
 
 def antispam_check(guildid, userid, ramfs, **kargs):
@@ -112,7 +112,7 @@ def antispam_check(guildid, userid, ramfs, **kargs):
         return False
 
 
-async def on_message(message, client, command_modules, command_modules_dict, ramfs):
+async def on_message(message, client, command_modules, command_modules_dict, ramfs, bot_start_time, main_version_info):
     # Statistics.
     stats = {"start": round(time.time() * 100000), "end": 0}
 
@@ -135,7 +135,7 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
             await message.delete()
         except (discord.errors.Forbidden, discord.errors.NotFound):
             pass
-        await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, stats, command_modules, ramfs)
+        await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
 
     # Check for antispam
     stats["start-antispam"] = round(time.time() * 100000)
@@ -149,7 +149,7 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
             pass
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                await command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]",  "Antispam"], client, stats, command_modules, ramfs)
+                await command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]",  "Antispam"], client)
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
@@ -168,7 +168,7 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
-                await command_modules_dict[command]['execute'](message, arguments, client, stats, command_modules, ramfs)
+                await command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlib_version=version_info, main_version=main_version_info)
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
                     ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
@@ -243,3 +243,6 @@ commands = {
     "on-ready": on_ready,
     "on-guild-join": on_guild_join
     }
+
+
+version_info = "1.0.1"

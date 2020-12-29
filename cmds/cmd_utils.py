@@ -34,7 +34,8 @@ async def parse_userid(message, args):
     return user_object
 
 
-async def ping_function(message, args, client, stats, cmds, ramfs):
+async def ping_function(message, args, client, **kwargs):
+    stats = kwargs["stats"]
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
     ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
     ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
@@ -46,7 +47,7 @@ async def ping_function(message, args, client, stats, cmds, ramfs):
     await sent_message.edit(embed=ping_embed)
 
 
-async def profile_function(message, args, client, stats, cmds, ramfs):
+async def profile_function(message, args, client, **kwargs):
 
     try:
         user_object = await parse_userid(message, args)
@@ -54,7 +55,6 @@ async def profile_function(message, args, client, stats, cmds, ramfs):
         return
 
     # Put here to comply with formatting guidelines.
-    created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
     created_string += f" ({(datetime.utcnow() - user_object.created_at).days} days ago)"
 
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
@@ -83,7 +83,7 @@ async def profile_function(message, args, client, stats, cmds, ramfs):
     await message.channel.send(embed=embed)
 
 
-async def avatar_function(message, args, client, stats, cmd_modules, ramfs):
+async def avatar_function(message, args, client, **kwargs):
 
     try:
         user_object = await parse_userid(message, args)
@@ -96,7 +96,7 @@ async def avatar_function(message, args, client, stats, cmd_modules, ramfs):
     await message.channel.send(embed=embed)
 
 
-async def help_function(message, args, client, stats, cmd_modules, ramfs):
+async def help_function(message, args, client, **kwargs):
     # Check arguments and such.
     lookup = False
 
@@ -114,7 +114,7 @@ async def help_function(message, args, client, stats, cmd_modules, ramfs):
         embed.set_author(name="Sonnet Help")
 
         # Start creating module listing.
-        for modules in cmd_modules:
+        for modules in kwargs["cmds"]:
             embed.add_field(name=modules.category_info['pretty_name']+ " (" + modules.category_info['name'] + ")", value=modules.category_info['description'], inline=False)
     else:
         # We're looking up a category.
@@ -125,7 +125,7 @@ async def help_function(message, args, client, stats, cmd_modules, ramfs):
 
         # Start creating command listing.
         cmds = []
-        for modules in cmd_modules:
+        for modules in kwargs["cmds"]:
             # Check we're working with the right category.
             if modules.category_info['name'] == args[0].lower():
                 # Now we're in the correct category, generate the fields.
@@ -139,7 +139,7 @@ async def help_function(message, args, client, stats, cmd_modules, ramfs):
                 break
 
         # Load prefix
-        PREFIX = load_message_config(message.guild.id, ramfs)["prefix"]
+        PREFIX = load_message_config(message.guild.id, kwargs["ramfs"])["prefix"]
 
         # Now we generate the actual embed.
         if len(cmds) < 1:
@@ -190,3 +190,6 @@ commands = {
         'execute': avatar_function
     }
 }
+
+
+version_info = "1.0.1"

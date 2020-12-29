@@ -198,12 +198,13 @@ async def on_message(message):
         return
 
     try:
-        await dynamiclib_modules_dict["on-message"](message, Client, command_modules, command_modules_dict, ramfs)
+        await dynamiclib_modules_dict["on-message"](message, Client, command_modules, command_modules_dict, ramfs, bot_start_time, version_info)
     except Exception as e:
         await message.channel.send(f"FATAL ERROR in on-message\nPlease contact bot owner")
         raise e
 
 
+version_info = "1.0.1"
 bot_start_time = time.time()
 if TOKEN:
     Client.run(TOKEN, bot=True, reconnect=True)

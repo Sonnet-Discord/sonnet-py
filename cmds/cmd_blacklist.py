@@ -17,7 +17,7 @@ async def update_csv_blacklist(message, args, name):
 
     await message.channel.send(f"Updated {name} sucessfully")
 
-async def wb_change(message, args, client, stats, cmds, ramfs):
+async def wb_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "word-blacklist")
@@ -25,7 +25,7 @@ async def wb_change(message, args, client, stats, cmds, ramfs):
         pass
 
 
-async def word_in_word_change(message, args, client, stats, cmds, ramfs):
+async def word_in_word_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "word-in-word-blacklist")
@@ -33,7 +33,7 @@ async def word_in_word_change(message, args, client, stats, cmds, ramfs):
         pass
 
 
-async def ftb_change(message, args, client, stats, cmds, ramfs):
+async def ftb_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "filetype-blacklist")
@@ -41,7 +41,7 @@ async def ftb_change(message, args, client, stats, cmds, ramfs):
         pass
 
 
-async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
+async def regexblacklist_add(message, args, client, **kwargs):
 
     # Test if args supplied
     if not args:
@@ -70,7 +70,7 @@ async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
     await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
+async def regexblacklist_remove(message, args, client, **kwargs):
 
     # Test if args supplied
     if not args:
@@ -101,10 +101,10 @@ async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
     await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def list_blacklist(message, args, client, stats, cmds, ramfs):
+async def list_blacklist(message, args, client, **kwargs):
 
     # Load temp ramfs to avoid passing as args
-    mconf = load_message_config(message.guild.id, ramfs)
+    mconf = load_message_config(message.guild.id, kwargs["ramfs"])
 
     # Format blacklist
     blacklist = {}
@@ -138,7 +138,7 @@ async def list_blacklist(message, args, client, stats, cmds, ramfs):
         await message.channel.send("Total Blacklist too large to be previewed", file=fileobj)
 
 
-async def set_blacklist_infraction_level(message, args, client, stats, cmds, ramfs):
+async def set_blacklist_infraction_level(message, args, client, **kwargs):
 
     if args:
         action = args[0].lower()
@@ -155,7 +155,7 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds, ram
     await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
-async def change_rolewhitelist(message, args, client, stats, cmds, ramfs):
+async def change_rolewhitelist(message, args, client, **kwargs):
 
     if args:
         role = args[0].strip("<@&>")
@@ -221,7 +221,7 @@ commands = {
     'list-blacklist': {
         'pretty_name': 'list-blacklist',
         'description': 'List all blacklists',
-        'permission':'administrator',
+        'permission':'moderator',
         'cache':'keep',
         'execute': list_blacklist
     },
@@ -241,3 +241,6 @@ commands = {
     }
     
 }
+
+
+version_info = "1.0.1"
