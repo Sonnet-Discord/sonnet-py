@@ -37,8 +37,6 @@ def get_prefix(client, message):
     return commands.when_mentioned_or(*prefixes)(client, message)
 
 
-# Get db handling library
-from lib_db_obfuscator import db_hlapi
 
 intents = discord.Intents.default()
 intents.typing = False
@@ -106,12 +104,6 @@ def sonnet_reload_command_modules():
 
 # Generate debug command subset
 debug_commands = {"debug-modules-load":sonnet_load_command_modules, "debug-modules-reload":sonnet_reload_command_modules}
-
-# Import blacklist loader
-from lib_loaders import load_message_config
-
-# Import blacklist parser and message skip parser
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 # Initalize RAM FS
 from lib_ramfs import ram_filesystem
