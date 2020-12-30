@@ -55,6 +55,7 @@ async def profile_function(message, args, client, **kwargs):
         return
 
     # Put here to comply with formatting guidelines.
+    created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
     created_string += f" ({(datetime.utcnow() - user_object.created_at).days} days ago)"
 
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
