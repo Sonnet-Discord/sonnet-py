@@ -11,11 +11,12 @@ def parse_blacklist(message, blacklist):
     # Preset values
     broke_blacklist = False
     infraction_type = []
+    text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":"," ").replace("\n"," "))
 
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
-        for i in message.content.lower().replace("\n"," ").split(" "):
+        for i in text_to_blacklist.split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
                 infraction_type.append("Word")
@@ -24,7 +25,7 @@ def parse_blacklist(message, blacklist):
     word_blacklist = blacklist["word-in-word-blacklist"]
     if word_blacklist:
         for i in word_blacklist:
-            if i in message.content.lower():
+            if i in text_to_blacklist.strip(" "):
                 broke_blacklist = True
                 infraction_type.append("WordInWord")
 
@@ -84,7 +85,9 @@ async def update_log_channel(message, args, client, log_name):
     if len(args) >= 1:
         log_channel = args[0].strip("<#!>")
     else:
-        await message.channel.send("No Channel supplied")
+        with db_hlapi(message.guild.id) as db:
+            log_channel = db.grab_config(log_name) or "nothing"
+        await message.channel.send(f"{log_name} is set to {log_channel}")
         raise RuntimeError("No Channel supplied")
 
     try:
@@ -123,5 +126,5 @@ async def parse_permissions(message, perms):
     if you_shall_pass:
         return True
     else:
-        await message.channel.send(f"You need permission group {perms} to run this command")
+        await message.channel.send(f"You need permissions `{perms}` to run this command")
         return False

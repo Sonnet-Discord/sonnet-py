@@ -9,4 +9,4 @@ elif DB_TYPE == "sqlite3":
     if SQLITE3_TYPE == "sonnet":
         from lib_sonnetdb import db_hlapi
     elif SQLITE3_TYPE == "rhea":
-        from lib_rheadb import db_hlapi
+        raise TypeError("Sonnet does not support running on rhea type databases")

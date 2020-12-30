@@ -19,8 +19,6 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         # Grab log channel id from db
         channel_id = database.grab_config("infraction-log")
 
-
-
         # Generate log channel object
         if channel_id:  # If ID exists then use it
             log_channel = client.get_channel(int(channel_id))
@@ -59,7 +57,7 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         pass
     return generated_id
 
-async def process_infraction(message, args, client, infraction_type):
+async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
 
     # Check if automod
     automod = False
@@ -97,7 +95,7 @@ async def process_infraction(message, args, client, infraction_type):
 
     # Test if user is self
     if moderator_id == user.id:
-        await message.channel.send(f"{infraction_type[0].upper()+infraction_type[1:]}ing yourself is not allowed")
+        await message.channel.send(f"{pretty_infraction_type} yourself is not allowed")
         raise RuntimeError(f"Attempted self {infraction_type}")
 
 
@@ -107,10 +105,10 @@ async def process_infraction(message, args, client, infraction_type):
     return (automod, user, reason, infraction_id)
 
 
-async def warn_user(message, args, client, stats, cmds, ramfs):
+async def warn_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "warn")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "warn", "Warning")
     except RuntimeError:
         return
 
@@ -118,10 +116,10 @@ async def warn_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send(f"Warned user with ID {user.id} for {reason}")
 
 
-async def kick_user(message, args, client, stats, cmds, ramfs):
+async def kick_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "kick")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "kick", "Kicking")
     except RuntimeError:
         return
 
@@ -136,10 +134,10 @@ async def kick_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send(f"Kicked user with ID {user.id} for {reason}")
 
 
-async def ban_user(message, args, client, stats, cmds, ramfs):
+async def ban_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "ban")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "ban", "Banning")
     except RuntimeError:
         return
 
@@ -154,7 +152,7 @@ async def ban_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send(f"Banned user with ID {user.id} for {reason}")
 
 
-async def unban_user(message, args, client, stats, cmds, ramfs):
+async def unban_user(message, args, client, **kwargs):
 
     # Test if user is valid
     try:
@@ -180,8 +178,10 @@ async def unban_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send("This user is not banned")
         return
 
+    await message.channel.send(f"Unbanned user with ID {user.id}")
 
-async def mute_user(message, args, client, stats, cmds, ramfs):
+
+async def mute_user(message, args, client, **kwargs):
 
     if args:
         try:
@@ -197,7 +197,7 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
             mutetime = 0
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "mute")
+        automod, user, reason, infractionID = await process_infraction(message, args, client, "mute", "Muting")
     except RuntimeError:
         return
 
@@ -221,10 +221,12 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
         await message.channel.send("The bot does not have permission to mute this user.")
         return
     
-    if not automod:
-            await message.channel.send(f"Muted user with ID {user.id} for {reason}")
+    if not automod and not mutetime:
+        await message.channel.send(f"Muted user with ID {user.id} for {reason}")
 
     if mutetime:
+        if not automod:
+            await message.channel.send(f"Muted user with ID {user.id} for {mutetime}s for {reason}")
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
             db.mute_user(user.id, time.time()+mutetime, infractionID)
@@ -233,15 +235,16 @@ async def mute_user(message, args, client, stats, cmds, ramfs):
 
         # unmute in db
         with db_hlapi(message.guild.id) as db:
-            db.unmute_user(infractionID)
+            if db.is_muted(infractionid=infractionID):
+                db.unmute_user(infractionid=infractionID)
 
-        try:
-            await user.remove_roles(mute_role)
-        except discord.errors.Forbidden:
-            pass
+                try:
+                    await user.remove_roles(mute_role)
+                except discord.errors.Forbidden:
+                    pass
 
 
-async def unmute_user(message, args, client, stats, cmds, ramfs):
+async def unmute_user(message, args, client, **kwargs):
 
     # Test if user is valid
     try:
@@ -260,7 +263,8 @@ async def unmute_user(message, args, client, stats, cmds, ramfs):
     # Get muterole from DB
     with db_hlapi(message.guild.id) as db:
         mute_role = db.grab_config("mute-role")
-    
+        db.unmute_user(userid=user.id)
+
     if mute_role:
         mute_role = message.guild.get_role(int(mute_role))
         if not mute_role:
@@ -276,11 +280,11 @@ async def unmute_user(message, args, client, stats, cmds, ramfs):
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unmute this user.")
         return
-    
+
     await message.channel.send(f"Unmuted user with ID {user.id}")
 
 
-async def search_infractions(message, args, client, stats, cmds, ramfs):
+async def search_infractions(message, args, client, **kwargs):
 
     try:
         user = client.get_user(int(args[0].strip("<@!>")))
@@ -332,7 +336,7 @@ async def search_infractions(message, args, client, stats, cmds, ramfs):
     await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)}\n```css\nID, Type, Reason\n{outdata}```")
 
 
-async def get_detailed_infraction(message, args, client, stats, cmds, ramfs):
+async def get_detailed_infraction(message, args, client, **kwargs):
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -357,7 +361,7 @@ async def get_detailed_infraction(message, args, client, stats, cmds, ramfs):
     await message.channel.send(embed=infraction_embed)
 
 
-async def delete_infraction(message, args, client, stats, cmds, ramfs):
+async def delete_infraction(message, args, client, **kwargs):
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -455,3 +459,6 @@ commands = {
     }
     
 }
+
+
+version_info = "1.0.1"

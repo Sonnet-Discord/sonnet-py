@@ -109,13 +109,15 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_mutes",[["infractionID", infractionID],["userID", user],["endMute",endtime]])
 
-    def unmute_user(self, infractionID):
+    def unmute_user(self, **kargs):
         
         try:
-            self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionID])
+            if "infractionid" in kargs.keys():
+                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", kargs["infractionid"]])
+            elif "userid" in kargs.keys():
+                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["userid", kargs["userid"]])
         except db_error.OperationalError:
-            self.create_guild_db()
-            self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionID])
+            pass
 
     def create_guild_db(self):
         
@@ -178,6 +180,30 @@ class db_hlapi:
                 ["reason", reason],
                 ["timestamp", timestamp]
                 ])
+
+    def fetch_all_mutes(self):
+
+        # Grab list of tables
+        tablelist = self.database.list_tables("%_mutes")
+
+        mutetable = []
+        for i in tablelist:
+            mutetable.extend([ [i[0][:-6]] + list(a) for a in self.database.fetch_table(i[0])])
+
+        return mutetable
+
+    def is_muted(self, **kargs):
+
+        try:
+            if "userid" in kargs.keys():
+                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes",["userID",kargs["userid"]]))
+            elif "infractionid" in kargs.keys():
+                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes",["infractionID",kargs["infractionid"]]))
+        except db_error.OperationalError:
+            self.create_guild_db()
+            muted = False
+
+        return muted
 
     def close(self):
         self.database.close()

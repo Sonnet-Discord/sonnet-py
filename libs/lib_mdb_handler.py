@@ -21,6 +21,9 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Generate Cursor
         self.cur = self.con.cursor()
 
+        # Save database name
+        self.db_name = login_info["db_name"]
+
     def __enter__(self):
         return self
 
@@ -94,6 +97,14 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def fetch_table(self, table):
 
         self.cur.execute(f"SELECT * FROM {table};")
+
+        # Send data
+        returndata = list(self.cur)
+        return returndata
+
+    def list_tables(self, searchterm):
+
+        self.cur.execute(f"SHOW TABLES WHERE Tables_in_{self.db_name} LIKE ?", (searchterm,))
 
         # Send data
         returndata = list(self.cur)

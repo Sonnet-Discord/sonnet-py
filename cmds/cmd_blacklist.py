@@ -1,6 +1,6 @@
 # Blacklist commands
 
-import json
+import json, io, discord
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
@@ -17,7 +17,7 @@ async def update_csv_blacklist(message, args, name):
 
     await message.channel.send(f"Updated {name} sucessfully")
 
-async def wb_change(message, args, client, stats, cmds, ramfs):
+async def wb_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "word-blacklist")
@@ -25,7 +25,7 @@ async def wb_change(message, args, client, stats, cmds, ramfs):
         pass
 
 
-async def word_in_word_change(message, args, client, stats, cmds, ramfs):
+async def word_in_word_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "word-in-word-blacklist")
@@ -33,7 +33,7 @@ async def word_in_word_change(message, args, client, stats, cmds, ramfs):
         pass
 
 
-async def ftb_change(message, args, client, stats, cmds, ramfs):
+async def ftb_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "filetype-blacklist")
@@ -41,7 +41,7 @@ async def ftb_change(message, args, client, stats, cmds, ramfs):
         pass
 
 
-async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
+async def regexblacklist_add(message, args, client, **kwargs):
 
     # Test if args supplied
     if not args:
@@ -70,7 +70,7 @@ async def regexblacklist_add(message, args, client, stats, cmds, ramfs):
     await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
+async def regexblacklist_remove(message, args, client, **kwargs):
 
     # Test if args supplied
     if not args:
@@ -101,10 +101,10 @@ async def regexblacklist_remove(message, args, client, stats, cmds, ramfs):
     await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def list_blacklist(message, args, client, stats, cmds, ramfs):
+async def list_blacklist(message, args, client, **kwargs):
 
     # Load temp ramfs to avoid passing as args
-    mconf = load_message_config(message.guild.id, ramfs)
+    mconf = load_message_config(message.guild.id, kwargs["ramfs"])
 
     # Format blacklist
     blacklist = {}
@@ -124,13 +124,21 @@ async def list_blacklist(message, args, client, stats, cmds, ramfs):
             del blacklist[i]
 
     # Format to str
-    formatted = json.dumps(blacklist, indent=4).replace('\\\\','\\')
+    formatted = json.dumps(blacklist, indent=4)
 
     # Print blacklist
-    await message.channel.send(f"```\n{formatted}```")
+    formatted_pretty = "```json\n" + formatted.replace('\\\\','\\') + "```"
+    if len(formatted_pretty) <= 2000:
+        await message.channel.send(formatted_pretty)
+    else:
+        file_to_upload = io.BytesIO()
+        file_to_upload.write(formatted.encode("utf8"))
+        file_to_upload.seek(0)
+        fileobj = discord.File(file_to_upload, filename="blacklist.json")
+        await message.channel.send("Total Blacklist too large to be previewed", file=fileobj)
 
 
-async def set_blacklist_infraction_level(message, args, client, stats, cmds, ramfs):
+async def set_blacklist_infraction_level(message, args, client, **kwargs):
 
     if args:
         action = args[0].lower()
@@ -147,7 +155,7 @@ async def set_blacklist_infraction_level(message, args, client, stats, cmds, ram
     await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
-async def change_rolewhitelist(message, args, client, stats, cmds, ramfs):
+async def change_rolewhitelist(message, args, client, **kwargs):
 
     if args:
         role = args[0].strip("<@&>")
@@ -177,43 +185,43 @@ category_info = {
 commands = {
     'wb-change': {
         'pretty_name': 'wb-change <csv list>',
-        'description': 'Change word blacklist for this guild.',
+        'description': 'Change word blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': wb_change
     },
     'add-regexblacklist': {
         'pretty_name': 'add-regexblacklist <regex>',
-        'description': 'Add an item to regex blacklist.',
+        'description': 'Add an item to regex blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': regexblacklist_add
     },
     'wiwb-change': {
         'pretty_name': 'wiwb-change <csv list>',
-        'description': 'Change the WordInWord blacklist.',
+        'description': 'Change the WordInWord blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': word_in_word_change
     },
     'remove-regexblacklist': {
         'pretty_name': 'remove-regexblacklist <regex>',
-        'description': 'Remove an item from regex blacklist.',
+        'description': 'Remove an item from regex blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': regexblacklist_remove
     },
     'ftb-change': {
         'pretty_name': 'ftb-change <csv list>',
-        'description': 'Change filetype blacklist for this guild.',
+        'description': 'Change filetype blacklist',
         'permission':'administrator',
         'cache':'regenerate',
         'execute': ftb_change
     },
     'list-blacklist': {
         'pretty_name': 'list-blacklist',
-        'description': 'List all blacklists for this guild.',
-        'permission':'administrator',
+        'description': 'List all blacklists',
+        'permission':'moderator',
         'cache':'keep',
         'execute': list_blacklist
     },
@@ -233,3 +241,6 @@ commands = {
     }
     
 }
+
+
+version_info = "1.0.1"
