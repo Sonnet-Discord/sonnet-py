@@ -36,7 +36,7 @@ async def print_version_info(message, args, client, **kwargs):
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
 
-    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60)
+    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60 % 60)
     hours = int((trunning.seconds - seconds - 60*minutes)/(60*60))
 
     fmt += f"\nBot Uptime: {trunning.days} Days, {hours}:{minutes}:{seconds}\n```"
@@ -50,7 +50,7 @@ async def uptime(message, args, client, **kwargs):
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
 
-    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60)
+    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60 % 60)
     hours = int((trunning.seconds - seconds - 60*minutes)/(60*60))
 
     fmt = f"{trunning.days} Days, {hours}:{minutes}:{seconds}"
