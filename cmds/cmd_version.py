@@ -29,13 +29,31 @@ async def print_version_info(message, args, client, **kwargs):
     main_version = kwargs["main_version"]
     modules = kwargs["cmds"]
 
-    fmt = f"```\nMain: {main_version}\nMessage Handlers: {dlib_version}\n\nModules:\n"
+    fmt = f"```\nKernel: {main_version}\nMessage Handlers: {dlib_version}\n\nModules:\n"
 
     for a in prettyprint([[i.category_info['pretty_name'], i.version_info] for i in modules]):
         fmt += f"  {a}\n"
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
-    fmt += f"\nBot Uptime: {trunning.days} Days\n```"
+
+    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60)
+    hours = int((trunning.seconds - seconds - 60*minutes)/(60*60))
+
+    fmt += f"\nBot Uptime: {trunning.days} Days, {hours}:{minutes}:{seconds}\n```"
+
+    await message.channel.send(fmt)
+
+
+async def uptime(message, args, client, **kwargs):
+
+    bot_start_time = kwargs["bot_start"]
+
+    trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
+
+    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60)
+    hours = int((trunning.seconds - seconds - 60*minutes)/(60*60))
+
+    fmt = f"{trunning.days} Days, {hours}:{minutes}:{seconds}"
 
     await message.channel.send(fmt)
 
@@ -54,8 +72,16 @@ commands = {
         'permission':'everyone',
         'cache':'keep',
         'execute': print_version_info
+    },
+    'uptime': {
+        'pretty_name': 'uptime',
+        'description': 'Prints uptime',
+        'permission':'everyone',
+        'cache':'keep',
+        'execute': uptime
     }
+
 }
 
 
-version_info = "1.0.1"
+version_info = "1.0.2-DEV"

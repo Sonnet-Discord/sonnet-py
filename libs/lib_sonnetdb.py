@@ -1,16 +1,20 @@
 # High Level API calls for sonnet style databases
 # Ultrabear 2020
 
+import importlib
+
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
 # Get db handling library
 if DB_TYPE == "mariadb":
     import json
+    import lib_mdb_handler; importlib.reload(lib_mdb_handler)
     from lib_mdb_handler import db_handler, db_error
     with open(".login-info.txt") as login_info_file:  # Grab login data
         db_connection_parameters = json.load(login_info_file)
 
 elif DB_TYPE == "sqlite3":
+    import lib_sql_handler; importlib.reload(lib_sql_handler)
     from lib_sql_handler import db_handler, db_error
     db_connection_parameters = SQLITE3_LOCATION
 

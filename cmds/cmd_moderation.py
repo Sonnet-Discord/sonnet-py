@@ -1,7 +1,12 @@
 # Moderation commands
 # bredo, 2020
 
+import importlib
+
 import discord, datetime, time, asyncio
+
+import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_loaders; importlib.reload(lib_loaders)
 
 from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
@@ -461,4 +466,4 @@ commands = {
 }
 
 
-version_info = "1.0.1"
+version_info = "1.0.2-DEV"

@@ -17,4 +17,4 @@ SQLITE3_LOCATION = "datastore/sonnetdb.db"
 SQLITE3_TYPE = "sonnet"
 
 # Set the bot owner by userid, allows debug tools
-BOT_OWNER = ""
+BOT_OWNER = "673675955616874518"

@@ -9,7 +9,6 @@ class db_error: # DB error codes
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __init__(self, login_info):
-
         # Connect to database with login info
         self.con = mariadb.connect(
             user = login_info["login"],

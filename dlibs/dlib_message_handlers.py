@@ -1,8 +1,15 @@
 # Dynamic libraries (editable at runtime) for message handling
 # Ultrabear 2020
 
+import importlib
+
 import discord, time, asyncio
 from datetime import datetime
+
+import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_parsers; importlib.reload(lib_parsers)
+import lib_loaders; importlib.reload(lib_loaders)
+
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, directBinNumber
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
@@ -245,4 +252,4 @@ commands = {
     }
 
 
-version_info = "1.0.1"
+version_info = "1.0.2-DEV"

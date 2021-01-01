@@ -1,9 +1,12 @@
 # cache generation tools
 # Ultabear 2020
 
-from sonnet_cfg import *
-import json, random, os
+import importlib
 
+import json, random, os
+from sonnet_cfg import *
+
+import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
 
 
