@@ -12,12 +12,10 @@ def prettyprint(inlist):
     for i in inlist:
         if len(i[0]) > maxln:
             maxln = len(i[0])
-        if len(i[1]) > minln:
-            minln = len(i[1])
 
     outlist = []
     for i in inlist:
-        outlist.append(f"{i[0]}{(maxln-len(i[0]))*' '} : {(minln-len(i[1]))*' '}{i[1]}")
+        outlist.append(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}")
 
     return outlist
 
@@ -84,4 +82,4 @@ commands = {
 }
 
 
-version_info = "1.0.2-DEV"
+version_info = "1.0.2-DEV_line_it_up"

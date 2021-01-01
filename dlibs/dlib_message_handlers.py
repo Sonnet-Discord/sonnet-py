@@ -16,6 +16,11 @@ from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 
 async def on_reaction_add(reaction, client, ramfs):
+
+    # Skip if not a guild
+    if not reaction.message.guild:
+        return
+
     mconf = load_message_config(reaction.message.guild.id, ramfs)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
@@ -252,4 +257,4 @@ commands = {
     }
 
 
-version_info = "1.0.2-DEV"
+version_info = "1.0.2-DEV_fix_reactions"
