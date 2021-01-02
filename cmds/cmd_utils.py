@@ -186,4 +186,4 @@ commands = {
 }
 
 
-version_info = "1.0.2-DEV_python3_is_not_javascript"
+version_info = "1.0.2"

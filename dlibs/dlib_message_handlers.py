@@ -264,4 +264,4 @@ commands = {
     }
 
 
-version_info = "1.0.2-DEV_Starboard"
+version_info = "1.0.2"

@@ -82,4 +82,4 @@ commands = {
 }
 
 
-version_info = "1.0.2-DEV_line_it_up"
+version_info = "1.0.2"
