@@ -5,6 +5,8 @@ import mariadb, json
 
 class db_error: # DB error codes
     OperationalError = mariadb.Error
+    InterfaceError = mariadb.InterfaceError
+    Error = mariadb.OperationalError
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear

@@ -71,8 +71,8 @@ async def on_message_edit(old_message, message, client, command_modules, command
         if message_log:
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
-            message_embed.add_field(name="Old Message", value=old_message.content, inline=False)
-            message_embed.add_field(name="New Message", value=message.content, inline=False)
+            message_embed.add_field(name="Old Message", value=(old_message.content or "NULL"), inline=False)
+            message_embed.add_field(name="New Message", value=(message.content or "NULL"), inline=False)
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
             await message_log.send(embed=message_embed)
@@ -257,4 +257,4 @@ commands = {
     }
 
 
-version_info = "1.0.2-DEV_fix_reactions"
+version_info = "1.0.2-DEV_editnull"
