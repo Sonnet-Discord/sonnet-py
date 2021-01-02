@@ -64,6 +64,7 @@ async def profile_function(message, args, client, **kwargs):
 
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
     joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
+
     embed=discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
@@ -102,16 +103,8 @@ async def avatar_function(message, args, client, **kwargs):
 
 
 async def help_function(message, args, client, **kwargs):
-    # Check arguments and such.
-    lookup = False
 
-    if len(args) > 0:
-        lookup = args[0]
-
-    # Lookup will now either be False or a module lookup.
-    # If it's not a lookup, then we just want the category info.
-
-    if lookup == False:
+    if not args:
         # We're just doing category info.
 
         # Initialise embed.
@@ -120,26 +113,22 @@ async def help_function(message, args, client, **kwargs):
 
         # Start creating module listing.
         for modules in kwargs["cmds"]:
-            embed.add_field(name=modules.category_info['pretty_name']+ " (" + modules.category_info['name'] + ")", value=modules.category_info['description'], inline=False)
+            embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
     else:
         # We're looking up a category.
 
         # Initialise embed.
-        embed=discord.Embed(title='Commands in Category "' + args[0].lower() + '"', color=0x00db87)
+        embed=discord.Embed(title=f"Commands in Category \"{args[0].lower()}\"", color=0x00db87)
         embed.set_author(name="Sonnet Help")
 
         # Start creating command listing.
         cmds = []
-        for modules in kwargs["cmds"]:
+        for module in kwargs["cmds"]:
             # Check we're working with the right category.
-            if modules.category_info['name'] == args[0].lower():
+            if module.category_info['name'] == args[0].lower():
                 # Now we're in the correct category, generate the fields.
-                for commands in modules.commands:
-                    cmds.append({
-                        'pretty_name': modules.commands[commands]['pretty_name'],
-                        'description': modules.commands[commands]['description']
-                    })
-
+                for commands in module.commands.keys():
+                    cmds.append(module.commands[commands])
                 # We can now break out of this for loop.
                 break
 
@@ -147,12 +136,12 @@ async def help_function(message, args, client, **kwargs):
         PREFIX = load_message_config(message.guild.id, kwargs["ramfs"])["prefix"]
 
         # Now we generate the actual embed.
-        if len(cmds) < 1:
+        if not cmds:
             embed.add_field(name="No commands found in this category.", value="Maybe you misspelled?", inline=False)
         else:
-            for info in cmds:
+            for command in cmds:
                 # Add field.
-                embed.add_field(name=PREFIX + info['pretty_name'], value=info['description'], inline=False)
+                embed.add_field(name=PREFIX + command['pretty_name'], value=command['description'], inline=False)
 
     # Now we have the final embed. Send it.
     await message.channel.send(embed=embed)
@@ -197,4 +186,4 @@ commands = {
 }
 
 
-version_info = "1.0.2-DEV"
+version_info = "1.0.2-DEV_python3_is_not_javascript"
