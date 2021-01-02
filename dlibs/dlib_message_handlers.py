@@ -26,11 +26,16 @@ async def on_reaction_add(reaction, client, ramfs):
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
             if channel_id := db.grab_config("starboard-channel"):
-                if bool(channel := client.get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(channel_id == reaction.message.channel):
+                if bool(channel := client.get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(int(channel_id) == reaction.message.channel.id):
 
                     db.add_to_starboard(reaction.message.id)
+
                     jump = f"\n\n[(Link)]({reaction.message.jump_url})"
                     starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content[: 2048 - len(jump)] + jump, color=0xffa700)
+
+                    for i in reaction.message.attachments:
+                        starboard_embed.set_image(url=i.url)
+
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
                     starboard_embed.timestamp = datetime.utcnow()
 
@@ -243,7 +248,9 @@ async def on_guild_join(guild):
 
 
 async def on_raw_reaction_add(payload, client, ramfs):
-    pass # ENDPOINT FOR SONNET 1.1.0
+    message = await client.get_channel(payload.channel_id).fetch_message(payload.message_id)
+    reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
+    await on_reaction_add(reaction, client, ramfs)
 
 
 commands = {
@@ -257,4 +264,4 @@ commands = {
     }
 
 
-version_info = "1.0.2-DEV_editnull"
+version_info = "1.0.2-DEV_Starboard"
