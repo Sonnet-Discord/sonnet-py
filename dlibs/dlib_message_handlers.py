@@ -76,8 +76,17 @@ async def on_message_edit(old_message, message, client, command_modules, command
         if message_log:
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
-            message_embed.add_field(name="Old Message", value=(old_message.content or "NULL"), inline=False)
-            message_embed.add_field(name="New Message", value=(message.content or "NULL"), inline=False)
+
+            old_msg = (old_message.content or "NULL")
+            message_embed.add_field(name="Old Message", value=(old_msg)[:1024], inline=False)
+            if len(old_msg) > 1024:
+                message_embed.add_field(name="(Continued)", value=(old_msg)[1024:], inline=False)
+
+            msg = (message.content or "NULL")
+            message_embed.add_field(name="New Message", value=(msg)[:1024], inline=False)
+            if len(msg) > 1024:
+                message_embed.add_field(name="(Continued)", value=(msg)[1024:], inline=False)
+
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
             await message_log.send(embed=message_embed)
@@ -248,10 +257,13 @@ async def on_guild_join(guild):
 
 
 async def on_raw_reaction_add(payload, client, ramfs):
-    message = await client.get_channel(payload.channel_id).fetch_message(payload.message_id)
-    reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
-    await on_reaction_add(reaction, client, ramfs)
-
+    try:
+        message = await client.get_channel(payload.channel_id).fetch_message(payload.message_id)
+        reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
+        await on_reaction_add(reaction, client, ramfs)
+    except Exception as e:
+        await client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contect bot owner")
+        raise e
 
 commands = {
     "on-message": on_message,
@@ -264,4 +276,4 @@ commands = {
     }
 
 
-version_info = "1.0.2"
+version_info = "1.0.2-1"
