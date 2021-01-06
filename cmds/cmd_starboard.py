@@ -1,8 +1,15 @@
 # Starboard system
 # Ultrabear 2020
 
-from lib_parsers import parse_boolean, update_log_channel
+import importlib
+
 from sonnet_cfg import STARBOARD_EMOJI, DB_TYPE
+
+import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_parsers; importlib.reload(lib_parsers)
+import lib_loaders; importlib.reload(lib_loaders)
+
+from lib_parsers import parse_boolean, update_log_channel
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config
 
@@ -99,4 +106,4 @@ commands = {
 }
 
 
-version_info = "1.0.1"
+version_info = "1.0.2"

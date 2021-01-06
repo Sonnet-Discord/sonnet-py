@@ -5,6 +5,8 @@ import sqlite3
 
 class db_error: # DB error codes
     OperationalError = sqlite3.OperationalError
+    InterfaceError = sqlite3.InterfaceError
+    Error = sqlite3.Error
 
 class db_handler:
     def __init__(self, db_location):
@@ -39,7 +41,7 @@ class db_handler:
             else:
                 inlist.append(f"{i[0]} {datamap[i[1]]}")
 
-        # Add parsed inputs to inputStr 
+        # Add parsed inputs to inputStr
         db_inputStr += ", ".join(inlist) + ")"
 
         # Exectute table generation
@@ -78,7 +80,7 @@ class db_handler:
         return self.cur.fetchall()
 
     # deletes rows from table where collumn i[0] has value i[1]
-    def delete_rows_from_table(self, table, collumn_search): 
+    def delete_rows_from_table(self, table, collumn_search):
 
         # Test for attack
         if table.count("\\") or table.count("'"):

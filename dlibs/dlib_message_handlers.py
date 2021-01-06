@@ -1,24 +1,41 @@
 # Dynamic libraries (editable at runtime) for message handling
 # Ultrabear 2020
 
+import importlib
+
 import discord, time, asyncio
 from datetime import datetime
+
+import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_parsers; importlib.reload(lib_parsers)
+import lib_loaders; importlib.reload(lib_loaders)
+
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, directBinNumber
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 
 async def on_reaction_add(reaction, client, ramfs):
+
+    # Skip if not a guild
+    if not reaction.message.guild:
+        return
+
     mconf = load_message_config(reaction.message.guild.id, ramfs)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
             if channel_id := db.grab_config("starboard-channel"):
-                if bool(channel := client.get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(channel_id == reaction.message.channel):
+                if bool(channel := client.get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(int(channel_id) == reaction.message.channel.id):
 
                     db.add_to_starboard(reaction.message.id)
+
                     jump = f"\n\n[(Link)]({reaction.message.jump_url})"
                     starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content[: 2048 - len(jump)] + jump, color=0xffa700)
+
+                    for i in reaction.message.attachments:
+                        starboard_embed.set_image(url=i.url)
+
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
                     starboard_embed.timestamp = datetime.utcnow()
 
@@ -59,8 +76,17 @@ async def on_message_edit(old_message, message, client, command_modules, command
         if message_log:
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
-            message_embed.add_field(name="Old Message", value=old_message.content, inline=False)
-            message_embed.add_field(name="New Message", value=message.content, inline=False)
+
+            old_msg = (old_message.content or "NULL")
+            message_embed.add_field(name="Old Message", value=(old_msg)[:1024], inline=False)
+            if len(old_msg) > 1024:
+                message_embed.add_field(name="(Continued)", value=(old_msg)[1024:], inline=False)
+
+            msg = (message.content or "NULL")
+            message_embed.add_field(name="New Message", value=(msg)[:1024], inline=False)
+            if len(msg) > 1024:
+                message_embed.add_field(name="(Continued)", value=(msg)[1024:], inline=False)
+
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
             await message_log.send(embed=message_embed)
@@ -231,8 +257,13 @@ async def on_guild_join(guild):
 
 
 async def on_raw_reaction_add(payload, client, ramfs):
-    pass # ENDPOINT FOR SONNET 1.1.0
-
+    try:
+        message = await client.get_channel(payload.channel_id).fetch_message(payload.message_id)
+        reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
+        await on_reaction_add(reaction, client, ramfs)
+    except Exception as e:
+        await client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contect bot owner")
+        raise e
 
 commands = {
     "on-message": on_message,
@@ -245,4 +276,4 @@ commands = {
     }
 
 
-version_info = "1.0.1"
+version_info = "1.0.2-1"

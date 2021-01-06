@@ -1,6 +1,11 @@
 # Blacklist commands
 
+import importlib
+
 import json, io, discord
+
+import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_loaders; importlib.reload(lib_loaders)
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
@@ -243,4 +248,4 @@ commands = {
 }
 
 
-version_info = "1.0.1"
+version_info = "1.0.2"

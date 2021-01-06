@@ -1,8 +1,12 @@
 # Parsers for message handling
 # Ultrabear 2020
 
+import importlib
+
 import re
 from sonnet_cfg import DB_TYPE
+
+import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
 
@@ -60,6 +64,10 @@ def parse_skip_message(Client, message):
 
     # Ignore message if author is a bot
     if message.author.bot:
+        return True
+
+    # Ignore dmmessage
+    if not message.guild:
         return True
 
     return False

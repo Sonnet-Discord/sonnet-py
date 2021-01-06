@@ -10,3 +10,5 @@ err.log
 # Remove mariadb login
 .login-info.txt
 
+# Remove config file to preserve sanity
+sonnet_cfg.py

@@ -5,11 +5,12 @@ import mariadb, json
 
 class db_error: # DB error codes
     OperationalError = mariadb.Error
+    InterfaceError = mariadb.InterfaceError
+    Error = mariadb.OperationalError
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __init__(self, login_info):
-
         # Connect to database with login info
         self.con = mariadb.connect(
             user = login_info["login"],
