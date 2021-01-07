@@ -6,7 +6,6 @@ import importlib
 
 # Start Discord.py
 import discord
-from discord.ext import commands
 
 # Initialise system library for editing PATH.
 import sys
@@ -24,19 +23,6 @@ sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
 sys.path.insert(1, os.getcwd() + '/dlibs')
 
-# Import configuration data.
-import sonnet_cfg
-
-# prefix for the bot
-GLOBAL_PREFIX = sonnet_cfg.GLOBAL_PREFIX
-
-
-# function to get prefix
-def get_prefix(client, message):
-    prefixes = GLOBAL_PREFIX
-    return commands.when_mentioned_or(*prefixes)(client, message)
-
-
 
 intents = discord.Intents.default()
 intents.typing = False
@@ -46,8 +32,7 @@ intents.members = True
 intents.reactions = True
 
 # Initialise Discord Client.
-Client = commands.Bot(
-    command_prefix=get_prefix,
+Client = discord.Client(
     case_insensitive=True,
     status=discord.Status.online,
     intents=intents
@@ -85,10 +70,18 @@ def sonnet_load_command_modules():
 
 sonnet_load_command_modules()
 
+# Initalize RAM FS
+import lib_ramfs
+ramfs = lib_ramfs.ram_filesystem()
+
+def regenerate_ramfs():
+    global ramfs
+    ramfs = lib_ramfs.ram_filesystem()
+
 def sonnet_reload_command_modules():
     print("Reloading Kernel Modules")
     # Init vars
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, lib_ramfs
     command_modules_dict = {}
     dynamiclib_modules_dict = {}
     # Update set
@@ -101,85 +94,69 @@ def sonnet_reload_command_modules():
         command_modules_dict.update(module.commands)
     for module in dynamiclib_modules:
         dynamiclib_modules_dict.update(module.commands)
+    # Update ramfs
+    importlib.reload(lib_ramfs)
+    regenerate_ramfs()
+    
 
 # Generate debug command subset
-debug_commands = {"debug-modules-load":sonnet_load_command_modules, "debug-modules-reload":sonnet_reload_command_modules}
-
-# Initalize RAM FS
-from lib_ramfs import ram_filesystem
-ramfs = ram_filesystem()
-ramfs.mkdir("datastore")
-ramfs.mkdir("antispam")
-
-def regenerate_ramfs():
-    global ramfs
-    ramfs = ram_filesystem()
-    ramfs.mkdir("datastore")
-
+debug_commands = {}
+debug_commands["debug-modules-load"] = sonnet_load_command_modules
+debug_commands["debug-modules-reload"] = sonnet_reload_command_modules
 debug_commands["debug-drop-cache"] = regenerate_ramfs
+
 
 # Catch errors without being fatal - log them.
 @Client.event
 async def on_error(event, *args, **kwargs):
     with open('err.log', 'a') as f:
-        if event == 'on_message':
-            f.write(f'Unhandled message: {args[0]}\n')
-            raise
-        else:
-            raise
+        f.write(f'Unhandled error: {args[0]}\n')
+        raise
 
 
-# Bot connected to Discord.
+async def kernel_0(argtype):
+    if argtype in dynamiclib_modules_dict.keys():
+        await dynamiclib_modules_dict[argtype]( 
+            client=Client, ramfs=ramfs, bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info)
+
+
+async def kernel_1(argtype, arg1):
+    if argtype in dynamiclib_modules_dict.keys():
+        await dynamiclib_modules_dict[argtype](arg1,
+            client=Client, ramfs=ramfs, bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info)
+
+
+async def kernel_2(argtype, arg1, arg2):
+    if argtype in dynamiclib_modules_dict.keys():
+        await dynamiclib_modules_dict[argtype](arg1, arg2,
+            client=Client, ramfs=ramfs, bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info)
+
+
+@Client.event
+async def on_connect():
+    await kernel_0("on-connect")
+    
+@Client.event
+async def on_disconnect():
+    await kernel_0("on-disconnect")
+
 @Client.event
 async def on_ready():
-    await dynamiclib_modules_dict["on-ready"](Client, bot_start_time)
-
-
-# Bot joins a guild
-@Client.event
-async def on_guild_join(guild):
-    await dynamiclib_modules_dict["on-guild-join"](guild)
-
-
-# Handle starboard system
-@Client.event
-async def on_raw_reaction_add(payload):
-    try:
-        await dynamiclib_modules_dict["on-raw-reaction-add"](payload, Client, ramfs)
-    except Exception as e:
-        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-add\nPlease contact bot owner")
-        raise e
-
+    await kernel_0("on-ready")
 
 @Client.event
-async def on_reaction_add(reaction, user):
-    try:
-        await dynamiclib_modules_dict["on-reaction-add"](reaction, Client, ramfs)
-    except Exception as e:
-        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-add\nPlease contact bot owner")
-        raise e
-
-
-# Handle message deletions
-@Client.event
-async def on_message_delete(message):
-    try:
-        await dynamiclib_modules_dict["on-message-delete"](message, Client)
-    except Exception as e:
-        await message.channel.send(f"FATAL ERROR in on-message-delete\nPlease contact bot owner")
-        raise e
-
-
-@Client.event
-async def on_message_edit(old_message, message):
-    try:
-        await dynamiclib_modules_dict["on-message-edit"](old_message, message, Client, command_modules, command_modules_dict, ramfs)
-    except Exception as e:
-        await message.channel.send(f"FATAL ERROR in on-message-edit\nPlease contact bot owner")
-        raise e
-
-
-# Handle messages.
+async def on_resumed():
+    await kernel_0("on-resumed")
+    
 @Client.event
 async def on_message(message):
 
@@ -190,13 +167,161 @@ async def on_message(message):
         return
 
     try:
-        await dynamiclib_modules_dict["on-message"](message, Client, command_modules, command_modules_dict, ramfs, bot_start_time, version_info)
+        await kernel_1("on-message", message)
     except Exception as e:
         await message.channel.send(f"FATAL ERROR in on-message\nPlease contact bot owner")
         raise e
 
+@Client.event
+async def on_message_delete(message):
+    try:
+        await kernel_1("on-message-delete", message)
+    except Exception as e:
+        await message.channel.send(f"FATAL ERROR in on-message-delete\nPlease contact bot owner")
+        raise e
 
-version_info = "1.0.1"
+@Client.event
+async def on_bulk_message_delete(messages):
+    try:
+        await kernel_1("on-bulk-message-delete", messages)
+    except Exception as e:
+        await messages[0].channel.send(f"FATAL ERROR in on-bulk-message-delete\nPlease contact bot owner")
+        raise e
+
+@Client.event
+async def on_raw_message_delete(payload):
+    try:
+        await kernel_1("on-raw-message-delete", payload)
+    except Exception as e:
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-message-delete\nPlease contect bot owner")
+        raise e
+
+@Client.event
+async def on_raw_bulk_message_delete(payload):
+    try:
+        await kernel_1("on-raw-bulk-message-delete", payload)
+    except Exception as e:
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-bulk-message-delete\nPlease contect bot owner")
+        raise e
+
+@Client.event
+async def on_message_edit(old_message, message):
+    try:
+        await kernel_2("on-message-edit", old_message, message)
+    except Exception as e:
+        await message.channel.send(f"FATAL ERROR in on-message-edit\nPlease contact bot owner")
+        raise e
+
+@Client.event
+async def on_raw_message_edit(payload):
+    try:
+        await kernel_1("on-raw-message-edit", payload)
+    except Exception as e:
+        await Client.get_channel(payload.channel_id).send(f"FATAL ERROR in on-raw-message-edit\nPlease contact bot owner")
+        raise e
+
+
+@Client.event
+async def on_reaction_add(reaction, user):
+    try:
+        await kernel_2("on-reaction-add", reaction, user)
+    except Exception as e:
+        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-add\nPlease contact bot owner")
+        raise e
+
+@Client.event
+async def on_raw_reaction_add(payload):
+    try:
+        await kernel_1("on-raw-reaction-add", payload)
+    except Exception as e:
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contect bot owner")
+        raise e
+
+@Client.event
+async def on_reaction_remove(reaction, user):
+    try:
+        await kernel_2("on-reaction-remove", reaction, user)
+    except Exception as e:
+        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-remove\nPlease contact bot owner")
+        raise e
+
+@Client.event
+async def on_raw_reaction_remove(payload):
+    try:
+        await kernel_1("on-raw-reaction-remove", payload)
+    except Exception as e:
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-remove\nPlease contect bot owner")
+        raise e
+
+@Client.event
+async def on_reaction_clear(message, reactions):
+    try:
+        await kernel_2("on-reaction-clear", message, reactions)
+    except Exception as e:
+        await message.channel.send(f"FATAL ERROR in on-reaction-clear\nPlease contact bot owner")
+        raise e
+
+@Client.event
+async def on_raw_reaction_clear(payload):
+    try:
+        await kernel_1("on-raw-reaction-clear", payload)
+    except Exception as e:
+        await Client.get_channel(payload.channel_id).send(f"FATAL ERROR in on-raw-reaction-clear\nPlease contact bot owner")
+        raise e
+
+@Client.event
+async def on_reaction_clear_emoji(reaction):
+    try:
+        await kernel_1("on-reaction-clear-emoji", reaction)
+    except Exception as e:
+        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-clear-emoji\nPlease contact bot owner")
+        raise e
+
+@Client.event
+async def on_raw_reaction_clear_emoji(payload):
+    try:
+        await kernel_1("on-raw-reaction-clear-emoji", payload)
+    except Exception as e:
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-clear-emoji\nPlease contect bot owner")
+        raise e
+
+
+@Client.event
+async def on_member_join(member):
+    await kernel_1("on-member-join", member)
+
+@Client.event
+async def on_member_remove(member):
+    await kernel_1("on-member-remove", member)
+
+@Client.event
+async def on_member_update(before, after):
+    await kernel_2("on-member-update", before, after)
+
+
+@Client.event
+async def on_guild_join(guild):
+    await kernel_1("on-guild-join", guild)
+
+@Client.event
+async def on_guild_remove(guild):
+    await kernel_1("on-guild-remove", guild)
+
+@Client.event
+async def on_guild_update(before, after):
+    await kernel_2("on-guild-update", before, after)
+
+
+@Client.event
+async def on_member_ban(guild, user):
+    await kernel_2("on-member-ban", guild, user)
+
+@Client.event
+async def on_member_unban(guild, user):
+    await kernel_2("on-member-unban", guild, user)
+
+
+version_info = "1.1.0 'LeXdPyK'"
 bot_start_time = time.time()
 if TOKEN:
     Client.run(TOKEN, bot=True, reconnect=True)

@@ -16,7 +16,6 @@ async def parse_blacklist(message, blacklist):
     broke_blacklist = False
     infraction_type = []
     text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":"," ").replace("\n"," "))
-
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:

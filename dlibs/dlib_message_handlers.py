@@ -15,18 +15,18 @@ from lib_loaders import load_message_config, directBinNumber
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 
-async def on_reaction_add(reaction, client, ramfs):
+async def on_reaction_add(reaction, user, **kargs):
 
     # Skip if not a guild
     if not reaction.message.guild:
         return
 
-    mconf = load_message_config(reaction.message.guild.id, ramfs)
+    mconf = load_message_config(reaction.message.guild.id, kargs["ramfs"])
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
             if channel_id := db.grab_config("starboard-channel"):
-                if bool(channel := client.get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(int(channel_id) == reaction.message.channel.id):
+                if bool(channel := kargs["client"].get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(int(channel_id) == reaction.message.channel.id):
 
                     db.add_to_starboard(reaction.message.id)
 
@@ -42,8 +42,9 @@ async def on_reaction_add(reaction, client, ramfs):
                     await channel.send(embed=starboard_embed)
 
 
-async def on_message_delete(message, client):
+async def on_message_delete(message, **kargs):
 
+    client = kargs["client"]
     # Ignore bots
     if parse_skip_message(client, message):
         return
@@ -62,7 +63,10 @@ async def on_message_delete(message, client):
             await message_log.send(embed=message_embed)
 
 
-async def on_message_edit(old_message, message, client, command_modules, command_modules_dict, ramfs):
+async def on_message_edit(old_message, message, **kargs):
+
+    client = kargs["client"]
+    ramfs = kargs["ramfs"]
 
     # Ignore bots
     if parse_skip_message(client, message):
@@ -93,7 +97,7 @@ async def on_message_edit(old_message, message, client, command_modules, command
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, infraction_type = parse_blacklist(message, mconf)
+    broke_blacklist, infraction_type = await parse_blacklist(message, mconf)
 
     if broke_blacklist:
         try:
@@ -138,7 +142,14 @@ async def antispam_check(guildid, userid, ramfs, **kargs):
         return False
 
 
-async def on_message(message, client, command_modules, command_modules_dict, ramfs, bot_start_time, main_version_info):
+async def on_message(message, **kargs):
+
+    client = kargs["client"]
+    ramfs = kargs["ramfs"]
+    main_version_info = kargs["kernel_version"]
+    bot_start_time = kargs["bot_start"]
+    command_modules, command_modules_dict = kargs["command_modules"]
+
     # Statistics.
     stats = {"start": round(time.time() * 100000), "end": 0}
 
@@ -152,8 +163,8 @@ async def on_message(message, client, command_modules, command_modules_dict, ram
 
     # Check message against blacklist
     stats["start-automod"] = round(time.time() * 100000)
-    blacklist_dump = parse_blacklist(message, mconf)
-    spammer = antispam_check(message.channel.guild.id, message.author.id, ramfs, messages=3, time=2)
+    blacklist_dump = asyncio.create_task(parse_blacklist(message, mconf))
+    spammer = asyncio.create_task(antispam_check(message.channel.guild.id, message.author.id, ramfs, messages=3, time=2))
 
     # If blacklist broken generate infraction
     broke_blacklist, infraction_type = await blacklist_dump
@@ -218,7 +229,9 @@ async def attempt_unmute(Client, mute_entry):
                 pass
 
 
-async def on_ready(Client, bot_start_time):
+async def on_ready(**kargs):
+    
+    Client = kargs["client"]
     print(f'{Client.user} has connected to Discord!')
 
     # Warn if user is not bot
@@ -226,7 +239,7 @@ async def on_ready(Client, bot_start_time):
         print("WARNING: The connected account is not a bot, as it is against ToS we do not condone user botting")
     
     # bot start time check to not reparse timers on network disconnect
-    if bot_start_time > (time.time()-10):
+    if kargs["bot_start"] > (time.time()-10):
 
         with db_hlapi(None) as db:
             lost_mutes = sorted(db.fetch_all_mutes(), key=lambda a: a[3])
@@ -249,19 +262,16 @@ async def on_ready(Client, bot_start_time):
             print("Mutes recovered")
 
 
-async def on_guild_join(guild):
+async def on_guild_join(guild, **kargs):
     with db_hlapi(guild.id) as db:
         db.create_guild_db()
 
 
-async def on_raw_reaction_add(payload, client, ramfs):
-    try:
-        message = await client.get_channel(payload.channel_id).fetch_message(payload.message_id)
-        reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
-        await on_reaction_add(reaction, client, ramfs)
-    except Exception as e:
-        await client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contect bot owner")
-        raise e
+async def on_raw_reaction_add(payload, **kargs):
+    message = await kargs["client"].get_channel(payload.channel_id).fetch_message(payload.message_id)
+    reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
+    await on_reaction_add(reaction, payload.user_id, client=kargs["client"], ramfs=kargs["ramfs"])
+
 
 commands = {
     "on-message": on_message,
