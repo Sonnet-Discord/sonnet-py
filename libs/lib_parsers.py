@@ -11,7 +11,7 @@ import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
 
 
-def parse_blacklist(message, blacklist):
+async def parse_blacklist(message, blacklist):
     # Preset values
     broke_blacklist = False
     infraction_type = []
