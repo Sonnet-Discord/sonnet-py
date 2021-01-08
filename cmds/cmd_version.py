@@ -23,14 +23,20 @@ def prettyprint(inlist):
 async def print_version_info(message, args, client, **kwargs):
 
     bot_start_time = kwargs["bot_start"]
-    dlib_version = kwargs["dlib_version"]
+    dlib_modules = kwargs["dlibs"]
     main_version = kwargs["main_version"]
     modules = kwargs["cmds"]
 
-    fmt = f"```\nKernel: {main_version}\nMessage Handlers: {dlib_version}\n\nModules:\n"
+    fmt = f"```\nKernel: {main_version}\n\nEvent Modules:\n"
+
+    for a in prettyprint([[i.category_info['name'], i.version_info] for i in dlib_modules]):
+        fmt += f"  {a}\n"
+
+    fmt += "\nCommand Modules:\n"
 
     for a in prettyprint([[i.category_info['pretty_name'], i.version_info] for i in modules]):
         fmt += f"  {a}\n"
+
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
 

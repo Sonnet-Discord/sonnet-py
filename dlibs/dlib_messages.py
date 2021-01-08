@@ -203,7 +203,7 @@ async def on_message(message, **kargs):
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
-                await command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlib_version=version_info, main_version=main_version_info)
+                await command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlibs=kargs["dynamiclib_modules"][0], main_version=main_version_info)
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
                     ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
@@ -273,11 +273,15 @@ async def on_raw_reaction_add(payload, **kargs):
     await on_reaction_add(reaction, payload.user_id, client=kargs["client"], ramfs=kargs["ramfs"])
 
 
+category_info = {
+    'name': 'Messages'
+}
+
+
 commands = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
-    "on-reaction-add": on_reaction_add,
     "on-raw-reaction-add": on_raw_reaction_add,
     "on-ready": on_ready,
     "on-guild-join": on_guild_join
