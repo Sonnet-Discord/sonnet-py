@@ -35,7 +35,7 @@ async def on_reaction_add(reaction, user, **kargs):
                         starboard_embed.set_image(url=i.url)
 
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
-                    starboard_embed.timestamp = datetime.utcnow()
+                    starboard_embed.timestamp = reaction.message.created_at
 
                     await channel.send(embed=starboard_embed)
 
