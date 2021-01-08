@@ -13,8 +13,3 @@ STARBOARD_COUNT = "5"
 DB_TYPE = "mariadb"
 # only needs to be set if using sqlite3 db in sonnet mode, mariadb login is stored in .login-info.txt
 SQLITE3_LOCATION = "datastore/sonnetdb.db"
-# SQLdb style, for rhea/sonnet connections
-SQLITE3_TYPE = "sonnet"
-
-# Set the bot owner by userid, allows debug tools
-BOT_OWNER = ""

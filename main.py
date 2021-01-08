@@ -1,8 +1,5 @@
-# OS library.
-import os
-
-# Get importlib.
-import importlib
+# Import core systems
+import os, importlib, io
 
 # Start Discord.py
 import discord
@@ -70,21 +67,84 @@ def sonnet_load_command_modules():
 
 sonnet_load_command_modules()
 
-# Initalize RAM FS
-import lib_ramfs
-ramfs = lib_ramfs.ram_filesystem()
 
+# Define ramfs
+class ram_filesystem:
+
+    def __init__(self):
+        self.directory_table = {}
+        self.data_table = {}
+
+    def __enter__(self):
+        return self
+
+    def mkdir(self, make_dir):
+
+        # Make fs list
+        make_dir = make_dir.split("/")
+
+        # If the current dir doesnt exist then create it
+        if not(make_dir[0] in self.directory_table.keys()):
+            self.directory_table[make_dir[0]] = ram_filesystem()
+
+        # If there is more directory left then keep going
+        if len(make_dir) > 1:
+            return self.directory_table[make_dir[0]].mkdir("/".join(make_dir[1:]))
+        else:
+            return self
+
+    def remove_f(self, remove_item):
+
+        remove_item = remove_item.split("/")
+        if len(remove_item) > 1:
+            return self.directory_table[remove_item[0]].remove_f("/".join(remove_item[1:]))
+        else:
+            try:
+                del self.data_table[remove_item[0]]
+                return self
+            except KeyError:
+                raise FileNotFoundError("File does not exist")
+
+    def read_f(self, file_to_open):
+
+        file_to_open = file_to_open.split("/")
+        try:
+            if len(file_to_open) > 1:
+                return self.directory_table[file_to_open[0]].read_f("/".join(file_to_open[1:]))
+            else:
+                return self.data_table[file_to_open[0]]
+        except KeyError:
+            raise FileNotFoundError("File does not exist")
+
+    def create_f(self, file_to_write):
+
+        file_to_write = file_to_write.split("/")
+        if len(file_to_write) > 1:
+            try:
+                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]))
+            except KeyError:
+                self.mkdir("/".join(file_to_write[:-1]))
+                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]))
+        else:
+            self.data_table[file_to_write[0]] = io.BytesIO()
+
+        return self.data_table[file_to_write[0]]
+
+
+# Initalize ramfs, kernel ramfs
+ramfs = ram_filesystem()
+kernel_ramfs = ram_filesystem()
 # Import configs
-import sonnet_cfg
+from LeXdPyK_conf import BOT_OWNER
 
 def regenerate_ramfs():
     global ramfs
-    ramfs = lib_ramfs.ram_filesystem()
+    ramfs = ram_filesystem()
 
 def sonnet_reload_command_modules():
     print("Reloading Kernel Modules")
     # Init vars
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, lib_ramfs, sonnet_cfg
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
     command_modules_dict = {}
     dynamiclib_modules_dict = {}
     # Update set
@@ -97,11 +157,8 @@ def sonnet_reload_command_modules():
         command_modules_dict.update(module.commands)
     for module in dynamiclib_modules:
         dynamiclib_modules_dict.update(module.commands)
-    # Update ramfs
-    importlib.reload(lib_ramfs)
+    # Regen tempramfs
     regenerate_ramfs()
-    # Update configs
-    importlib.reload(sonnet_cfg)
     
 
 # Generate debug command subset
@@ -125,7 +182,7 @@ async def kernel_0(argtype):
             client=Client, ramfs=ramfs, bot_start=bot_start_time,
             command_modules=[command_modules, command_modules_dict],
             dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info)
+            kernel_version=version_info, kernel_ramfs=kernel_ramfs)
 
 
 async def kernel_1(argtype, arg1):
@@ -134,7 +191,7 @@ async def kernel_1(argtype, arg1):
             client=Client, ramfs=ramfs, bot_start=bot_start_time,
             command_modules=[command_modules, command_modules_dict],
             dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info)
+            kernel_version=version_info, kernel_ramfs=kernel_ramfs)
 
 
 async def kernel_2(argtype, arg1, arg2):
@@ -143,7 +200,7 @@ async def kernel_2(argtype, arg1, arg2):
             client=Client, ramfs=ramfs, bot_start=bot_start_time,
             command_modules=[command_modules, command_modules_dict],
             dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info)
+            kernel_version=version_info, kernel_ramfs=kernel_ramfs)
 
 
 @Client.event
@@ -166,7 +223,7 @@ async def on_resumed():
 async def on_message(message):
 
     # If bot owner run a debug command
-    if message.content in debug_commands.keys() and sonnet_cfg.BOT_OWNER and message.author.id == int(sonnet_cfg.BOT_OWNER):
+    if message.content in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER):
         debug_commands[message.content]()
         await message.channel.send("Debug command has run")
         return
