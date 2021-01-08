@@ -1,7 +1,7 @@
 # Version printing tools
 # Ultrabear 2020
 
-
+import discord
 from datetime import datetime
 
 
@@ -27,7 +27,7 @@ async def print_version_info(message, args, client, **kwargs):
     main_version = kwargs["main_version"]
     modules = kwargs["cmds"]
 
-    fmt = f"```\nKernel: {main_version}\n\nEvent Modules:\n"
+    fmt = f"```\nDiscord.py: {discord.__version__}\nKernel: {main_version}\n\nEvent Modules:\n"
 
     for a in prettyprint([[i.category_info['name'], i.version_info] for i in dlib_modules]):
         fmt += f"  {a}\n"
@@ -88,4 +88,4 @@ commands = {
 }
 
 
-version_info = "1.0.2"
+version_info = "1.1.0-DEV"

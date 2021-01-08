@@ -15,33 +15,6 @@ from lib_loaders import load_message_config, directBinNumber
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 
-async def on_reaction_add(reaction, user, **kargs):
-
-    # Skip if not a guild
-    if not reaction.message.guild:
-        return
-
-    mconf = load_message_config(reaction.message.guild.id, kargs["ramfs"])
-
-    if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
-        with db_hlapi(reaction.message.guild.id) as db:
-            if channel_id := db.grab_config("starboard-channel"):
-                if bool(channel := kargs["client"].get_channel(int(channel_id))) and not(db.in_starboard(reaction.message.id)) and not(int(channel_id) == reaction.message.channel.id):
-
-                    db.add_to_starboard(reaction.message.id)
-
-                    jump = f"\n\n[(Link)]({reaction.message.jump_url})"
-                    starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content[: 2048 - len(jump)] + jump, color=0xffa700)
-
-                    for i in reaction.message.attachments:
-                        starboard_embed.set_image(url=i.url)
-
-                    starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
-                    starboard_embed.timestamp = datetime.utcnow()
-
-                    await channel.send(embed=starboard_embed)
-
-
 async def on_message_delete(message, **kargs):
 
     client = kargs["client"]
@@ -213,66 +186,6 @@ async def on_message(message, **kargs):
             pass # Nothing we can do if we lack perms to speak
 
 
-async def attempt_unmute(Client, mute_entry):
-
-    with db_hlapi(mute_entry[0]) as db:
-        db.unmute_user(infractionid=mute_entry[1])
-        mute_role = db.grab_config("mute-role")
-    guild = Client.get_guild(int(mute_entry[0]))
-    if guild and mute_role:
-        user = guild.get_member(int(mute_entry[2]))
-        mute_role = guild.get_role(int(mute_role))
-        if user and mute_role:
-            try:
-                await user.remove_roles(mute_role)
-            except discord.errors.Forbidden:
-                pass
-
-
-async def on_ready(**kargs):
-    
-    Client = kargs["client"]
-    print(f'{Client.user} has connected to Discord!')
-
-    # Warn if user is not bot
-    if not Client.user.bot:
-        print("WARNING: The connected account is not a bot, as it is against ToS we do not condone user botting")
-    
-    # bot start time check to not reparse timers on network disconnect
-    if kargs["bot_start"] > (time.time()-10):
-
-        with db_hlapi(None) as db:
-            lost_mutes = sorted(db.fetch_all_mutes(), key=lambda a: a[3])
-
-        if lost_mutes:
-
-            print(f"Lost mutes: {len(lost_mutes)}")
-            for i in lost_mutes:
-                if time.time() > i[3]:
-                    await attempt_unmute(Client, i)
-
-            lost_mute_timers = [i for i in lost_mutes if time.time() < i[3]]
-            if lost_mute_timers:
-                print(f"Mute timers to recover: {len(lost_mute_timers)}\nThis process will end in {round(lost_mutes[-1][3]-time.time())} seconds")
-
-                for i in lost_mute_timers:
-                    await asyncio.sleep(i[3] - time.time())
-                    await attempt_unmute(Client, i)
-
-            print("Mutes recovered")
-
-
-async def on_guild_join(guild, **kargs):
-    with db_hlapi(guild.id) as db:
-        db.create_guild_db()
-
-
-async def on_raw_reaction_add(payload, **kargs):
-    message = await kargs["client"].get_channel(payload.channel_id).fetch_message(payload.message_id)
-    reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
-    await on_reaction_add(reaction, payload.user_id, client=kargs["client"], ramfs=kargs["ramfs"])
-
-
 category_info = {
     'name': 'Messages'
 }
@@ -282,9 +195,6 @@ commands = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
-    "on-raw-reaction-add": on_raw_reaction_add,
-    "on-ready": on_ready,
-    "on-guild-join": on_guild_join
     }
 
 
