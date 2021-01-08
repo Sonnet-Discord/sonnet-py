@@ -74,6 +74,9 @@ sonnet_load_command_modules()
 import lib_ramfs
 ramfs = lib_ramfs.ram_filesystem()
 
+# Import configs
+import sonnet_cfg
+
 def regenerate_ramfs():
     global ramfs
     ramfs = lib_ramfs.ram_filesystem()
@@ -81,7 +84,7 @@ def regenerate_ramfs():
 def sonnet_reload_command_modules():
     print("Reloading Kernel Modules")
     # Init vars
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, lib_ramfs
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, lib_ramfs, sonnet_cfg
     command_modules_dict = {}
     dynamiclib_modules_dict = {}
     # Update set
@@ -97,6 +100,8 @@ def sonnet_reload_command_modules():
     # Update ramfs
     importlib.reload(lib_ramfs)
     regenerate_ramfs()
+    # Update configs
+    importlib.reload(sonnet_cfg)
     
 
 # Generate debug command subset
