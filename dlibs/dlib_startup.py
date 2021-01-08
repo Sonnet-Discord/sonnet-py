@@ -27,7 +27,6 @@ async def attempt_unmute(Client, mute_entry):
 
 
 async def on_ready(**kargs):
-    
     Client = kargs["client"]
     print(f'{Client.user} has connected to Discord!')
 

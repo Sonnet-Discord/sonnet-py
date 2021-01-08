@@ -181,9 +181,9 @@ async def change_rolewhitelist(message, args, client, **kwargs):
 
 
 category_info = {
-    'name': 'blacklist',
-    'pretty_name': 'Blacklist',
-    'description': 'Blacklist management commands.'
+    'name': 'automod',
+    'pretty_name': 'Automod',
+    'description': 'Automod management commands.'
 }
 
 

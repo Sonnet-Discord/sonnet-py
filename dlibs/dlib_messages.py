@@ -82,8 +82,9 @@ async def on_message_edit(old_message, message, **kargs):
 
 
 async def antispam_check(guildid, userid, ramfs, **kargs):
-    messagecount = kargs["messages"]
-    timecount = kargs["time"]*1000
+
+    messagecount = int(kargs["messages"])
+    timecount = float(kargs["time"])*1000
     try:
         messages = ramfs.read_f(f"antispam/{guildid}.cache.asam")
         messages.seek(0)
@@ -104,7 +105,7 @@ async def antispam_check(guildid, userid, ramfs, **kargs):
         for i in userlist:
             messages.write(bytes(directBinNumber(i[0], 8) + directBinNumber(i[1], 8)))
         messages.truncate()
-        if ismute > messagecount:
+        if ismute >= messagecount:
             return True
         else:
             return False
@@ -137,7 +138,7 @@ async def on_message(message, **kargs):
     # Check message against blacklist
     stats["start-automod"] = round(time.time() * 100000)
     blacklist_dump = asyncio.create_task(parse_blacklist(message, mconf))
-    spammer = asyncio.create_task(antispam_check(message.channel.guild.id, message.author.id, ramfs, messages=3, time=2))
+    spammer = asyncio.create_task(antispam_check(message.channel.guild.id, message.author.id, ramfs, messages=mconf["antispam"][0], time=mconf["antispam"][1]))
 
     # If blacklist broken generate infraction
     broke_blacklist, infraction_type = await blacklist_dump

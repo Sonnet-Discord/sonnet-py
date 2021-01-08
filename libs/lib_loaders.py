@@ -18,7 +18,7 @@ def directBinNumber(inData,length):
 # Load config from cache, or load from db if cache isint existant
 def load_message_config(guild_id, ramfs):
     datatypes = {
-        "csv":["word-blacklist","filetype-blacklist","word-in-word-blacklist"],
+        "csv":["word-blacklist","filetype-blacklist","word-in-word-blacklist","antispam"],
         "text":["prefix","blacklist-action","starboard-emoji","starboard-enabled","starboard-count","blacklist-whitelist"],
         "list":["regex-blacklist"]
         }
@@ -89,6 +89,9 @@ def load_message_config(guild_id, ramfs):
             
         if not message_config["starboard-count"]:
             message_config["starboard-count"] = STARBOARD_COUNT
+
+        if not message_config["antispam"]:
+            message_config["antispam"] = ["3","2"]
 
         # Generate SNOWFLAKE DBCACHE
         blacklist_cache = ramfs.create_f(f"datastore/{guild_id}.cache.db")
