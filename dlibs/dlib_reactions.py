@@ -13,6 +13,13 @@ from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config
 
 
+def ifgate(inlist):
+    for i in inlist:
+        if i:
+            return True
+    return False
+
+
 async def on_reaction_add(reaction, user, **kargs):
 
     # Skip if not a guild
@@ -32,7 +39,8 @@ async def on_reaction_add(reaction, user, **kargs):
                     starboard_embed = discord.Embed(title="Starred message",description=reaction.message.content[: 2048 - len(jump)] + jump, color=0xffa700)
 
                     for i in reaction.message.attachments:
-                        starboard_embed.set_image(url=i.url)
+                        if ifgate([i.url.endswith(ext) for ext in [".png",".bmp",".jpg",".jpeg"]]):
+                            starboard_embed.set_image(url=i.url)
 
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
                     starboard_embed.timestamp = reaction.message.created_at
