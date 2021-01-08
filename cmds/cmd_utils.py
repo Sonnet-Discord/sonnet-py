@@ -30,7 +30,7 @@ async def parse_userid(message, args):
 
     # Get the Member object by user ID, otherwise fail.
     user_object = message.guild.get_member(id_to_probe)
-    # Secondary catch if actually getting the member succeeds but passes nothing to the variable.
+
     if not user_object:
         await message.channel.send("Invalid userid")
         raise RuntimeError

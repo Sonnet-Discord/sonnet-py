@@ -25,13 +25,6 @@ async def inflog_change(message, args, client, **kwargs):
         return
 
 
-async def joinlog_change(message, args, client, **kwargs):
-    try:
-        await update_log_channel(message, args, client, "join-log")
-    except RuntimeError:
-        return
-
-
 async def msglog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "message-log")
@@ -173,13 +166,6 @@ commands = {
         'cache':'keep',
         'execute': inflog_change
     },
-    'join-log': {
-        'pretty_name': 'join-log <channel>',
-        'description': 'Change join log for this guild.',
-        'permission':'administrator',
-        'cache':'keep',
-        'execute': joinlog_change
-    },
     'gdpr': {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
@@ -211,4 +197,4 @@ commands = {
 }
 
 
-version_info = "1.0.2"
+version_info = "1.1.0-DEV"
