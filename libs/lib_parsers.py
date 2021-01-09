@@ -28,7 +28,7 @@ async def parse_blacklist(message, blacklist):
     word_blacklist = blacklist["word-in-word-blacklist"]
     if word_blacklist:
         for i in word_blacklist:
-            if i in text_to_blacklist.strip(" "):
+            if i in text_to_blacklist.replace(" ",""):
                 broke_blacklist = True
                 infraction_type.append("WordInWord")
 
