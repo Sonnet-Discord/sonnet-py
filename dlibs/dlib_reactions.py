@@ -62,6 +62,7 @@ category_info = {
 
 commands = {
     "on-raw-reaction-add": on_raw_reaction_add,
+    "on-reaction-add": on_reaction_add,
 }
 
 
