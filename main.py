@@ -130,6 +130,53 @@ class ram_filesystem:
 
         return self.data_table[file_to_write[0]]
 
+    def rmdir(self, directory_to_delete):
+
+        directory_to_delete = directory_to_delete.split("/")
+        try:
+            if len(directory_to_delete) > 1:
+                self.directory_table[directory_to_delete[0]].rmdir("/".join(directory_to_delete[1:]))
+            else:
+                del self.directory_table[directory_to_delete[0]]
+        except KeyError:
+            raise FileNotFoundError("Folder does not exist")
+
+    def ls(self, *folderpath):
+
+        try:
+            if folderpath:
+                folderpath = folderpath[0].split("/")
+                if len(folderpath) > 1:
+                    return self.directory_table.ls("/".join(folderpath[1:]))
+                else:
+                    return self.directory_table[folderpath[0]].ls()
+            else:
+                return [list(self.data_table.keys()), list(self.directory_table.keys())]
+        except KeyError:
+            raise FileNotFoundError("Filepath does not exist")
+
+    def tree(self, *folderpath):
+        try:
+            if folderpath:
+                folderpath = folderpath[0].split("/")
+                if len(folderpath) > 1:
+                    return self.directory_table.tree("/".join(folderpath[1:]))
+                else:
+                    return self.directory_table[folderpath[0]].tree()
+            else:
+                return self.internal_tree()
+        except KeyError:
+            raise FileNotFoundError("Filepath does not exist")
+
+    def internal_tree(self):
+
+        datamap = [[],{}]
+        for folder in self.directory_table.keys():
+            datamap[1][folder] = self.directory_table[folder].internal_tree()
+        datamap[0] = list(self.data_table.keys())
+
+        return datamap
+
 
 # Initalize ramfs, kernel ramfs
 ramfs = ram_filesystem()
