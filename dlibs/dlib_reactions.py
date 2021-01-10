@@ -53,7 +53,7 @@ async def on_raw_reaction_add(payload, **kargs):
     inc_statistics([payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"]])
     message = await kargs["client"].get_channel(payload.channel_id).fetch_message(payload.message_id)
     reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
-    await on_reaction_add(reaction, payload.user_id, client=kargs["client"], ramfs=kargs["ramfs"])
+    await on_reaction_add(reaction, payload.user_id, client=kargs["client"], ramfs=kargs["ramfs"], kernel_ramfs=kargs["kernel_ramfs"])
 
 
 
