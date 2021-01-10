@@ -34,15 +34,17 @@ async def msglog_change(message, args, client, **kwargs):
 
 class gdpr_functions:
 
-    async def delete(message, guild_id, ramfs):
+    async def delete(message, guild_id, ramfs, kramfs):
 
         database = db_hlapi(message.guild.id)
         database.delete_guild_db()
         ramfs.remove_f(f"antispam/{guild_id}.cache.asam")
+        kramfs.remove_f(f"persistent/{guild_id}/stats")
+
 
         await message.channel.send(f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache file and db again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server")
 
-    async def download(message, guild_id, ramfs):
+    async def download(message, guild_id, ramfs, kramfs):
 
         timestart = time.time()
 
@@ -60,14 +62,17 @@ class gdpr_functions:
         cache.seek(0)
         antispam = ramfs.read_f(f"antispam/{guild_id}.cache.asam")
         antispam.seek(0)
+        stats = kramfs.read_f(f"persistent/{guild_id}/stats")
+        stats.seek(0)
 
         # Finalize discord file objs
         fileobj_db = discord.File(db, filename="database.gz")
         fileobj_cache = discord.File(cache, filename="cache.sfdbc.bin")
         fileobj_antispam = discord.File(antispam, filename="antispam.u8_u8.bin")
+        fileobj_stats = discord.File(stats, filename="statistics.vnum.bin")
 
         # Send data
-        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_cache, fileobj_antispam])
+        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_cache, fileobj_antispam, fileobj_stats])
 
 
 async def gdpr_database(message, args, client, **kwargs):
@@ -88,7 +93,7 @@ async def gdpr_database(message, args, client, **kwargs):
     commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
     if command and command in commands_dict.keys():
         if confirmation and confirmation == str(message.guild.id):
-            await commands_dict[command](message, message.guild.id, ramfs)
+            await commands_dict[command](message, message.guild.id, ramfs, kwargs["kernel_ramfs"])
         else:
             await message.channel.send(f"Please provide the guildid to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
