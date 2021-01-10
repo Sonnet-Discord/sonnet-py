@@ -190,8 +190,8 @@ def inc_statistics(indata):
         datamap[i] = read_vnum(statistics_file)
         global_datamap[i] = read_vnum(global_statistics_file)
 
-    datamap[inctype] += 1 
-    global_datamap[inctype] += 1 
+    datamap[inctype] += 1
+    global_datamap[inctype] += 1
 
     statistics_file.seek(0)
     global_statistics_file.seek(0)

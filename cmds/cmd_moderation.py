@@ -12,6 +12,13 @@ from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
 
 
+async def catch_dm_error(user, contents):
+    try:
+        await user.send(embed=contents)
+    except (AttributeError, discord.errors.HTTPException):
+        pass
+
+
 async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
     send_message = True
     with db_hlapi(message.guild.id) as database:
@@ -55,11 +62,8 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
     if send_message:
-        await log_channel.send(embed=embed)
-    try: # If the user is a bot it cannot be DM'd
-        await user.send(embed=dm_embed)
-    except (AttributeError, discord.errors.HTTPException):
-        pass
+        asyncio.create_task(log_channel.send(embed=embed))
+    asyncio.create_task(catch_dm_error(user, dm_embed))
     return generated_id
 
 async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
@@ -105,7 +109,7 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
 
 
     # Log infraction
-    infraction_id = await log_infraction(message, client, user.id, moderator_id, reason, infraction_type)
+    infraction_id = asyncio.create_task(log_infraction(message, client, user.id, moderator_id, reason, infraction_type))
 
     return (automod, user, reason, infraction_id)
 
@@ -231,10 +235,10 @@ async def mute_user(message, args, client, **kwargs):
 
     if mutetime:
         if not automod:
-            await message.channel.send(f"Muted user with ID {user.id} for {mutetime}s for {reason}")
+            asyncio.create_task(message.channel.send(f"Muted user with ID {user.id} for {mutetime}s for {reason}"))
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
-            db.mute_user(user.id, time.time()+mutetime, infractionID)
+            db.mute_user(user.id, time.time()+mutetime, infractionID := await infractionID)
 
         await asyncio.sleep(mutetime)
 
