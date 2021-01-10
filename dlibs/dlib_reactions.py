@@ -10,7 +10,7 @@ import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
 import lib_loaders; importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config
+from lib_loaders import load_message_config, inc_statistics
 
 
 def ifgate(inlist):
@@ -26,6 +26,7 @@ async def on_reaction_add(reaction, user, **kargs):
     if not reaction.message.guild:
         return
 
+    inc_statistics([reaction.message.guild.id, "on-reaction-add", kargs["kernel_ramfs"]])
     mconf = load_message_config(reaction.message.guild.id, kargs["ramfs"])
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
@@ -49,6 +50,7 @@ async def on_reaction_add(reaction, user, **kargs):
 
 
 async def on_raw_reaction_add(payload, **kargs):
+    inc_statistics([payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"]])
     message = await kargs["client"].get_channel(payload.channel_id).fetch_message(payload.message_id)
     reaction = [i for i in message.reactions if str(i) == str(payload.emoji)][0]
     await on_reaction_add(reaction, payload.user_id, client=kargs["client"], ramfs=kargs["ramfs"])

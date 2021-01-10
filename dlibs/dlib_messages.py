@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, time, asyncio
+import discord, time, threading
 from datetime import datetime
 
 import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
@@ -11,7 +11,7 @@ import lib_parsers; importlib.reload(lib_parsers)
 import lib_loaders; importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, directBinNumber
+from lib_loaders import load_message_config, directBinNumber, inc_statistics
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
 
 
@@ -21,6 +21,8 @@ async def on_message_delete(message, **kargs):
     # Ignore bots
     if parse_skip_message(client, message):
         return
+
+    inc_statistics([message.guild.id, "on-message-delete", kargs["kernel_ramfs"]])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -44,6 +46,8 @@ async def on_message_edit(old_message, message, **kargs):
     # Ignore bots
     if parse_skip_message(client, message):
         return
+
+    inc_statistics([message.guild.id, "on-message-edit", kargs["kernel_ramfs"]])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -70,7 +74,7 @@ async def on_message_edit(old_message, message, **kargs):
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, infraction_type = await parse_blacklist(message, mconf)
+    broke_blacklist, infraction_type = parse_blacklist([message, mconf])
 
     if broke_blacklist:
         try:
@@ -81,10 +85,13 @@ async def on_message_edit(old_message, message, **kargs):
         await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
 
 
-async def antispam_check(guildid, userid, ramfs, **kargs):
+def antispam_check(indata):
 
-    messagecount = int(kargs["messages"])
-    timecount = float(kargs["time"])*1000
+    guildid, userid, ramfs, messagecount, timecount = indata
+
+    messagecount = int(messagecount)
+    timecount = int(timecount)*1000
+
     try:
         messages = ramfs.read_f(f"antispam/{guildid}.cache.asam")
         messages.seek(0)
@@ -115,6 +122,12 @@ async def antispam_check(guildid, userid, ramfs, **kargs):
         messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time()*1000), 8)))
         return False
 
+return_data = {}
+def run_threaded_data(arg):
+    function, args = arg
+    global return_data
+    return_data[function] = function(args)
+
 
 async def on_message(message, **kargs):
 
@@ -125,10 +138,11 @@ async def on_message(message, **kargs):
     command_modules, command_modules_dict = kargs["command_modules"]
 
     # Statistics.
-    stats = {"start": round(time.time() * 100000), "end": 0}
+    stats = {"start": round(time.time() * 100000)}
 
     if parse_skip_message(client, message):
         return
+
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
@@ -137,11 +151,16 @@ async def on_message(message, **kargs):
 
     # Check message against blacklist
     stats["start-automod"] = round(time.time() * 100000)
-    blacklist_dump = asyncio.create_task(parse_blacklist(message, mconf))
-    spammer = asyncio.create_task(antispam_check(message.channel.guild.id, message.author.id, ramfs, messages=mconf["antispam"][0], time=mconf["antispam"][1]))
+
+    for i in [
+        [antispam_check, [message.channel.guild.id, message.author.id, ramfs, mconf["antispam"][0], mconf["antispam"][1]]],
+        [parse_blacklist, [message, mconf]],
+        [inc_statistics, [message.guild.id, "on-message", kargs["kernel_ramfs"]]],
+        ]:
+        run_threaded_data(i)
 
     # If blacklist broken generate infraction
-    broke_blacklist, infraction_type = await blacklist_dump
+    broke_blacklist, infraction_type = return_data[parse_blacklist]
     if broke_blacklist:
         try:
             await message.delete()
@@ -149,7 +168,7 @@ async def on_message(message, **kargs):
             pass
         await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
 
-    if await spammer:
+    if return_data[antispam_check]:
         try:
             await message.delete()
         except (discord.errors.Forbidden, discord.errors.NotFound):
@@ -177,7 +196,7 @@ async def on_message(message, **kargs):
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
-                await command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlibs=kargs["dynamiclib_modules"][0], main_version=main_version_info)
+                await command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlibs=kargs["dynamiclib_modules"][0], main_version=main_version_info, kernel_ramfs=kargs["kernel_ramfs"])
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
                     ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")

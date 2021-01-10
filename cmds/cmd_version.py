@@ -1,8 +1,14 @@
 # Version printing tools
 # Ultrabear 2020
 
+import importlib
+
 import discord
 from datetime import datetime
+
+import lib_loaders; importlib.reload(lib_loaders)
+
+from lib_loaders import read_vnum
 
 
 def prettyprint(inlist):
@@ -63,6 +69,43 @@ async def uptime(message, args, client, **kwargs):
     await message.channel.send(fmt)
 
 
+async def print_stats(message, args, client, **kwargs):
+
+    kernel_ramfs = kwargs["kernel_ramfs"]
+
+    statistics_list = [
+    "on-message","on-message-edit","on-message-delete",
+    "on-reaction-add","on-raw-reaction-add"
+    ]
+
+    datamap = {}
+    global_datamap = {}
+    statistics_file = kernel_ramfs.read_f(f"persistent/{message.guild.id}/stats")
+    global_statistics_file = kernel_ramfs.read_f(f"persistent/global/stats")
+    statistics_file.seek(0)
+    global_statistics_file.seek(0)
+
+    fmt = "```py\n"
+
+    for i in statistics_list:
+        datamap[i] = read_vnum(statistics_file)
+        global_datamap[i] = read_vnum(global_statistics_file)
+
+    outputmap = [["This Guild:","Count:"]]
+    for i in statistics_list:
+        outputmap.append([i,datamap[i]])
+    outputmap.append(["",""])
+    outputmap.append(["Globally:","Count:"])
+    for i in statistics_list:
+        outputmap.append([i,global_datamap[i]])
+
+    for i in prettyprint(outputmap):
+        fmt += f"{i}\n"
+    fmt += "```"
+
+    await message.channel.send(fmt)
+
+
 category_info = {
     'name': 'version',
     'pretty_name': 'Version',
@@ -84,6 +127,13 @@ commands = {
         'permission':'everyone',
         'cache':'keep',
         'execute': uptime
+    },
+    'statistics': {
+        'pretty_name': 'statistics',
+        'description': 'Prints stats about messages',
+        'permission':'everyone',
+        'cache':'keep',
+        'execute': print_stats
     }
 
 }

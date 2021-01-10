@@ -3,7 +3,7 @@
 
 import importlib
 
-import json, random, os
+import json, random, os, math
 from sonnet_cfg import *
 
 import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
@@ -152,3 +152,57 @@ def generate_infractionid():
                 structured_data_file.write(i+bytes(maxval-len(i)))
 
         return generate_infractionid()
+
+
+def read_vnum(fileobj):
+    return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
+
+
+def inc_statistics(indata):
+
+    guild, inctype, kernel_ramfs = indata
+
+    stats_of = [
+        "on-message","on-message-edit","on-message-delete",
+        "on-reaction-add","on-raw-reaction-add"
+        ]
+
+    try:
+        statistics_file = kernel_ramfs.read_f(f"persistent/{guild}/stats")
+        statistics_file.seek(0)
+    except FileNotFoundError:
+        statistics_file = kernel_ramfs.create_f(f"persistent/{guild}/stats")
+        statistics_file.write(bytes(len(stats_of)))
+        statistics_file.seek(0)
+
+    try:
+        global_statistics_file = kernel_ramfs.read_f(f"persistent/global/stats")
+        global_statistics_file.seek(0)
+    except FileNotFoundError:
+        global_statistics_file = kernel_ramfs.create_f(f"persistent/global/stats")
+        global_statistics_file.write(bytes(len(stats_of)))
+        global_statistics_file.seek(0)
+
+    # Read vnum and write to dict
+    datamap = {}
+    global_datamap = {}
+    for i in stats_of:
+        datamap[i] = read_vnum(statistics_file)
+        global_datamap[i] = read_vnum(global_statistics_file)
+
+    datamap[inctype] += 1 
+    global_datamap[inctype] += 1 
+
+    statistics_file.seek(0)
+    global_statistics_file.seek(0)
+    for i in stats_of:
+        vnum_count = math.ceil((len(bin(datamap[i]))-2)/8)
+        statistics_file.write(bytes([vnum_count]))
+        statistics_file.write(bytes(directBinNumber(datamap[i], vnum_count)))
+
+        global_vnum_count = math.ceil((len(bin(global_datamap[i]))-2)/8)
+        global_statistics_file.write(bytes([global_vnum_count]))
+        global_statistics_file.write(bytes(directBinNumber(global_datamap[i], global_vnum_count)))
+
+    statistics_file.truncate()
+    global_statistics_file.truncate()
