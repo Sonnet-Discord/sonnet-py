@@ -180,6 +180,35 @@ async def change_rolewhitelist(message, args, client, **kwargs):
     await message.channel.send(f"Updated role whitelist to {role}")
 
 
+async def antispam_set(message, args, client, **kwargs):
+
+    if not args:
+        antispam = load_message_config(message.guild.id, kwargs["ramfs"])["antispam"]
+        await message.channel.send(f"Antispam timings are {','.join(antispam)}")
+        return
+
+    if len(args) == 1:
+        try:
+            messages, seconds = [int(float(i)) for i in args[0].split(",")]
+        except ValueError:
+            await message.channel.send("Incorrect args supplied")
+            return
+
+    elif len(args) > 1:
+        try:
+            messages = int(float(args[0]))
+            seconds = int(float(args[1]))
+        except ValueError:
+            await message.channel.send("Incorrect args supplied")
+            return
+
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("antispam", f"{messages},{seconds}")
+
+    await message.channel.send(f"Updated antispam timings to M:{messages},S:{seconds}")
+
+
+
 category_info = {
     'name': 'automod',
     'pretty_name': 'Automod',
@@ -243,6 +272,13 @@ commands = {
         'permission':'administrator',
         'cache':'regenerate',
         'execute': change_rolewhitelist
+    },
+    'antispam-set': {
+        'pretty_name': 'antispam-set <messages>[,| ]<seconds>',
+        'description': 'Set how many messages in seconds to trigger antispam autmute',
+        'permission':'administrator',
+        'cache':'regenerate',
+        'execute': antispam_set
     }
     
 }
