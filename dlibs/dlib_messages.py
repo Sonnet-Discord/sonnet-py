@@ -89,7 +89,7 @@ async def on_message_edit(old_message, message, **kargs):
         except (discord.errors.Forbidden, discord.errors.NotFound):
             pass
         stats = {}
-        await kargs["cmds"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
+        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
 
 
 def antispam_check(indata):
