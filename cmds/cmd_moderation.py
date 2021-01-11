@@ -63,8 +63,8 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
     dm_embed.add_field(name="Reason", value=infraction_reason)
     if send_message:
         asyncio.create_task(log_channel.send(embed=embed))
-    asyncio.create_task(catch_dm_error(user, dm_embed))
-    return generated_id
+    dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed))
+    return (generated_id, dm_sent)
 
 async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
 
@@ -113,15 +113,15 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
 
 
     # Log infraction
-    infraction_id = asyncio.create_task(log_infraction(message, client, user.id, moderator_id, reason, infraction_type))
+    infraction_id, dm_sent = await log_infraction(message, client, user.id, moderator_id, reason, infraction_type)
 
-    return (automod, user, reason, infraction_id, is_member)
+    return (automod, user, reason, infraction_id, is_member, dm_sent)
 
 
 async def warn_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "warn", "Warning")
+        automod, user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "warn", "Warning")
     except RuntimeError:
         return
 
@@ -132,13 +132,14 @@ async def warn_user(message, args, client, **kwargs):
 async def kick_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "kick", "Kicking")
+        automod, user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "kick", "Kicking")
     except RuntimeError:
         return
 
     # Attempt to kick user
     if is_member:
         try:
+            await dm_sent # Wait for dm to be sent before kicking
             await message.guild.kick((user), reason=reason)
         except discord.errors.Forbidden:
             await message.channel.send("The bot does not have permission to kick this user.")
@@ -154,12 +155,14 @@ async def kick_user(message, args, client, **kwargs):
 async def ban_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "ban", "Banning")
+        automod, user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "ban", "Banning")
     except RuntimeError:
         return
 
     # Attempt to ban user
     try:
+        if is_member:
+            await dm_sent # Wait for dm to be sent before banning
         await message.guild.ban(user, reason=reason, delete_message_days=0)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to ban this user.")
@@ -214,7 +217,7 @@ async def mute_user(message, args, client, **kwargs):
             mutetime = 0
 
     try:
-        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "mute", "Muting")
+        automod, user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "mute", "Muting")
     except RuntimeError:
         return
 
@@ -251,7 +254,7 @@ async def mute_user(message, args, client, **kwargs):
             asyncio.create_task(message.channel.send(f"Muted user with ID {user.id} for {mutetime}s for {reason}"))
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
-            db.mute_user(user.id, time.time()+mutetime, infractionID := await infractionID)
+            db.mute_user(user.id, time.time()+mutetime, infractionID)
 
         await asyncio.sleep(mutetime)
 
