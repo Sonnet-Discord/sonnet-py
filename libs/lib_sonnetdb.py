@@ -35,8 +35,7 @@ class db_hlapi:
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property",config])
         except db_error.OperationalError:
-            self.create_guild_db()
-            data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property",config])
+            data = []
 
         if data:
             return data[0][1]
@@ -56,8 +55,7 @@ class db_hlapi:
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID",userid])
         except db_error.OperationalError:
-            self.create_guild_db()
-            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID",userid])
+            data = []
 
         return data
 
@@ -67,8 +65,7 @@ class db_hlapi:
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
         except db_error.OperationalError:
-            self.create_guild_db()
-            data = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
+            data = False
         
         if data:
             return True
@@ -90,8 +87,7 @@ class db_hlapi:
         try:
             infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions",["infractionID",infractionID])
         except db_error.OperationalError:
-            self.create_guild_db()
-            infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions",["infractionID",infractionID])
+            infraction = None
 
         if infraction:
             return infraction[0]
@@ -103,8 +99,7 @@ class db_hlapi:
         try:
             self.database.delete_rows_from_table(f"{self.guild}_infractions",["infractionID",infraction_id])
         except db_error.OperationalError:
-            self.create_guild_db()
-            self.database.delete_rows_from_table(f"{self.guild}_infractions",["infractionID",infraction_id])
+            pass
 
     def mute_user(self, user, endtime, infractionID):
         
@@ -205,7 +200,6 @@ class db_hlapi:
             elif "infractionid" in kargs.keys():
                 muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes",["infractionID",kargs["infractionid"]]))
         except db_error.OperationalError:
-            self.create_guild_db()
             muted = False
 
         return muted
