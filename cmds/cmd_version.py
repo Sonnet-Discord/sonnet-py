@@ -87,9 +87,13 @@ async def print_stats(message, args, client, **kwargs):
 
     fmt = "```py\n"
 
+    guild_total = 0
+    global_total = 0
     for i in statistics_list:
         datamap[i] = read_vnum(statistics_file)
+        guild_total += datamap[i]
         global_datamap[i] = read_vnum(global_statistics_file)
+        global_total += global_datamap[i]
 
     outputmap = [["This Guild:","Count:"]]
     for i in statistics_list:
@@ -101,7 +105,7 @@ async def print_stats(message, args, client, **kwargs):
 
     for i in prettyprint(outputmap):
         fmt += f"{i}\n"
-    fmt += "```"
+    fmt += f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% of total processed events since boot```"
 
     await message.channel.send(fmt)
 

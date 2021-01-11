@@ -7,17 +7,12 @@ import discord
 from datetime import datetime
 
 import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_parsers; importlib.reload(lib_parsers)
 import lib_loaders; importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics
-
-
-def ifgate(inlist):
-    for i in inlist:
-        if i:
-            return True
-    return False
+from lib_parsers import ifgate
 
 
 async def on_reaction_add(reaction, user, **kargs):

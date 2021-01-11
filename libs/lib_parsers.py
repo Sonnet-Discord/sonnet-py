@@ -137,3 +137,10 @@ async def parse_permissions(message, perms):
     else:
         await message.channel.send(f"You need permissions `{perms}` to run this command")
         return False
+
+
+def ifgate(inlist):
+    for i in inlist:
+        if i:
+            return True
+    return False
