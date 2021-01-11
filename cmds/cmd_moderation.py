@@ -358,7 +358,10 @@ async def search_infractions(message, args, client, **kwargs):
         outdata = chunks[0]
         selected_chunk = 0
 
-    await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)}\n```css\nID, Type, Reason\n{outdata}```")
+    if infractions:
+        await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)}\n```css\nID, Type, Reason\n{outdata}```")
+    else:
+        await message.channel.send("No infractions found")
 
 
 async def get_detailed_infraction(message, args, client, **kwargs):
