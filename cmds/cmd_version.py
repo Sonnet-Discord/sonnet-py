@@ -36,7 +36,7 @@ async def print_version_info(message, args, client, **kwargs):
     dlib_modules = kwargs["dlibs"]
     modules = kwargs["cmds"]
 
-    fmt = f"```\nDiscord.py: {discord.__version__}\nKernel: {kwargs['main_version']}\n\nEvent Modules:\n"
+    fmt = f"```py\nDiscord.py: {discord.__version__}\nKernel: {kwargs['main_version']}\n\nEvent Modules:\n"
 
     for a in prettyprint([[i.category_info['name'], i.version_info] for i in dlib_modules]):
         fmt += f"  {a}\n"

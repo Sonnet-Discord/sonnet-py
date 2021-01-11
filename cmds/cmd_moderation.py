@@ -91,6 +91,7 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
     # Test if user is valid
     try:
         user = message.channel.guild.get_member(int(args[0].strip("<@!>")))
+        is_member = True
     except ValueError:
         await message.channel.send("Invalid User")
         raise RuntimeError("Invalid User")
@@ -99,8 +100,11 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
         raise RuntimeError("No user specified")
 
     if not user:
-        await message.channel.send("Invalid User")
-        raise RuntimeError("Invalid User")
+        is_member = False
+        user = client.get_user(int(args[0].strip("<@!>")))
+        if not user:
+            await message.channel.send("Invalid User")
+            raise RuntimeError("Invalid User")
 
     # Test if user is self
     if moderator_id == user.id:
@@ -111,13 +115,13 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
     # Log infraction
     infraction_id = asyncio.create_task(log_infraction(message, client, user.id, moderator_id, reason, infraction_type))
 
-    return (automod, user, reason, infraction_id)
+    return (automod, user, reason, infraction_id, is_member)
 
 
 async def warn_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "warn", "Warning")
+        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "warn", "Warning")
     except RuntimeError:
         return
 
@@ -128,15 +132,19 @@ async def warn_user(message, args, client, **kwargs):
 async def kick_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "kick", "Kicking")
+        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "kick", "Kicking")
     except RuntimeError:
         return
 
     # Attempt to kick user
-    try:
-        await message.guild.kick((user), reason=reason)
-    except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to kick this user.")
+    if is_member:
+        try:
+            await message.guild.kick((user), reason=reason)
+        except discord.errors.Forbidden:
+            await message.channel.send("The bot does not have permission to kick this user.")
+            return
+    else:
+        await message.channel.send("User is not in this guild")
         return
 
     if not automod:
@@ -146,7 +154,7 @@ async def kick_user(message, args, client, **kwargs):
 async def ban_user(message, args, client, **kwargs):
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "ban", "Banning")
+        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "ban", "Banning")
     except RuntimeError:
         return
 
@@ -192,22 +200,27 @@ async def unban_user(message, args, client, **kwargs):
 
 async def mute_user(message, args, client, **kwargs):
 
-    if args:
+    if len(args) >= 2:
         try:
             multiplicative_factor = {"s":1,"m":60,"h":3600}
-            tmptime = args[0]
+            tmptime = args[1]
             if not tmptime[-1] in ["s","m","h"]:
                 mutetime = int(tmptime)
-                del args[0]
+                del args[1]
             else:
                 mutetime = int(tmptime[:-1])*multiplicative_factor[tmptime[-1]]
-                del args[0]
+                del args[1]
         except (ValueError, TypeError):
             mutetime = 0
 
     try:
-        automod, user, reason, infractionID = await process_infraction(message, args, client, "mute", "Muting")
+        automod, user, reason, infractionID, is_member = await process_infraction(message, args, client, "mute", "Muting")
     except RuntimeError:
+        return
+
+    # Check they are in the guild
+    if not is_member:
+        await message.channel.send("User is not in this guild")
         return
 
     # Get muterole from DB
@@ -432,7 +445,7 @@ commands = {
         'execute': unban_user
     },
     'mute': {
-        'pretty_name': 'mute [time[h|m|S]] <uid>',
+        'pretty_name': 'mute <uid> [time[h|m|S]]',
         'description': 'Mute a user, defaults to no unmute (0s)',
         'permission':'moderator',
         'cache':'keep',
