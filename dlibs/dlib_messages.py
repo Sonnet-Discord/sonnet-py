@@ -91,6 +91,7 @@ async def on_message_edit(old_message, message, **kargs):
     broke_blacklist, infraction_type = parse_blacklist([message, mconf])
 
     if broke_blacklist:
+        asyncio.create_task(attempt_message_delete(message))
         await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
 
 
