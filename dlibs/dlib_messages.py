@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, time, threading
+import discord, time, asyncio
 from datetime import datetime
 
 import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
@@ -13,6 +13,13 @@ import lib_loaders; importlib.reload(lib_loaders)
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, directBinNumber, inc_statistics
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
+
+
+async def catch_logging_error(channel, contents):
+    try:
+        await channel.send(embed=contents)
+    except discord.Errors.Forbidden:
+        pass
 
 
 async def on_message_delete(message, **kargs):
@@ -35,7 +42,7 @@ async def on_message_delete(message, **kargs):
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcnow()
 
-            await message_log.send(embed=message_embed)
+            await catch_logging_error(message_log, message_embed)
 
 
 async def on_message_edit(old_message, message, **kargs):
@@ -70,7 +77,7 @@ async def on_message_edit(old_message, message, **kargs):
 
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
-            await message_log.send(embed=message_embed)
+            asyncio.create_task(catch_logging_error(message_log, message_embed))
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)

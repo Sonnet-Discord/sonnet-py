@@ -39,10 +39,9 @@ class gdpr_functions:
         database = db_hlapi(message.guild.id)
         database.delete_guild_db()
         ramfs.remove_f(f"antispam/{guild_id}.cache.asam")
-        kramfs.remove_f(f"persistent/{guild_id}/stats")
+        kramfs.rmdir(f"persistent/{guild_id}")
 
-
-        await message.channel.send(f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache file and db again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server")
+        await message.channel.send(f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot")
 
     async def download(message, guild_id, ramfs, kramfs):
 
