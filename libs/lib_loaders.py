@@ -158,6 +158,12 @@ def read_vnum(fileobj):
     return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
 
 
+def write_vnum(fileobj, number):
+    vnum_count = math.ceil((len(bin(number))-2)/8)
+    fileobj.write(bytes([vnum_count]))
+    fileobj.write(bytes(directBinNumber(number, vnum_count)))
+
+
 def inc_statistics(indata):
 
     guild, inctype, kernel_ramfs = indata
@@ -196,13 +202,8 @@ def inc_statistics(indata):
     statistics_file.seek(0)
     global_statistics_file.seek(0)
     for i in stats_of:
-        vnum_count = math.ceil((len(bin(datamap[i]))-2)/8)
-        statistics_file.write(bytes([vnum_count]))
-        statistics_file.write(bytes(directBinNumber(datamap[i], vnum_count)))
-
-        global_vnum_count = math.ceil((len(bin(global_datamap[i]))-2)/8)
-        global_statistics_file.write(bytes([global_vnum_count]))
-        global_statistics_file.write(bytes(directBinNumber(global_datamap[i], global_vnum_count)))
+        write_vnum(statistics_file, datamap[i])
+        write_vnum(global_statistics_file, global_datamap[i])
 
     statistics_file.truncate()
     global_statistics_file.truncate()

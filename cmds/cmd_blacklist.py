@@ -274,7 +274,7 @@ commands = {
         'execute': change_rolewhitelist
     },
     'antispam-set': {
-        'pretty_name': 'antispam-set <messages>[,| ]<seconds>',
+        'pretty_name': 'antispam-set <messages><,| ><seconds>',
         'description': 'Set how many messages in seconds to trigger antispam autmute',
         'permission':'administrator',
         'cache':'regenerate',

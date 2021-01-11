@@ -14,7 +14,7 @@ import lib_parsers; importlib.reload(lib_parsers)
 import lib_loaders; importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel
-from lib_loaders import load_message_config
+from lib_loaders import load_message_config, read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
 
@@ -36,10 +36,29 @@ class gdpr_functions:
 
     async def delete(message, guild_id, ramfs, kramfs):
 
-        database = db_hlapi(message.guild.id)
-        database.delete_guild_db()
+        with db_hlapi(message.guild.id) as database:
+            database.delete_guild_db()
         ramfs.remove_f(f"antispam/{guild_id}.cache.asam")
+
+        global_stats = kramfs.read_f("persistent/global/stats")
+        global_stats.seek(0)
+        guild_stats = kramfs.read_f(f"persistent/{guild_id}/stats")
+        guild_stats.seek(0)
+
+        stats_of = [
+        "on-message","on-message-edit","on-message-delete",
+        "on-reaction-add","on-raw-reaction-add"
+        ]
+
+        global_stats_dict = {}
+        for i in stats_of:
+            global_stats_dict[i] = read_vnum(global_stats) - read_vnum(guild_stats)
+
         kramfs.rmdir(f"persistent/{guild_id}")
+
+        global_stats.seek(0)
+        for i in stats_of:
+            write_vnum(global_stats, global_stats_dict[i])
 
         await message.channel.send(f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot")
 
