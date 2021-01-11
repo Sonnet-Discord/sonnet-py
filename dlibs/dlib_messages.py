@@ -45,6 +45,13 @@ async def on_message_delete(message, **kargs):
             await catch_logging_error(message_log, message_embed)
 
 
+async def attempt_message_delete(message):
+    try:
+        await message.delete()
+    except (discord.errors.Forbidden, discord.errors.NotFound):
+        pass
+
+
 async def on_message_edit(old_message, message, **kargs):
 
     client = kargs["client"]
@@ -84,11 +91,6 @@ async def on_message_edit(old_message, message, **kargs):
     broke_blacklist, infraction_type = parse_blacklist([message, mconf])
 
     if broke_blacklist:
-        try:
-            await message.delete()
-        except (discord.errors.Forbidden, discord.errors.NotFound):
-            pass
-        stats = {}
         await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
 
 
@@ -169,20 +171,14 @@ async def on_message(message, **kargs):
     # If blacklist broken generate infraction
     broke_blacklist, infraction_type = return_data[parse_blacklist]
     if broke_blacklist:
-        try:
-            await message.delete()
-        except (discord.errors.Forbidden, discord.errors.NotFound):
-            pass
-        await command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
+        asyncio.create_task(attempt_message_delete(message))
+        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client))
 
     if return_data[antispam_check]:
-        try:
-            await message.delete()
-        except (discord.errors.Forbidden, discord.errors.NotFound):
-            pass
+        asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                await command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]",  "Antispam"], client)
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]",  "Antispam"], client))
 
     stats["end-automod"] = round(time.time() * 100000)
 
@@ -203,9 +199,12 @@ async def on_message(message, **kargs):
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
-                await command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlibs=kargs["dynamiclib_modules"][0], main_version=main_version_info, kernel_ramfs=kargs["kernel_ramfs"])
+
+                running_command = asyncio.create_task(command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlibs=kargs["dynamiclib_modules"][0], main_version=main_version_info, kernel_ramfs=kargs["kernel_ramfs"]))
+
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
+                    await running_command
                     ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
                     if command_modules_dict[command]['cache'] == "regenerate":
                         load_message_config(message.guild.id, ramfs)
