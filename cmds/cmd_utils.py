@@ -146,6 +146,24 @@ async def help_function(message, args, client, **kwargs):
     await message.channel.send(embed=embed)
 
 
+async def grab_guild_info(message, args, client, **kwargs):
+
+    guild = message.channel.guild
+
+    created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(guild.created_at)))
+    created_string += f" ({(datetime.utcnow() - guild.created_at).days} days ago)"
+
+    guild_embed = discord.Embed(title=f"Information on {guild}", color=0x00ff6e)
+    guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
+    guild_embed.add_field(name="# of Roles:", value=f"{len(guild.roles)} Roles")
+    guild_embed.add_field(name="Top Role:", value=str(guild.roles[-1]))
+    guild_embed.add_field(name="Member Count:", value=str(guild.member_count))
+    guild_embed.add_field(name="Creation Date:", value=created_string)
+    guild_embed.set_thumbnail(url=guild.icon_url)
+
+    await message.channel.send(embed=guild_embed)
+
+
 category_info = {
     'name': 'utilities',
     'pretty_name': 'Utilities',
@@ -181,6 +199,13 @@ commands = {
         'permission':'everyone',
         'cache':'keep',
         'execute': avatar_function
+    },
+    'serverinfo': {
+        'pretty_name': 'serverinfo',
+        'description': 'Get info on this guild',
+        'permission':'everyone',
+        'cache':'keep',
+        'execute': grab_guild_info
     }
 }
 

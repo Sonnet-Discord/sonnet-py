@@ -321,17 +321,19 @@ async def search_infractions(message, args, client, **kwargs):
         return
 
     if not user:
-        await message.channel.send("Invalid User")
-        return
+        user_id = int(args[0].strip("<@!>"))
+    else:
+        user_id = user.id
+
 
     with db_hlapi(message.guild.id) as db:
-        infractions = db.grab_user_infractions(user.id)
+        infractions = db.grab_user_infractions(user_id)
 
     # Sort newest first
     infractions.sort(reverse=True, key=lambda a: a[5])
 
     # Generate chunks from infractions
-    do_not_exceed = 1950  # Discord message length limits
+    do_not_exceed = 1900  # Discord message length limits
     chunks = [""]
     curchunk = 0
     for i in infractions:
@@ -359,7 +361,7 @@ async def search_infractions(message, args, client, **kwargs):
         selected_chunk = 0
 
     if infractions:
-        await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)}\n```css\nID, Type, Reason\n{outdata}```")
+        await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
     else:
         await message.channel.send("No infractions found")
 
