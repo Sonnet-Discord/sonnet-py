@@ -80,7 +80,7 @@ async def profile_function(message, args, client, **kwargs):
             viewinfs = bool(int(viewinfs))
         else:
             viewinfs = False
-        moderator = message.author.permissions_in(message.channel).kick_members
+        moderator = message.author.permissions_in(message.channel).ban_members
         if moderator or (viewinfs and user_object.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
 
@@ -210,4 +210,4 @@ commands = {
 }
 
 
-version_info = "1.1.0-DEV"
+version_info = "1.1.0"
