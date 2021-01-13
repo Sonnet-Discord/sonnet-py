@@ -201,11 +201,10 @@ async def on_message(message, **kargs):
             if permission:
                 stats["end"] = round(time.time() * 100000)
 
-                running_command = asyncio.create_task(command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlibs=kargs["dynamiclib_modules"][0], main_version=main_version_info, kernel_ramfs=kargs["kernel_ramfs"]))
+                await command_modules_dict[command]['execute'](message, arguments, client, stats=stats, cmds=command_modules, ramfs=ramfs, bot_start=bot_start_time, dlibs=kargs["dynamiclib_modules"][0], main_version=main_version_info, kernel_ramfs=kargs["kernel_ramfs"])
 
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
-                    await running_command
                     ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
                     if command_modules_dict[command]['cache'] == "regenerate":
                         load_message_config(message.guild.id, ramfs)
