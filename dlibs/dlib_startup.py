@@ -5,7 +5,8 @@ import importlib
 
 import discord, time, asyncio
 
-import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_db_obfuscator
+importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
 
@@ -33,9 +34,9 @@ async def on_ready(**kargs):
     # Warn if user is not bot
     if not Client.user.bot:
         print("WARNING: The connected account is not a bot, as it is against ToS we do not condone user botting")
-    
+
     # bot start time check to not reparse timers on network disconnect
-    if kargs["bot_start"] > (time.time()-10):
+    if kargs["bot_start"] > (time.time() - 10):
 
         with db_hlapi(None) as db:
             lost_mutes = sorted(db.fetch_all_mutes(), key=lambda a: a[3])
@@ -63,15 +64,8 @@ async def on_guild_join(guild, **kargs):
         db.create_guild_db()
 
 
-category_info = {
-    'name': 'Initializers'
-}
+category_info = {'name': 'Initializers'}
 
-
-commands = {
-    "on-ready": on_ready,
-    "on-guild-join": on_guild_join
-    }
-
+commands = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
 version_info = "1.1.0"

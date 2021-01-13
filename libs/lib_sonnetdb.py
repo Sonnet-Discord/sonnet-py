@@ -5,24 +5,24 @@ import importlib
 
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
-
 # Get db handling library
 if DB_TYPE == "mariadb":
-    import lib_mdb_handler; importlib.reload(lib_mdb_handler)
+    import lib_mdb_handler
+    importlib.reload(lib_mdb_handler)
     import json
     from lib_mdb_handler import db_handler, db_error
     with open(".login-info.txt") as login_info_file:  # Grab login data
         db_connection_parameters = json.load(login_info_file)
 
 elif DB_TYPE == "sqlite3":
-    import lib_sql_handler; importlib.reload(lib_sql_handler)
+    import lib_sql_handler
+    importlib.reload(lib_sql_handler)
     from lib_sql_handler import db_handler, db_error
     db_connection_parameters = SQLITE3_LOCATION
 
 
 # Because being lazy writes good code
 class db_hlapi:
-
     def __init__(self, guild_id):
         self.database = db_handler(db_connection_parameters)
         self.guild = guild_id
@@ -33,7 +33,7 @@ class db_hlapi:
     def grab_config(self, config):
 
         try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property",config])
+            data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
         except db_error.OperationalError:
             data = []
 
@@ -45,15 +45,15 @@ class db_hlapi:
     def add_config(self, config, value):
 
         try:
-            data = self.database.add_to_table(f"{self.guild}_config", [["property",config],["value",value]])
+            data = self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
         except db_error.OperationalError:
             self.create_guild_db()
-            data = self.database.add_to_table(f"{self.guild}_config", [["property",config],["value",value]])
+            data = self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
     def grab_user_infractions(self, userid):
 
         try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID",userid])
+            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
         except db_error.OperationalError:
             data = []
 
@@ -61,17 +61,17 @@ class db_hlapi:
 
     # Check if a message is on the starboard already
     def in_starboard(self, message_id):
-        
+
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
         except db_error.OperationalError:
             data = False
-        
+
         if data:
             return True
         else:
             return False
-        
+
     def add_to_starboard(self, message_id):
 
         try:
@@ -85,7 +85,7 @@ class db_hlapi:
     def grab_infraction(self, infractionID):
 
         try:
-            infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions",["infractionID",infractionID])
+            infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
         except db_error.OperationalError:
             infraction = None
 
@@ -97,20 +97,20 @@ class db_hlapi:
     def delete_infraction(self, infraction_id):
 
         try:
-            self.database.delete_rows_from_table(f"{self.guild}_infractions",["infractionID",infraction_id])
+            self.database.delete_rows_from_table(f"{self.guild}_infractions", ["infractionID", infraction_id])
         except db_error.OperationalError:
             pass
 
     def mute_user(self, user, endtime, infractionID):
-        
+
         try:
-            self.database.add_to_table(f"{self.guild}_mutes",[["infractionID", infractionID],["userID", user],["endMute",endtime]])
+            self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(f"{self.guild}_mutes",[["infractionID", infractionID],["userID", user],["endMute",endtime]])
+            self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
 
     def unmute_user(self, **kargs):
-        
+
         try:
             if "infractionid" in kargs.keys():
                 self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", kargs["infractionid"]])
@@ -120,29 +120,17 @@ class db_hlapi:
             pass
 
     def create_guild_db(self):
-        
-        self.database.make_new_table(f"{self.guild}_config",[["property", tuple, 1], ["value", str]])
-        self.database.make_new_table(f"{self.guild}_infractions", [
-        ["infractionID", tuple, 1],
-        ["userID", str],
-        ["moderatorID", str],
-        ["type", str],
-        ["reason", str],
-        ["timestamp", int(64)]
-        ])
+
+        self.database.make_new_table(f"{self.guild}_config", [["property", tuple, 1], ["value", str]])
+        self.database.make_new_table(f"{self.guild}_infractions", [["infractionID", tuple, 1], ["userID", str], ["moderatorID", str], ["type", str], ["reason", str], ["timestamp", int(64)]])
         self.database.make_new_table(f"{self.guild}_starboard", [["messageID", tuple, 1]])
-        self.database.make_new_table(f"{self.guild}_mutes", [["infractionID", tuple, 1],["userID", str],["endMute",int(64)]])
+        self.database.make_new_table(f"{self.guild}_mutes", [["infractionID", tuple, 1], ["userID", str], ["endMute", int(64)]])
 
     def download_guild_db(self):
 
-        dbdict = {
-            "config":[["property","value"]],
-            "infractions":[["infractionID","userID","moderatorID","type","reason","timestamp"]],
-            "mutes":[["infractionID","userID","endMute"]],
-            "starboard":[["messageID"]]
-            }
+        dbdict = {"config": [["property", "value"]], "infractions": [["infractionID", "userID", "moderatorID", "type", "reason", "timestamp"]], "mutes": [["infractionID", "userID", "endMute"]], "starboard": [["messageID"]]}
 
-        for i in ["config","infractions","starboard","mutes"]:
+        for i in ["config", "infractions", "starboard", "mutes"]:
             try:
                 dbdict[i].extend(self.database.fetch_table(f"{self.guild}_{i}"))
             except db_error.OperationalError:
@@ -152,7 +140,7 @@ class db_hlapi:
 
     def delete_guild_db(self):
 
-        for i in ["config","infractions","starboard","mutes"]:
+        for i in ["config", "infractions", "starboard", "mutes"]:
             try:
                 self.database.delete_table(f"{self.guild}_{i}")
             except db_error.OperationalError:
@@ -161,25 +149,11 @@ class db_hlapi:
 
     def add_infraction(self, infractionid, userid, moderatorid, infractiontype, reason, timestamp):
 
-            try:
-                self.database.add_to_table(f"{self.guild}_infractions", [
-                ["infractionID", infractionid],
-                ["userID", userid],
-                ["moderatorID", moderatorid],
-                ["type", infractiontype],
-                ["reason", reason],
-                ["timestamp", timestamp]
-                ])
-            except db_error.OperationalError:
-                self.create_guild_db()
-                self.database.add_to_table(f"{self.guild}_infractions", [
-                ["infractionID", infractionid],
-                ["userID", userid],
-                ["moderatorID", moderatorid],
-                ["type", infractiontype],
-                ["reason", reason],
-                ["timestamp", timestamp]
-                ])
+        try:
+            self.database.add_to_table(f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]])
+        except db_error.OperationalError:
+            self.create_guild_db()
+            self.database.add_to_table(f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]])
 
     def fetch_all_mutes(self):
 
@@ -188,7 +162,7 @@ class db_hlapi:
 
         mutetable = []
         for i in tablelist:
-            mutetable.extend([ [i[0][:-6]] + list(a) for a in self.database.fetch_table(i[0])])
+            mutetable.extend([[i[0][:-6]] + list(a) for a in self.database.fetch_table(i[0])])
 
         return mutetable
 
@@ -196,9 +170,9 @@ class db_hlapi:
 
         try:
             if "userid" in kargs.keys():
-                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes",["userID",kargs["userid"]]))
+                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", kargs["userid"]]))
             elif "infractionid" in kargs.keys():
-                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes",["infractionID",kargs["infractionid"]]))
+                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", kargs["infractionid"]]))
         except db_error.OperationalError:
             muted = False
 

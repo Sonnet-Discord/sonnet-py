@@ -9,9 +9,12 @@ import json, gzip, io, time
 
 from sonnet_cfg import GLOBAL_PREFIX
 
-import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
-import lib_parsers; importlib.reload(lib_parsers)
-import lib_loaders; importlib.reload(lib_loaders)
+import lib_db_obfuscator
+importlib.reload(lib_db_obfuscator)
+import lib_parsers
+importlib.reload(lib_parsers)
+import lib_loaders
+importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel
 from lib_loaders import load_message_config, read_vnum, write_vnum
@@ -33,7 +36,6 @@ async def msglog_change(message, args, client, **kwargs):
 
 
 class gdpr_functions:
-
     async def delete(message, guild_id, ramfs, kramfs):
 
         with db_hlapi(message.guild.id) as database:
@@ -45,10 +47,7 @@ class gdpr_functions:
         guild_stats = kramfs.read_f(f"persistent/{guild_id}/stats")
         guild_stats.seek(0)
 
-        stats_of = [
-        "on-message","on-message-edit","on-message-delete",
-        "on-reaction-add","on-raw-reaction-add"
-        ]
+        stats_of = ["on-message", "on-message-edit", "on-message-delete", "on-reaction-add", "on-raw-reaction-add"]
 
         global_stats_dict = {}
         for i in stats_of:
@@ -94,7 +93,7 @@ class gdpr_functions:
 
 
 async def gdpr_database(message, args, client, **kwargs):
-    
+
     ramfs = kwargs["ramfs"]
 
     if len(args) >= 2:
@@ -148,7 +147,7 @@ async def set_prefix(message, args, client, **kwargs):
 
 
 async def set_mute_role(message, args, client, **kwargs):
-    
+
     if args:
         role = args[0].strip("<@&>")
     else:
@@ -167,57 +166,51 @@ async def set_mute_role(message, args, client, **kwargs):
     await message.channel.send(f"Updated Mute role to {role}")
 
 
-category_info = {
-    'name': 'administration',
-    'pretty_name': 'Administration',
-    'description': 'Administration commands.'
-}
-
+category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
     'message-log': {
         'pretty_name': 'message-log <channel>',
         'description': 'Change message log',
-        'permission':'administrator',
-        'cache':'keep',
+        'permission': 'administrator',
+        'cache': 'keep',
         'execute': msglog_change
-    },
+        },
     'infraction-log': {
         'pretty_name': 'infraction-log <channel>',
         'description': 'Change infraction log',
-        'permission':'administrator',
-        'cache':'keep',
+        'permission': 'administrator',
+        'cache': 'keep',
         'execute': inflog_change
-    },
+        },
     'gdpr': {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
-        'permission':'owner',
-        'cache':'purge',
+        'permission': 'owner',
+        'cache': 'purge',
         'execute': gdpr_database
-    },
+        },
     'member-view-infractions': {
         'pretty_name': 'member-view-infractions <boolean value>',
         'description': 'Set whether members of the guild can view their own infraction count',
-        'permission':'administrator',
-        'cache':'keep',
+        'permission': 'administrator',
+        'cache': 'keep',
         'execute': set_view_infractions
-    },
+        },
     'set-prefix': {
         'pretty_name': 'set-prefix <prefix>',
         'description': 'Set the Guild prefix',
-        'permission':'administrator',
-        'cache':'regenerate',
+        'permission': 'administrator',
+        'cache': 'regenerate',
         'execute': set_prefix
-    },
+        },
     'set-muterole': {
         'pretty_name': 'set-muterole <role>',
         'description': 'Set the mute role',
-        'permission':'administrator',
-        'cache':'keep',
+        'permission': 'administrator',
+        'cache': 'keep',
         'execute': set_mute_role
+        }
     }
-}
-
 
 version_info = "1.1.0"

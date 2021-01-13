@@ -3,7 +3,8 @@
 
 import mariadb, json
 
-class db_error: # DB error codes
+
+class db_error:  # DB error codes
     OperationalError = mariadb.Error
     InterfaceError = mariadb.InterfaceError
     Error = mariadb.OperationalError
@@ -12,12 +13,7 @@ class db_error: # DB error codes
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __init__(self, login_info):
         # Connect to database with login info
-        self.con = mariadb.connect(
-            user = login_info["login"],
-            password = login_info["password"],
-            host = login_info["server"],
-            database = login_info["db_name"],
-            port = int(login_info["port"]) )
+        self.con = mariadb.connect(user=login_info["login"], password=login_info["password"], host=login_info["server"], database=login_info["db_name"], port=int(login_info["port"]))
 
         # Generate Cursor
         self.cur = self.con.cursor()
@@ -31,12 +27,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def make_new_table(self, tablename, data):
 
         # Load hashmap of python datatypes to MariaDB datatypes
-        datamap = {
-            int:"INT", str:"TEXT", bytes:"BLOB", tuple:"VARCHAR(255)", None:"NULL", float:"FLOAT",
-            int(8):"TINYINT", int(16):"SMALLINT", int(24):"MEDIUMINT", int(32):"INT", int(64):"BIGINT",
-            str(8):"TINYTEXT", str(16):"TEXT", str(24):"MEDIUMTEXT", str(32):"LONGTEXT",
-            bytes(8):"TINYBLOB", bytes(16):"BLOB", bytes(24):"MEDIUMBLOB", bytes(32):"LONGBLOB"
-        }
+        datamap = {int: "INT", str: "TEXT", bytes: "BLOB", tuple: "VARCHAR(255)", None: "NULL", float: "FLOAT", int(8): "TINYINT", int(16): "SMALLINT", int(24): "MEDIUMINT", int(32): "INT", int(64): "BIGINT", str(8): "TINYTEXT", str(16): "TEXT", str(24): "MEDIUMTEXT", str(32): "LONGTEXT", bytes(8): "TINYBLOB", bytes(16): "BLOB", bytes(24): "MEDIUMBLOB", bytes(32): "LONGBLOB"}
 
         # Add table addition
         db_inputStr = f'CREATE TABLE IF NOT EXISTS {tablename} ('
@@ -50,7 +41,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
                 inlist.append(f"{i[0]} {datamap[i[1]]}")
 
         # Add parsed inputs to inputStr
-        db_inputStr += ", ". join(inlist) + ")"
+        db_inputStr += ", ".join(inlist) + ")"
 
         # Exectute table generation
         self.cur.execute(db_inputStr)
@@ -60,12 +51,12 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Add insert data and generate base tables
         db_inputStr = f"REPLACE INTO {table} ("
         db_inputList = []
-        db_inputStr += ", ".join([i[0] for i in data])+ ")\n"
+        db_inputStr += ", ".join([i[0] for i in data]) + ")\n"
 
         # Insert values data
         db_inputStr += "VALUES ("
         db_inputList.extend([i[1] for i in data])
-        db_inputStr += ", ".join(["?" for i in data])+ ")\n"
+        db_inputStr += ", ".join(["?" for i in data]) + ")\n"
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
@@ -105,7 +96,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
     def list_tables(self, searchterm):
 
-        self.cur.execute(f"SHOW TABLES WHERE Tables_in_{self.db_name} LIKE ?", (searchterm,))
+        self.cur.execute(f"SHOW TABLES WHERE Tables_in_{self.db_name} LIKE ?", (searchterm, ))
 
         # Send data
         returndata = list(self.cur)

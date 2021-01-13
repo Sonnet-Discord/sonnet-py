@@ -3,5 +3,6 @@
 
 import importlib
 
-import lib_sonnetdb; importlib.reload(lib_sonnetdb)
+import lib_sonnetdb
+importlib.reload(lib_sonnetdb)
 from lib_sonnetdb import db_hlapi

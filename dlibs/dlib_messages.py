@@ -6,9 +6,12 @@ import importlib
 import discord, time, asyncio
 from datetime import datetime
 
-import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
-import lib_parsers; importlib.reload(lib_parsers)
-import lib_loaders; importlib.reload(lib_loaders)
+import lib_db_obfuscator
+importlib.reload(lib_db_obfuscator)
+import lib_parsers
+importlib.reload(lib_parsers)
+import lib_loaders
+importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, directBinNumber, inc_statistics
@@ -33,7 +36,7 @@ async def on_message_delete(message, **kargs):
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
-       message_log = db.grab_config("message-log")
+        message_log = db.grab_config("message-log")
     if message_log:
         message_log = client.get_channel(int(message_log))
         if message_log:
@@ -65,7 +68,7 @@ async def on_message_edit(old_message, message, **kargs):
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
-       message_log = db.grab_config("message-log")
+        message_log = db.grab_config("message-log")
     if message_log:
         message_log = client.get_channel(int(message_log))
         if message_log:
@@ -100,12 +103,12 @@ def antispam_check(indata):
     guildid, userid, ramfs, messagecount, timecount = indata
 
     messagecount = int(messagecount)
-    timecount = int(timecount)*1000
+    timecount = int(timecount) * 1000
 
     try:
         messages = ramfs.read_f(f"antispam/{guildid}.cache.asam")
         messages.seek(0)
-        droptime = round(time.time()*1000) - timecount
+        droptime = round(time.time() * 1000) - timecount
         userlist = []
         ismute = 1
 
@@ -117,7 +120,7 @@ def antispam_check(indata):
                 if uid == userid:
                     ismute += 1
 
-        userlist.append([userid, round(time.time()*1000)])
+        userlist.append([userid, round(time.time() * 1000)])
         messages.seek(0)
         for i in userlist:
             messages.write(bytes(directBinNumber(i[0], 8) + directBinNumber(i[1], 8)))
@@ -129,10 +132,13 @@ def antispam_check(indata):
 
     except FileNotFoundError:
         messages = ramfs.create_f(f"antispam/{guildid}.cache.asam")
-        messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time()*1000), 8)))
+        messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time() * 1000), 8)))
         return False
 
+
 return_data = {}
+
+
 def run_threaded_data(arg):
     function, args = arg
     global return_data
@@ -152,7 +158,6 @@ async def on_message(message, **kargs):
 
     if parse_skip_message(client, message):
         return
-
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
@@ -179,7 +184,7 @@ async def on_message(message, **kargs):
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]",  "Antispam"], client))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]", "Antispam"], client))
 
     stats["end-automod"] = round(time.time() * 100000)
 
@@ -209,19 +214,15 @@ async def on_message(message, **kargs):
                     if command_modules_dict[command]['cache'] == "regenerate":
                         load_message_config(message.guild.id, ramfs)
         except discord.errors.Forbidden:
-            pass # Nothing we can do if we lack perms to speak
+            pass  # Nothing we can do if we lack perms to speak
 
 
-category_info = {
-    'name': 'Messages'
-}
-
+category_info = {'name': 'Messages'}
 
 commands = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
     }
-
 
 version_info = "1.1.0"

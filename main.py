@@ -20,7 +20,6 @@ sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
 sys.path.insert(1, os.getcwd() + '/dlibs')
 
-
 intents = discord.Intents.default()
 intents.typing = False
 intents.presences = True
@@ -29,17 +28,14 @@ intents.members = True
 intents.reactions = True
 
 # Initialise Discord Client.
-Client = discord.Client(
-    case_insensitive=True,
-    status=discord.Status.online,
-    intents=intents
-)
+Client = discord.Client(case_insensitive=True, status=discord.Status.online, intents=intents)
 
 # Import libraries.
 command_modules = []
 command_modules_dict = {}
 dynamiclib_modules = []
 dynamiclib_modules_dict = {}
+
 
 def sonnet_load_command_modules():
     print("Loading Kernel Modules")
@@ -65,12 +61,12 @@ def sonnet_load_command_modules():
     for module in dynamiclib_modules:
         dynamiclib_modules_dict.update(module.commands)
 
+
 sonnet_load_command_modules()
 
 
 # Define ramfs
 class ram_filesystem:
-
     def __init__(self):
         self.directory_table = {}
         self.data_table = {}
@@ -84,7 +80,7 @@ class ram_filesystem:
         make_dir = make_dir.split("/")
 
         # If the current dir doesnt exist then create it
-        if not(make_dir[0] in self.directory_table.keys()):
+        if not (make_dir[0] in self.directory_table.keys()):
             self.directory_table[make_dir[0]] = ram_filesystem()
 
         # If there is more directory left then keep going
@@ -170,7 +166,7 @@ class ram_filesystem:
 
     def internal_tree(self):
 
-        datamap = [[],{}]
+        datamap = [[], {}]
         for folder in self.directory_table.keys():
             datamap[1][folder] = self.directory_table[folder].internal_tree()
         datamap[0] = list(self.data_table.keys())
@@ -184,9 +180,11 @@ kernel_ramfs = ram_filesystem()
 # Import configs
 from LeXdPyK_conf import BOT_OWNER
 
+
 def regenerate_ramfs():
     global ramfs
     ramfs = ram_filesystem()
+
 
 def sonnet_reload_command_modules():
     print("Reloading Kernel Modules")
@@ -196,9 +194,9 @@ def sonnet_reload_command_modules():
     dynamiclib_modules_dict = {}
     # Update set
     for i in range(len(command_modules)):
-            command_modules[i] = (importlib.reload(command_modules[i]))
+        command_modules[i] = (importlib.reload(command_modules[i]))
     for i in range(len(dynamiclib_modules)):
-            dynamiclib_modules[i] = (importlib.reload(dynamiclib_modules[i]))
+        dynamiclib_modules[i] = (importlib.reload(dynamiclib_modules[i]))
     # Update hashmaps
     for module in command_modules:
         command_modules_dict.update(module.commands)
@@ -206,7 +204,7 @@ def sonnet_reload_command_modules():
         dynamiclib_modules_dict.update(module.commands)
     # Regen tempramfs
     regenerate_ramfs()
-    
+
 
 # Generate debug command subset
 debug_commands = {}
@@ -225,47 +223,39 @@ async def on_error(event, *args, **kwargs):
 
 async def kernel_0(argtype):
     if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype]( 
-            client=Client, ramfs=ramfs, bot_start=bot_start_time,
-            command_modules=[command_modules, command_modules_dict],
-            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info, kernel_ramfs=kernel_ramfs)
+        await dynamiclib_modules_dict[argtype](client=Client, ramfs=ramfs, bot_start=bot_start_time, command_modules=[command_modules, command_modules_dict], dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict], kernel_version=version_info, kernel_ramfs=kernel_ramfs)
 
 
 async def kernel_1(argtype, arg1):
     if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](arg1,
-            client=Client, ramfs=ramfs, bot_start=bot_start_time,
-            command_modules=[command_modules, command_modules_dict],
-            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info, kernel_ramfs=kernel_ramfs)
+        await dynamiclib_modules_dict[argtype](arg1, client=Client, ramfs=ramfs, bot_start=bot_start_time, command_modules=[command_modules, command_modules_dict], dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict], kernel_version=version_info, kernel_ramfs=kernel_ramfs)
 
 
 async def kernel_2(argtype, arg1, arg2):
     if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](arg1, arg2,
-            client=Client, ramfs=ramfs, bot_start=bot_start_time,
-            command_modules=[command_modules, command_modules_dict],
-            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info, kernel_ramfs=kernel_ramfs)
+        await dynamiclib_modules_dict[argtype](arg1, arg2, client=Client, ramfs=ramfs, bot_start=bot_start_time, command_modules=[command_modules, command_modules_dict], dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict], kernel_version=version_info, kernel_ramfs=kernel_ramfs)
 
 
 @Client.event
 async def on_connect():
     await kernel_0("on-connect")
-    
+
+
 @Client.event
 async def on_disconnect():
     await kernel_0("on-disconnect")
+
 
 @Client.event
 async def on_ready():
     await kernel_0("on-ready")
 
+
 @Client.event
 async def on_resumed():
     await kernel_0("on-resumed")
-    
+
+
 @Client.event
 async def on_message(message):
 
@@ -281,6 +271,7 @@ async def on_message(message):
         await message.channel.send(f"FATAL ERROR in on-message\nPlease contact bot owner")
         raise e
 
+
 @Client.event
 async def on_message_delete(message):
     try:
@@ -288,6 +279,7 @@ async def on_message_delete(message):
     except Exception as e:
         await message.channel.send(f"FATAL ERROR in on-message-delete\nPlease contact bot owner")
         raise e
+
 
 @Client.event
 async def on_bulk_message_delete(messages):
@@ -297,6 +289,7 @@ async def on_bulk_message_delete(messages):
         await messages[0].channel.send(f"FATAL ERROR in on-bulk-message-delete\nPlease contact bot owner")
         raise e
 
+
 @Client.event
 async def on_raw_message_delete(payload):
     try:
@@ -304,6 +297,7 @@ async def on_raw_message_delete(payload):
     except Exception as e:
         await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-message-delete\nPlease contact bot owner")
         raise e
+
 
 @Client.event
 async def on_raw_bulk_message_delete(payload):
@@ -313,6 +307,7 @@ async def on_raw_bulk_message_delete(payload):
         await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-bulk-message-delete\nPlease contact bot owner")
         raise e
 
+
 @Client.event
 async def on_message_edit(old_message, message):
     try:
@@ -320,6 +315,7 @@ async def on_message_edit(old_message, message):
     except Exception as e:
         await message.channel.send(f"FATAL ERROR in on-message-edit\nPlease contact bot owner")
         raise e
+
 
 @Client.event
 async def on_raw_message_edit(payload):
@@ -338,6 +334,7 @@ async def on_reaction_add(reaction, user):
         await reaction.message.channel.send(f"FATAL ERROR in on-reaction-add\nPlease contact bot owner")
         raise e
 
+
 @Client.event
 async def on_raw_reaction_add(payload):
     try:
@@ -345,6 +342,7 @@ async def on_raw_reaction_add(payload):
     except Exception as e:
         await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contact bot owner")
         raise e
+
 
 @Client.event
 async def on_reaction_remove(reaction, user):
@@ -354,6 +352,7 @@ async def on_reaction_remove(reaction, user):
         await reaction.message.channel.send(f"FATAL ERROR in on-reaction-remove\nPlease contact bot owner")
         raise e
 
+
 @Client.event
 async def on_raw_reaction_remove(payload):
     try:
@@ -361,6 +360,7 @@ async def on_raw_reaction_remove(payload):
     except Exception as e:
         await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-remove\nPlease contact bot owner")
         raise e
+
 
 @Client.event
 async def on_reaction_clear(message, reactions):
@@ -370,6 +370,7 @@ async def on_reaction_clear(message, reactions):
         await message.channel.send(f"FATAL ERROR in on-reaction-clear\nPlease contact bot owner")
         raise e
 
+
 @Client.event
 async def on_raw_reaction_clear(payload):
     try:
@@ -378,6 +379,7 @@ async def on_raw_reaction_clear(payload):
         await Client.get_channel(payload.channel_id).send(f"FATAL ERROR in on-raw-reaction-clear\nPlease contact bot owner")
         raise e
 
+
 @Client.event
 async def on_reaction_clear_emoji(reaction):
     try:
@@ -385,6 +387,7 @@ async def on_reaction_clear_emoji(reaction):
     except Exception as e:
         await reaction.message.channel.send(f"FATAL ERROR in on-reaction-clear-emoji\nPlease contact bot owner")
         raise e
+
 
 @Client.event
 async def on_raw_reaction_clear_emoji(payload):
@@ -399,9 +402,11 @@ async def on_raw_reaction_clear_emoji(payload):
 async def on_member_join(member):
     await kernel_1("on-member-join", member)
 
+
 @Client.event
 async def on_member_remove(member):
     await kernel_1("on-member-remove", member)
+
 
 @Client.event
 async def on_member_update(before, after):
@@ -412,9 +417,11 @@ async def on_member_update(before, after):
 async def on_guild_join(guild):
     await kernel_1("on-guild-join", guild)
 
+
 @Client.event
 async def on_guild_remove(guild):
     await kernel_1("on-guild-remove", guild)
+
 
 @Client.event
 async def on_guild_update(before, after):
@@ -424,6 +431,7 @@ async def on_guild_update(before, after):
 @Client.event
 async def on_member_ban(guild, user):
     await kernel_2("on-member-ban", guild, user)
+
 
 @Client.event
 async def on_member_unban(guild, user):
@@ -436,7 +444,6 @@ if TOKEN:
     Client.run(TOKEN, bot=True, reconnect=True)
 else:
     print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables to use sonnet")
-
 
 # Clear cache at exit
 for i in glob.glob("datastore/*.cache.db"):

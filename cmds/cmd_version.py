@@ -6,7 +6,8 @@ import importlib
 import discord
 from datetime import datetime
 
-import lib_loaders; importlib.reload(lib_loaders)
+import lib_loaders
+importlib.reload(lib_loaders)
 
 from lib_loaders import read_vnum
 
@@ -46,11 +47,10 @@ async def print_version_info(message, args, client, **kwargs):
     for a in prettyprint([[i.category_info['pretty_name'], i.version_info] for i in modules]):
         fmt += f"  {a}\n"
 
-
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
 
-    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60 % 60)
-    hours = int((trunning.seconds - seconds - 60*minutes)/(60*60))
+    minutes = int((trunning.seconds - (seconds := trunning.seconds % 60)) / 60 % 60)
+    hours = int((trunning.seconds - seconds - 60 * minutes) / (60 * 60))
 
     fmt += f"\nBot Uptime: {trunning.days} Days, {zpad(hours)}:{zpad(minutes)}:{zpad(seconds)}\n```"
 
@@ -61,8 +61,8 @@ async def uptime(message, args, client, **kwargs):
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(kwargs["bot_start"]))
 
-    minutes = int((trunning.seconds-(seconds := trunning.seconds % 60)) / 60 % 60)
-    hours = int((trunning.seconds - seconds - 60*minutes)/(60*60))
+    minutes = int((trunning.seconds - (seconds := trunning.seconds % 60)) / 60 % 60)
+    hours = int((trunning.seconds - seconds - 60 * minutes) / (60 * 60))
 
     fmt = f"{trunning.days} Days, {zpad(hours)}:{zpad(minutes)}:{zpad(seconds)}"
 
@@ -73,10 +73,7 @@ async def print_stats(message, args, client, **kwargs):
 
     kernel_ramfs = kwargs["kernel_ramfs"]
 
-    statistics_list = [
-    "on-message","on-message-edit","on-message-delete",
-    "on-reaction-add","on-raw-reaction-add"
-    ]
+    statistics_list = ["on-message", "on-message-edit", "on-message-delete", "on-reaction-add", "on-raw-reaction-add"]
 
     datamap = {}
     global_datamap = {}
@@ -95,13 +92,13 @@ async def print_stats(message, args, client, **kwargs):
         global_datamap[i] = read_vnum(global_statistics_file)
         global_total += global_datamap[i]
 
-    outputmap = [["This Guild:","Count:"]]
+    outputmap = [["This Guild:", "Count:"]]
     for i in statistics_list:
-        outputmap.append([i,datamap[i]])
-    outputmap.append(["",""])
-    outputmap.append(["Globally:","Count:"])
+        outputmap.append([i, datamap[i]])
+    outputmap.append(["", ""])
+    outputmap.append(["Globally:", "Count:"])
     for i in statistics_list:
-        outputmap.append([i,global_datamap[i]])
+        outputmap.append([i, global_datamap[i]])
 
     for i in prettyprint(outputmap):
         fmt += f"{i}\n"
@@ -110,37 +107,8 @@ async def print_stats(message, args, client, **kwargs):
     await message.channel.send(fmt)
 
 
-category_info = {
-    'name': 'version',
-    'pretty_name': 'Version',
-    'description': 'Information about the current sonnet version'
-}
+category_info = {'name': 'version', 'pretty_name': 'Version', 'description': 'Information about the current sonnet version'}
 
-
-commands = {
-    'version-info': {
-        'pretty_name': 'version-info',
-        'description': 'Prints version info on sonnet modules',
-        'permission':'everyone',
-        'cache':'keep',
-        'execute': print_version_info
-    },
-    'uptime': {
-        'pretty_name': 'uptime',
-        'description': 'Prints uptime',
-        'permission':'everyone',
-        'cache':'keep',
-        'execute': uptime
-    },
-    'statistics': {
-        'pretty_name': 'statistics',
-        'description': 'Prints stats about messages',
-        'permission':'everyone',
-        'cache':'keep',
-        'execute': print_stats
-    }
-
-}
-
+commands = {'version-info': {'pretty_name': 'version-info', 'description': 'Prints version info on sonnet modules', 'permission': 'everyone', 'cache': 'keep', 'execute': print_version_info}, 'uptime': {'pretty_name': 'uptime', 'description': 'Prints uptime', 'permission': 'everyone', 'cache': 'keep', 'execute': uptime}, 'statistics': {'pretty_name': 'statistics', 'description': 'Prints stats about messages', 'permission': 'everyone', 'cache': 'keep', 'execute': print_stats}}
 
 version_info = "1.1.0"

@@ -6,7 +6,8 @@ import importlib
 import re
 from sonnet_cfg import DB_TYPE
 
-import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
+import lib_db_obfuscator
+importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
 
@@ -17,7 +18,7 @@ def parse_blacklist(indata):
     # Preset values
     broke_blacklist = False
     infraction_type = []
-    text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":"," ").replace("\n"," "))
+    text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":", " ").replace("\n", " "))
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
@@ -30,7 +31,7 @@ def parse_blacklist(indata):
     word_blacklist = blacklist["word-in-word-blacklist"]
     if word_blacklist:
         for i in word_blacklist:
-            if i in text_to_blacklist.replace(" ",""):
+            if i in text_to_blacklist.replace(" ", ""):
                 broke_blacklist = True
                 infraction_type.append("WordInWord")
 
@@ -77,8 +78,8 @@ def parse_skip_message(Client, message):
 # Parse a boolean datatype from a string
 def parse_boolean(instr):
 
-    yeslist = ["yes","true","y","t","1"]
-    nolist = ["no","false","n","f","0"]
+    yeslist = ["yes", "true", "y", "t", "1"]
+    nolist = ["no", "false", "n", "f", "0"]
 
     if instr.lower() in yeslist:
         return True
@@ -120,11 +121,12 @@ async def update_log_channel(message, args, client, log_name):
 
     await message.channel.send(f"Successfully updated {log_name}")
 
+
 async def parse_permissions(message, perms):
 
     you_shall_pass = False
     if perms == "everyone":
-        you_shall_pass =  True
+        you_shall_pass = True
     elif perms == "moderator":
         you_shall_pass = message.author.permissions_in(message.channel).ban_members
     elif perms == "administrator":

@@ -1,6 +1,7 @@
 # Joke commands idk mck wanted this
 # Ultrabear 2020
 
+
 async def joke_ban_user(message, args, client, **kwargs):
 
     if len(args) > 1:
@@ -20,22 +21,8 @@ async def joke_ban_user(message, args, client, **kwargs):
     await message.channel.send(f"'Banned' user with ID {user.id} for {reason}")
 
 
-category_info = {
-    'name': 'jokes',
-    'pretty_name': 'Jokes',
-    'description': 'Joke commands, because because'
-}
+category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke commands, because because'}
 
-
-commands = {
-    'jban': {
-        'pretty_name': 'jban <uid>',
-        'description': '"bans" a user',
-        'permission':'moderator',
-        'cache':'keep',
-        'execute': joke_ban_user
-    }
-}
-
+commands = {'jban': {'pretty_name': 'jban <uid>', 'description': '"bans" a user', 'permission': 'moderator', 'cache': 'keep', 'execute': joke_ban_user}}
 
 version_info = "1.1.0"

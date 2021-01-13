@@ -5,8 +5,10 @@ import importlib
 
 import discord, datetime, time, asyncio
 
-import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
-import lib_loaders; importlib.reload(lib_loaders)
+import lib_db_obfuscator
+importlib.reload(lib_db_obfuscator)
+import lib_loaders
+importlib.reload(lib_loaders)
 
 from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
@@ -67,6 +69,7 @@ async def log_infraction(message, client, user, moderator_id, infraction_reason,
     dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed))
     return (generated_id, dm_sent)
 
+
 async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
 
     # Check if automod
@@ -111,7 +114,6 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
         await message.channel.send(f"{pretty_infraction_type} yourself is not allowed")
         raise RuntimeError(f"Attempted self {infraction_type}")
 
-
     # Log infraction
     infraction_id, dm_sent = await log_infraction(message, client, user, moderator_id, reason, infraction_type)
 
@@ -125,7 +127,7 @@ async def warn_user(message, args, client, **kwargs):
     except RuntimeError:
         return
 
-    if not(automod) and user:
+    if not (automod) and user:
         await message.channel.send(f"Warned user with ID {user.id} for {reason}")
     elif not user:
         await message.channel.send("User does not exist")
@@ -141,7 +143,7 @@ async def kick_user(message, args, client, **kwargs):
     # Attempt to kick user
     if is_member and user:
         try:
-            await dm_sent # Wait for dm to be sent before kicking
+            await dm_sent  # Wait for dm to be sent before kicking
             await message.guild.kick((user), reason=reason)
         except discord.errors.Forbidden:
             await message.channel.send("The bot does not have permission to kick this user.")
@@ -164,7 +166,7 @@ async def ban_user(message, args, client, **kwargs):
     # Attempt to ban user
     try:
         if is_member:
-            await dm_sent # Wait for dm to be sent before banning
+            await dm_sent  # Wait for dm to be sent before banning
         await message.channel.guild._state.http.ban(args[0].strip("<@!>"), message.channel.guild.id, 0, reason=reason)
 
     except discord.errors.Forbidden:
@@ -211,13 +213,13 @@ async def mute_user(message, args, client, **kwargs):
 
     if len(args) >= 2:
         try:
-            multiplicative_factor = {"s":1,"m":60,"h":3600}
+            multiplicative_factor = {"s": 1, "m": 60, "h": 3600}
             tmptime = args[1]
-            if not tmptime[-1] in ["s","m","h"]:
+            if not tmptime[-1] in ["s", "m", "h"]:
                 mutetime = int(tmptime)
                 del args[1]
             else:
-                mutetime = int(tmptime[:-1])*multiplicative_factor[tmptime[-1]]
+                mutetime = int(tmptime[:-1]) * multiplicative_factor[tmptime[-1]]
                 del args[1]
         except (ValueError, TypeError):
             mutetime = 0
@@ -239,7 +241,7 @@ async def mute_user(message, args, client, **kwargs):
     # Get muterole from DB
     with db_hlapi(message.guild.id) as db:
         mute_role = db.grab_config("mute-role")
-    
+
     if mute_role:
         mute_role = message.guild.get_role(int(mute_role))
         if not mute_role:
@@ -255,7 +257,7 @@ async def mute_user(message, args, client, **kwargs):
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to mute this user.")
         return
-    
+
     if not automod and not mutetime:
         await message.channel.send(f"Muted user with ID {user.id} for {reason}")
 
@@ -264,7 +266,7 @@ async def mute_user(message, args, client, **kwargs):
             asyncio.create_task(message.channel.send(f"Muted user with ID {user.id} for {mutetime}s for {reason}"))
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
-            db.mute_user(user.id, time.time()+mutetime, infractionID)
+            db.mute_user(user.id, time.time() + mutetime, infractionID)
 
         await asyncio.sleep(mutetime)
 
@@ -335,7 +337,6 @@ async def search_infractions(message, args, client, **kwargs):
     else:
         user_id = user.id
 
-
     with db_hlapi(message.guild.id) as db:
         infractions = db.grab_user_infractions(user_id)
 
@@ -347,7 +348,7 @@ async def search_infractions(message, args, client, **kwargs):
     chunks = [""]
     curchunk = 0
     for i in infractions:
-        infraction_data = ", ".join([i[0],i[3],i[4]]) + "\n"
+        infraction_data = ", ".join([i[0], i[3], i[4]]) + "\n"
         if (len(chunks[curchunk]) + len(infraction_data)) > do_not_exceed:
             curchunk += 1
             chunks.append("")
@@ -357,7 +358,7 @@ async def search_infractions(message, args, client, **kwargs):
     # Parse pager
     if len(args) >= 2:
         try:
-            selected_chunk = int(float(args[1]))-1
+            selected_chunk = int(float(args[1])) - 1
         except ValueError:
             selected_chunk = 0
     else:
@@ -389,7 +390,6 @@ async def get_detailed_infraction(message, args, client, **kwargs):
         return
 
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
-
 
     infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=0x758cff)
     infraction_embed.add_field(name="Infraction ID", value=infraction_id)
@@ -426,79 +426,72 @@ async def delete_infraction(message, args, client, **kwargs):
     await message.channel.send(embed=infraction_embed)
 
 
-category_info = {
-    'name': 'moderation',
-    'pretty_name': 'Moderation',
-    'description': 'Moderation commands.'
-}
-
+category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
 
 commands = {
     'warn': {
         'pretty_name': 'warn <uid>',
         'description': 'Warn a user',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': warn_user
-    },
+        },
     'kick': {
         'pretty_name': 'kick <uid>',
         'description': 'Kick a user',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': kick_user
-    },
+        },
     'ban': {
         'pretty_name': 'ban <uid>',
         'description': 'Ban a user',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': ban_user
-    },
+        },
     'unban': {
         'pretty_name': 'unban <uid>',
         'description': 'Unban a user',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': unban_user
-    },
+        },
     'mute': {
         'pretty_name': 'mute <uid> [time[h|m|S]]',
         'description': 'Mute a user, defaults to no unmute (0s)',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': mute_user
-    },
+        },
     'unmute': {
         'pretty_name': 'unmute <uid>',
         'description': 'Unmute a user',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': unmute_user
-    },
+        },
     'search-infractions': {
         'pretty_name': 'search-infractions <uid>',
         'description': 'Grab infractions of a user',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': search_infractions
-    },
+        },
     'infraction-details': {
         'pretty_name': 'infraction-details <infractionID>',
         'description': 'Grab details of an infractionID',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': get_detailed_infraction
-    },
+        },
     'delete-infraction': {
         'pretty_name': 'delete-infraction <infractionID>',
         'description': 'Delete an infraction by infractionID',
-        'permission':'administrator',
-        'cache':'keep',
+        'permission': 'administrator',
+        'cache': 'keep',
         'execute': delete_infraction
+        }
     }
-    
-}
-
 
 version_info = "1.1.0"
