@@ -19,7 +19,11 @@ async def catch_dm_error(user, contents):
         pass
 
 
-async def log_infraction(message, client, user_id, moderator_id, infraction_reason, infraction_type):
+async def log_infraction(message, client, user, moderator_id, infraction_reason, infraction_type):
+
+    if not user:
+        return (None, None)
+
     send_message = True
     with db_hlapi(message.guild.id) as database:
 
@@ -42,13 +46,10 @@ async def log_infraction(message, client, user_id, moderator_id, infraction_reas
         if not log_channel:
             send_message = False
 
-
         # Send infraction to database
-        database.add_infraction(generated_id, user_id, moderator_id, infraction_type, infraction_reason, round(time.time()))
+        database.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, round(time.time()))
 
-    user = client.get_user(int(user_id))
-
-    embed = discord.Embed(title="Sonnet", description=f"New infraction for <@{user_id}>:", color=0x758cff)
+    embed = discord.Embed(title="Sonnet", description=f"New infraction for {user.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user.avatar_url)
     embed.add_field(name="Infraction ID", value=str(generated_id))
     embed.add_field(name="Moderator", value=f"{client.get_user(int(moderator_id))}")
@@ -103,17 +104,16 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
         is_member = False
         user = client.get_user(int(args[0].strip("<@!>")))
         if not user:
-            await message.channel.send("Invalid User")
-            raise RuntimeError("Invalid User")
+            user = None
 
     # Test if user is self
-    if moderator_id == user.id:
+    if user and moderator_id == user.id:
         await message.channel.send(f"{pretty_infraction_type} yourself is not allowed")
         raise RuntimeError(f"Attempted self {infraction_type}")
 
 
     # Log infraction
-    infraction_id, dm_sent = await log_infraction(message, client, user.id, moderator_id, reason, infraction_type)
+    infraction_id, dm_sent = await log_infraction(message, client, user, moderator_id, reason, infraction_type)
 
     return (automod, user, reason, infraction_id, is_member, dm_sent)
 
@@ -125,8 +125,10 @@ async def warn_user(message, args, client, **kwargs):
     except RuntimeError:
         return
 
-    if not automod:
+    if not(automod) and user:
         await message.channel.send(f"Warned user with ID {user.id} for {reason}")
+    elif not user:
+        await message.channel.send("User does not exist")
 
 
 async def kick_user(message, args, client, **kwargs):
@@ -137,7 +139,7 @@ async def kick_user(message, args, client, **kwargs):
         return
 
     # Attempt to kick user
-    if is_member:
+    if is_member and user:
         try:
             await dm_sent # Wait for dm to be sent before kicking
             await message.guild.kick((user), reason=reason)
@@ -163,13 +165,17 @@ async def ban_user(message, args, client, **kwargs):
     try:
         if is_member:
             await dm_sent # Wait for dm to be sent before banning
-        await message.guild.ban(user, reason=reason, delete_message_days=0)
+        await message.channel.guild._state.http.ban(args[0].strip("<@!>"), message.channel.guild.id, 0, reason=reason)
+
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to ban this user.")
         return
+    except (discord.errors.NotFound, discord.errors.HTTPException):
+        await message.channel.send("This user does not exist")
+        return
 
     if not automod:
-        await message.channel.send(f"Banned user with ID {user.id} for {reason}")
+        await message.channel.send(f"Banned user with ID {args[0].strip('<@!>')} for {reason}")
 
 
 async def unban_user(message, args, client, **kwargs):
@@ -219,6 +225,10 @@ async def mute_user(message, args, client, **kwargs):
     try:
         automod, user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "mute", "Muting")
     except RuntimeError:
+        return
+
+    if not user:
+        await message.channel.send("User does not exist")
         return
 
     # Check they are in the guild
