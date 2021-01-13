@@ -302,7 +302,7 @@ async def on_raw_message_delete(payload):
     try:
         await kernel_1("on-raw-message-delete", payload)
     except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-message-delete\nPlease contect bot owner")
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-message-delete\nPlease contact bot owner")
         raise e
 
 @Client.event
@@ -310,7 +310,7 @@ async def on_raw_bulk_message_delete(payload):
     try:
         await kernel_1("on-raw-bulk-message-delete", payload)
     except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-bulk-message-delete\nPlease contect bot owner")
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-bulk-message-delete\nPlease contact bot owner")
         raise e
 
 @Client.event
@@ -343,7 +343,7 @@ async def on_raw_reaction_add(payload):
     try:
         await kernel_1("on-raw-reaction-add", payload)
     except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contect bot owner")
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contact bot owner")
         raise e
 
 @Client.event
@@ -359,7 +359,7 @@ async def on_raw_reaction_remove(payload):
     try:
         await kernel_1("on-raw-reaction-remove", payload)
     except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-remove\nPlease contect bot owner")
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-remove\nPlease contact bot owner")
         raise e
 
 @Client.event
@@ -391,7 +391,7 @@ async def on_raw_reaction_clear_emoji(payload):
     try:
         await kernel_1("on-raw-reaction-clear-emoji", payload)
     except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-clear-emoji\nPlease contect bot owner")
+        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-clear-emoji\nPlease contact bot owner")
         raise e
 
 
