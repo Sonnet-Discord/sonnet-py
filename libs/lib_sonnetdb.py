@@ -128,7 +128,12 @@ class db_hlapi:
 
     def download_guild_db(self):
 
-        dbdict = {"config": [["property", "value"]], "infractions": [["infractionID", "userID", "moderatorID", "type", "reason", "timestamp"]], "mutes": [["infractionID", "userID", "endMute"]], "starboard": [["messageID"]]}
+        dbdict = {
+            "config": [["property", "value"]],
+            "infractions": [["infractionID", "userID", "moderatorID", "type", "reason", "timestamp"]],
+            "mutes": [["infractionID", "userID", "endMute"]],
+            "starboard": [["messageID"]]
+            }
 
         for i in ["config", "infractions", "starboard", "mutes"]:
             try:
@@ -150,10 +155,14 @@ class db_hlapi:
     def add_infraction(self, infractionid, userid, moderatorid, infractiontype, reason, timestamp):
 
         try:
-            self.database.add_to_table(f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]])
+            self.database.add_to_table(
+                f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]]
+                )
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]])
+            self.database.add_to_table(
+                f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]]
+                )
 
     def fetch_all_mutes(self):
 

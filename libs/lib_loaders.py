@@ -18,7 +18,11 @@ def directBinNumber(inData, length):
 
 # Load config from cache, or load from db if cache isint existant
 def load_message_config(guild_id, ramfs):
-    datatypes = {"csv": ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "antispam"], "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist"], "list": ["regex-blacklist"]}
+    datatypes = {
+        "csv": ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "antispam"],
+        "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist"],
+        "list": ["regex-blacklist"]
+        }
     try:
 
         # Loads fileio object

@@ -221,13 +221,14 @@ commands = {
         'cache': 'regenerate',
         'execute': wb_change
         },
-    'add-regexblacklist': {
-        'pretty_name': 'add-regexblacklist <regex>',
-        'description': 'Add an item to regex blacklist',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': regexblacklist_add
-        },
+    'add-regexblacklist':
+        {
+            'pretty_name': 'add-regexblacklist <regex>',
+            'description': 'Add an item to regex blacklist',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': regexblacklist_add
+            },
     'wiwb-change': {
         'pretty_name': 'wiwb-change <csv list>',
         'description': 'Change the WordInWord blacklist',
@@ -235,13 +236,14 @@ commands = {
         'cache': 'regenerate',
         'execute': word_in_word_change
         },
-    'remove-regexblacklist': {
-        'pretty_name': 'remove-regexblacklist <regex>',
-        'description': 'Remove an item from regex blacklist',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': regexblacklist_remove
-        },
+    'remove-regexblacklist':
+        {
+            'pretty_name': 'remove-regexblacklist <regex>',
+            'description': 'Remove an item from regex blacklist',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': regexblacklist_remove
+            },
     'ftb-change': {
         'pretty_name': 'ftb-change <csv list>',
         'description': 'Change filetype blacklist',
@@ -256,27 +258,30 @@ commands = {
         'cache': 'keep',
         'execute': list_blacklist
         },
-    'blacklist-action': {
-        'pretty_name': 'blacklist-action <warn|mute|kick|ban>',
-        'description': 'Set the action to occur when blacklist is broken',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': set_blacklist_infraction_level
-        },
-    'blacklist-whitelist': {
-        'pretty_name': 'blacklist-whitelist <role>',
-        'description': 'Set a role that grants immunity from blacklisting',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': change_rolewhitelist
-        },
-    'antispam-set': {
-        'pretty_name': 'antispam-set <messages><,| ><seconds>',
-        'description': 'Set how many messages in seconds to trigger antispam autmute',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': antispam_set
-        }
+    'blacklist-action':
+        {
+            'pretty_name': 'blacklist-action <warn|mute|kick|ban>',
+            'description': 'Set the action to occur when blacklist is broken',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_blacklist_infraction_level
+            },
+    'blacklist-whitelist':
+        {
+            'pretty_name': 'blacklist-whitelist <role>',
+            'description': 'Set a role that grants immunity from blacklisting',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': change_rolewhitelist
+            },
+    'antispam-set':
+        {
+            'pretty_name': 'antispam-set <messages><,| ><seconds>',
+            'description': 'Set how many messages in seconds to trigger antispam autmute',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': antispam_set
+            }
     }
 
 version_info = "1.1.0"

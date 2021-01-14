@@ -223,17 +223,44 @@ async def on_error(event, *args, **kwargs):
 
 async def kernel_0(argtype):
     if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](client=Client, ramfs=ramfs, bot_start=bot_start_time, command_modules=[command_modules, command_modules_dict], dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict], kernel_version=version_info, kernel_ramfs=kernel_ramfs)
+        await dynamiclib_modules_dict[argtype](
+            client=Client,
+            ramfs=ramfs,
+            bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info,
+            kernel_ramfs=kernel_ramfs
+            )
 
 
 async def kernel_1(argtype, arg1):
     if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](arg1, client=Client, ramfs=ramfs, bot_start=bot_start_time, command_modules=[command_modules, command_modules_dict], dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict], kernel_version=version_info, kernel_ramfs=kernel_ramfs)
+        await dynamiclib_modules_dict[argtype](
+            arg1,
+            client=Client,
+            ramfs=ramfs,
+            bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info,
+            kernel_ramfs=kernel_ramfs
+            )
 
 
 async def kernel_2(argtype, arg1, arg2):
     if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](arg1, arg2, client=Client, ramfs=ramfs, bot_start=bot_start_time, command_modules=[command_modules, command_modules_dict], dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict], kernel_version=version_info, kernel_ramfs=kernel_ramfs)
+        await dynamiclib_modules_dict[argtype](
+            arg1,
+            arg2,
+            client=Client,
+            ramfs=ramfs,
+            bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info,
+            kernel_ramfs=kernel_ramfs
+            )
 
 
 @Client.event

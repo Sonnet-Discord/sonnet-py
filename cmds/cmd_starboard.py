@@ -72,6 +72,37 @@ async def set_starboard_count(message, args, client, **kwargs):
 
 category_info = {'name': 'starboard', 'pretty_name': 'Starboard', 'description': 'Starboard commands.'}
 
-commands = {'starboard-channel': {'pretty_name': 'starboard-channel <channel>', 'description': 'Change Starboard', 'permission': 'administrator', 'cache': 'keep', 'execute': starboard_channel_change}, 'starboard-emoji': {'pretty_name': 'starboard-emoji <emoji>', 'description': 'Set the starboard emoji', 'permission': 'administrator', 'cache': 'regenerate', 'execute': set_starboard_emoji}, 'starboard-enabled': {'pretty_name': 'starboard-enabled <boolean value>', 'description': 'Toggle starboard on or off', 'permission': 'administrator', 'cache': 'regenerate', 'execute': set_starboard_use}, 'starboard-count': {'pretty_name': 'starboard-count <number>', 'description': 'Set starboard reaction count threshold', 'permission': 'administrator', 'cache': 'regenerate', 'execute': set_starboard_count}}
+commands = {
+    'starboard-channel': {
+        'pretty_name': 'starboard-channel <channel>',
+        'description': 'Change Starboard',
+        'permission': 'administrator',
+        'cache': 'keep',
+        'execute': starboard_channel_change
+        },
+    'starboard-emoji': {
+        'pretty_name': 'starboard-emoji <emoji>',
+        'description': 'Set the starboard emoji',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': set_starboard_emoji
+        },
+    'starboard-enabled':
+        {
+            'pretty_name': 'starboard-enabled <boolean value>',
+            'description': 'Toggle starboard on or off',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_starboard_use
+            },
+    'starboard-count':
+        {
+            'pretty_name': 'starboard-count <number>',
+            'description': 'Set starboard reaction count threshold',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_starboard_count
+            }
+    }
 
 version_info = "1.0.2"

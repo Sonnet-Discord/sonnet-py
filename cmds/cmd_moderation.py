@@ -478,20 +478,22 @@ commands = {
         'cache': 'keep',
         'execute': search_infractions
         },
-    'infraction-details': {
-        'pretty_name': 'infraction-details <infractionID>',
-        'description': 'Grab details of an infractionID',
-        'permission': 'moderator',
-        'cache': 'keep',
-        'execute': get_detailed_infraction
-        },
-    'delete-infraction': {
-        'pretty_name': 'delete-infraction <infractionID>',
-        'description': 'Delete an infraction by infractionID',
-        'permission': 'administrator',
-        'cache': 'keep',
-        'execute': delete_infraction
-        }
+    'infraction-details':
+        {
+            'pretty_name': 'infraction-details <infractionID>',
+            'description': 'Grab details of an infractionID',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': get_detailed_infraction
+            },
+    'delete-infraction':
+        {
+            'pretty_name': 'delete-infraction <infractionID>',
+            'description': 'Delete an infraction by infractionID',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': delete_infraction
+            }
     }
 
 version_info = "1.1.0"

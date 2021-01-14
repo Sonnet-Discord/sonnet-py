@@ -168,6 +168,42 @@ async def grab_guild_info(message, args, client, **kwargs):
 
 category_info = {'name': 'utilities', 'pretty_name': 'Utilities', 'description': 'Utility commands.'}
 
-commands = {'ping': {'pretty_name': 'ping', 'description': 'Test connection to bot', 'permission': 'everyone', 'cache': 'keep', 'execute': ping_function}, 'profile': {'pretty_name': 'profile [user]', 'description': 'Get a users profile', 'permission': 'everyone', 'cache': 'keep', 'execute': profile_function}, 'help': {'pretty_name': 'help [category]', 'description': 'Print helptext', 'permission': 'everyone', 'cache': 'keep', 'execute': help_function}, 'avatar': {'pretty_name': 'avatar [user]', 'description': 'Get avatar of a user', 'permission': 'everyone', 'cache': 'keep', 'execute': avatar_function}, 'serverinfo': {'pretty_name': 'serverinfo', 'description': 'Get info on this guild', 'permission': 'everyone', 'cache': 'keep', 'execute': grab_guild_info}}
+commands = {
+    'ping': {
+        'pretty_name': 'ping',
+        'description': 'Test connection to bot',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': ping_function
+        },
+    'profile': {
+        'pretty_name': 'profile [user]',
+        'description': 'Get a users profile',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': profile_function
+        },
+    'help': {
+        'pretty_name': 'help [category]',
+        'description': 'Print helptext',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': help_function
+        },
+    'avatar': {
+        'pretty_name': 'avatar [user]',
+        'description': 'Get avatar of a user',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': avatar_function
+        },
+    'serverinfo': {
+        'pretty_name': 'serverinfo',
+        'description': 'Get info on this guild',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': grab_guild_info
+        }
+    }
 
 version_info = "1.1.0"

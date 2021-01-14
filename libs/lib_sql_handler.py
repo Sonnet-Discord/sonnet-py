@@ -21,7 +21,27 @@ class db_handler:
     def make_new_table(self, tablename, data):
 
         # Load hashmap of python datatypes to SQLite3 datatypes
-        datamap = {int: "INT", str: "TEXT", bytes: "BLOB", tuple: "VARCHAR(255)", None: "NULL", float: "FLOAT", int(8): "TINYINT", int(16): "SMALLINT", int(24): "MEDIUMINT", int(32): "INT", int(64): "BIGINT", str(8): "TINYTEXT", str(16): "TEXT", str(24): "MEDIUMTEXT", str(32): "LONGTEXT", bytes(8): "TINYBLOB", bytes(16): "BLOB", bytes(24): "MEDIUMBLOB", bytes(32): "LONGBLOB"}
+        datamap = {
+            int: "INT",
+            str: "TEXT",
+            bytes: "BLOB",
+            tuple: "VARCHAR(255)",
+            None: "NULL",
+            float: "FLOAT",
+            int(8): "TINYINT",
+            int(16): "SMALLINT",
+            int(24): "MEDIUMINT",
+            int(32): "INT",
+            int(64): "BIGINT",
+            str(8): "TINYTEXT",
+            str(16): "TEXT",
+            str(24): "MEDIUMTEXT",
+            str(32): "LONGTEXT",
+            bytes(8): "TINYBLOB",
+            bytes(16): "BLOB",
+            bytes(24): "MEDIUMBLOB",
+            bytes(32): "LONGBLOB"
+            }
 
         # Test for attack
         if tablename.count("\\") or tablename.count("'"):
