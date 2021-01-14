@@ -1,0 +1,58 @@
+SONNET NORMAL OPERATION:
+
+Event passed from kapi:
+
+
+Message handlers:
+
+on-message
+	Message is skipped if dm message, bot, or self
+	Message is scanned for blacklist, antispam
+	If message has commands, execute command if perms are allowed
+		If command cache commands are purge or regenerate, drop guilds cache
+on-message-edit
+	Message is skipped if dm message, bot, or self
+	Message is scanned for blacklist
+	Message is logged in logging channel if set
+		Logging will account for mlen over embed field limit
+on-message-delete
+	Message is skipped if dm message, bot, or self
+	Message is logged in logging channel if set
+
+
+Reaction handlers:
+
+on-reaction-add
+	Reaction is checked for count, type, and if starboard is enabled
+	If all tests pass, grab starboard channel from database
+		If starboard channel exists, post starboard message
+		If messages files in png,jpeg,jpg,bmp add a image embed
+on-raw-reaction-add
+	Grab message and then call on-reaction-add
+
+
+Init/Startup handlers:
+
+on-ready
+	Test if client is bot, warn to console if false
+	Test if any mute timers are left in mute database
+		If mute timers left, unmute overdue mute timers, start async timer to wait for next mute to unmute
+on-guild-join
+	Run db_hlapi.create_guild_db
+
+
+
+Automoderation
+
+
+BLACKLIST HANDLING
+
+If message fails blacklist [filetype, word, wordinword, regex]
+	do action [warn,mute,kick,ban] as configured per server
+
+
+ANTISPAM HANDLING
+
+If more than X messages in Y seconds
+	Mute for 20 seconds
+

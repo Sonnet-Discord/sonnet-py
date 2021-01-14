@@ -1,16 +1,15 @@
 # sonnet-py
-Rhea replacement, written in Python.
+Rhea replacement, written in discord.py.
 
 ## Initialising Development Environment
-On Windows, run ``init_env.bat`` which is located in ``build_tools\win`` and follow the instructions appropriately.
-
-Before pushing, remember to execute ``prepare_push.bat`` - this may not be required in the future but is a good thing to use in order to sanitize a build if you aren't using Git as your source control system.
+Set environment variable `SONNET_TOKEN` or `RHEA_TOKEN` before running test bot
+Initialize MariaDB if using mdb as database system, detailed instructions can be found in `docs/startup_guide.txt`
 
 ## Roadmap
 
 - [x] Fix shoddy command processing code.
-- [ ] Migrate all commands from Rhea to Sonnet codebase.
-- [ ] Ensure that data migration between Rhea and Sonnet is seamless (same DB types, accessing in same way etc.)
-- [ ] Stress-test and gather bugs, fix problems.
+- [x] Migrate all commands from Rhea to Sonnet codebase.
+- [x] Ensure that data migration between Rhea and Sonnet is seamless (same DB types, accessing in same way etc.)
+- [x] Stress-test and gather bugs, fix problems.
 - [ ] Work on branding, promo material etc.
 - [ ] Release to public.

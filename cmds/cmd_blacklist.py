@@ -4,8 +4,10 @@ import importlib
 
 import json, io, discord
 
-import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
-import lib_loaders; importlib.reload(lib_loaders)
+import lib_db_obfuscator
+importlib.reload(lib_db_obfuscator)
+import lib_loaders
+importlib.reload(lib_loaders)
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
@@ -13,7 +15,7 @@ from lib_db_obfuscator import db_hlapi
 
 async def update_csv_blacklist(message, args, name):
 
-    if not(args) or len(args) != 1:
+    if not (args) or len(args) != 1:
         await message.channel.send(f"Malformed {name}")
         raise RuntimeError(f"Malformed {name}")
 
@@ -21,6 +23,7 @@ async def update_csv_blacklist(message, args, name):
         db.add_config(name, args[0])
 
     await message.channel.send(f"Updated {name} sucessfully")
+
 
 async def wb_change(message, args, client, **kwargs):
 
@@ -60,12 +63,12 @@ async def regexblacklist_add(message, args, client, **kwargs):
         try:
             curlist = json.loads(database.grab_config("regex-blacklist"))
         except (json.decoder.JSONDecodeError, TypeError):
-            curlist = {"blacklist":[]}
+            curlist = {"blacklist": []}
 
         # Check if valid RegEx
         new_data = args[0]
         if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
-            curlist["blacklist"].append("__REGEXP "+new_data)
+            curlist["blacklist"].append("__REGEXP " + new_data)
         else:
             await message.channel.send("ERROR: Malformed RegEx")
             return
@@ -93,7 +96,7 @@ async def regexblacklist_remove(message, args, client, **kwargs):
             return
 
         # Check if in list
-        remove_data = "__REGEXP "+args[0]
+        remove_data = "__REGEXP " + args[0]
         if remove_data in curlist["blacklist"]:
             del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
         else:
@@ -113,13 +116,13 @@ async def list_blacklist(message, args, client, **kwargs):
 
     # Format blacklist
     blacklist = {}
-    blacklist["regex-blacklist"] = ["/"+i+"/g" for i in mconf["regex-blacklist"]]
+    blacklist["regex-blacklist"] = ["/" + i + "/g" for i in mconf["regex-blacklist"]]
     blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
     blacklist["word-in-word-blacklist"] = ",".join(mconf["word-in-word-blacklist"])
     blacklist["filetype-blacklist"] = ",".join(mconf["filetype-blacklist"])
 
     # If word blacklist or filetype blacklist then load them
-    for i in ["word-blacklist","filetype-blacklist", "word-in-word-blacklist"]:
+    for i in ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist"]:
         if blacklist[i]:
             blacklist[i] = [blacklist[i]]
 
@@ -132,7 +135,7 @@ async def list_blacklist(message, args, client, **kwargs):
     formatted = json.dumps(blacklist, indent=4)
 
     # Print blacklist
-    formatted_pretty = "```json\n" + formatted.replace('\\\\','\\') + "```"
+    formatted_pretty = "```json\n" + formatted.replace('\\\\', '\\') + "```"
     if len(formatted_pretty) <= 2000:
         await message.channel.send(formatted_pretty)
     else:
@@ -150,7 +153,7 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
     else:
         action = ""
 
-    if not action in ["warn","kick","mute","ban"]:
+    if not action in ["warn", "kick", "mute", "ban"]:
         await message.channel.send("Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
         return
 
@@ -180,72 +183,105 @@ async def change_rolewhitelist(message, args, client, **kwargs):
     await message.channel.send(f"Updated role whitelist to {role}")
 
 
-category_info = {
-    'name': 'blacklist',
-    'pretty_name': 'Blacklist',
-    'description': 'Blacklist management commands.'
-}
+async def antispam_set(message, args, client, **kwargs):
 
+    if not args:
+        antispam = load_message_config(message.guild.id, kwargs["ramfs"])["antispam"]
+        await message.channel.send(f"Antispam timings are {','.join(antispam)}")
+        return
+
+    if len(args) == 1:
+        try:
+            messages, seconds = [int(float(i)) for i in args[0].split(",")]
+        except ValueError:
+            await message.channel.send("Incorrect args supplied")
+            return
+
+    elif len(args) > 1:
+        try:
+            messages = int(float(args[0]))
+            seconds = int(float(args[1]))
+        except ValueError:
+            await message.channel.send("Incorrect args supplied")
+            return
+
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("antispam", f"{messages},{seconds}")
+
+    await message.channel.send(f"Updated antispam timings to M:{messages},S:{seconds}")
+
+
+category_info = {'name': 'automod', 'pretty_name': 'Automod', 'description': 'Automod management commands.'}
 
 commands = {
     'wb-change': {
         'pretty_name': 'wb-change <csv list>',
         'description': 'Change word blacklist',
-        'permission':'administrator',
-        'cache':'regenerate',
+        'permission': 'administrator',
+        'cache': 'regenerate',
         'execute': wb_change
-    },
-    'add-regexblacklist': {
-        'pretty_name': 'add-regexblacklist <regex>',
-        'description': 'Add an item to regex blacklist',
-        'permission':'administrator',
-        'cache':'regenerate',
-        'execute': regexblacklist_add
-    },
+        },
+    'add-regexblacklist':
+        {
+            'pretty_name': 'add-regexblacklist <regex>',
+            'description': 'Add an item to regex blacklist',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': regexblacklist_add
+            },
     'wiwb-change': {
         'pretty_name': 'wiwb-change <csv list>',
         'description': 'Change the WordInWord blacklist',
-        'permission':'administrator',
-        'cache':'regenerate',
+        'permission': 'administrator',
+        'cache': 'regenerate',
         'execute': word_in_word_change
-    },
-    'remove-regexblacklist': {
-        'pretty_name': 'remove-regexblacklist <regex>',
-        'description': 'Remove an item from regex blacklist',
-        'permission':'administrator',
-        'cache':'regenerate',
-        'execute': regexblacklist_remove
-    },
+        },
+    'remove-regexblacklist':
+        {
+            'pretty_name': 'remove-regexblacklist <regex>',
+            'description': 'Remove an item from regex blacklist',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': regexblacklist_remove
+            },
     'ftb-change': {
         'pretty_name': 'ftb-change <csv list>',
         'description': 'Change filetype blacklist',
-        'permission':'administrator',
-        'cache':'regenerate',
+        'permission': 'administrator',
+        'cache': 'regenerate',
         'execute': ftb_change
-    },
+        },
     'list-blacklist': {
         'pretty_name': 'list-blacklist',
         'description': 'List all blacklists',
-        'permission':'moderator',
-        'cache':'keep',
+        'permission': 'moderator',
+        'cache': 'keep',
         'execute': list_blacklist
-    },
-    'blacklist-action': {
-        'pretty_name': 'blacklist-action <warn|mute|kick|ban>',
-        'description': 'Set the action to occur when blacklist is broken',
-        'permission':'administrator',
-        'cache':'regenerate',
-        'execute': set_blacklist_infraction_level
-    },
-    'blacklist-whitelist': {
-        'pretty_name': 'blacklist-whitelist <role>',
-        'description': 'Set a role that grants immunity from blacklisting',
-        'permission':'administrator',
-        'cache':'regenerate',
-        'execute': change_rolewhitelist
+        },
+    'blacklist-action':
+        {
+            'pretty_name': 'blacklist-action <warn|mute|kick|ban>',
+            'description': 'Set the action to occur when blacklist is broken',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_blacklist_infraction_level
+            },
+    'blacklist-whitelist':
+        {
+            'pretty_name': 'blacklist-whitelist <role>',
+            'description': 'Set a role that grants immunity from blacklisting',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': change_rolewhitelist
+            },
+    'antispam-set':
+        {
+            'pretty_name': 'antispam-set <messages><,| ><seconds>',
+            'description': 'Set how many messages in seconds to trigger antispam automute',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': antispam_set
+            }
     }
-    
-}
 
-
-version_info = "1.0.2"
+version_info = "1.1.0"

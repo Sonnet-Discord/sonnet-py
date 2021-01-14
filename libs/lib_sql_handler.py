@@ -3,10 +3,12 @@
 
 import sqlite3
 
-class db_error: # DB error codes
+
+class db_error:  # DB error codes
     OperationalError = sqlite3.OperationalError
     InterfaceError = sqlite3.InterfaceError
     Error = sqlite3.Error
+
 
 class db_handler:
     def __init__(self, db_location):
@@ -20,11 +22,26 @@ class db_handler:
 
         # Load hashmap of python datatypes to SQLite3 datatypes
         datamap = {
-            int:"INT", str:"TEXT", bytes:"BLOB", tuple:"VARCHAR(255)", None:"NULL", float:"FLOAT",
-            int(8):"TINYINT", int(16):"SMALLINT", int(24):"MEDIUMINT", int(32):"INT", int(64):"BIGINT",
-            str(8):"TINYTEXT", str(16):"TEXT", str(24):"MEDIUMTEXT", str(32):"LONGTEXT",
-            bytes(8):"TINYBLOB", bytes(16):"BLOB", bytes(24):"MEDIUMBLOB", bytes(32):"LONGBLOB"
-        }
+            int: "INT",
+            str: "TEXT",
+            bytes: "BLOB",
+            tuple: "VARCHAR(255)",
+            None: "NULL",
+            float: "FLOAT",
+            int(8): "TINYINT",
+            int(16): "SMALLINT",
+            int(24): "MEDIUMINT",
+            int(32): "INT",
+            int(64): "BIGINT",
+            str(8): "TINYTEXT",
+            str(16): "TEXT",
+            str(24): "MEDIUMTEXT",
+            str(32): "LONGTEXT",
+            bytes(8): "TINYBLOB",
+            bytes(16): "BLOB",
+            bytes(24): "MEDIUMBLOB",
+            bytes(32): "LONGBLOB"
+            }
 
         # Test for attack
         if tablename.count("\\") or tablename.count("'"):
@@ -56,12 +73,12 @@ class db_handler:
         # Add insert data and generate base tables
         db_inputStr = f"REPLACE INTO '{table}' ("
         db_inputList = []
-        db_inputStr += ", ".join([i[0] for i in data])+ ")\n"
+        db_inputStr += ", ".join([i[0] for i in data]) + ")\n"
 
         # Insert values data
         db_inputStr += "VALUES ("
         db_inputList.extend([i[1] for i in data])
-        db_inputStr += ", ".join(["?" for i in range(len(data))])+ ")\n"
+        db_inputStr += ", ".join(["?" for i in range(len(data))]) + ")\n"
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
@@ -93,7 +110,7 @@ class db_handler:
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def delete_table(self, table): # drops the table specified
+    def delete_table(self, table):  # drops the table specified
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -101,7 +118,7 @@ class db_handler:
 
         self.cur.execute(f"DROP TABLE IF EXISTS '{table}';")
 
-    def fetch_table(self, table): # Fetches a full table
+    def fetch_table(self, table):  # Fetches a full table
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -115,7 +132,7 @@ class db_handler:
 
     def list_tables(self, searchterm):
 
-        self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm,))
+        self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm, ))
 
         # Send data
         returndata = list(self.cur.fetchall())

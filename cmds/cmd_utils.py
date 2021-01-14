@@ -10,8 +10,10 @@ from datetime import datetime
 
 import sonnet_cfg
 
-import lib_db_obfuscator; importlib.reload(lib_db_obfuscator)
-import lib_loaders; importlib.reload(lib_loaders)
+import lib_db_obfuscator
+importlib.reload(lib_db_obfuscator)
+import lib_loaders
+importlib.reload(lib_loaders)
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
@@ -30,7 +32,7 @@ async def parse_userid(message, args):
 
     # Get the Member object by user ID, otherwise fail.
     user_object = message.guild.get_member(id_to_probe)
-    # Secondary catch if actually getting the member succeeds but passes nothing to the variable.
+
     if not user_object:
         await message.channel.send("Invalid userid")
         raise RuntimeError
@@ -41,13 +43,12 @@ async def parse_userid(message, args):
 async def ping_function(message, args, client, **kwargs):
     stats = kwargs["stats"]
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
-    ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"])/100) + "ms", inline=False)
-    ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"])/100) + "ms", inline=False)
-    ping_embed.add_field(name="Process Blacklist", value=str((stats["end-blacklist"] - stats["start-blacklist"])/100) + "ms", inline=False)
-    ping_embed.add_field(name="Process Antispam", value=str((stats["end-antispam"] - stats["start-antispam"])/100) + "ms", inline=False)
-    time_to_send = round(time.time()*10000)
+    ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"]) / 100) + "ms", inline=False)
+    ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"]) / 100) + "ms", inline=False)
+    ping_embed.add_field(name="Process Automod", value=str((stats["end-automod"] - stats["start-automod"]) / 100) + "ms", inline=False)
+    time_to_send = round(time.time() * 10000)
     sent_message = await message.channel.send(embed=ping_embed)
-    ping_embed.add_field(name="Send Message", value=str((round(time.time()*10000) - time_to_send)/100) + "ms", inline=False)
+    ping_embed.add_field(name="Send Message", value=str((round(time.time() * 10000) - time_to_send) / 100) + "ms", inline=False)
     await sent_message.edit(embed=ping_embed)
 
 
@@ -65,7 +66,7 @@ async def profile_function(message, args, client, **kwargs):
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
     joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
 
-    embed=discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
+    embed = discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
     embed.add_field(name="User ID", value=user_object.id, inline=True)
@@ -81,7 +82,7 @@ async def profile_function(message, args, client, **kwargs):
             viewinfs = bool(int(viewinfs))
         else:
             viewinfs = False
-        moderator = message.author.permissions_in(message.channel).kick_members
+        moderator = message.author.permissions_in(message.channel).ban_members
         if moderator or (viewinfs and user_object.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
 
@@ -96,7 +97,7 @@ async def avatar_function(message, args, client, **kwargs):
     except RuntimeError:
         return
 
-    embed=discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
+    embed = discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
     embed.set_image(url=user_object.avatar_url)
     embed.timestamp = datetime.utcnow()
     await message.channel.send(embed=embed)
@@ -108,7 +109,7 @@ async def help_function(message, args, client, **kwargs):
         # We're just doing category info.
 
         # Initialise embed.
-        embed=discord.Embed(title="Category Listing", color=0x00db87)
+        embed = discord.Embed(title="Category Listing", color=0x00db87)
         embed.set_author(name="Sonnet Help")
 
         # Start creating module listing.
@@ -118,7 +119,7 @@ async def help_function(message, args, client, **kwargs):
         # We're looking up a category.
 
         # Initialise embed.
-        embed=discord.Embed(title=f"Commands in Category \"{args[0].lower()}\"", color=0x00db87)
+        embed = discord.Embed(title=f"Commands in Category \"{args[0].lower()}\"", color=0x00db87)
         embed.set_author(name="Sonnet Help")
 
         # Start creating command listing.
@@ -147,43 +148,62 @@ async def help_function(message, args, client, **kwargs):
     await message.channel.send(embed=embed)
 
 
-category_info = {
-    'name': 'utilities',
-    'pretty_name': 'Utilities',
-    'description': 'Utility commands.'
-}
+async def grab_guild_info(message, args, client, **kwargs):
 
+    guild = message.channel.guild
+
+    created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(guild.created_at)))
+    created_string += f" ({(datetime.utcnow() - guild.created_at).days} days ago)"
+
+    guild_embed = discord.Embed(title=f"Information on {guild}", color=0x00ff6e)
+    guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
+    guild_embed.add_field(name="# of Roles:", value=f"{len(guild.roles)} Roles")
+    guild_embed.add_field(name="Top Role:", value=str(guild.roles[-1]))
+    guild_embed.add_field(name="Member Count:", value=str(guild.member_count))
+    guild_embed.add_field(name="Creation Date:", value=created_string)
+    guild_embed.set_thumbnail(url=guild.icon_url)
+
+    await message.channel.send(embed=guild_embed)
+
+
+category_info = {'name': 'utilities', 'pretty_name': 'Utilities', 'description': 'Utility commands.'}
 
 commands = {
     'ping': {
         'pretty_name': 'ping',
         'description': 'Test connection to bot',
-        'permission':'everyone',
-        'cache':'keep',
+        'permission': 'everyone',
+        'cache': 'keep',
         'execute': ping_function
-    },
+        },
     'profile': {
         'pretty_name': 'profile [user]',
         'description': 'Get a users profile',
-        'permission':'everyone',
-        'cache':'keep',
+        'permission': 'everyone',
+        'cache': 'keep',
         'execute': profile_function
-    },
+        },
     'help': {
         'pretty_name': 'help [category]',
         'description': 'Print helptext',
-        'permission':'everyone',
-        'cache':'keep',
+        'permission': 'everyone',
+        'cache': 'keep',
         'execute': help_function
-    },
+        },
     'avatar': {
         'pretty_name': 'avatar [user]',
         'description': 'Get avatar of a user',
-        'permission':'everyone',
-        'cache':'keep',
+        'permission': 'everyone',
+        'cache': 'keep',
         'execute': avatar_function
+        },
+    'serverinfo': {
+        'pretty_name': 'serverinfo',
+        'description': 'Get info on this guild',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': grab_guild_info
+        }
     }
-}
 
-
-version_info = "1.0.2"
+version_info = "1.1.0"
