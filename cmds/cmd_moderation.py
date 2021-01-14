@@ -14,6 +14,7 @@ from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
 
 
+# Catches error if the bot cannot message the user
 async def catch_dm_error(user, contents):
     try:
         await user.send(embed=contents)
@@ -21,6 +22,7 @@ async def catch_dm_error(user, contents):
         pass
 
 
+# Sends an infraction to database and log channels if user exists
 async def log_infraction(message, client, user, moderator_id, infraction_reason, infraction_type):
 
     if not user:
@@ -70,6 +72,7 @@ async def log_infraction(message, client, user, moderator_id, infraction_reason,
     return (generated_id, dm_sent)
 
 
+# General processor for infractions
 async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
 
     # Check if automod
