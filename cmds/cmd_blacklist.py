@@ -277,7 +277,7 @@ commands = {
     'antispam-set':
         {
             'pretty_name': 'antispam-set <messages><,| ><seconds>',
-            'description': 'Set how many messages in seconds to trigger antispam autmute',
+            'description': 'Set how many messages in seconds to trigger antispam automute',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': antispam_set

@@ -34,7 +34,7 @@ on-raw-reaction-add
 Init/Startup handlers:
 
 on-ready
-	Test if client is bot, warn to console if true
+	Test if client is bot, warn to console if false
 	Test if any mute timers are left in mute database
 		If mute timers left, unmute overdue mute timers, start async timer to wait for next mute to unmute
 on-guild-join
