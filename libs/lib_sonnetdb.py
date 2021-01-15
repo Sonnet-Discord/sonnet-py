@@ -83,7 +83,7 @@ class db_hlapi:
             except db_error.Error:
                 # Raw reaction and nonraw reaction are trying to access the db at the same time
                 # I cant think of a better solution
-                pass
+                return False
 
         return True
 
