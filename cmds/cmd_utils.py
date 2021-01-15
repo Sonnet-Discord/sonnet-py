@@ -179,7 +179,7 @@ async def coinflip(message, args, client, **kwargs):
 
     mobj = await message.channel.send("Flipping a coin...")
     await asyncio.sleep(random.randint(500, 1000) / 1000)
-    await mobj.edit(f"Flipping a coin... {random.choice(['Heads!','Tails!'])}")
+    await mobj.edit(content=f"Flipping a coin... {random.choice(['Heads!','Tails!'])}")
 
 
 category_info = {'name': 'utilities', 'pretty_name': 'Utilities', 'description': 'Utility commands.'}
