@@ -5,7 +5,7 @@
 
 import importlib
 
-import discord, time
+import discord, time, asyncio, random
 from datetime import datetime
 
 import sonnet_cfg
@@ -175,6 +175,13 @@ async def initialise_poll(message, args, client, **kwargs):
         await message.channel.send("The bot does not have permissions to add a reaction here")
 
 
+async def coinflip(message, args, client, **kwargs):
+
+    mobj = await message.channel.send("Flipping a coin...")
+    await asyncio.sleep(random.randint(500, 1000) / 1000)
+    await mobj.edit("Flipping a coin... {random.choice(['Heads!','Tails!'])}")
+
+
 category_info = {'name': 'utilities', 'pretty_name': 'Utilities', 'description': 'Utility commands.'}
 
 commands = {
@@ -219,6 +226,13 @@ commands = {
         'permission': 'everyone',
         'cache': 'keep',
         'execute': initialise_poll
+        },
+    'coinflip': {
+        'pretty_name': 'coinflip',
+        'description': 'Flip a coin',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': coinflip
         }
     }
 
