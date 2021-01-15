@@ -184,7 +184,7 @@ async def on_message(message, **kargs):
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, ["20s", int(message.author.id), "[AUTOMOD]", "Antispam"], client))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client))
 
     stats["end-automod"] = round(time.time() * 100000)
 
