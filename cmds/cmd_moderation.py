@@ -223,6 +223,8 @@ async def mute_user(message, args, client, **kwargs):
                 del args[1]
         except (ValueError, TypeError):
             mutetime = 0
+    else:
+        mutetime = 0
 
     try:
         automod, user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "mute", "Muting")
