@@ -166,6 +166,15 @@ async def grab_guild_info(message, args, client, **kwargs):
     await message.channel.send(embed=guild_embed)
 
 
+async def initialise_poll(message, args, client, **kwargs):
+
+    try:
+        await message.add_reaction("👍")
+        await message.add_reaction("👎")
+    except discord.Errors.Forbidden:
+        await message.channel.send("The bot does not have permissions to add a reaction here")
+
+
 category_info = {'name': 'utilities', 'pretty_name': 'Utilities', 'description': 'Utility commands.'}
 
 commands = {
@@ -203,6 +212,13 @@ commands = {
         'permission': 'everyone',
         'cache': 'keep',
         'execute': grab_guild_info
+        },
+    'poll': {
+        'pretty_name': 'poll',
+        'description': 'Start a reaction based poll on the message',
+        'permission': 'everyone',
+        'cache': 'keep',
+        'execute': initialise_poll
         }
     }
 
