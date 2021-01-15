@@ -30,7 +30,8 @@ async def on_reaction_add(reaction, user, **kargs):
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(reaction.message.guild.id) as db:
             if channel_id := db.grab_config("starboard-channel"):
-                if bool(channel := kargs["client"].get_channel(int(channel_id))) and not (db.in_starboard(reaction.message.id)) and not (int(channel_id) == reaction.message.channel.id) and db.add_to_starboard(reaction.message.id):
+                if bool(channel := kargs["client"].get_channel(int(channel_id))
+                        ) and not (db.in_starboard(reaction.message.id)) and not (int(channel_id) == reaction.message.channel.id) and db.add_to_starboard(reaction.message.id):
 
                     jump = f"\n\n[(Link)]({reaction.message.jump_url})"
                     starboard_embed = discord.Embed(title="Starred message", description=reaction.message.content[:2048 - len(jump)] + jump, color=0xffa700)
