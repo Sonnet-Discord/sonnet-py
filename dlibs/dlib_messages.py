@@ -190,6 +190,8 @@ async def on_message(message, **kargs):
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
+        if client.user.mentioned_in(message):
+            await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
         return
 
     # Split into cmds and arguments.
