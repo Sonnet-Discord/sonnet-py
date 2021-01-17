@@ -31,9 +31,11 @@ class encrypted_writer:
 
         # Write a maximum of 2^24-1 blocksize
         if len(data) > ((2**16) - 1):
-            for chunk in [bytes(data[i:i + ((2**16) - 1)]) for i in range(0, len(data), ((2**16) - 1))]:
+            raw_data = memoryview(data)
+            for chunk in [bytes(raw_data[i:i + ((2**16) - 1)]) for i in range(0, len(data), ((2**16) - 1))]:
                 self.write_data(chunk)
-        else:
+        elif data:
+
             self.write_data(data)
 
     def write_data(self, unencrypted):
@@ -59,6 +61,14 @@ class encrypted_writer:
         # Close objects
         self.rawfile.close()
         self.encryptor_module.finalize()
+
+    def close(self):
+
+        self.finalize()
+
+    def seekable(self):
+
+        return False
 
     def read(self, *args):
 
@@ -95,7 +105,7 @@ class encrypted_reader:
         # Seek to start of file after checking HMAC
         self.rawfile.seek(10 + 64)
         self.pointer = 0
-        self.cache = b""
+        self.cache = bytearray()
 
     def read(self, *arg):
 
@@ -108,22 +118,37 @@ class encrypted_reader:
                 return b"".join(datamap)
             else:
                 # Return remainder of data
-                datamap = [self.cache]
+                self.cache
                 while a := self.rawfile.read(2):
-                    datamap.append(self.decryptor_module.update(self.rawfile.read(int.from_bytes(a, "little"))))
-                return b"".join(datamap)
+                    self.cache.extend(bytearray(self.decryptor_module.update(self.rawfile.read(int.from_bytes(a, "little")))))
+                return bytes(memoryview(self.cache)[self.pointer:])
         else:
 
             amount_wanted = arg[0]
 
-            while len(self.cache) < amount_wanted:
-                self.cache += (self.decryptor_module.update(self.rawfile.read(int.from_bytes(self.rawfile.read(2), "little"))))
+            if amount_wanted == 0:
+                return b""
 
+            eof_reached = False
+            while len(self.cache) < amount_wanted and not eof_reached:
+                read_amount = int.from_bytes(self.rawfile.read(2), "little")
+                if read_amount:
+                    self.cache.extend(bytearray((self.decryptor_module.update(self.rawfile.read(read_amount)))))
+                else:
+                    eof_reached = True
+
+            returndata = bytes(memoryview(self.cache)[self.pointer:amount_wanted + self.pointer])
             self.pointer += amount_wanted
-            returndata = bytes(memoryview(self.cache)[:amount_wanted])
-            self.cache = bytes(memoryview(self.cache)[amount_wanted:])
 
             return returndata
+
+    def seekable(self):
+
+        return False
+
+    def close(self):
+
+        self.rawfile.close()
 
     def write(self, data):
         raise TypeError(f"{self} object does not allow writing")
