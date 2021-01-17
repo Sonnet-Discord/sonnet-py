@@ -76,7 +76,7 @@ class db_hlapi:
 
         try:
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-        except db_error.OperationalError:
+        except (db_error.OperationalError, db_error.Error):
             try:
                 self.create_guild_db()
                 self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
