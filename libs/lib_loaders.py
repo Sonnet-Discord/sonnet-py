@@ -131,7 +131,7 @@ def generate_infractionid():
         with open("datastore/wordlist.cache.db", "rb") as words:
             chunksize = int.from_bytes(words.read(1), "big")
             num_words /= chunksize
-            values = sorted([random.randint(0, (num_words - 1)) for i in range(3)])
+            values = ([random.randint(0, (num_words - 1)) for i in range(3)])
             output = ""
             for i in values:
                 words.seek(i * chunksize + 1)
@@ -144,9 +144,10 @@ def generate_infractionid():
             maxval = 0
             structured_data = []
             for i in words.read().encode("utf8").split(b"\n"):
-                structured_data.append(bytes([len(i)]) + i)
-                if len(i) + 1 > maxval:
-                    maxval = len(i) + 1
+                if i:
+                    structured_data.append(bytes([len(i)]) + i)
+                    if len(i) + 1 > maxval:
+                        maxval = len(i) + 1
         with open("datastore/wordlist.cache.db", "wb") as structured_data_file:
             structured_data_file.write(bytes([maxval]))
             for i in structured_data:
