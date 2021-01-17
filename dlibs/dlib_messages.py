@@ -124,7 +124,7 @@ def antispam_check(indata):
         # I barely write code comments but this unholy sin converts a datetime object to normal UTC
         sent_at = (msend - datetime(1970, 1, 1)).total_seconds()
 
-        userlist.append([userid, round( sent_at * 1000)])
+        userlist.append([userid, round(sent_at * 1000)])
         messages.seek(0)
         for i in userlist:
             messages.write(bytes(directBinNumber(i[0], 8) + directBinNumber(i[1], 8)))
