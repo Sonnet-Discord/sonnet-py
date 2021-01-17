@@ -100,7 +100,7 @@ async def on_message_edit(old_message, message, **kargs):
 
 def antispam_check(indata):
 
-    guildid, userid, ramfs, messagecount, timecount = indata
+    guildid, userid, msend, ramfs, messagecount, timecount = indata
 
     messagecount = int(messagecount)
     timecount = int(timecount) * 1000
@@ -112,6 +112,7 @@ def antispam_check(indata):
         userlist = []
         ismute = 1
 
+        # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
         while a := messages.read(16):
             uid = int.from_bytes(a[:8], "little")
             mtime = int.from_bytes(a[8:], "little")
@@ -120,7 +121,10 @@ def antispam_check(indata):
                 if uid == userid:
                     ismute += 1
 
-        userlist.append([userid, round(time.time() * 1000)])
+        # I barely write code comments but this unholy sin converts a datetime object to normal UTC
+        sent_at = (msend - datetime(1970, 1, 1)).total_seconds()
+
+        userlist.append([userid, round( sent_at * 1000)])
         messages.seek(0)
         for i in userlist:
             messages.write(bytes(directBinNumber(i[0], 8) + directBinNumber(i[1], 8)))
@@ -168,7 +172,7 @@ async def on_message(message, **kargs):
     stats["start-automod"] = round(time.time() * 100000)
 
     for i in [
-        [antispam_check, [message.channel.guild.id, message.author.id, ramfs, mconf["antispam"][0], mconf["antispam"][1]]],
+        [antispam_check, [message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]]],
         [parse_blacklist, [message, mconf]],
         [inc_statistics, [message.guild.id, "on-message", kargs["kernel_ramfs"]]],
         ]:
@@ -236,4 +240,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.0"
+version_info = "1.1.0-1"
