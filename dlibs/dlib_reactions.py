@@ -37,7 +37,7 @@ async def on_reaction_add(reaction, user, **kargs):
                     starboard_embed = discord.Embed(title="Starred message", description=reaction.message.content[:2048 - len(jump)] + jump, color=0xffa700)
 
                     for i in reaction.message.attachments:
-                        if ifgate([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg"]]):
+                        if ifgate([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
                             starboard_embed.set_image(url=i.url)
 
                     starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
