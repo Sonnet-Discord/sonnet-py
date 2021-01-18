@@ -27,18 +27,26 @@ class encrypted_writer:
         # Initialize writable buffer
         self.buf = bytes(2**16 + 256)
 
+    def _generate_chunks(self, data):
+
+        # Init mem map
+        raw_data = memoryview(data)
+
+        # Yield data in chunks
+        for i in range(0, len(data), ((2**16) - 1)):
+            yield bytes(raw_data[i:i + ((2**16) - 1)])
+
     def write(self, data):
 
-        # Write a maximum of 2^24-1 blocksize
+        # Write a maximum of 2^16-1 blocksize
         if len(data) > ((2**16) - 1):
-            raw_data = memoryview(data)
-            for chunk in [bytes(raw_data[i:i + ((2**16) - 1)]) for i in range(0, len(data), ((2**16) - 1))]:
-                self.write_data(chunk)
+            for chunk in _generate_chunks(data):
+                self._write_data(chunk)
         elif data:
 
-            self.write_data(data)
+            self._write_data(data)
 
-    def write_data(self, unencrypted):
+    def _write_data(self, unencrypted):
 
         # Write length of data to file
         dlen = len(unencrypted)
@@ -66,6 +74,7 @@ class encrypted_writer:
 
         self.finalize()
 
+    @property
     def seekable(self):
 
         return False
@@ -107,6 +116,10 @@ class encrypted_reader:
         self.pointer = 0
         self.cache = bytearray()
 
+    def _grab_amount(self, amount):
+
+        return self.decryptor_module.update(self.rawfile.read(amount))
+
     def read(self, *arg):
 
         if not arg:
@@ -114,13 +127,13 @@ class encrypted_reader:
                 # Return entire file if pointer is at 0
                 datamap = []
                 while a := self.rawfile.read(2):
-                    datamap.append(self.decryptor_module.update(self.rawfile.read(int.from_bytes(a, "little"))))
+                    datamap.append(self._grab_amount(int.from_bytes(a, "little")))
                 return b"".join(datamap)
             else:
                 # Return remainder of data
                 self.cache
                 while a := self.rawfile.read(2):
-                    self.cache.extend(bytearray(self.decryptor_module.update(self.rawfile.read(int.from_bytes(a, "little")))))
+                    self.cache.extend(bytearray(self._grab_amount(int.from_bytes(a, "little"))))
                 return bytes(memoryview(self.cache)[self.pointer:])
         else:
 
@@ -129,11 +142,12 @@ class encrypted_reader:
             if amount_wanted == 0:
                 return b""
 
+            # Read till EOF
             eof_reached = False
             while len(self.cache) < amount_wanted and not eof_reached:
                 read_amount = int.from_bytes(self.rawfile.read(2), "little")
                 if read_amount:
-                    self.cache.extend(bytearray((self.decryptor_module.update(self.rawfile.read(read_amount)))))
+                    self.cache.extend(bytearray((self._grab_amount(read_amount))))
                 else:
                     eof_reached = True
 
@@ -142,6 +156,7 @@ class encrypted_reader:
 
             return returndata
 
+    @property
     def seekable(self):
 
         return False
