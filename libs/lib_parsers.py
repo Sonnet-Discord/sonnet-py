@@ -41,7 +41,7 @@ def parse_blacklist(indata):
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if re.findall(i, message.content.lower()):
+            if re.findall(i, message.content.lower().encode("utf8")):
                 broke_blacklist = True
                 infraction_type.append("RegEx")
         except re.error:
