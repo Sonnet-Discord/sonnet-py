@@ -3,8 +3,10 @@
 
 import importlib
 
-import discord, time, asyncio
+import time, asyncio, os, threading, hashlib, io
 from datetime import datetime
+
+import discord, lz4.frame
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
@@ -12,20 +14,60 @@ import lib_parsers
 importlib.reload(lib_parsers)
 import lib_loaders
 importlib.reload(lib_loaders)
+import lib_encryption_wrapper
+importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, directBinNumber, inc_statistics
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
+from lib_encryption_wrapper import encrypted_writer, encrypted_reader
 
 
-async def catch_logging_error(channel, contents):
+async def catch_logging_error(channel, contents, files):
     try:
-        await channel.send(embed=contents)
+        if files:
+            await channel.send(embed=contents, files=files)
+        else:
+            await channel.send(embed=contents)
     except discord.Errors.Forbidden:
         pass
 
 
+def grab_files(guild_id, message_id, ramfs):
+
+    try:
+
+        files = ramfs.ls(f"files/{guild_id}/{message_id}")[1]
+        discord_files = []
+        for i in files:
+
+            loc = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/pointer")
+            loc.seek(0)
+            pointer = loc.read()
+
+            keys = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/key")
+            keys.seek(0)
+            key = keys.read(32)
+            iv = keys.read(16)
+
+            encrypted_file = encrypted_reader(pointer, key, iv)
+            rawfile = io.BytesIO()
+            rawfile.write(lz4.frame.decompress(encrypted_file.read()))
+            rawfile.seek(0)
+            discord_files.append(discord.File(rawfile, filename=i))
+
+        return discord_files
+
+    except FileNotFoundError:
+        return None
+
+
 async def on_message_delete(message, **kargs):
+
+    if kargs["kernel_version"] != "1.1.0 'LeXdPyK'":
+        files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"])
+    else:
+        files = None
 
     client = kargs["client"]
     # Ignore bots
@@ -45,7 +87,7 @@ async def on_message_delete(message, **kargs):
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcnow()
 
-            await catch_logging_error(message_log, message_embed)
+            await catch_logging_error(message_log, message_embed, files)
 
 
 async def attempt_message_delete(message):
@@ -69,7 +111,9 @@ async def on_message_edit(old_message, message, **kargs):
     # Add to log
     with db_hlapi(message.guild.id) as db:
         message_log = db.grab_config("message-log")
-    if message_log:
+
+    # Skip logging if message is the same or mlog doesnt exist
+    if message_log and not (old_message.content == message.content):
         message_log = client.get_channel(int(message_log))
         if message_log:
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
@@ -149,6 +193,56 @@ def run_threaded_data(arg):
     return_data[function] = function(args)
 
 
+import time
+
+
+async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
+
+    await nfile.save(compression, seek_begin=False)
+    compression.close()
+    encryption.close()
+
+    await asyncio.sleep(60 * 30)
+
+    try:
+        os.remove(filename)
+    except FileNotFoundError:
+        pass
+    try:
+        ramfs.rmdir(f"files/{mgid[0]}/{mgid[1]}")
+    except FileNotFoundError:
+        pass
+
+
+def download_single_file(contents):
+
+    discord_file, filename, key, iv, ramfs, mgid = contents
+
+    encryption_fileobj = encrypted_writer(filename, key, iv)
+
+    compression_fileobj = lz4.frame.LZ4FrameFile(filename=encryption_fileobj, mode="wb")
+
+    asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
+
+
+async def log_message_files(message, kernel_ramfs):
+
+    for i in message.attachments:
+
+        ramfs_path = f"files/{message.channel.guild.id}/{message.id}/{i.filename}"
+
+        keyfile = kernel_ramfs.create_f(f"{ramfs_path}/key")
+        keyfile.write(key := os.urandom(32))
+        keyfile.write(iv := os.urandom(16))
+
+        pointerfile = kernel_ramfs.create_f(f"{ramfs_path}/pointer")
+        pointer = hashlib.sha256(i.filename.encode("utf8") + key + iv).hexdigest()
+        file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
+        pointerfile.write(file_loc.encode("utf8"))
+
+        download_single_file([i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id]])
+
+
 async def on_message(message, **kargs):
 
     client = kargs["client"]
@@ -191,6 +285,8 @@ async def on_message(message, **kargs):
                 asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client))
 
     stats["end-automod"] = round(time.time() * 100000)
+
+    await log_message_files(message, kargs["kernel_ramfs"])
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):

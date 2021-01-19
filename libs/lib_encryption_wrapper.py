@@ -40,7 +40,7 @@ class encrypted_writer:
 
         # Write a maximum of 2^16-1 blocksize
         if len(data) > ((2**16) - 1):
-            for chunk in _generate_chunks(data):
+            for chunk in self._generate_chunks(data):
                 self._write_data(chunk)
         elif data:
 
