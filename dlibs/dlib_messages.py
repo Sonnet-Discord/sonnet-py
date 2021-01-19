@@ -55,10 +55,14 @@ def grab_files(guild_id, message_id, ramfs):
             rawfile.write(lz4.frame.decompress(encrypted_file.read()))
             rawfile.seek(0)
             discord_files.append(discord.File(rawfile, filename=i))
+            os.remove(pointer)
+
+        ramfs.rmdir(f"files/{guild_id}/{message_id}")
 
         return discord_files
 
     except FileNotFoundError:
+
         return None
 
 
@@ -240,7 +244,7 @@ async def log_message_files(message, kernel_ramfs):
         file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 
-        download_single_file([i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id]])
+        threading.Thread(target=download_single_file, args=([i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id]], )).run()
 
 
 async def on_message(message, **kargs):
