@@ -141,7 +141,7 @@ async def on_message_edit(old_message, message, **kargs):
 
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
-            asyncio.create_task(catch_logging_error(message_log, message_embed))
+            asyncio.create_task(catch_logging_error(message_log, message_embed, None))
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
