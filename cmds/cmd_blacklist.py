@@ -12,6 +12,8 @@ importlib.reload(lib_loaders)
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 
+re2.set_fallback_notification(re2.FALLBACK_EXCEPTION)
+
 
 async def update_csv_blacklist(message, args, name):
 

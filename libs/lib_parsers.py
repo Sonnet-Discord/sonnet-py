@@ -11,6 +11,8 @@ importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
 
+re.set_fallback_notification(re.FALLBACK_EXCEPTION)
+
 
 def parse_blacklist(indata):
     message, blacklist = indata
@@ -43,7 +45,7 @@ def parse_blacklist(indata):
                 broke_blacklist = True
                 infraction_type.append("RegEx")
         except re.error:
-            pass # This is cleanup, new regex will only allow safe strs
+            pass  # This is cleanup, new regex will only allow safe strs
 
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
