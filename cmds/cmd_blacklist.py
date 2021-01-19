@@ -69,7 +69,7 @@ async def regexblacklist_add(message, args, client, **kwargs):
         new_data = args[0]
         if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
             try:
-                re.findall(new_data[1:-2], message.content.encode("utf8"))
+                re.findall(new_data[1:-2], message.content)
                 curlist["blacklist"].append("__REGEXP " + new_data)
             except re.error:
                 await message.channel.send("ERROR: RegEx operations not supported in re2")
