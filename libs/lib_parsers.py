@@ -3,15 +3,13 @@
 
 import importlib
 
-import re2 as re
+import re
 from sonnet_cfg import DB_TYPE
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
-
-re.set_fallback_notification(re.FALLBACK_EXCEPTION)
 
 
 def parse_blacklist(indata):
@@ -41,7 +39,7 @@ def parse_blacklist(indata):
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if re.findall(i, message.content.lower().encode("utf8")):
+            if re.findall(i, message.content.lower()):
                 broke_blacklist = True
                 infraction_type.append("RegEx")
         except re.error:

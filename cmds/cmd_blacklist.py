@@ -2,7 +2,7 @@
 
 import importlib
 
-import json, io, discord, re2
+import json, io, discord, re
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
@@ -11,8 +11,6 @@ importlib.reload(lib_loaders)
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
-
-re2.set_fallback_notification(re2.FALLBACK_EXCEPTION)
 
 
 async def update_csv_blacklist(message, args, name):
@@ -71,9 +69,9 @@ async def regexblacklist_add(message, args, client, **kwargs):
         new_data = args[0]
         if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
             try:
-                re2.findall(new_data[1:-2], message.content.encode("utf8"))
+                re.findall(new_data[1:-2], message.content.encode("utf8"))
                 curlist["blacklist"].append("__REGEXP " + new_data)
-            except re2.error:
+            except re.error:
                 await message.channel.send("ERROR: RegEx operations not supported in re2")
                 return
         else:
