@@ -12,4 +12,4 @@ Initialize MariaDB if using mdb as database system, detailed instructions can be
 - [x] Ensure that data migration between Rhea and Sonnet is seamless (same DB types, accessing in same way etc.)
 - [x] Stress-test and gather bugs, fix problems.
 - [ ] Work on branding, promo material etc.
-- [ ] Release to public.
+- [x] Release to public.
