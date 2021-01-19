@@ -229,6 +229,10 @@ async def mute_user(message, args, client, **kwargs):
     else:
         mutetime = 0
 
+    # This ones for you, curl
+    if mutetime >= 60 * 60 * 256:
+        mutetime = 0
+
     try:
         automod, user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "mute", "Muting")
     except RuntimeError:
@@ -501,4 +505,4 @@ commands = {
             }
     }
 
-version_info = "1.1.0"
+version_info = "1.1.1-DEV"

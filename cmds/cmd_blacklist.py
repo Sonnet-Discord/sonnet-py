@@ -276,7 +276,7 @@ commands = {
             },
     'antispam-set':
         {
-            'pretty_name': 'antispam-set <messages><,| ><seconds>',
+            'pretty_name': 'antispam-set <messages> <seconds>',
             'description': 'Set how many messages in seconds to trigger antispam automute',
             'permission': 'administrator',
             'cache': 'regenerate',
@@ -284,4 +284,4 @@ commands = {
             }
     }
 
-version_info = "1.1.0"
+version_info = "1.1.1-DEV"
