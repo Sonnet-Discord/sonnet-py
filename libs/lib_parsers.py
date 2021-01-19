@@ -3,7 +3,7 @@
 
 import importlib
 
-import re
+import re2 as re
 from sonnet_cfg import DB_TYPE
 
 import lib_db_obfuscator
@@ -38,9 +38,12 @@ def parse_blacklist(indata):
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
-        if re.findall(i, message.content.lower()):
-            broke_blacklist = True
-            infraction_type.append("RegEx")
+        try:
+            if re.findall(i, message.content.lower()):
+                broke_blacklist = True
+                infraction_type.append("RegEx")
+        except re.error:
+            pass # This is cleanup, new regex will only allow safe strs
 
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]

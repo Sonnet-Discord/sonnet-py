@@ -2,7 +2,7 @@
 
 import importlib
 
-import json, io, discord
+import json, io, discord, re2
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
@@ -68,7 +68,12 @@ async def regexblacklist_add(message, args, client, **kwargs):
         # Check if valid RegEx
         new_data = args[0]
         if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
-            curlist["blacklist"].append("__REGEXP " + new_data)
+            try:
+                re2.findall(message.content, new_data[1:-2])
+                curlist["blacklist"].append("__REGEXP " + new_data)
+            except re2.error:
+                await message.channel.send("ERROR: RegEx operations not supported in re2")
+                return
         else:
             await message.channel.send("ERROR: Malformed RegEx")
             return
