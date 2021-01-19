@@ -30,11 +30,13 @@ async def catch_logging_error(channel, contents, files):
         else:
             await channel.send(embed=contents)
     except discord.errors.Forbidden:
-        if files:
-            try:
+        pass
+    except discord.errors.HTTPException:
+        try:
+            if files:
                 await channel.send("There were files attached but they exceeeded the guild filesize limit", embed=contents)
-            except discord.errors.Forbidden:
-                pass
+        except discord.errors.Forbidden:
+            pass
 
 
 def grab_files(guild_id, message_id, ramfs):
