@@ -18,7 +18,13 @@ def parse_blacklist(indata):
     # Preset values
     broke_blacklist = False
     infraction_type = []
+
+    # If in whitelist, skip parse to save resources
+    if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
+        return [False, []]
+
     text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":", " ").replace("\n", " "))
+
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
@@ -38,12 +44,9 @@ def parse_blacklist(indata):
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
-        try:
-            if re.findall(i, message.content.lower()):
-                broke_blacklist = True
-                infraction_type.append("RegEx")
-        except re.error:
-            pass  # This is cleanup, new regex will only allow safe strs
+        if re.findall(i, message.content.lower()):
+            broke_blacklist = True
+            infraction_type.append("RegEx")
 
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
@@ -53,9 +56,6 @@ def parse_blacklist(indata):
                 if i.filename.lower().endswith(a):
                     broke_blacklist = True
                     infraction_type.append("FileType")
-
-    if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
-        broke_blacklist = False
 
     return (broke_blacklist, infraction_type)
 
