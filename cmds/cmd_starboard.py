@@ -75,7 +75,7 @@ category_info = {'name': 'starboard', 'pretty_name': 'Starboard', 'description':
 commands = {
     'starboard-channel': {
         'pretty_name': 'starboard-channel <channel>',
-        'description': 'Change Starboard',
+        'description': 'Change starboard channel',
         'permission': 'administrator',
         'cache': 'keep',
         'execute': starboard_channel_change
