@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, os
+import discord, os, glob
 from datetime import datetime
 import json, gzip, io, time
 
@@ -58,6 +58,14 @@ class gdpr_functions:
         global_stats.seek(0)
         for i in stats_of:
             write_vnum(global_stats, global_stats_dict[i])
+
+        try:
+            kramfs.rmdir(f"files/{guild_id}")
+        except FileNotFoundError:
+            pass
+
+        for i in glob.glob(f"./datastore/{guild_id}-*.cache.db"):
+            os.remove(i)
 
         await message.channel.send(
             f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"
@@ -216,4 +224,4 @@ commands = {
         }
     }
 
-version_info = "1.1.0"
+version_info = "1.1.1-DEV"
