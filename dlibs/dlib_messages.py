@@ -3,7 +3,7 @@
 
 import importlib
 
-import time, asyncio, os, threading, hashlib, io
+import time, asyncio, os, threading, hashlib
 from datetime import datetime
 
 import discord, lz4.frame
@@ -168,9 +168,6 @@ def run_threaded_data(arg):
     function, args = arg
     global return_data
     return_data[function] = function(args)
-
-
-import time
 
 
 async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
