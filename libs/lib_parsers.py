@@ -5,11 +5,15 @@ import importlib
 
 import re2 as re
 from sonnet_cfg import DB_TYPE
+import lz4.frame, io, discord, os
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
+import lib_encryption_wrapper
+importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
+from lib_encryption_wrapper import encrypted_reader
 
 
 def parse_blacklist(indata):
@@ -49,7 +53,7 @@ def parse_blacklist(indata):
                 broke_blacklist = True
                 infraction_type.append("RegEx")
         except re.error:
-            pass # GC for old regex
+            pass  # GC for old regex
 
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
@@ -98,7 +102,7 @@ def parse_boolean(instr):
 # Put channel item in DB, and check for collisions
 async def update_log_channel(message, args, client, log_name):
 
-    if len(args) >= 1:
+    if args:
         log_channel = args[0].strip("<#!>")
     else:
         with db_hlapi(message.guild.id) as db:
@@ -152,3 +156,38 @@ def ifgate(inlist):
         if i:
             return True
     return False
+
+
+def grab_files(guild_id, message_id, ramfs, delete=False):
+
+    try:
+
+        files = ramfs.ls(f"files/{guild_id}/{message_id}")[1]
+        discord_files = []
+        for i in files:
+
+            loc = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/pointer")
+            loc.seek(0)
+            pointer = loc.read()
+
+            keys = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/key")
+            keys.seek(0)
+            key = keys.read(32)
+            iv = keys.read(16)
+
+            encrypted_file = encrypted_reader(pointer, key, iv)
+            rawfile = io.BytesIO()
+            rawfile.write(lz4.frame.decompress(encrypted_file.read()))
+            rawfile.seek(0)
+            discord_files.append(discord.File(rawfile, filename=i))
+            if delete:
+                os.remove(pointer)
+
+        if delete:
+            ramfs.rmdir(f"files/{guild_id}/{message_id}")
+
+        return discord_files
+
+    except FileNotFoundError:
+
+        return None

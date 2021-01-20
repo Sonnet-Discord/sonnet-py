@@ -19,8 +19,8 @@ importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, directBinNumber, inc_statistics
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions
-from lib_encryption_wrapper import encrypted_writer, encrypted_reader
+from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files
+from lib_encryption_wrapper import encrypted_writer
 
 
 async def catch_logging_error(channel, contents, files):
@@ -39,43 +39,10 @@ async def catch_logging_error(channel, contents, files):
             pass
 
 
-def grab_files(guild_id, message_id, ramfs):
-
-    try:
-
-        files = ramfs.ls(f"files/{guild_id}/{message_id}")[1]
-        discord_files = []
-        for i in files:
-
-            loc = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/pointer")
-            loc.seek(0)
-            pointer = loc.read()
-
-            keys = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/key")
-            keys.seek(0)
-            key = keys.read(32)
-            iv = keys.read(16)
-
-            encrypted_file = encrypted_reader(pointer, key, iv)
-            rawfile = io.BytesIO()
-            rawfile.write(lz4.frame.decompress(encrypted_file.read()))
-            rawfile.seek(0)
-            discord_files.append(discord.File(rawfile, filename=i))
-            os.remove(pointer)
-
-        ramfs.rmdir(f"files/{guild_id}/{message_id}")
-
-        return discord_files
-
-    except FileNotFoundError:
-
-        return None
-
-
 async def on_message_delete(message, **kargs):
 
     if kargs["kernel_version"] != "1.1.0 'LeXdPyK'":
-        files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"])
+        files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
     else:
         files = None
 
