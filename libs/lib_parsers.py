@@ -44,9 +44,12 @@ def parse_blacklist(indata):
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
-        if re.findall(i, message.content.lower()):
-            broke_blacklist = True
-            infraction_type.append("RegEx")
+        try:
+            if re.findall(i, message.content.lower()):
+                broke_blacklist = True
+                infraction_type.append("RegEx")
+        except re.error:
+            pass # GC for old regex
 
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
