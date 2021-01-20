@@ -2,7 +2,8 @@
 
 import importlib
 
-import json, io, discord, re
+import json, io, discord
+import re2 as re
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
