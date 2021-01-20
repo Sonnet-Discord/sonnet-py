@@ -3,7 +3,7 @@
 
 import importlib
 
-import re
+import re2 as re
 from sonnet_cfg import DB_TYPE
 
 import lib_db_obfuscator
