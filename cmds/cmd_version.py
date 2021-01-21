@@ -5,6 +5,7 @@ import importlib
 
 import discord
 from datetime import datetime
+import sys
 
 import lib_loaders
 importlib.reload(lib_loaders)
@@ -37,7 +38,13 @@ async def print_version_info(message, args, client, **kwargs):
     dlib_modules = kwargs["dlibs"]
     modules = kwargs["cmds"]
 
-    fmt = f"```py\nDiscord.py: {discord.__version__}\nKernel: {kwargs['main_version']}\n\nEvent Modules:\n"
+    base_versions = []
+    base_versions.append(["Python", sys.version.split(" ")[0]])
+    base_versions.append(["Discord.py", discord.__version__])
+    base_versions.append(["Kernel", kwargs['main_version']])
+    base = "\n".join(prettyprint(base_versions))
+
+    fmt = f"```py\n{base}\n\nEvent Modules:\n"
 
     for a in prettyprint([[i.category_info['name'], i.version_info] for i in dlib_modules]):
         fmt += f"  {a}\n"
@@ -133,4 +140,4 @@ commands = {
         }
     }
 
-version_info = "1.1.0"
+version_info = "1.1.1"

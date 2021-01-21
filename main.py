@@ -143,7 +143,7 @@ class ram_filesystem:
             if folderpath:
                 folderpath = folderpath[0].split("/")
                 if len(folderpath) > 1:
-                    return self.directory_table.ls("/".join(folderpath[1:]))
+                    return self.directory_table[folderpath[0]].ls("/".join(folderpath[1:]))
                 else:
                     return self.directory_table[folderpath[0]].ls()
             else:
@@ -156,7 +156,7 @@ class ram_filesystem:
             if folderpath:
                 folderpath = folderpath[0].split("/")
                 if len(folderpath) > 1:
-                    return self.directory_table.tree("/".join(folderpath[1:]))
+                    return self.directory_table[folderpath[0]].tree("/".join(folderpath[1:]))
                 else:
                     return self.directory_table[folderpath[0]].tree()
             else:
@@ -213,12 +213,10 @@ debug_commands["debug-modules-reload"] = sonnet_reload_command_modules
 debug_commands["debug-drop-cache"] = regenerate_ramfs
 
 
-# Catch errors without being fatal - log them.
+# Catch errors.
 @Client.event
 async def on_error(event, *args, **kwargs):
-    with open('err.log', 'a') as f:
-        f.write(f'Unhandled error: {args[0]}\n')
-        raise
+    raise
 
 
 async def kernel_0(argtype):
@@ -465,7 +463,7 @@ async def on_member_unban(guild, user):
     await kernel_2("on-member-unban", guild, user)
 
 
-version_info = "1.1.0 'LeXdPyK'"
+version_info = "1.1.1 'LeXdPyK 1.1'"
 bot_start_time = time.time()
 if TOKEN:
     Client.run(TOKEN, bot=True, reconnect=True)

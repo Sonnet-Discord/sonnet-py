@@ -76,12 +76,13 @@ class db_hlapi:
 
         try:
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-        except (db_error.OperationalError, db_error.Error):
-            try:
-                self.create_guild_db()
-                self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-            except db_error.Error:
-                return False
+        except db_error.OperationalError:
+            self.create_guild_db()
+            self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
+        except db_error.Error:
+            # Raw reaction and nonraw reaction are trying to access the db at the same time
+            # I cant think of a better solution
+            return False
 
         return True
 
@@ -153,7 +154,6 @@ class db_hlapi:
                 self.database.delete_table(f"{self.guild}_{i}")
             except db_error.OperationalError:
                 pass
-        self.close()
 
     def add_infraction(self, infractionid, userid, moderatorid, infractiontype, reason, timestamp):
 

@@ -9,11 +9,15 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 import lib_loaders
 importlib.reload(lib_loaders)
+import lib_parsers
+importlib.reload(lib_parsers)
 
 from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
+from lib_parsers import grab_files
 
 
+# Catches error if the bot cannot message the user
 async def catch_dm_error(user, contents):
     try:
         await user.send(embed=contents)
@@ -21,6 +25,7 @@ async def catch_dm_error(user, contents):
         pass
 
 
+# Sends an infraction to database and log channels if user exists
 async def log_infraction(message, client, user, moderator_id, infraction_reason, infraction_type):
 
     if not user:
@@ -70,6 +75,7 @@ async def log_infraction(message, client, user, moderator_id, infraction_reason,
     return (generated_id, dm_sent)
 
 
+# General processor for infractions
 async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
 
     # Check if automod
@@ -224,6 +230,10 @@ async def mute_user(message, args, client, **kwargs):
         except (ValueError, TypeError):
             mutetime = 0
     else:
+        mutetime = 0
+
+    # This ones for you, curl
+    if mutetime >= 60 * 60 * 256:
         mutetime = 0
 
     try:
@@ -428,25 +438,84 @@ async def delete_infraction(message, args, client, **kwargs):
     await message.channel.send(embed=infraction_embed)
 
 
+async def grab_guild_message(message, args, client, **kwargs):
+
+    if len(args) >= 2:
+        log_channel = args[0].strip("<#!>")
+        message_id = args[1]
+    elif args:
+        try:
+            message_link = args[0].replace("-", "/").split("/")
+            log_channel = message_link[-2]
+            message_id = message_link[-1]
+        except IndexError:
+            await message.channel.send("Not enough args supplied")
+            return
+    else:
+        await message.channel.send("Not enough args supplied")
+        return
+
+    try:
+        log_channel = int(log_channel)
+    except ValueError:
+        await message.channel.send("Channel is not a valid channel")
+        return
+
+    discord_channel = client.get_channel(log_channel)
+    if not discord_channel:
+        await message.channel.send("Channel is not a valid channel")
+        return
+
+    if discord_channel.guild.id != message.channel.guild.id:
+        await message.channel.send("Channel is not in guild")
+        return
+
+    try:
+        discord_message = await discord_channel.fetch_message(int(message_id))
+    except (ValueError, discord.errors.HTTPException):
+        await message.channel.send("Invalid MessageID")
+        return
+
+    if not discord_message:
+        await message.channel.send("Invalid MessageID")
+
+    if kwargs["main_version"] != "1.1.0 'LeXdPyK'":
+        files = grab_files(discord_message.guild.id, discord_message.id, kwargs["kernel_ramfs"])
+    else:
+        files = []
+
+    # Message has been grabbed, start generating embed
+    jump = f"\n\n[(Link)]({discord_message.jump_url})"
+    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=discord_message.content[:2048 - len(jump)] + jump, color=0x758cff)
+
+    message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
+    message_embed.timestamp = discord_message.created_at
+
+    try:
+        await message.channel.send(embed=message_embed, files=files)
+    except discord.errors.HTTPException:
+        await message.channel.send("There were files attached but they exceeeded the guild filesize limit", embed=message_embed)
+
+
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
 
 commands = {
     'warn': {
-        'pretty_name': 'warn <uid>',
+        'pretty_name': 'warn <uid> [reason]',
         'description': 'Warn a user',
         'permission': 'moderator',
         'cache': 'keep',
         'execute': warn_user
         },
     'kick': {
-        'pretty_name': 'kick <uid>',
+        'pretty_name': 'kick <uid> [reason]',
         'description': 'Kick a user',
         'permission': 'moderator',
         'cache': 'keep',
         'execute': kick_user
         },
     'ban': {
-        'pretty_name': 'ban <uid>',
+        'pretty_name': 'ban <uid> [reason]',
         'description': 'Ban a user',
         'permission': 'moderator',
         'cache': 'keep',
@@ -460,7 +529,7 @@ commands = {
         'execute': unban_user
         },
     'mute': {
-        'pretty_name': 'mute <uid> [time[h|m|S]]',
+        'pretty_name': 'mute <uid> [time[h|m|S]] [reason]',
         'description': 'Mute a user, defaults to no unmute (0s)',
         'permission': 'moderator',
         'cache': 'keep',
@@ -495,7 +564,15 @@ commands = {
             'permission': 'administrator',
             'cache': 'keep',
             'execute': delete_infraction
+            },
+    'grab-message':
+        {
+            'pretty_name': 'grab-message <channelID> <messageID>',
+            'description': 'Grab a message and show its contents',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': grab_guild_message
             }
     }
 
-version_info = "1.1.0"
+version_info = "1.1.1"
