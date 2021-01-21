@@ -40,6 +40,13 @@ async def parse_userid(message, args):
     return user_object
 
 
+def list_default(lst, index, default):
+    try:
+        return lst[index]
+    except IndexError:
+        return default
+
+
 async def ping_function(message, args, client, **kwargs):
     stats = kwargs["stats"]
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
@@ -101,6 +108,24 @@ async def avatar_function(message, args, client, **kwargs):
     embed.set_image(url=user_object.avatar_url)
     embed.timestamp = datetime.utcnow()
     await message.channel.send(embed=embed)
+
+
+async def embed(message, args, client, **kwargs):
+    desc = " ".join(args)
+
+    if desc == "":
+        await message.channel.send("Please provide a message to send")
+        return
+
+    desc = desc.replace('\\n', '\n')
+
+    if len(desc) > 2048:
+        message = message[:2047]
+
+    user_embed = discord.Embed(description=desc)\
+        .set_author(name=f"From {message.author}", icon_url=message.author.avatar_url)
+
+    await message.channel.send(embed=user_embed)
 
 
 async def help_function(message, args, client, **kwargs):
@@ -197,6 +222,13 @@ commands = {
         'cache': 'keep',
         'execute': avatar_function
         },
+    'embed': {
+        'pretty_name': 'embed [text]',
+        'description': 'Creates an embed (requires mod)',
+        'permission': 'moderator',
+        'cache': 'regenerate',  # Make sure embed is credited to user
+        'execute': embed
+    },
     'serverinfo': {
         'pretty_name': 'serverinfo',
         'description': 'Get info on this guild',
