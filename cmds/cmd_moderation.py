@@ -443,6 +443,14 @@ async def grab_guild_message(message, args, client, **kwargs):
     if len(args) >= 2:
         log_channel = args[0].strip("<#!>")
         message_id = args[1]
+    elif args:
+        try:
+            message_link = args[0].replace("-", "/").split("/")
+            log_channel = message_link[-2]
+            message_id = message_link[-1]
+        except IndexError:
+            await message.channel.send("Not enough args supplied")
+            return
     else:
         await message.channel.send("Not enough args supplied")
         return
