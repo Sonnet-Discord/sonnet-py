@@ -18,7 +18,7 @@ async def joke_ban_user(message, args, client, **kwargs):
         await message.channel.send("No user specified")
         return
 
-    await message.channel.send(f"'Banned' user with ID {user.id} for {reason}")
+    await message.channel.send(f"'Banned' <@!{user.id}> with ID {user.id} for {reason}")
 
 
 category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke commands, because because'}
