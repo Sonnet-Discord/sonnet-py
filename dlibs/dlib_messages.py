@@ -161,15 +161,6 @@ def antispam_check(indata):
         return False
 
 
-return_data = {}
-
-
-def run_threaded_data(arg):
-    function, args = arg
-    global return_data
-    return_data[function] = function(args)
-
-
 async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
 
     await nfile.save(compression, seek_begin=False)
@@ -231,28 +222,25 @@ async def on_message(message, **kargs):
     if parse_skip_message(client, message):
         return
 
+    inc_statistics([message.guild.id, "on-message", kargs["kernel_ramfs"]])
+
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
     mconf = load_message_config(message.guild.id, ramfs)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
-    # Check message against blacklist
+    # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
 
-    for i in [
-        [antispam_check, [message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]]],
-        [parse_blacklist, [message, mconf]],
-        [inc_statistics, [message.guild.id, "on-message", kargs["kernel_ramfs"]]],
-        ]:
-        run_threaded_data(i)
+    spammer = antispam_check([message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]])
 
     # If blacklist broken generate infraction
-    broke_blacklist, infraction_type = return_data[parse_blacklist]
+    broke_blacklist, infraction_type = parse_blacklist([message, mconf])
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
         asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client))
 
-    if return_data[antispam_check]:
+    if spammer:
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
