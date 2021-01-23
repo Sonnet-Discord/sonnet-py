@@ -24,24 +24,36 @@ async def on_reaction_add(reaction, user, **kargs):
     if not reaction.message.guild:
         return
 
-    inc_statistics([reaction.message.guild.id, "on-reaction-add", kargs["kernel_ramfs"]])
-    mconf = load_message_config(reaction.message.guild.id, kargs["ramfs"])
+    message = reaction.message
+
+    inc_statistics([message.guild.id, "on-reaction-add", kargs["kernel_ramfs"]])
+    mconf = load_message_config(message.guild.id, kargs["ramfs"])
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
-        with db_hlapi(reaction.message.guild.id) as db:
+        with db_hlapi(message.guild.id) as db:
             if channel_id := db.grab_config("starboard-channel"):
                 if bool(channel := kargs["client"].get_channel(int(channel_id))
-                        ) and not (db.in_starboard(reaction.message.id)) and not (int(channel_id) == reaction.message.channel.id) and db.add_to_starboard(reaction.message.id):
+                        ) and not (db.in_starboard(message.id)) and not (int(channel_id) == message.channel.id) and db.add_to_starboard(message.id):
 
-                    jump = f"\n\n[(Link)]({reaction.message.jump_url})"
-                    starboard_embed = discord.Embed(title="Starred message", description=reaction.message.content[:2048 - len(jump)] + jump, color=0xffa700)
+                    # Generate message contents
+                    jump = f"\n\n[(Link)]({message.jump_url})"
+                    if (r := message.reference) and (rr := r.resolved):
+                        reply_contents = "> {} {}\n".format(rr.author.mention, rr.content.replace("\n", " "))[:512]
+                    else:
+                        reply_contents = ""
 
-                    for i in reaction.message.attachments:
+                    message_content = reply_contents + message.content
+                    message_content = message_content[:2048 - len(jump)] + jump
+
+                    # Generate embed
+                    starboard_embed = discord.Embed(title="Starred message", description=message_content, color=0xffa700)
+
+                    for i in message.attachments:
                         if ifgate([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
                             starboard_embed.set_image(url=i.url)
 
-                    starboard_embed.set_author(name=reaction.message.author, icon_url=reaction.message.author.avatar_url)
-                    starboard_embed.timestamp = reaction.message.created_at
+                    starboard_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
+                    starboard_embed.timestamp = message.created_at
 
                     await channel.send(embed=starboard_embed)
 
@@ -64,4 +76,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info = "1.1.1-1"
+version_info = "1.1.2-DEV"
