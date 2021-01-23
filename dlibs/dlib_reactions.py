@@ -38,7 +38,7 @@ async def on_reaction_add(reaction, user, **kargs):
                     # Generate message contents
                     jump = f"\n\n[(Link)]({message.jump_url})"
                     if (r := message.reference) and (rr := r.resolved):
-                        reply_contents = "> {} {}\n".format(rr.author.mention, rr.content.replace("\n", " "))[:512]
+                        reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " "))[:511] + "\n"
                     else:
                         reply_contents = ""
 
