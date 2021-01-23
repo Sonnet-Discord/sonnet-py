@@ -264,7 +264,7 @@ async def on_message(message, **kargs):
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
-        if client.user.mentioned_in(message):
+        if client.user.mentioned_in(message) and str(client.user.id) in message.content:
             await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
         return
 
@@ -312,4 +312,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.1"
+version_info = "1.1.2-DEV"
