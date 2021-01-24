@@ -440,20 +440,17 @@ async def delete_infraction(message, args, client, **kwargs):
 
 async def grab_guild_message(message, args, client, **kwargs):
 
-    if len(args) >= 2:
-        log_channel = args[0].strip("<#!>")
-        message_id = args[1]
-    elif args:
+    try:
+        message_link = args[0].replace("-", "/").split("/")
+        log_channel = message_link[-2]
+        message_id = message_link[-1]
+    except IndexError:
         try:
-            message_link = args[0].replace("-", "/").split("/")
-            log_channel = message_link[-2]
-            message_id = message_link[-1]
+            log_channel = args[0].strip("<#!>")
+            message_id = args[1]
         except IndexError:
             await message.channel.send("Not enough args supplied")
             return
-    else:
-        await message.channel.send("Not enough args supplied")
-        return
 
     try:
         log_channel = int(log_channel)
@@ -478,6 +475,7 @@ async def grab_guild_message(message, args, client, **kwargs):
 
     if not discord_message:
         await message.channel.send("Invalid MessageID")
+        return
 
     # Generate replies
     jump = f"\n\n[(Link)]({discord_message.jump_url})"
@@ -495,13 +493,13 @@ async def grab_guild_message(message, args, client, **kwargs):
     message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
     message_embed.timestamp = discord_message.created_at
 
-    # Grab files async
-    awaitobjs = []
-    for i in discord_message.attachments:
-        awaitobjs.append(asyncio.create_task(i.to_file()))
-    fileobjs = []
-    for i in awaitobjs:
-        fileobjs.append(await i)
+    # Grab files from cache
+    fileobjs = grab_files(discord_message.guild.id, discord_message.id, kwargs["kernel_ramfs"])
+
+    # Grab files async if not in cache
+    if not fileobjs:
+        awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
+        fileobjs = [await i for i in awaitobjs]
 
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)
