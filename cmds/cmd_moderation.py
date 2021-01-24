@@ -479,20 +479,32 @@ async def grab_guild_message(message, args, client, **kwargs):
     if not discord_message:
         await message.channel.send("Invalid MessageID")
 
-    if kwargs["main_version"] != "1.1.0 'LeXdPyK'":
-        files = grab_files(discord_message.guild.id, discord_message.id, kwargs["kernel_ramfs"])
+    # Generate replies
+    jump = f"\n\n[(Link)]({discord_message.jump_url})"
+    if (r := discord_message.reference) and (rr := r.resolved):
+        reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " "))[:511] + "\n"
     else:
-        files = []
+        reply_contents = ""
+
+    message_content = reply_contents + discord_message.content
+    message_content = message_content[:2048 - len(jump)] + jump
 
     # Message has been grabbed, start generating embed
-    jump = f"\n\n[(Link)]({discord_message.jump_url})"
-    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=discord_message.content[:2048 - len(jump)] + jump, color=0x758cff)
+    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=0x758cff)
 
     message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
     message_embed.timestamp = discord_message.created_at
 
+    # Grab files async
+    awaitobjs = []
+    for i in discord_message.attachments:
+        awaitobjs.append(asyncio.create_task(i.to_file()))
+    fileobjs = []
+    for i in awaitobjs:
+        fileobjs.append(await i)
+
     try:
-        await message.channel.send(embed=message_embed, files=files)
+        await message.channel.send(embed=message_embed, files=fileobjs)
     except discord.errors.HTTPException:
         await message.channel.send("There were files attached but they exceeeded the guild filesize limit", embed=message_embed)
 
