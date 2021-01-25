@@ -25,4 +25,4 @@ category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke c
 
 commands = {'jban': {'pretty_name': 'jban <uid>', 'description': '"bans" a user', 'permission': 'moderator', 'cache': 'keep', 'execute': joke_ban_user}}
 
-version_info = "1.1.2-DEV"
+version_info = "1.1.2"
