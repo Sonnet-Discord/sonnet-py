@@ -42,7 +42,7 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     for i in module.commands:
 
         command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;").split(" ")
-        command_name = f"{command_name[0]} " + "&nbsp;".join(command_name[1:].replace("&gt;&nbsp;&lt;", "&gt; &lt;"))
+        command_name = f"{command_name[0]} " + "&nbsp;".join(command_name[1:]).replace("&gt;&nbsp;&lt;", "&gt; &lt;")
 
         command_perms = module.commands[i]['permission'][0].upper()
         command_perms += module.commands[i]['permission'][1:].lower()
