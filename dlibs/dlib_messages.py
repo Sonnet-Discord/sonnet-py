@@ -76,7 +76,7 @@ async def attempt_message_delete(message):
 
 async def grab_an_adult(message, client, mconf):
 
-    if mconf["regex-notifier-log"] and notify_log := client.get_channel(int(mconf["regex-notifier-log"])):
+    if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 
         discord_message = message
 
