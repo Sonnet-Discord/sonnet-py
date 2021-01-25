@@ -183,6 +183,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
             rawfile.write(lz4.frame.decompress(encrypted_file.read()))
             rawfile.seek(0)
             discord_files.append(discord.File(rawfile, filename=i))
+            encrypted_file.close()
             if delete:
                 os.remove(pointer)
 
