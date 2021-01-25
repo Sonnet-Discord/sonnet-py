@@ -355,6 +355,33 @@ async def search_infractions(message, args, client, **kwargs):
     # Sort newest first
     infractions.sort(reverse=True, key=lambda a: a[5])
 
+    # Parse flags
+    selected_chunk = 0
+    responsible_mod = None
+    infraction_type = None
+    automod = True
+    for index, item in enumerate(args):
+        try:
+            if item in ["-p", "--page"]:
+                selected_chunk = int(float(args[index + 1])) - 1
+            elif item in ["-m", "--mod"]:
+                responsible_mod = (args[index + 1].strip("<@!>"))
+            elif item in ["-t", "--type"]:
+                infraction_type = (args[index + 1])
+            elif item == "--no-automod":
+                automod = False
+        except (ValueError, IndexError):
+            await message.channel.send("Invalid flags supplied")
+            return
+
+    # Generate sorts
+    if responsible_mod:
+        infractions = [i for i in infractions if i[2] == responsible_mod]
+    if infraction_type:
+        infractions = [i for i in infractions if i[3] == infraction_type]
+    if not automod:
+        infractions = [i for i in infractions if "[AUTOMOD]" not in i[4]]
+
     # Generate chunks from infractions
     do_not_exceed = 1900  # Discord message length limits
     chunks = [""]
@@ -366,15 +393,6 @@ async def search_infractions(message, args, client, **kwargs):
             chunks.append("")
         else:
             chunks[curchunk] = chunks[curchunk] + infraction_data
-
-    # Parse pager
-    if len(args) >= 2:
-        try:
-            selected_chunk = int(float(args[1])) - 1
-        except ValueError:
-            selected_chunk = 0
-    else:
-        selected_chunk = 0
 
     # Test if valid page
     try:

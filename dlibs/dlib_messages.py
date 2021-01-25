@@ -234,13 +234,17 @@ async def on_message(message, **kargs):
 
     spammer = antispam_check([message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]])
 
+    message_deleted = False
+
     # If blacklist broken generate infraction
     broke_blacklist, infraction_type = parse_blacklist([message, mconf])
     if broke_blacklist:
+        message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client))
 
     if spammer:
+        message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
@@ -248,7 +252,9 @@ async def on_message(message, **kargs):
 
     stats["end-automod"] = round(time.time() * 100000)
 
-    await log_message_files(message, kargs["kernel_ramfs"])
+    # Log files if not deleted
+    if not message_deleted:
+        asyncio.create_task(log_message_files(message, kargs["kernel_ramfs"]))
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
