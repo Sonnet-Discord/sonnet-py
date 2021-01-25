@@ -50,10 +50,21 @@ class db_hlapi:
             self.create_guild_db()
             data = self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
+    # Grab infractions of a user
     def grab_user_infractions(self, userid):
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
+        except db_error.OperationalError:
+            data = []
+
+        return data
+
+    # grab infractions dealt by a mod
+    def grab_moderator_infractions(self, moderatorid):
+
+        try:
+            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
         except db_error.OperationalError:
             data = []
 

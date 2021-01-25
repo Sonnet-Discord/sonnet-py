@@ -333,7 +333,7 @@ async def unmute_user(message, args, client, **kwargs):
     await message.channel.send(f"Unmuted {user.mention} with ID {user.id}")
 
 
-async def search_infractions(message, args, client, **kwargs):
+async def general_infraction_grabber(message, args, client, grab_type):
 
     try:
         user = client.get_user(int(args[0].strip("<@!>")))
@@ -350,7 +350,10 @@ async def search_infractions(message, args, client, **kwargs):
         user_id = user.id
 
     with db_hlapi(message.guild.id) as db:
-        infractions = db.grab_user_infractions(user_id)
+        if grab_type == "user":
+            infractions = db.grab_user_infractions(user_id)
+        elif grab_type == "moderator":
+            infractions = db.grab_moderator_infractions(user_id)
 
     # Sort newest first
     infractions.sort(reverse=True, key=lambda a: a[5])
@@ -359,6 +362,7 @@ async def search_infractions(message, args, client, **kwargs):
     selected_chunk = 0
     responsible_mod = None
     infraction_type = None
+    user_affected = None
     automod = True
     for index, item in enumerate(args):
         try:
@@ -366,6 +370,8 @@ async def search_infractions(message, args, client, **kwargs):
                 selected_chunk = int(float(args[index + 1])) - 1
             elif item in ["-m", "--mod"]:
                 responsible_mod = (args[index + 1].strip("<@!>"))
+            elif item in ["-u", "--user"]:
+                user_affected = (args[index + 1].strip("<@!>"))
             elif item in ["-t", "--type"]:
                 infraction_type = (args[index + 1])
             elif item == "--no-automod":
@@ -377,6 +383,8 @@ async def search_infractions(message, args, client, **kwargs):
     # Generate sorts
     if responsible_mod:
         infractions = [i for i in infractions if i[2] == responsible_mod]
+    if user_affected:
+        infractions = [i for i in infractions if i[1] == user_affected]
     if infraction_type:
         infractions = [i for i in infractions if i[3] == infraction_type]
     if not automod:
@@ -405,6 +413,16 @@ async def search_infractions(message, args, client, **kwargs):
         await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
     else:
         await message.channel.send("No infractions found")
+
+
+async def search_infractions_by_user(message, args, client, **kwargs):
+
+    await general_infraction_grabber(message, args, client, "user")
+
+
+async def search_infractions_by_moderator(message, args, client, **kwargs):
+
+    await general_infraction_grabber(message, args, client, "moderator")
 
 
 async def get_detailed_infraction(message, args, client, **kwargs):
@@ -568,8 +586,16 @@ commands = {
         'description': 'Grab infractions of a user',
         'permission': 'moderator',
         'cache': 'keep',
-        'execute': search_infractions
+        'execute': search_infractions_by_user
         },
+    'mod-infractions':
+        {
+            'pretty_name': 'mod-infractions <uid>',
+            'description': 'Grab infractions that a mod has created',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': search_infractions_by_moderator
+            },
     'infraction-details':
         {
             'pretty_name': 'infraction-details <infractionID>',
@@ -596,4 +622,4 @@ commands = {
             }
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3-DEV"
