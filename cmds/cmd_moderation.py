@@ -522,7 +522,7 @@ async def grab_guild_message(message, args, client, **kwargs):
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)
     except discord.errors.HTTPException:
-        await message.channel.send("There were files attached but they exceeeded the guild filesize limit", embed=message_embed)
+        await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
 
 
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}

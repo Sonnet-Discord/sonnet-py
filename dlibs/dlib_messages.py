@@ -34,7 +34,7 @@ async def catch_logging_error(channel, contents, files):
     except discord.errors.HTTPException:
         try:
             if files:
-                await channel.send("There were files attached but they exceeeded the guild filesize limit", embed=contents)
+                await channel.send("There were files attached but they exceeded the guild filesize limit", embed=contents)
         except discord.errors.Forbidden:
             pass
 
@@ -72,6 +72,35 @@ async def attempt_message_delete(message):
         await message.delete()
     except (discord.errors.Forbidden, discord.errors.NotFound):
         pass
+
+
+async def grab_an_adult(message, client, mconf):
+
+    if mconf["regex-notifier-log"] and notify_log := client.get_channel(int(mconf["regex-notifier-log"])):
+
+        discord_message = message
+
+        # Generate replies
+        jump = f"\n\n[(Link)]({discord_message.jump_url})"
+        if (r := discord_message.reference) and (rr := r.resolved):
+            reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " "))[:511] + "\n"
+        else:
+            reply_contents = ""
+
+        message_content = reply_contents + discord_message.content
+        message_content = message_content[:2048 - len(jump)] + jump
+
+        # Message has been grabbed, start generating embed
+        message_embed = discord.Embed(title=f"Notifer Message in #{discord_message.channel}", description=message_content, color=0x758cff)
+
+        message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
+        message_embed.timestamp = discord_message.created_at
+
+        # Grab files async
+        awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
+        fileobjs = [await i for i in awaitobjs]
+
+        await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
 async def on_message_edit(old_message, message, **kargs):
@@ -117,6 +146,9 @@ async def on_message_edit(old_message, message, **kargs):
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
         await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
+
+    if notify:
+        asyncio.create_task(grab_an_adult(message, client, mconf))
 
 
 def antispam_check(indata):
@@ -249,6 +281,9 @@ async def on_message(message, **kargs):
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client))
+
+    if notify:
+        asyncio.create_task(grab_an_adult(message, client, mconf))
 
     stats["end-automod"] = round(time.time() * 100000)
 
