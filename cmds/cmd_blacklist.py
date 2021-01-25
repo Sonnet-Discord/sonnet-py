@@ -71,7 +71,7 @@ async def add_regex_type(message, args, db_entry):
             curlist = {"blacklist": []}
 
         # Check if valid RegEx
-        new_data = args[0]
+        new_data = " ".join(args)
         if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
             try:
                 re.findall(new_data[1:-2], message.content)
@@ -106,7 +106,7 @@ async def remove_regex_type(message, args, db_entry):
             raise blacklist_input_error("No RegEx")
 
         # Check if in list
-        remove_data = "__REGEXP " + args[0]
+        remove_data = "__REGEXP " + " ".join(args)
         if remove_data in curlist["blacklist"]:
             del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
         else:
