@@ -72,7 +72,7 @@ async def add_regex_type(message, args, db_entry):
 
         # Check if valid RegEx
         new_data = " ".join(args)
-        if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
+        if new_data.startswith("/") and new_data.endswith("/g"):
             try:
                 re.findall(new_data[1:-2], message.content)
                 curlist["blacklist"].append("__REGEXP " + new_data)
