@@ -19,7 +19,7 @@ importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, directBinNumber, inc_statistics
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files
+from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
 
@@ -34,7 +34,7 @@ async def catch_logging_error(channel, contents, files):
     except discord.errors.HTTPException:
         try:
             if files:
-                await channel.send("There were files attached but they exceeeded the guild filesize limit", embed=contents)
+                await channel.send("There were files attached but they exceeded the guild filesize limit", embed=contents)
         except discord.errors.Forbidden:
             pass
 
@@ -72,6 +72,25 @@ async def attempt_message_delete(message):
         await message.delete()
     except (discord.errors.Forbidden, discord.errors.NotFound):
         pass
+
+
+async def grab_an_adult(discord_message, client, mconf):
+
+    if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
+
+        message_content = generate_reply_field(discord_message)
+
+        # Message has been grabbed, start generating embed
+        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=0x758cff)
+
+        message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
+        message_embed.timestamp = discord_message.created_at
+
+        # Grab files async
+        awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
+        fileobjs = [await i for i in awaitobjs]
+
+        await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
 async def on_message_edit(old_message, message, **kargs):
@@ -112,11 +131,14 @@ async def on_message_edit(old_message, message, **kargs):
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, infraction_type = parse_blacklist([message, mconf])
+    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf])
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
         await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
+
+    if notify:
+        asyncio.create_task(grab_an_adult(message, client, mconf))
 
 
 def antispam_check(indata):
@@ -159,15 +181,6 @@ def antispam_check(indata):
         messages = ramfs.create_f(f"antispam/{guildid}.cache.asam")
         messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time() * 1000), 8)))
         return False
-
-
-return_data = {}
-
-
-def run_threaded_data(arg):
-    function, args = arg
-    global return_data
-    return_data[function] = function(args)
 
 
 async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
@@ -231,40 +244,46 @@ async def on_message(message, **kargs):
     if parse_skip_message(client, message):
         return
 
+    inc_statistics([message.guild.id, "on-message", kargs["kernel_ramfs"]])
+
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
     mconf = load_message_config(message.guild.id, ramfs)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
-    # Check message against blacklist
+    # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
 
-    for i in [
-        [antispam_check, [message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]]],
-        [parse_blacklist, [message, mconf]],
-        [inc_statistics, [message.guild.id, "on-message", kargs["kernel_ramfs"]]],
-        ]:
-        run_threaded_data(i)
+    spammer = antispam_check([message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]])
+
+    message_deleted = False
 
     # If blacklist broken generate infraction
-    broke_blacklist, infraction_type = return_data[parse_blacklist]
+    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf])
     if broke_blacklist:
+        message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client))
 
-    if return_data[antispam_check]:
+    if spammer:
+        message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client))
 
+    if notify:
+        asyncio.create_task(grab_an_adult(message, client, mconf))
+
     stats["end-automod"] = round(time.time() * 100000)
 
-    await log_message_files(message, kargs["kernel_ramfs"])
+    # Log files if not deleted
+    if not message_deleted:
+        asyncio.create_task(log_message_files(message, kargs["kernel_ramfs"]))
 
     # Check if this is meant for us.
     if not message.content.startswith(mconf["prefix"]):
-        if client.user.mentioned_in(message):
+        if client.user.mentioned_in(message) and str(client.user.id) in message.content:
             await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
         return
 
@@ -312,4 +331,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.1"
+version_info = "1.1.2"

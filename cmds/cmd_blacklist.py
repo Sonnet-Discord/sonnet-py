@@ -14,11 +14,15 @@ from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 
 
+class blacklist_input_error(Exception):
+    pass
+
+
 async def update_csv_blacklist(message, args, name):
 
     if not (args) or len(args) != 1:
         await message.channel.send(f"Malformed {name}")
-        raise RuntimeError(f"Malformed {name}")
+        raise blacklist_input_error(f"Malformed {name}")
 
     with db_hlapi(message.guild.id) as db:
         db.add_config(name, args[0])
@@ -30,7 +34,7 @@ async def wb_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "word-blacklist")
-    except RuntimeError:
+    except blacklist_input_error:
         pass
 
 
@@ -38,7 +42,7 @@ async def word_in_word_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "word-in-word-blacklist")
-    except RuntimeError:
+    except blacklist_input_error:
         pass
 
 
@@ -46,73 +50,101 @@ async def ftb_change(message, args, client, **kwargs):
 
     try:
         await update_csv_blacklist(message, args, "filetype-blacklist")
-    except RuntimeError:
+    except blacklist_input_error:
         pass
 
 
-async def regexblacklist_add(message, args, client, **kwargs):
+async def add_regex_type(message, args, db_entry):
 
     # Test if args supplied
     if not args:
         await message.channel.send("ERROR: no RegEx supplied")
-        return
+        raise blacklist_input_error("No regex")
 
     # Load DB
     with db_hlapi(message.guild.id) as database:
 
         # Attempt to read blacklist if exists
         try:
-            curlist = json.loads(database.grab_config("regex-blacklist"))
+            curlist = json.loads(database.grab_config(db_entry))
         except (json.decoder.JSONDecodeError, TypeError):
             curlist = {"blacklist": []}
 
         # Check if valid RegEx
-        new_data = args[0]
-        if new_data.startswith("/") and new_data.endswith("/g") and new_data.count(" ") == 0:
+        new_data = " ".join(args)
+        if new_data.startswith("/") and new_data.endswith("/g"):
             try:
                 re.findall(new_data[1:-2], message.content)
                 curlist["blacklist"].append("__REGEXP " + new_data)
             except re.error:
                 await message.channel.send("ERROR: RegEx operations not supported in re2")
-                return
+                raise blacklist_input_error("Malformed regex")
         else:
             await message.channel.send("ERROR: Malformed RegEx")
-            return
+            raise blacklist_input_error("Malformed regex")
 
-        database.add_config("regex-blacklist", json.dumps(curlist))
+        database.add_config(db_entry, json.dumps(curlist))
 
     await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def regexblacklist_remove(message, args, client, **kwargs):
+async def remove_regex_type(message, args, db_entry):
 
     # Test if args supplied
     if not args:
         await message.channel.send("ERROR: no RegEx supplied")
-        return
+        raise blacklist_input_error("No RegEx supplied")
 
     # Load DB
     with db_hlapi(message.guild.id) as database:
 
         # Attempt to read blacklist if exists
         try:
-            curlist = json.loads(database.grab_config("regex-blacklist"))
+            curlist = json.loads(database.grab_config(db_entry))
         except (json.decoder.JSONDecodeError, TypeError):
             await message.channel.send("ERROR: There is no RegEx")
-            return
+            raise blacklist_input_error("No RegEx")
 
         # Check if in list
-        remove_data = "__REGEXP " + args[0]
+        remove_data = "__REGEXP " + " ".join(args)
         if remove_data in curlist["blacklist"]:
             del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
         else:
             await message.channel.send("ERROR: Pattern not found in RegEx")
-            return
+            raise blacklist_input_error("RegEx not found")
 
         # Update DB
-        database.add_config("regex-blacklist", json.dumps(curlist))
+        database.add_config(db_entry, json.dumps(curlist))
 
     await message.channel.send("Sucessfully Updated RegEx")
+
+
+async def regexblacklist_add(message, args, client, **kwargs):
+    try:
+        await add_regex_type(message, args, "regex-blacklist")
+    except blacklist_input_error:
+        pass
+
+
+async def regexblacklist_remove(message, args, client, **kwargs):
+    try:
+        await remove_regex_type(message, args, "regex-blacklist")
+    except blacklist_input_error:
+        pass
+
+
+async def regex_notifier_add(message, args, client, **kwargs):
+    try:
+        await add_regex_type(message, args, "regex-notifier")
+    except blacklist_input_error:
+        pass
+
+
+async def regex_notifier_remove(message, args, client, **kwargs):
+    try:
+        await remove_regex_type(message, args, "regex-notifier")
+    except blacklist_input_error:
+        pass
 
 
 async def list_blacklist(message, args, client, **kwargs):
@@ -123,6 +155,7 @@ async def list_blacklist(message, args, client, **kwargs):
     # Format blacklist
     blacklist = {}
     blacklist["regex-blacklist"] = ["/" + i + "/g" for i in mconf["regex-blacklist"]]
+    blacklist["regex-notifier"] = ["/" + i + "/g" for i in mconf["regex-notifier"]]
     blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
     blacklist["word-in-word-blacklist"] = ",".join(mconf["word-in-word-blacklist"])
     blacklist["filetype-blacklist"] = ",".join(mconf["filetype-blacklist"])
@@ -287,7 +320,23 @@ commands = {
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': antispam_set
-            }
+            },
+    'add-regexnotifier':
+        {
+            'pretty_name': 'add-regexnotifier <regex>',
+            'description': 'Add an item to regex notifier list',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': regex_notifier_add
+            },
+    'remove-regexnotifier':
+        {
+            'pretty_name': 'remove-regexnotifier <regex>',
+            'description': 'Remove an item from notifier list',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': regex_notifier_remove
+            },
     }
 
-version_info = "1.1.1"
+version_info = "1.1.2"

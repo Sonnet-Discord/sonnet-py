@@ -35,6 +35,13 @@ async def msglog_change(message, args, client, **kwargs):
         return
 
 
+async def notifier_log_change(message, args, client, **kwargs):
+    try:
+        await update_log_channel(message, args, client, "regex-notifier-log")
+    except RuntimeError:
+        return
+
+
 class gdpr_functions:
     async def delete(message, guild_id, ramfs, kramfs):
 
@@ -193,6 +200,13 @@ commands = {
         'cache': 'keep',
         'execute': inflog_change
         },
+    'notifier-log': {
+        'pretty_name': 'notifier-log <channel>',
+        'description': 'Change notifier log',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': notifier_log_change
+        },
     'gdpr': {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
@@ -224,4 +238,4 @@ commands = {
         }
     }
 
-version_info = "1.1.1"
+version_info = "1.1.2"

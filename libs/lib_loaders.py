@@ -20,8 +20,8 @@ def directBinNumber(inData, length):
 def load_message_config(guild_id, ramfs):
     datatypes = {
         "csv": ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "antispam"],
-        "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist"],
-        "list": ["regex-blacklist"]
+        "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist", "regex-notifier-log"],
+        "list": ["regex-blacklist", "regex-notifier"]
         }
     try:
 
@@ -65,10 +65,11 @@ def load_message_config(guild_id, ramfs):
         db.close()
 
         # Loads regex
-        if message_config["regex-blacklist"]:
-            message_config["regex-blacklist"] = [i.split(" ")[1][1:-2] for i in json.loads(message_config["regex-blacklist"])["blacklist"]]
-        else:
-            message_config["regex-blacklist"] = []
+        for regex_type in ["regex-blacklist", "regex-notifier"]:
+            if message_config[regex_type]:
+                message_config[regex_type] = [" ".join(i.split(" ")[1:])[1:-2] for i in json.loads(message_config[regex_type])["blacklist"]]
+            else:
+                message_config[regex_type] = []
 
         # Loads word, filetype blacklist
         for i in datatypes["csv"]:

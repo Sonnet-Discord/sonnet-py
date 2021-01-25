@@ -14,7 +14,7 @@ importlib.reload(lib_parsers)
 
 from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files
+from lib_parsers import grab_files, generate_reply_field
 
 
 # Catches error if the bot cannot message the user
@@ -88,7 +88,7 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
         pass
 
     if len(args) > 1:
-        reason = " ".join(args[1:])
+        reason = " ".join(args[1:])[:1024]
     else:
         reason = "No Reason Specified"
 
@@ -134,7 +134,7 @@ async def warn_user(message, args, client, **kwargs):
         return
 
     if not (automod) and user:
-        await message.channel.send(f"Warned user with ID {user.id} for {reason}")
+        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}"[:2000])
     elif not user:
         await message.channel.send("User does not exist")
 
@@ -159,7 +159,7 @@ async def kick_user(message, args, client, **kwargs):
         return
 
     if not automod:
-        await message.channel.send(f"Kicked user with ID {user.id} for {reason}")
+        await message.channel.send(f"Kicked {user.mention} with ID {user.id} for {reason}"[:2000])
 
 
 async def ban_user(message, args, client, **kwargs):
@@ -183,7 +183,7 @@ async def ban_user(message, args, client, **kwargs):
         return
 
     if not automod:
-        await message.channel.send(f"Banned user with ID {args[0].strip('<@!>')} for {reason}")
+        await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}"[:2000])
 
 
 async def unban_user(message, args, client, **kwargs):
@@ -212,7 +212,7 @@ async def unban_user(message, args, client, **kwargs):
         await message.channel.send("This user is not banned")
         return
 
-    await message.channel.send(f"Unbanned user with ID {user.id}")
+    await message.channel.send(f"Unbanned {user.mention} with ID {user.id}")
 
 
 async def mute_user(message, args, client, **kwargs):
@@ -271,11 +271,11 @@ async def mute_user(message, args, client, **kwargs):
         return
 
     if not automod and not mutetime:
-        await message.channel.send(f"Muted user with ID {user.id} for {reason}")
+        await message.channel.send(f"Muted {user.mention} with ID {user.id} for {reason}"[:2000])
 
     if mutetime:
         if not automod:
-            asyncio.create_task(message.channel.send(f"Muted user with ID {user.id} for {mutetime}s for {reason}"))
+            asyncio.create_task(message.channel.send(f"Muted {user.mention} with ID {user.id} for {mutetime}s for {reason}"[:2000]))
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
             db.mute_user(user.id, time.time() + mutetime, infractionID)
@@ -330,7 +330,7 @@ async def unmute_user(message, args, client, **kwargs):
         await message.channel.send("The bot does not have permission to unmute this user.")
         return
 
-    await message.channel.send(f"Unmuted user with ID {user.id}")
+    await message.channel.send(f"Unmuted {user.mention} with ID {user.id}")
 
 
 async def search_infractions(message, args, client, **kwargs):
@@ -355,6 +355,33 @@ async def search_infractions(message, args, client, **kwargs):
     # Sort newest first
     infractions.sort(reverse=True, key=lambda a: a[5])
 
+    # Parse flags
+    selected_chunk = 0
+    responsible_mod = None
+    infraction_type = None
+    automod = True
+    for index, item in enumerate(args):
+        try:
+            if item in ["-p", "--page"]:
+                selected_chunk = int(float(args[index + 1])) - 1
+            elif item in ["-m", "--mod"]:
+                responsible_mod = (args[index + 1].strip("<@!>"))
+            elif item in ["-t", "--type"]:
+                infraction_type = (args[index + 1])
+            elif item == "--no-automod":
+                automod = False
+        except (ValueError, IndexError):
+            await message.channel.send("Invalid flags supplied")
+            return
+
+    # Generate sorts
+    if responsible_mod:
+        infractions = [i for i in infractions if i[2] == responsible_mod]
+    if infraction_type:
+        infractions = [i for i in infractions if i[3] == infraction_type]
+    if not automod:
+        infractions = [i for i in infractions if "[AUTOMOD]" not in i[4]]
+
     # Generate chunks from infractions
     do_not_exceed = 1900  # Discord message length limits
     chunks = [""]
@@ -366,15 +393,6 @@ async def search_infractions(message, args, client, **kwargs):
             chunks.append("")
         else:
             chunks[curchunk] = chunks[curchunk] + infraction_data
-
-    # Parse pager
-    if len(args) >= 2:
-        try:
-            selected_chunk = int(float(args[1])) - 1
-        except ValueError:
-            selected_chunk = 0
-    else:
-        selected_chunk = 0
 
     # Test if valid page
     try:
@@ -440,20 +458,17 @@ async def delete_infraction(message, args, client, **kwargs):
 
 async def grab_guild_message(message, args, client, **kwargs):
 
-    if len(args) >= 2:
-        log_channel = args[0].strip("<#!>")
-        message_id = args[1]
-    elif args:
+    try:
+        message_link = args[0].replace("-", "/").split("/")
+        log_channel = message_link[-2]
+        message_id = message_link[-1]
+    except IndexError:
         try:
-            message_link = args[0].replace("-", "/").split("/")
-            log_channel = message_link[-2]
-            message_id = message_link[-1]
+            log_channel = args[0].strip("<#!>")
+            message_id = args[1]
         except IndexError:
             await message.channel.send("Not enough args supplied")
             return
-    else:
-        await message.channel.send("Not enough args supplied")
-        return
 
     try:
         log_channel = int(log_channel)
@@ -478,23 +493,29 @@ async def grab_guild_message(message, args, client, **kwargs):
 
     if not discord_message:
         await message.channel.send("Invalid MessageID")
+        return
 
-    if kwargs["main_version"] != "1.1.0 'LeXdPyK'":
-        files = grab_files(discord_message.guild.id, discord_message.id, kwargs["kernel_ramfs"])
-    else:
-        files = []
+    # Generate replies
+    message_content = generate_reply_field(discord_message)
 
     # Message has been grabbed, start generating embed
-    jump = f"\n\n[(Link)]({discord_message.jump_url})"
-    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=discord_message.content[:2048 - len(jump)] + jump, color=0x758cff)
+    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=0x758cff)
 
     message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
     message_embed.timestamp = discord_message.created_at
 
+    # Grab files from cache
+    fileobjs = grab_files(discord_message.guild.id, discord_message.id, kwargs["kernel_ramfs"])
+
+    # Grab files async if not in cache
+    if not fileobjs:
+        awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
+        fileobjs = [await i for i in awaitobjs]
+
     try:
-        await message.channel.send(embed=message_embed, files=files)
+        await message.channel.send(embed=message_embed, files=fileobjs)
     except discord.errors.HTTPException:
-        await message.channel.send("There were files attached but they exceeeded the guild filesize limit", embed=message_embed)
+        await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
 
 
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
@@ -575,4 +596,4 @@ commands = {
             }
     }
 
-version_info = "1.1.1"
+version_info = "1.1.2"

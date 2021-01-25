@@ -21,11 +21,12 @@ def parse_blacklist(indata):
 
     # Preset values
     broke_blacklist = False
+    notifier = False
     infraction_type = []
 
     # If in whitelist, skip parse to save resources
     if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
-        return [False, []]
+        return [False, False, []]
 
     text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":", " ").replace("\n", " "))
 
@@ -55,6 +56,12 @@ def parse_blacklist(indata):
         except re.error:
             pass  # GC for old regex
 
+    # Check message against REGEXP notifier list
+    regex_blacklist = blacklist["regex-notifier"]
+    for i in regex_blacklist:
+        if re.findall(i, message.content.lower()):
+            notifier = True
+
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
     if filetype_blacklist and message.attachments:
@@ -64,7 +71,7 @@ def parse_blacklist(indata):
                     broke_blacklist = True
                     infraction_type.append("FileType")
 
-    return (broke_blacklist, infraction_type)
+    return (broke_blacklist, notifier, infraction_type)
 
 
 # Parse if we skip a message due to X reasons
@@ -106,7 +113,10 @@ async def update_log_channel(message, args, client, log_name):
         log_channel = args[0].strip("<#!>")
     else:
         with db_hlapi(message.guild.id) as db:
-            log_channel = db.grab_config(log_name) or "nothing"
+            if log_channel := db.grab_config(log_name):
+                log_channel = f"<#{log_channel}>"
+            else:
+                log_channel = "nothing"
         await message.channel.send(f"{log_name} is set to {log_channel}")
         raise RuntimeError("No Channel supplied")
 
@@ -180,6 +190,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
             rawfile.write(lz4.frame.decompress(encrypted_file.read()))
             rawfile.seek(0)
             discord_files.append(discord.File(rawfile, filename=i))
+            encrypted_file.close()
             if delete:
                 os.remove(pointer)
 
@@ -191,3 +202,22 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
     except FileNotFoundError:
 
         return None
+
+
+def generate_reply_field(message):
+
+    # Generate replies
+    jump = f"\n\n[(Link)]({message.jump_url})"
+    if (r := message.reference) and (rr := r.resolved):
+        reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " ")) + "\n"
+        if len(reply_contents) >= 512:
+            reply_contents = reply_contents[:512 - 4] + "...\n"
+    else:
+        reply_contents = ""
+
+    message_content = reply_contents + message.content
+    if len(message_content) >= (2048 - len(jump)):
+        message_content = message_content[:2048 - len(jump) - 3] + "..."
+    message_content = message_content + jump
+
+    return message_content
