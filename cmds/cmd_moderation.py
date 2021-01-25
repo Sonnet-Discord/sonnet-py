@@ -88,7 +88,7 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
         pass
 
     if len(args) > 1:
-        reason = " ".join(args[1:])
+        reason = " ".join(args[1:])[:1024]
     else:
         reason = "No Reason Specified"
 
