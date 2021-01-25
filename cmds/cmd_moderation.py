@@ -134,7 +134,7 @@ async def warn_user(message, args, client, **kwargs):
         return
 
     if not (automod) and user:
-        await message.channel.send(f"Warned <@!{user.id}> with ID {user.id} for {reason}")
+        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}"[:2000])
     elif not user:
         await message.channel.send("User does not exist")
 
@@ -159,7 +159,7 @@ async def kick_user(message, args, client, **kwargs):
         return
 
     if not automod:
-        await message.channel.send(f"Kicked <@!{user.id}> with ID {user.id} for {reason}")
+        await message.channel.send(f"Kicked {user.mention} with ID {user.id} for {reason}"[:2000])
 
 
 async def ban_user(message, args, client, **kwargs):
@@ -183,7 +183,7 @@ async def ban_user(message, args, client, **kwargs):
         return
 
     if not automod:
-        await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}")
+        await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}"[:2000])
 
 
 async def unban_user(message, args, client, **kwargs):
@@ -212,7 +212,7 @@ async def unban_user(message, args, client, **kwargs):
         await message.channel.send("This user is not banned")
         return
 
-    await message.channel.send(f"Unbanned <@!{user.id}> with ID {user.id}")
+    await message.channel.send(f"Unbanned {user.mention} with ID {user.id}")
 
 
 async def mute_user(message, args, client, **kwargs):
@@ -271,11 +271,11 @@ async def mute_user(message, args, client, **kwargs):
         return
 
     if not automod and not mutetime:
-        await message.channel.send(f"Muted <@!{user.id}> with ID {user.id} for {reason}")
+        await message.channel.send(f"Muted {user.mention} with ID {user.id} for {reason}"[:2000])
 
     if mutetime:
         if not automod:
-            asyncio.create_task(message.channel.send(f"Muted <@!{user.id}> with ID {user.id} for {mutetime}s for {reason}"))
+            asyncio.create_task(message.channel.send(f"Muted {user.mention} with ID {user.id} for {mutetime}s for {reason}"[:2000]))
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
             db.mute_user(user.id, time.time() + mutetime, infractionID)
@@ -330,7 +330,7 @@ async def unmute_user(message, args, client, **kwargs):
         await message.channel.send("The bot does not have permission to unmute this user.")
         return
 
-    await message.channel.send(f"Unmuted <@!{user.id}> with ID {user.id}")
+    await message.channel.send(f"Unmuted {user.mention} with ID {user.id}")
 
 
 async def search_infractions(message, args, client, **kwargs):
