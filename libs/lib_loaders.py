@@ -67,7 +67,7 @@ def load_message_config(guild_id, ramfs):
         # Loads regex
         for regex_type in ["regex-blacklist", "regex-notifier"]:
             if message_config[regex_type]:
-                message_config[regex_type] = [i.split(" ")[1][1:-2] for i in json.loads(message_config[regex_type])["blacklist"]]
+                message_config[regex_type] = [i.split(" ")[1:][1:-2] for i in json.loads(message_config[regex_type])["blacklist"]]
             else:
                 message_config[regex_type] = []
 
