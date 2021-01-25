@@ -91,7 +91,7 @@ async def grab_an_adult(message, client, mconf):
         message_content = message_content[:2048 - len(jump)] + jump
 
         # Message has been grabbed, start generating embed
-        message_embed = discord.Embed(title=f"Notifer Message in #{discord_message.channel}", description=message_content, color=0x758cff)
+        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=0x758cff)
 
         message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
         message_embed.timestamp = discord_message.created_at
