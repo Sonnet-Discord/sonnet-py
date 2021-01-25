@@ -15,7 +15,7 @@ importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics
-from lib_parsers import ifgate
+from lib_parsers import ifgate, generate_reply_field
 
 
 async def on_reaction_add(reaction, user, **kargs):
@@ -36,18 +36,7 @@ async def on_reaction_add(reaction, user, **kargs):
                         ) and not (db.in_starboard(message.id)) and not (int(channel_id) == message.channel.id) and db.add_to_starboard(message.id):
 
                     # Generate replies
-                    jump = f"\n\n[(Link)]({message.jump_url})"
-                    if (r := message.reference) and (rr := r.resolved):
-                        reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " ")) + "\n"
-                        if len(reply_contents) >= 512:
-                            reply_contents = reply_contents[:512 - 4] + "...\n"
-                    else:
-                        reply_contents = ""
-
-                    message_content = reply_contents + message.content
-                    if len(message_content) >= (2048 - len(jump)):
-                        message_content = message_content[:2048 - len(jump) - 3] + "..."
-                    message_content = message_content + jump
+                    message_content = generate_reply_field(message)
 
                     # Generate embed
                     starboard_embed = discord.Embed(title="Starred message", description=message_content, color=0xffa700)

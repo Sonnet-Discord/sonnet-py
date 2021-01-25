@@ -202,3 +202,22 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
     except FileNotFoundError:
 
         return None
+
+
+def generate_reply_field(message):
+
+    # Generate replies
+    jump = f"\n\n[(Link)]({message.jump_url})"
+    if (r := message.reference) and (rr := r.resolved):
+        reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " ")) + "\n"
+        if len(reply_contents) >= 512:
+            reply_contents = reply_contents[:512 - 4] + "...\n"
+    else:
+        reply_contents = ""
+
+    message_content = reply_contents + message.content
+    if len(message_content) >= (2048 - len(jump)):
+        message_content = message_content[:2048 - len(jump) - 3] + "..."
+    message_content = message_content + jump
+
+    return message_content

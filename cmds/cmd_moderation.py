@@ -14,7 +14,7 @@ importlib.reload(lib_parsers)
 
 from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files
+from lib_parsers import grab_files, generate_reply_field
 
 
 # Catches error if the bot cannot message the user
@@ -496,18 +496,7 @@ async def grab_guild_message(message, args, client, **kwargs):
         return
 
     # Generate replies
-    jump = f"\n\n[(Link)]({discord_message.jump_url})"
-    if (r := discord_message.reference) and (rr := r.resolved):
-        reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " ")) + "\n"
-        if len(reply_contents) >= 512:
-            reply_contents = reply_contents[:512 - 4] + "...\n"
-    else:
-        reply_contents = ""
-
-    message_content = reply_contents + discord_message.content
-    if len(message_content) >= (2048 - len(jump)):
-        message_content = message_content[:2048 - len(jump) - 3] + "..."
-    message_content = message_content + jump
+    message_content = generate_reply_field(discord_message)
 
     # Message has been grabbed, start generating embed
     message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=0x758cff)
