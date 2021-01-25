@@ -74,11 +74,9 @@ async def attempt_message_delete(message):
         pass
 
 
-async def grab_an_adult(message, client, mconf):
+async def grab_an_adult(discord_message, client, mconf):
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
-
-        discord_message = message
 
         # Generate replies
         jump = f"\n\n[(Link)]({discord_message.jump_url})"
