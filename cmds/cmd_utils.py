@@ -59,6 +59,9 @@ async def profile_function(message, args, client, **kwargs):
     except RuntimeError:
         return
 
+    # Status hashmap
+    status_map = {"online": "🟢", "offline": "⚫", "idle": "🟡", "dnd": "🔴", "do_not_disturb": "🔴", "invisible": "⚫"}
+
     # Put here to comply with formatting guidelines.
     created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
     created_string += f" ({(datetime.utcnow() - user_object.created_at).days} days ago)"
@@ -70,7 +73,7 @@ async def profile_function(message, args, client, **kwargs):
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
     embed.add_field(name="User ID", value=user_object.id, inline=True)
-    embed.add_field(name="Status", value=user_object.raw_status, inline=True)
+    embed.add_field(name="Status", value=status_map[user_object.raw_status], inline=True)
     embed.add_field(name="Highest Rank", value=f"{user_object.top_role.mention}", inline=True)
     embed.add_field(name="Created", value=created_string, inline=True)
     embed.add_field(name="Joined", value=joined_string, inline=True)
@@ -236,4 +239,4 @@ commands = {
         }
     }
 
-version_info = "1.1.1"
+version_info = "1.1.2-DEV"
