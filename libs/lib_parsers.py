@@ -21,11 +21,12 @@ def parse_blacklist(indata):
 
     # Preset values
     broke_blacklist = False
+    notifier = False
     infraction_type = []
 
     # If in whitelist, skip parse to save resources
     if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
-        return [False, []]
+        return [False, False, []]
 
     text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":", " ").replace("\n", " "))
 
@@ -55,6 +56,12 @@ def parse_blacklist(indata):
         except re.error:
             pass  # GC for old regex
 
+    # Check message against REGEXP notifier list
+    regex_blacklist = blacklist["regex-notifier"]
+    for i in regex_blacklist:
+        if re.findall(i, message.content.lower()):
+            notifier = True
+
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
     if filetype_blacklist and message.attachments:
@@ -64,7 +71,7 @@ def parse_blacklist(indata):
                     broke_blacklist = True
                     infraction_type.append("FileType")
 
-    return (broke_blacklist, infraction_type)
+    return (broke_blacklist, notifier, infraction_type)
 
 
 # Parse if we skip a message due to X reasons
