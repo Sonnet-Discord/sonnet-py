@@ -29,7 +29,7 @@ async def set_starboard_emoji(message, args, client, **kwargs):
     if args:
         emoji = args[0]
     else:
-        emoji = STARBOARD_EMOJI
+        emoji = load_message_config(message.guild.id, kwargs["ramfs"])["starboard-emoji"]
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("starboard-emoji", emoji)
@@ -42,7 +42,7 @@ async def set_starboard_use(message, args, client, **kwargs):
     if args:
         gate = parse_boolean(args[0])
     else:
-        gate = False
+        gate = bool(int(load_messsage_config(message.guild.id, kwags["ramfs"])["starboard-enabled"]))
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("starboard-enabled", int(gate))
@@ -105,4 +105,4 @@ commands = {
             }
     }
 
-version_info = "1.0.2"
+version_info = "1.1.3-DEV"
