@@ -42,7 +42,7 @@ async def set_starboard_use(message, args, client, **kwargs):
     if args:
         gate = parse_boolean(args[0])
     else:
-        gate = bool(int(load_message_config(message.guild.id, kwags["ramfs"])["starboard-enabled"]))
+        gate = bool(int(load_message_config(message.guild.id, kwargs["ramfs"])["starboard-enabled"]))
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("starboard-enabled", int(gate))
