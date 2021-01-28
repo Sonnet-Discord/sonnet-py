@@ -192,16 +192,20 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
             iv = keys.read(16)
 
             encrypted_file = encrypted_reader(pointer, key, iv)
-            rawfile = io.BytesIO()
-            rawfile.write(lz4.frame.decompress(encrypted_file.read()))
-            rawfile.seek(0)
+            rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
             discord_files.append(discord.File(rawfile, filename=i))
-            encrypted_file.close()
+            rawfile.close()
             if delete:
-                os.remove(pointer)
+                try:
+                    os.remove(pointer)
+                except FileNotFoundError:
+                    pass
 
         if delete:
-            ramfs.rmdir(f"files/{guild_id}/{message_id}")
+            try:
+                ramfs.rmdir(f"files/{guild_id}/{message_id}")
+            except FileNotFoundError:
+                pass
 
         return discord_files
 
