@@ -333,30 +333,10 @@ async def unmute_user(message, args, client, **kwargs):
     await message.channel.send(f"Unmuted {user.mention} with ID {user.id}")
 
 
-async def general_infraction_grabber(message, args, client, grab_type):
+async def general_infraction_grabber(message, args, client):
 
-    try:
-        user = client.get_user(int(args[0].strip("<@!>")))
-    except ValueError:
-        await message.channel.send("Invalid User")
-        return
-    except IndexError:
-        await message.channel.send("No user specified")
-        return
-
-    if not user:
-        user_id = int(args[0].strip("<@!>"))
-    else:
-        user_id = user.id
-
-    with db_hlapi(message.guild.id) as db:
-        if grab_type == "user":
-            infractions = db.grab_user_infractions(user_id)
-        elif grab_type == "moderator":
-            infractions = db.grab_moderator_infractions(user_id)
-
-    # Sort newest first
-    infractions.sort(reverse=True, key=lambda a: a[5])
+    # Reparse args
+    args = message.content.replace("=", " ").split(" ")[1:]
 
     # Parse flags
     selected_chunk = 0
@@ -380,6 +360,15 @@ async def general_infraction_grabber(message, args, client, grab_type):
             await message.channel.send("Invalid flags supplied")
             return
 
+    with db_hlapi(message.guild.id) as db:
+        if user_affected:
+            infractions = db.grab_user_infractions(user_affected)
+        elif responsible_mod:
+            infractions = db.grab_moderator_infractions(responsible_mod)
+        else:
+            await message.channel.send("Please specify a user or moderator")
+            return
+
     # Generate sorts
     if not automod:
         automod_id = str(client.user.id)
@@ -390,6 +379,9 @@ async def general_infraction_grabber(message, args, client, grab_type):
         infractions = [i for i in infractions if i[1] == user_affected]
     if infraction_type:
         infractions = [i for i in infractions if i[3] == infraction_type]
+
+    # Sort newest first
+    infractions.sort(reverse=True, key=lambda a: a[5])
 
     # Generate chunks from infractions
     do_not_exceed = 1900  # Discord message length limits
@@ -418,12 +410,7 @@ async def general_infraction_grabber(message, args, client, grab_type):
 
 async def search_infractions_by_user(message, args, client, **kwargs):
 
-    await general_infraction_grabber(message, args, client, "user")
-
-
-async def search_infractions_by_moderator(message, args, client, **kwargs):
-
-    await general_infraction_grabber(message, args, client, "moderator")
+    await general_infraction_grabber(message, args, client)
 
 
 async def get_detailed_infraction(message, args, client, **kwargs):
@@ -582,20 +569,13 @@ commands = {
         'cache': 'keep',
         'execute': unmute_user
         },
-    'search-infractions': {
-        'pretty_name': 'search-infractions <uid>',
-        'description': 'Grab infractions of a user',
-        'permission': 'moderator',
-        'cache': 'keep',
-        'execute': search_infractions_by_user
-        },
-    'mod-infractions':
+    'search-infractions':
         {
-            'pretty_name': 'mod-infractions <uid>',
-            'description': 'Grab infractions that a mod has created',
+            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [--no-automod]',
+            'description': 'Grab infractions of a user',
             'permission': 'moderator',
             'cache': 'keep',
-            'execute': search_infractions_by_moderator
+            'execute': search_infractions_by_user
             },
     'infraction-details':
         {
