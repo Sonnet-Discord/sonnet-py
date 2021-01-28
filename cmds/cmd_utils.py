@@ -14,9 +14,12 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 import lib_loaders
 importlib.reload(lib_loaders)
+import lib_parsers
+importlib.reload(lib_parsers)
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
+from lib_parsers import parse_permissions
 
 
 async def parse_userid(message, args):
@@ -85,7 +88,7 @@ async def profile_function(message, args, client, **kwargs):
             viewinfs = bool(int(viewinfs))
         else:
             viewinfs = False
-        moderator = message.author.permissions_in(message.channel).ban_members
+        moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
         if moderator or (viewinfs and user_object.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
 
@@ -239,4 +242,4 @@ commands = {
         }
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3-DEV"

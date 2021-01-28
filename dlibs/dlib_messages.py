@@ -296,7 +296,7 @@ async def on_message(message, **kargs):
 
     # Process commands
     if command in command_modules_dict.keys():
-        permission = await parse_permissions(message, command_modules_dict[command]['permission'])
+        permission = await parse_permissions(message, mconf, command_modules_dict[command]['permission'])
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
@@ -311,7 +311,8 @@ async def on_message(message, **kargs):
                     bot_start=bot_start_time,
                     dlibs=kargs["dynamiclib_modules"][0],
                     main_version=main_version_info,
-                    kernel_ramfs=kargs["kernel_ramfs"]
+                    kernel_ramfs=kargs["kernel_ramfs"],
+                    conf_cache=mconf
                     )
 
                 # Regenerate cache
@@ -331,4 +332,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3-DEV"

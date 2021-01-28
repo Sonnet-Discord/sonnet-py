@@ -142,22 +142,28 @@ async def update_log_channel(message, args, client, log_name):
     await message.channel.send(f"Successfully updated {log_name}")
 
 
-async def parse_permissions(message, perms):
+async def parse_permissions(message, mconf, perms, verbose=True):
 
     you_shall_pass = False
     if perms == "everyone":
         you_shall_pass = True
     elif perms == "moderator":
-        you_shall_pass = message.author.permissions_in(message.channel).ban_members
+        default = message.author.permissions_in(message.channel).ban_members
+        roleperm = mconf["moderator-role"] and (int(mconf["moderator-role"]) in [i.id for i in message.author.roles])
+        adminperm = mconf["admin-role"] and (int(mconf["admin-role"]) in [i.id for i in message.author.roles])
+        you_shall_pass = default or roleperm or adminperm
     elif perms == "administrator":
-        you_shall_pass = message.author.permissions_in(message.channel).administrator
+        default = message.author.permissions_in(message.channel).administrator
+        roleperm = mconf["admin-role"] and (int(mconf["admin-role"]) in [i.id for i in message.author.roles])
+        you_shall_pass = default or roleperm
     elif perms == "owner":
         you_shall_pass = message.author.id == message.channel.guild.owner.id
 
     if you_shall_pass:
         return True
     else:
-        await message.channel.send(f"You need permissions `{perms}` to run this command")
+        if verbose:
+            await message.channel.send(f"You need permissions `{perms}` to run this command")
         return False
 
 

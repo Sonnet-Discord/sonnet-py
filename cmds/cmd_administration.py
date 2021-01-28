@@ -168,6 +168,16 @@ async def set_mute_role(message, args, client, **kwargs):
     await parse_role(message, args, "mute-role")
 
 
+async def set_admin_role(message, args, client, **kwargs):
+
+    await parse_role(message, args, "admin-role")
+
+
+async def set_moderator_role(message, args, client, **kwargs):
+
+    await parse_role(message, args, "moderator-role")
+
+
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
@@ -220,6 +230,20 @@ commands = {
         'permission': 'administrator',
         'cache': 'keep',
         'execute': set_mute_role
+        },
+    'set-adminrole': {
+        'pretty_name': 'set-adminrole <role>',
+        'description': 'Set the administrator role',
+        'permission': 'owner',
+        'cache': 'regenerate',
+        'execute': set_admin_role
+        },
+    'set-modrole': {
+        'pretty_name': 'set-modrole <role>',
+        'description': 'Set the moderator role',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': set_moderator_role
         }
     }
 

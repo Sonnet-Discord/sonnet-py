@@ -20,7 +20,7 @@ def directBinNumber(inData, length):
 def load_message_config(guild_id, ramfs):
     datatypes = {
         "csv": ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "antispam"],
-        "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist", "regex-notifier-log"],
+        "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist", "regex-notifier-log", "admin-role", "moderator-role"],
         "list": ["regex-blacklist", "regex-notifier"]
         }
     try:
