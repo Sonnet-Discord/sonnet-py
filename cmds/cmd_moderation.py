@@ -381,14 +381,15 @@ async def general_infraction_grabber(message, args, client, grab_type):
             return
 
     # Generate sorts
+    if not automod:
+        automod_id = str(client.user.id)
+        infractions = [i for i in infractions if i[2] == automod_id or ("[AUTOMOD]" not in i[4])]
     if responsible_mod:
         infractions = [i for i in infractions if i[2] == responsible_mod]
     if user_affected:
         infractions = [i for i in infractions if i[1] == user_affected]
     if infraction_type:
         infractions = [i for i in infractions if i[3] == infraction_type]
-    if not automod:
-        infractions = [i for i in infractions if "[AUTOMOD]" not in i[4]]
 
     # Generate chunks from infractions
     do_not_exceed = 1900  # Discord message length limits
