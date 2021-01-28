@@ -383,7 +383,7 @@ async def general_infraction_grabber(message, args, client, grab_type):
     # Generate sorts
     if not automod:
         automod_id = str(client.user.id)
-        infractions = [i for i in infractions if i[2] == automod_id or ("[AUTOMOD]" not in i[4])]
+        infractions = [i for i in infractions if not (i[2] == automod_id or "[AUTOMOD]" in i[4])]
     if responsible_mod:
         infractions = [i for i in infractions if i[2] == responsible_mod]
     if user_affected:
