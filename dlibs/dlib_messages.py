@@ -67,9 +67,10 @@ async def on_message_delete(message, **kargs):
             await catch_logging_error(message_log, message_embed, files)
 
             # Cleanup files
-            for i in files:
-                i.fp._fp.close()
-                i.fp.close()
+            if files:
+                for i in files:
+                    i.fp._fp.close()
+                    i.fp.close()
 
 
 async def attempt_message_delete(message):
