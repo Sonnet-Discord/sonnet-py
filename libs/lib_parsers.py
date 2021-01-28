@@ -221,3 +221,28 @@ def generate_reply_field(message):
     message_content = message_content + jump
 
     return message_content
+
+
+async def parse_role(message, args, db_entry):
+
+    if args:
+        role = args[0].strip("<@&>")
+    else:
+        with db_hlapi(message.guild.id) as db:
+            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry)))}")
+        return
+
+    try:
+        role = message.guild.get_role(int(role))
+    except ValueError:
+        await message.channel.send("Invalid role")
+        return
+
+    if not role:
+        await message.channel.send("Invalid role")
+        return
+
+    with db_hlapi(message.guild.id) as db:
+        db.add_config(db_entry, role.id)
+
+    await message.channel.send(f"Updated {db_entry} to {role}")

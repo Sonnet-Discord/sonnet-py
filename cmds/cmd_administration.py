@@ -16,7 +16,7 @@ importlib.reload(lib_parsers)
 import lib_loaders
 importlib.reload(lib_loaders)
 
-from lib_parsers import parse_boolean, update_log_channel
+from lib_parsers import parse_boolean, update_log_channel, parse_role
 from lib_loaders import load_message_config, read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
@@ -165,22 +165,7 @@ async def set_prefix(message, args, client, **kwargs):
 
 async def set_mute_role(message, args, client, **kwargs):
 
-    if args:
-        role = args[0].strip("<@&>")
-    else:
-        await message.channel.send("No role supplied")
-        return
-
-    try:
-        role = int(role)
-    except ValueError:
-        await message.channel.send("Invalid role")
-        return
-
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("mute-role", role)
-
-    await message.channel.send(f"Updated Mute role to {role}")
+    await parse_role(message, args, "mute-role")
 
 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
@@ -238,4 +223,4 @@ commands = {
         }
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3-DEV"

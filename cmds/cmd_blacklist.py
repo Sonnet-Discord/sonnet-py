@@ -9,9 +9,12 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 import lib_loaders
 importlib.reload(lib_loaders)
+import lib_parsers
+importlib.reload(lib_parsers)
 
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
+from lib_parsers import parse_role
 
 
 class blacklist_input_error(Exception):
@@ -204,22 +207,7 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
 
 async def change_rolewhitelist(message, args, client, **kwargs):
 
-    if args:
-        role = args[0].strip("<@&>")
-    else:
-        await message.channel.send("No role supplied")
-        return
-
-    try:
-        role = int(role)
-    except ValueError:
-        await message.channel.send("Invalid role")
-        return
-
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("blacklist-whitelist", role)
-
-    await message.channel.send(f"Updated role whitelist to {role}")
+    await parse_role(message, args, "blacklist-whitelist")
 
 
 async def antispam_set(message, args, client, **kwargs):
@@ -339,4 +327,4 @@ commands = {
             },
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3-DEV"
