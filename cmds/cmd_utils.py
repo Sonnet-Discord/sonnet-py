@@ -112,12 +112,12 @@ async def help_function(message, args, client, **kwargs):
         # We're just doing category info.
 
         # Initialise embed.
-        embed = discord.Embed(title="Category Listing", color=0x00db87)
-        embed.set_author(name="Sonnet Help")
+        commands_embed = discord.Embed(title="Category Listing", color=0x00db87)
+        commands_embed.set_author(name="Sonnet Help")
 
         # Start creating module listing.
         for modules in kwargs["cmds"]:
-            embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
+            commands_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
     else:
 
         # Initialise embed.
