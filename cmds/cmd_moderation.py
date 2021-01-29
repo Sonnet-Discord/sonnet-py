@@ -18,11 +18,12 @@ from lib_parsers import grab_files, generate_reply_field
 
 
 # Catches error if the bot cannot message the user
-async def catch_dm_error(user, contents):
+async def catch_dm_error(user, contents, log_channel):
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
-        pass
+        if log_channel:
+            await log_channel.send("ERROR: Could not DM user")
 
 
 # Sends an infraction to database and log channels if user exists
@@ -71,7 +72,7 @@ async def log_infraction(message, client, user, moderator_id, infraction_reason,
     dm_embed.add_field(name="Reason", value=infraction_reason)
     if send_message:
         asyncio.create_task(log_channel.send(embed=embed))
-    dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed))
+    dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed, log_channel))
     return (generated_id, dm_sent)
 
 
@@ -333,32 +334,16 @@ async def unmute_user(message, args, client, **kwargs):
     await message.channel.send(f"Unmuted {user.mention} with ID {user.id}")
 
 
-async def search_infractions(message, args, client, **kwargs):
+async def general_infraction_grabber(message, args, client):
 
-    try:
-        user = client.get_user(int(args[0].strip("<@!>")))
-    except ValueError:
-        await message.channel.send("Invalid User")
-        return
-    except IndexError:
-        await message.channel.send("No user specified")
-        return
-
-    if not user:
-        user_id = int(args[0].strip("<@!>"))
-    else:
-        user_id = user.id
-
-    with db_hlapi(message.guild.id) as db:
-        infractions = db.grab_user_infractions(user_id)
-
-    # Sort newest first
-    infractions.sort(reverse=True, key=lambda a: a[5])
+    # Reparse args
+    args = message.content.replace("=", " ").split(" ")[1:]
 
     # Parse flags
     selected_chunk = 0
     responsible_mod = None
     infraction_type = None
+    user_affected = None
     automod = True
     for index, item in enumerate(args):
         try:
@@ -366,6 +351,8 @@ async def search_infractions(message, args, client, **kwargs):
                 selected_chunk = int(float(args[index + 1])) - 1
             elif item in ["-m", "--mod"]:
                 responsible_mod = (args[index + 1].strip("<@!>"))
+            elif item in ["-u", "--user"]:
+                user_affected = (args[index + 1].strip("<@!>"))
             elif item in ["-t", "--type"]:
                 infraction_type = (args[index + 1])
             elif item == "--no-automod":
@@ -374,13 +361,28 @@ async def search_infractions(message, args, client, **kwargs):
             await message.channel.send("Invalid flags supplied")
             return
 
+    with db_hlapi(message.guild.id) as db:
+        if user_affected:
+            infractions = db.grab_user_infractions(user_affected)
+        elif responsible_mod:
+            infractions = db.grab_moderator_infractions(responsible_mod)
+        else:
+            await message.channel.send("Please specify a user or moderator")
+            return
+
     # Generate sorts
+    if not automod:
+        automod_id = str(client.user.id)
+        infractions = [i for i in infractions if not (i[2] == automod_id or "[AUTOMOD]" in i[4])]
     if responsible_mod:
         infractions = [i for i in infractions if i[2] == responsible_mod]
+    if user_affected:
+        infractions = [i for i in infractions if i[1] == user_affected]
     if infraction_type:
         infractions = [i for i in infractions if i[3] == infraction_type]
-    if not automod:
-        infractions = [i for i in infractions if "[AUTOMOD]" not in i[4]]
+
+    # Sort newest first
+    infractions.sort(reverse=True, key=lambda a: a[5])
 
     # Generate chunks from infractions
     do_not_exceed = 1900  # Discord message length limits
@@ -405,6 +407,11 @@ async def search_infractions(message, args, client, **kwargs):
         await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
     else:
         await message.channel.send("No infractions found")
+
+
+async def search_infractions_by_user(message, args, client, **kwargs):
+
+    await general_infraction_grabber(message, args, client)
 
 
 async def get_detailed_infraction(message, args, client, **kwargs):
@@ -563,12 +570,22 @@ commands = {
         'cache': 'keep',
         'execute': unmute_user
         },
-    'search-infractions': {
-        'pretty_name': 'search-infractions <uid>',
-        'description': 'Grab infractions of a user',
-        'permission': 'moderator',
-        'cache': 'keep',
-        'execute': search_infractions
+    'warnings': {
+        'alias': 'search-infractions'
+        },
+    'list-infractions': {
+        'alias': 'search-infractions'
+        },
+    'search-infractions':
+        {
+            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [--no-automod]',
+            'description': 'Grab infractions of a user',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': search_infractions_by_user
+            },
+    'get-infraction': {
+        'alias': 'infraction-details'
         },
     'infraction-details':
         {
@@ -578,6 +595,12 @@ commands = {
             'cache': 'keep',
             'execute': get_detailed_infraction
             },
+    'remove-infraction': {
+        'alias': 'delete-infraction'
+        },
+    'rm-infraction': {
+        'alias': 'delete-infraction'
+        },
     'delete-infraction':
         {
             'pretty_name': 'delete-infraction <infractionID>',
@@ -586,6 +609,9 @@ commands = {
             'cache': 'keep',
             'execute': delete_infraction
             },
+    'get-message': {
+        'alias': 'grab-message'
+        },
     'grab-message':
         {
             'pretty_name': 'grab-message <channelID> <messageID>',
@@ -596,4 +622,4 @@ commands = {
             }
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3"

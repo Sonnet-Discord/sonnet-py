@@ -16,8 +16,8 @@ importlib.reload(lib_parsers)
 import lib_loaders
 importlib.reload(lib_loaders)
 
-from lib_parsers import parse_boolean, update_log_channel
-from lib_loaders import load_message_config, read_vnum, write_vnum
+from lib_parsers import parse_boolean, update_log_channel, parse_role
+from lib_loaders import read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
 
@@ -122,7 +122,7 @@ async def gdpr_database(message, args, client, **kwargs):
     else:
         command = None
 
-    PREFIX = load_message_config(message.guild.id, ramfs)["prefix"]
+    PREFIX = kwargs["conf_cache"]["prefix"]
 
     commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
     if command and command in commands_dict.keys():
@@ -141,46 +141,41 @@ async def set_view_infractions(message, args, client, **kwargs):
 
     if args:
         gate = parse_boolean(args[0])
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("member-view-infractions", int(gate))
     else:
-        gate = False
+        with db_hlapi(message.guild.id) as database:
+            gate = bool(int(database.grab_config("member-view-infractions")))
 
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("member-view-infractions", int(gate))
-
-    await message.channel.send(f"Member View Own Infractions set to {gate}")
+    await message.channel.send(f"Member View Own Infractions is set to {gate}")
 
 
 async def set_prefix(message, args, client, **kwargs):
 
     if args:
         prefix = args[0]
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("prefix", prefix)
     else:
-        prefix = GLOBAL_PREFIX
+        with db_hlapi(message.guild.id) as database:
+            prefix = database.grab_config("prefix")
 
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("prefix", prefix)
-
-    await message.channel.send(f"Updated prefix to `{prefix}`")
+    await message.channel.send(f"Prefix set to `{prefix}`")
 
 
 async def set_mute_role(message, args, client, **kwargs):
 
-    if args:
-        role = args[0].strip("<@&>")
-    else:
-        await message.channel.send("No role supplied")
-        return
+    await parse_role(message, args, "mute-role")
 
-    try:
-        role = int(role)
-    except ValueError:
-        await message.channel.send("Invalid role")
-        return
 
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("mute-role", role)
+async def set_admin_role(message, args, client, **kwargs):
 
-    await message.channel.send(f"Updated Mute role to {role}")
+    await parse_role(message, args, "admin-role")
+
+
+async def set_moderator_role(message, args, client, **kwargs):
+
+    await parse_role(message, args, "moderator-role")
 
 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
@@ -214,9 +209,12 @@ commands = {
         'cache': 'purge',
         'execute': gdpr_database
         },
-    'member-view-infractions':
+    'viewinfractions': {
+        'alias': 'set-viewinfractions'
+        },
+    'set-viewinfractions':
         {
-            'pretty_name': 'member-view-infractions <boolean value>',
+            'pretty_name': 'set-viewinfractions <bool>',
             'description': 'Set whether members of the guild can view their own infraction count',
             'permission': 'administrator',
             'cache': 'keep',
@@ -235,7 +233,21 @@ commands = {
         'permission': 'administrator',
         'cache': 'keep',
         'execute': set_mute_role
+        },
+    'set-adminrole': {
+        'pretty_name': 'set-adminrole <role>',
+        'description': 'Set the administrator role',
+        'permission': 'owner',
+        'cache': 'regenerate',
+        'execute': set_admin_role
+        },
+    'set-modrole': {
+        'pretty_name': 'set-modrole <role>',
+        'description': 'Set the moderator role',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': set_moderator_role
         }
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3"

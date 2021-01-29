@@ -116,7 +116,7 @@ class encrypted_reader:
         self.pointer = 0
         self.cache = bytearray()
 
-    def _grab_amount(self, amount):
+    def _grab_amount(self, amount: int):
 
         return self.decryptor_module.update(self.rawfile.read(amount))
 
@@ -144,7 +144,7 @@ class encrypted_reader:
 
             # Read till EOF
             eof_reached = False
-            while len(self.cache) < amount_wanted and not eof_reached:
+            while len(self.cache) < self.pointer + amount_wanted and not eof_reached:
                 read_amount = int.from_bytes(self.rawfile.read(2), "little")
                 if read_amount:
                     self.cache.extend(bytearray((self._grab_amount(read_amount))))
@@ -156,14 +156,38 @@ class encrypted_reader:
 
             return returndata
 
-    @property
+    def peek(self, peekamount: int):
+
+        amount_wanted = peekamount
+
+        if amount_wanted == 0:
+            return b""
+
+        # Read till EOF
+        eof_reached = False
+        while len(self.cache) < self.pointer + amount_wanted and not eof_reached:
+            read_amount = int.from_bytes(self.rawfile.read(2), "little")
+            if read_amount:
+                self.cache.extend(bytearray((self._grab_amount(read_amount))))
+            else:
+                eof_reached = True
+
+        returndata = bytes(memoryview(self.cache)[self.pointer:amount_wanted + self.pointer])
+
+        return returndata
+
+    def seek(self, seekloc: int):
+
+        self.pointer = seekloc
+
     def seekable(self):
 
-        return False
+        return True
 
     def close(self):
 
         self.rawfile.close()
+        del self.cache
 
     def write(self, data):
         raise TypeError(f"{self} object does not allow writing")

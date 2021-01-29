@@ -142,22 +142,28 @@ async def update_log_channel(message, args, client, log_name):
     await message.channel.send(f"Successfully updated {log_name}")
 
 
-async def parse_permissions(message, perms):
+async def parse_permissions(message, mconf, perms, verbose=True):
 
     you_shall_pass = False
     if perms == "everyone":
         you_shall_pass = True
     elif perms == "moderator":
-        you_shall_pass = message.author.permissions_in(message.channel).ban_members
+        default = message.author.permissions_in(message.channel).ban_members
+        roleperm = mconf["moderator-role"] and (int(mconf["moderator-role"]) in [i.id for i in message.author.roles])
+        adminperm = mconf["admin-role"] and (int(mconf["admin-role"]) in [i.id for i in message.author.roles])
+        you_shall_pass = default or roleperm or adminperm
     elif perms == "administrator":
-        you_shall_pass = message.author.permissions_in(message.channel).administrator
+        default = message.author.permissions_in(message.channel).administrator
+        roleperm = mconf["admin-role"] and (int(mconf["admin-role"]) in [i.id for i in message.author.roles])
+        you_shall_pass = default or roleperm
     elif perms == "owner":
         you_shall_pass = message.author.id == message.channel.guild.owner.id
 
     if you_shall_pass:
         return True
     else:
-        await message.channel.send(f"You need permissions `{perms}` to run this command")
+        if verbose:
+            await message.channel.send(f"You need permissions `{perms}` to run this command")
         return False
 
 
@@ -186,16 +192,20 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
             iv = keys.read(16)
 
             encrypted_file = encrypted_reader(pointer, key, iv)
-            rawfile = io.BytesIO()
-            rawfile.write(lz4.frame.decompress(encrypted_file.read()))
-            rawfile.seek(0)
+            rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
             discord_files.append(discord.File(rawfile, filename=i))
-            encrypted_file.close()
+            rawfile.close()
             if delete:
-                os.remove(pointer)
+                try:
+                    os.remove(pointer)
+                except FileNotFoundError:
+                    pass
 
         if delete:
-            ramfs.rmdir(f"files/{guild_id}/{message_id}")
+            try:
+                ramfs.rmdir(f"files/{guild_id}/{message_id}")
+            except FileNotFoundError:
+                pass
 
         return discord_files
 
@@ -221,3 +231,28 @@ def generate_reply_field(message):
     message_content = message_content + jump
 
     return message_content
+
+
+async def parse_role(message, args, db_entry):
+
+    if args:
+        role = args[0].strip("<@&>")
+    else:
+        with db_hlapi(message.guild.id) as db:
+            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry)))}")
+        return
+
+    try:
+        role = message.guild.get_role(int(role))
+    except ValueError:
+        await message.channel.send("Invalid role")
+        return
+
+    if not role:
+        await message.channel.send("Invalid role")
+        return
+
+    with db_hlapi(message.guild.id) as db:
+        db.add_config(db_entry, role.id)
+
+    await message.channel.send(f"Updated {db_entry} to {role}")

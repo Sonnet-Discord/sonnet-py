@@ -7,11 +7,11 @@ import re2 as re
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
-import lib_loaders
-importlib.reload(lib_loaders)
+import lib_parsers
+importlib.reload(lib_parsers)
 
-from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
+from lib_parsers import parse_role
 
 
 class blacklist_input_error(Exception):
@@ -150,7 +150,7 @@ async def regex_notifier_remove(message, args, client, **kwargs):
 async def list_blacklist(message, args, client, **kwargs):
 
     # Load temp ramfs to avoid passing as args
-    mconf = load_message_config(message.guild.id, kwargs["ramfs"])
+    mconf = kwargs["conf_cache"]
 
     # Format blacklist
     blacklist = {}
@@ -190,7 +190,8 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
     if args:
         action = args[0].lower()
     else:
-        action = ""
+        await message.channel.send(f"blacklist action is `{kwargs['conf_cache']['blacklist-action']}`")
+        return
 
     if not action in ["warn", "kick", "mute", "ban"]:
         await message.channel.send("Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
@@ -204,28 +205,13 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
 
 async def change_rolewhitelist(message, args, client, **kwargs):
 
-    if args:
-        role = args[0].strip("<@&>")
-    else:
-        await message.channel.send("No role supplied")
-        return
-
-    try:
-        role = int(role)
-    except ValueError:
-        await message.channel.send("Invalid role")
-        return
-
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("blacklist-whitelist", role)
-
-    await message.channel.send(f"Updated role whitelist to {role}")
+    await parse_role(message, args, "blacklist-whitelist")
 
 
 async def antispam_set(message, args, client, **kwargs):
 
     if not args:
-        antispam = load_message_config(message.guild.id, kwargs["ramfs"])["antispam"]
+        antispam = kwargs["conf_cache"]["antispam"]
         await message.channel.send(f"Antispam timings are {','.join(antispam)}")
         return
 
@@ -305,17 +291,26 @@ commands = {
             'cache': 'regenerate',
             'execute': set_blacklist_infraction_level
             },
-    'blacklist-whitelist':
+    'blacklist-whitelist': {
+        'alias': 'set-whitelist'
+        },
+    'whitelist-set': {
+        'alias': 'set-whitelist'
+        },
+    'set-whitelist':
         {
-            'pretty_name': 'blacklist-whitelist <role>',
+            'pretty_name': 'set-whitelist <role>',
             'description': 'Set a role that grants immunity from blacklisting',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': change_rolewhitelist
             },
-    'antispam-set':
+    'antispam-set': {
+        'alias': 'set-antispam'
+        },
+    'set-antispam':
         {
-            'pretty_name': 'antispam-set <messages> <seconds>',
+            'pretty_name': 'set-antispam <messages> <seconds>',
             'description': 'Set how many messages in seconds to trigger antispam automute',
             'permission': 'administrator',
             'cache': 'regenerate',
@@ -339,4 +334,4 @@ commands = {
             },
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3"

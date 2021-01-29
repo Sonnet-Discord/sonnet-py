@@ -23,6 +23,18 @@ outlist = []
 starter_padding = 3
 outlist.append("")
 
+
+# Make alias mappings
+aliashmap = {}
+[aliashmap.update(module.commands) for module in command_modules]
+aliasmap = {}
+for i in aliashmap.keys():
+    if 'alias' in aliashmap[i].keys():
+        if aliashmap[i]['alias'] in aliasmap.keys():
+            aliasmap[aliashmap[i]['alias']].append(i)
+        else:
+            aliasmap[aliashmap[i]['alias']] = [i]
+
 for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
     # Append header
@@ -31,25 +43,32 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     outlist.append("</h2>")
 
     # Create table
-    outlist.append("<table>")
+    outlist.append("<table class=\"lastctr\">")
 
     outlist.append("\t<tr>")
     outlist.append("\t\t<th>Command Syntax</th>")
     outlist.append("\t\t<th>Description</th>")
+    outlist.append("\t\t<th>Aliases</th>")
     outlist.append("\t\t<th>Permission Level</th>")
     outlist.append("\t</tr>")
 
-    for i in module.commands:
+    for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]:
 
         command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;")
 
         command_perms = module.commands[i]['permission'][0].upper()
         command_perms += module.commands[i]['permission'][1:].lower()
 
+        if i in aliasmap.keys():
+            aliases = ", ".join(aliasmap[i])
+        else:
+            aliases = ""
+
         outlist.append("\t<tr>")
-        outlist.append(f"\t\t<td>{command_name}</th>")
-        outlist.append(f"\t\t<td>{module.commands[i]['description']}</th>")
-        outlist.append(f"\t\t<td>{command_perms}</th>")
+        outlist.append(f"\t\t<td>{command_name}</td>")
+        outlist.append(f"\t\t<td>{module.commands[i]['description']}</td>")
+        outlist.append(f"\t\t<td>{aliases}</td>")
+        outlist.append(f"\t\t<td>{command_perms}</td>")
         outlist.append("\t</tr>")
 
     outlist.append("</table>")

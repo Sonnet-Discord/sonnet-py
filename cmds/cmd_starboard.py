@@ -9,12 +9,9 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 import lib_parsers
 importlib.reload(lib_parsers)
-import lib_loaders
-importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config
 
 
 async def starboard_channel_change(message, args, client, **kwargs):
@@ -28,11 +25,10 @@ async def set_starboard_emoji(message, args, client, **kwargs):
 
     if args:
         emoji = args[0]
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("starboard-emoji", emoji)
     else:
-        emoji = STARBOARD_EMOJI
-
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("starboard-emoji", emoji)
+        emoji = kwargs["conf_cache"]["starboard-emoji"]
 
     await message.channel.send(f"Updated starboard emoji to {emoji}")
 
@@ -41,11 +37,10 @@ async def set_starboard_use(message, args, client, **kwargs):
 
     if args:
         gate = parse_boolean(args[0])
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("starboard-enabled", int(gate))
     else:
-        gate = False
-
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("starboard-enabled", int(gate))
+        gate = bool(int(kwargs["conf_cache"]["starboard-enabled"]))
 
     await message.channel.send(f"Starboard set to {bool(gate)}")
 
@@ -66,7 +61,7 @@ async def set_starboard_count(message, args, client, **kwargs):
             await message.channel.send("Invalid input, please enter a number")
 
     else:
-        count = load_message_config(message.guild.id, kwargs["ramfs"])["starboard-count"]
+        count = kwargs["conf_cache"]["starboard-count"]
         await message.channel.send(f"Starboard count is {count}")
 
 
@@ -87,14 +82,13 @@ commands = {
         'cache': 'regenerate',
         'execute': set_starboard_emoji
         },
-    'starboard-enabled':
-        {
-            'pretty_name': 'starboard-enabled <boolean value>',
-            'description': 'Toggle starboard on or off',
-            'permission': 'administrator',
-            'cache': 'regenerate',
-            'execute': set_starboard_use
-            },
+    'starboard-enabled': {
+        'pretty_name': 'starboard-enabled <bool>',
+        'description': 'Toggle starboard on or off',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': set_starboard_use
+        },
     'starboard-count':
         {
             'pretty_name': 'starboard-count <number>',
@@ -105,4 +99,4 @@ commands = {
             }
     }
 
-version_info = "1.0.2"
+version_info = "1.1.3"

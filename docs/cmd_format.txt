@@ -13,6 +13,7 @@ every command:
 		main_version # the version string of the kernel
 		kernel_ramfs # ramfs passed from kernel
 		ramfs # ramfs passed from kernel
+		conf_cache # The cached config data from the db loaded into a dictionary
 
 
 file format:
@@ -32,6 +33,9 @@ commands : type hmap
 				permission # the required permission level of the command, can be everyone,moderator,administrator,owner
 				cache # whether to keep, regenerate, or purge cache on command completion
 				execute # a map to the function this command runs
+		ALTERNATIVE: command_name : type hmap
+			required fields:
+				alias # A command_name of another command, this alias will simply point to that command
 
 
 version_info : type string # a string representing the version of the command module

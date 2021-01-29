@@ -47,6 +47,7 @@ async def on_reaction_add(reaction, user, **kargs):
 
                     starboard_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
                     starboard_embed.timestamp = message.created_at
+                    starboard_embed.set_footer(text=f"#{message.channel}")
 
                     await channel.send(embed=starboard_embed)
 
@@ -72,4 +73,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3"

@@ -12,11 +12,11 @@ import sonnet_cfg
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
-import lib_loaders
-importlib.reload(lib_loaders)
+import lib_parsers
+importlib.reload(lib_parsers)
 
-from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
+from lib_parsers import parse_permissions
 
 
 async def parse_userid(message, args):
@@ -85,7 +85,7 @@ async def profile_function(message, args, client, **kwargs):
             viewinfs = bool(int(viewinfs))
         else:
             viewinfs = False
-        moderator = message.author.permissions_in(message.channel).ban_members
+        moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
         if moderator or (viewinfs and user_object.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
 
@@ -112,43 +112,39 @@ async def help_function(message, args, client, **kwargs):
         # We're just doing category info.
 
         # Initialise embed.
-        embed = discord.Embed(title="Category Listing", color=0x00db87)
-        embed.set_author(name="Sonnet Help")
+        commands_embed = discord.Embed(title="Category Listing", color=0x00db87)
+        commands_embed.set_author(name="Sonnet Help")
 
         # Start creating module listing.
         for modules in kwargs["cmds"]:
-            embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
+            commands_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
     else:
-        # We're looking up a category.
 
         # Initialise embed.
-        embed = discord.Embed(title=f"Commands in Category \"{args[0].lower()}\"", color=0x00db87)
-        embed.set_author(name="Sonnet Help")
+        commands_embed = discord.Embed(title=f"Commands in Category \"{args[0].lower()}\"", color=0x00db87)
+        commands_embed.set_author(name="Sonnet Help")
 
         # Start creating command listing.
-        cmds = []
-        for module in kwargs["cmds"]:
-            # Check we're working with the right category.
-            if module.category_info['name'] == args[0].lower():
-                # Now we're in the correct category, generate the fields.
-                for commands in module.commands.keys():
-                    cmds.append(module.commands[commands])
-                # We can now break out of this for loop.
-                break
+        command_module = [i for i in kwargs["cmds"] if i.category_info['name'] == args[0].lower()]
+        if command_module:
+            module = command_module[0]
+            cmds = [module.commands[i] for i in module.commands.keys() if not 'alias' in module.commands[i].keys()]
+
+        else:
+            commands_embed.add_field(name="No commands found in this category.", value="Maybe you misspelled?", inline=False)
+            await message.channel.send(embed=commands_embed)
+            return
 
         # Load prefix
-        PREFIX = load_message_config(message.guild.id, kwargs["ramfs"])["prefix"]
+        PREFIX = kwargs["conf_cache"]["prefix"]
 
         # Now we generate the actual embed.
-        if not cmds:
-            embed.add_field(name="No commands found in this category.", value="Maybe you misspelled?", inline=False)
-        else:
-            for command in cmds:
-                # Add field.
-                embed.add_field(name=PREFIX + command['pretty_name'], value=command['description'], inline=False)
+        for command in cmds:
+            # Add field.
+            commands_embed.add_field(name=PREFIX + command['pretty_name'], value=command['description'], inline=False)
 
     # Now we have the final embed. Send it.
-    await message.channel.send(embed=embed)
+    await message.channel.send(embed=commands_embed)
 
 
 async def grab_guild_info(message, args, client, **kwargs):
@@ -195,6 +191,12 @@ commands = {
         'cache': 'keep',
         'execute': ping_function
         },
+    'user-info': {
+        'alias': 'profile'
+        },
+    'userinfo': {
+        'alias': 'profile'
+        },
     'profile': {
         'pretty_name': 'profile [user]',
         'description': 'Get a users profile',
@@ -215,6 +217,9 @@ commands = {
         'permission': 'everyone',
         'cache': 'keep',
         'execute': avatar_function
+        },
+    'server-info': {
+        'alias': 'serverinfo'
         },
     'serverinfo': {
         'pretty_name': 'serverinfo',
@@ -239,4 +244,4 @@ commands = {
         }
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3"

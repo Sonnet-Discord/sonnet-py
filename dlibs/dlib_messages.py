@@ -66,6 +66,12 @@ async def on_message_delete(message, **kargs):
 
             await catch_logging_error(message_log, message_embed, files)
 
+            # Cleanup files
+            if files:
+                for i in files:
+                    i.fp._fp.close()
+                    i.fp.close()
+
 
 async def attempt_message_delete(message):
     try:
@@ -282,7 +288,7 @@ async def on_message(message, **kargs):
         asyncio.create_task(log_message_files(message, kargs["kernel_ramfs"]))
 
     # Check if this is meant for us.
-    if not message.content.startswith(mconf["prefix"]):
+    if not (message.content.startswith(mconf["prefix"])) or message_deleted:
         if client.user.mentioned_in(message) and str(client.user.id) in message.content:
             await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
         return
@@ -296,7 +302,9 @@ async def on_message(message, **kargs):
 
     # Process commands
     if command in command_modules_dict.keys():
-        permission = await parse_permissions(message, command_modules_dict[command]['permission'])
+        if "alias" in command_modules_dict[command].keys():
+            command = command_modules_dict[command]["alias"]
+        permission = await parse_permissions(message, mconf, command_modules_dict[command]['permission'])
         try:
             if permission:
                 stats["end"] = round(time.time() * 100000)
@@ -311,7 +319,8 @@ async def on_message(message, **kargs):
                     bot_start=bot_start_time,
                     dlibs=kargs["dynamiclib_modules"][0],
                     main_version=main_version_info,
-                    kernel_ramfs=kargs["kernel_ramfs"]
+                    kernel_ramfs=kargs["kernel_ramfs"],
+                    conf_cache=mconf
                     )
 
                 # Regenerate cache
@@ -331,4 +340,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.2"
+version_info = "1.1.3"
