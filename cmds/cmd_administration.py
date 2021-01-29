@@ -220,9 +220,6 @@ commands = {
             'cache': 'keep',
             'execute': set_view_infractions
             },
-    'prefix': {
-        'alias' : 'set-prefix'
-        },
     'set-prefix': {
         'pretty_name': 'set-prefix <prefix>',
         'description': 'Set the Guild prefix',
