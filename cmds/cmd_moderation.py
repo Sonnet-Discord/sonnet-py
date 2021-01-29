@@ -18,11 +18,12 @@ from lib_parsers import grab_files, generate_reply_field
 
 
 # Catches error if the bot cannot message the user
-async def catch_dm_error(user, contents):
+async def catch_dm_error(user, contents, log_channel):
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
-        pass
+        if log_channel:
+            await log_channel.send("ERROR: Could not DM user")
 
 
 # Sends an infraction to database and log channels if user exists
@@ -71,7 +72,7 @@ async def log_infraction(message, client, user, moderator_id, infraction_reason,
     dm_embed.add_field(name="Reason", value=infraction_reason)
     if send_message:
         asyncio.create_task(log_channel.send(embed=embed))
-    dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed))
+    dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed, log_channel))
     return (generated_id, dm_sent)
 
 
