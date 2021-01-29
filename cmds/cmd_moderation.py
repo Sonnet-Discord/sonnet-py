@@ -569,6 +569,12 @@ commands = {
         'cache': 'keep',
         'execute': unmute_user
         },
+    'warnings' : {
+        'alias' : 'search-infractions'
+        },
+    'warns' : {
+        'alias' : 'search-infractions'
+        },
     'search-infractions':
         {
             'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [--no-automod]',
@@ -577,6 +583,9 @@ commands = {
             'cache': 'keep',
             'execute': search_infractions_by_user
             },
+    'get-infraction' : {
+        'alias' : 'infraction-details'
+        },
     'infraction-details':
         {
             'pretty_name': 'infraction-details <infractionID>',
@@ -585,6 +594,12 @@ commands = {
             'cache': 'keep',
             'execute': get_detailed_infraction
             },
+    'remove-infraction' : {
+        'alias' : 'delete-infraction'
+        },
+    'rm-infraction' : {
+        'alias' : 'delete-infraction'
+        },
     'delete-infraction':
         {
             'pretty_name': 'delete-infraction <infractionID>',
@@ -593,6 +608,9 @@ commands = {
             'cache': 'keep',
             'execute': delete_infraction
             },
+    'get-message' : {
+        'alias' : 'grab-message'
+        },
     'grab-message':
         {
             'pretty_name': 'grab-message <channelID> <messageID>',
