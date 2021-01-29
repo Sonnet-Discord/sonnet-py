@@ -302,6 +302,8 @@ async def on_message(message, **kargs):
 
     # Process commands
     if command in command_modules_dict.keys():
+        if "alias" in command_modules_dict[command].keys():
+            command = command_modules_dict[command]["alias"]
         permission = await parse_permissions(message, mconf, command_modules_dict[command]['permission'])
         try:
             if permission:

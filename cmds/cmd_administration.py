@@ -209,9 +209,9 @@ commands = {
         'cache': 'purge',
         'execute': gdpr_database
         },
-    'member-view-infractions':
+    'set-viewinfractions':
         {
-            'pretty_name': 'member-view-infractions <boolean value>',
+            'pretty_name': 'set-viewinfractions <bool>',
             'description': 'Set whether members of the guild can view their own infraction count',
             'permission': 'administrator',
             'cache': 'keep',

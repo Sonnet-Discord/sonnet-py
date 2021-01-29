@@ -293,17 +293,23 @@ commands = {
             'cache': 'regenerate',
             'execute': set_blacklist_infraction_level
             },
-    'blacklist-whitelist':
+    'blacklist-whitelist': {
+        'alias': 'set-whitelist'
+        },
+    'set-whitelist':
         {
-            'pretty_name': 'blacklist-whitelist <role>',
+            'pretty_name': 'set-whitelist <role>',
             'description': 'Set a role that grants immunity from blacklisting',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': change_rolewhitelist
             },
-    'antispam-set':
+    'antispam-set': {
+        'alias': 'set-antispam'
+        },
+    'set-antispam':
         {
-            'pretty_name': 'antispam-set <messages> <seconds>',
+            'pretty_name': 'set-antispam <messages> <seconds>',
             'description': 'Set how many messages in seconds to trigger antispam automute',
             'permission': 'administrator',
             'cache': 'regenerate',

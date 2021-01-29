@@ -87,14 +87,13 @@ commands = {
         'cache': 'regenerate',
         'execute': set_starboard_emoji
         },
-    'starboard-enabled':
-        {
-            'pretty_name': 'starboard-enabled <boolean value>',
-            'description': 'Toggle starboard on or off',
-            'permission': 'administrator',
-            'cache': 'regenerate',
-            'execute': set_starboard_use
-            },
+    'starboard-enabled': {
+        'pretty_name': 'starboard-enabled <bool>',
+        'description': 'Toggle starboard on or off',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': set_starboard_use
+        },
     'starboard-count':
         {
             'pretty_name': 'starboard-count <number>',
