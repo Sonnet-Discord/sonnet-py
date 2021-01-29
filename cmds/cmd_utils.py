@@ -192,10 +192,10 @@ commands = {
         'execute': ping_function
         },
     'user-info': {
-        'alias' : 'profile'
+        'alias': 'profile'
         },
     'userinfo': {
-        'alias' : 'profile'
+        'alias': 'profile'
         },
     'profile': {
         'pretty_name': 'profile [user]',
@@ -218,8 +218,8 @@ commands = {
         'cache': 'keep',
         'execute': avatar_function
         },
-    'server-info' : {
-        'alias' : 'serverinfo'
+    'server-info': {
+        'alias': 'serverinfo'
         },
     'serverinfo': {
         'pretty_name': 'serverinfo',

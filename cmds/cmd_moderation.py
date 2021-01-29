@@ -570,11 +570,11 @@ commands = {
         'cache': 'keep',
         'execute': unmute_user
         },
-    'warnings' : {
-        'alias' : 'search-infractions'
+    'warnings': {
+        'alias': 'search-infractions'
         },
-    'list-infractions' : {
-        'alias' : 'search-infractions'
+    'list-infractions': {
+        'alias': 'search-infractions'
         },
     'search-infractions':
         {
@@ -584,8 +584,8 @@ commands = {
             'cache': 'keep',
             'execute': search_infractions_by_user
             },
-    'get-infraction' : {
-        'alias' : 'infraction-details'
+    'get-infraction': {
+        'alias': 'infraction-details'
         },
     'infraction-details':
         {
@@ -595,11 +595,11 @@ commands = {
             'cache': 'keep',
             'execute': get_detailed_infraction
             },
-    'remove-infraction' : {
-        'alias' : 'delete-infraction'
+    'remove-infraction': {
+        'alias': 'delete-infraction'
         },
-    'rm-infraction' : {
-        'alias' : 'delete-infraction'
+    'rm-infraction': {
+        'alias': 'delete-infraction'
         },
     'delete-infraction':
         {
@@ -609,8 +609,8 @@ commands = {
             'cache': 'keep',
             'execute': delete_infraction
             },
-    'get-message' : {
-        'alias' : 'grab-message'
+    'get-message': {
+        'alias': 'grab-message'
         },
     'grab-message':
         {

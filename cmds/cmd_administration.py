@@ -209,8 +209,8 @@ commands = {
         'cache': 'purge',
         'execute': gdpr_database
         },
-    'viewinfractions':{
-        'alias' : 'set-viewinfractions'
+    'viewinfractions': {
+        'alias': 'set-viewinfractions'
         },
     'set-viewinfractions':
         {
