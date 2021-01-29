@@ -141,26 +141,26 @@ async def set_view_infractions(message, args, client, **kwargs):
 
     if args:
         gate = parse_boolean(args[0])
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("member-view-infractions", int(gate))
     else:
-        gate = False
+        with db_hlapi(message.guild.id) as database:
+            gate = bool(int(database.grab_config("member-view-infractions")))
 
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("member-view-infractions", int(gate))
-
-    await message.channel.send(f"Member View Own Infractions set to {gate}")
+    await message.channel.send(f"Member View Own Infractions is set to {gate}")
 
 
 async def set_prefix(message, args, client, **kwargs):
 
     if args:
         prefix = args[0]
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("prefix", prefix)
     else:
-        prefix = GLOBAL_PREFIX
+        with db_hlapi(message.guild.id) as database:
+            prefix = database.grab_config("prefix")
 
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("prefix", prefix)
-
-    await message.channel.send(f"Updated prefix to `{prefix}`")
+    await message.channel.send(f"Prefix set to `{prefix}`")
 
 
 async def set_mute_role(message, args, client, **kwargs):
