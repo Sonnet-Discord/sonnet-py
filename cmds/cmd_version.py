@@ -117,6 +117,12 @@ async def print_stats(message, args, client, **kwargs):
 category_info = {'name': 'version', 'pretty_name': 'Version', 'description': 'Information about the current sonnet version'}
 
 commands = {
+    'version' : {
+        'alias' : 'version-info'
+        },
+    'versions' : {
+        'alias' : 'version-info'
+        },
     'version-info': {
         'pretty_name': 'version-info',
         'description': 'Prints version info on sonnet modules',
@@ -131,6 +137,9 @@ commands = {
         'cache': 'keep',
         'execute': uptime
         },
+    'stats' : {
+        'alias' : 'statistics'
+        },
     'statistics': {
         'pretty_name': 'statistics',
         'description': 'Prints stats about messages',
@@ -140,4 +149,4 @@ commands = {
         }
     }
 
-version_info = "1.1.1"
+version_info = "1.1.3-DEV"
