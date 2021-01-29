@@ -573,7 +573,7 @@ commands = {
     'warnings' : {
         'alias' : 'search-infractions'
         },
-    'warns' : {
+    'list-infractions' : {
         'alias' : 'search-infractions'
         },
     'search-infractions':
