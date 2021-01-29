@@ -191,6 +191,12 @@ commands = {
         'cache': 'keep',
         'execute': ping_function
         },
+    'user-info': {
+        'alias' : 'profile'
+        },
+    'userinfo': {
+        'alias' : 'profile'
+        },
     'profile': {
         'pretty_name': 'profile [user]',
         'description': 'Get a users profile',
@@ -211,6 +217,9 @@ commands = {
         'permission': 'everyone',
         'cache': 'keep',
         'execute': avatar_function
+        },
+    'server-info' : {
+        'alias' : 'serverinfo'
         },
     'serverinfo': {
         'pretty_name': 'serverinfo',
