@@ -25,11 +25,10 @@ async def set_starboard_emoji(message, args, client, **kwargs):
 
     if args:
         emoji = args[0]
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("starboard-emoji", emoji)
     else:
         emoji = kwargs["conf_cache"]["starboard-emoji"]
-
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("starboard-emoji", emoji)
 
     await message.channel.send(f"Updated starboard emoji to {emoji}")
 
@@ -38,11 +37,10 @@ async def set_starboard_use(message, args, client, **kwargs):
 
     if args:
         gate = parse_boolean(args[0])
+        with db_hlapi(message.guild.id) as database:
+            database.add_config("starboard-enabled", int(gate))
     else:
         gate = bool(int(kwargs["conf_cache"]["starboard-enabled"]))
-
-    with db_hlapi(message.guild.id) as database:
-        database.add_config("starboard-enabled", int(gate))
 
     await message.channel.send(f"Starboard set to {bool(gate)}")
 
