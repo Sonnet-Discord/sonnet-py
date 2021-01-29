@@ -288,7 +288,7 @@ async def on_message(message, **kargs):
         asyncio.create_task(log_message_files(message, kargs["kernel_ramfs"]))
 
     # Check if this is meant for us.
-    if not message.content.startswith(mconf["prefix"]):
+    if not (message.content.startswith(mconf["prefix"])) or message_deleted:
         if client.user.mentioned_in(message) and str(client.user.id) in message.content:
             await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
         return
