@@ -9,12 +9,9 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 import lib_parsers
 importlib.reload(lib_parsers)
-import lib_loaders
-importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config
 
 
 async def starboard_channel_change(message, args, client, **kwargs):
@@ -29,7 +26,7 @@ async def set_starboard_emoji(message, args, client, **kwargs):
     if args:
         emoji = args[0]
     else:
-        emoji = load_message_config(message.guild.id, kwargs["ramfs"])["starboard-emoji"]
+        emoji = kwargs["conf_cache"]["starboard-emoji"]
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("starboard-emoji", emoji)
@@ -42,7 +39,7 @@ async def set_starboard_use(message, args, client, **kwargs):
     if args:
         gate = parse_boolean(args[0])
     else:
-        gate = bool(int(load_message_config(message.guild.id, kwargs["ramfs"])["starboard-enabled"]))
+        gate = bool(int(kwargs["conf_cache"]["starboard-enabled"]))
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("starboard-enabled", int(gate))
@@ -66,7 +63,7 @@ async def set_starboard_count(message, args, client, **kwargs):
             await message.channel.send("Invalid input, please enter a number")
 
     else:
-        count = load_message_config(message.guild.id, kwargs["ramfs"])["starboard-count"]
+        count = kwargs["conf_cache"]["starboard-count"]
         await message.channel.send(f"Starboard count is {count}")
 
 

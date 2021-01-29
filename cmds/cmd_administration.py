@@ -17,7 +17,7 @@ import lib_loaders
 importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
-from lib_loaders import load_message_config, read_vnum, write_vnum
+from lib_loaders import read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
 
@@ -122,7 +122,7 @@ async def gdpr_database(message, args, client, **kwargs):
     else:
         command = None
 
-    PREFIX = load_message_config(message.guild.id, ramfs)["prefix"]
+    PREFIX = kwargs["conf_cache"]["prefix"]
 
     commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
     if command and command in commands_dict.keys():

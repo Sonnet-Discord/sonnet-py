@@ -12,12 +12,9 @@ import sonnet_cfg
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
-import lib_loaders
-importlib.reload(lib_loaders)
 import lib_parsers
 importlib.reload(lib_parsers)
 
-from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions
 

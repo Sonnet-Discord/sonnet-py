@@ -7,12 +7,9 @@ import re2 as re
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
-import lib_loaders
-importlib.reload(lib_loaders)
 import lib_parsers
 importlib.reload(lib_parsers)
 
-from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_role
 
@@ -153,7 +150,7 @@ async def regex_notifier_remove(message, args, client, **kwargs):
 async def list_blacklist(message, args, client, **kwargs):
 
     # Load temp ramfs to avoid passing as args
-    mconf = load_message_config(message.guild.id, kwargs["ramfs"])
+    mconf = kwargs["conf_cache"]
 
     # Format blacklist
     blacklist = {}
@@ -213,7 +210,7 @@ async def change_rolewhitelist(message, args, client, **kwargs):
 async def antispam_set(message, args, client, **kwargs):
 
     if not args:
-        antispam = load_message_config(message.guild.id, kwargs["ramfs"])["antispam"]
+        antispam = kwargs["conf_cache"]["antispam"]
         await message.channel.send(f"Antispam timings are {','.join(antispam)}")
         return
 
