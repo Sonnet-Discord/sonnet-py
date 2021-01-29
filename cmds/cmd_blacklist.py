@@ -293,6 +293,9 @@ commands = {
     'blacklist-whitelist': {
         'alias': 'set-whitelist'
         },
+    'whitelist-set': {
+        'alias': 'set-whitelist'
+        },
     'set-whitelist':
         {
             'pretty_name': 'set-whitelist <role>',
