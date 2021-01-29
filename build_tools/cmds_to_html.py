@@ -43,7 +43,7 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     outlist.append("</h2>")
 
     # Create table
-    outlist.append("<table>")
+    outlist.append("<table class=\"lastctr\">")
 
     outlist.append("\t<tr>")
     outlist.append("\t\t<th>Command Syntax</th>")
@@ -54,8 +54,7 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
     for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]:
 
-        command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;").split(" ")
-        command_name = f"{command_name[0]} " + "&nbsp;".join(command_name[1:]).replace("&gt;&nbsp;&lt;", "&gt; &lt;")
+        command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;")
 
         command_perms = module.commands[i]['permission'][0].upper()
         command_perms += module.commands[i]['permission'][1:].lower()
