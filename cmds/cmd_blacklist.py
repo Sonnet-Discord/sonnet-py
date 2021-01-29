@@ -190,7 +190,8 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
     if args:
         action = args[0].lower()
     else:
-        action = ""
+        await message.channel.send(f"blacklist action is `{kwargs['conf_cache']['blacklist-action']}`")
+        return
 
     if not action in ["warn", "kick", "mute", "ban"]:
         await message.channel.send("Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
