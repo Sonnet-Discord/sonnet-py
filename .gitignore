@@ -12,3 +12,6 @@ err.log
 
 # Remove config file to preserve sanity
 sonnet_cfg.py
+
+# Remove .idea folder for users using PyCharm
+.idea/
