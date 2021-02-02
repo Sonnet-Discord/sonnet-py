@@ -3,7 +3,7 @@
 
 import importlib
 
-import json, random, os, math
+import json, random, os, math, ctypes, time, io
 from sonnet_cfg import *
 
 import lib_db_obfuscator
@@ -128,24 +128,27 @@ def load_message_config(guild_id, ramfs):
 
 def generate_infractionid():
     try:
-        num_words = os.path.getsize("datastore/wordlist.cache.db") - 1
         with open("datastore/wordlist.cache.db", "rb") as words:
-            chunksize = int.from_bytes(words.read(1), "big")
-            num_words /= chunksize
+            chunksize = words.read(1)[0]
+            num_words = (words.seek(0, io.SEEK_END) - 1) / chunksize
             values = ([random.randint(0, (num_words - 1)) for i in range(3)])
-            output = ""
+            output = []
             for i in values:
                 words.seek(i * chunksize + 1)
-                preout = (words.read(int.from_bytes(words.read(1), "big"))).decode("utf8")
-                output += preout[0].upper() + preout[1:]
-        return output
+                output.append((words.read(words.read(1)[0])).decode("utf8"))
+
+        return "".join(output)
 
     except FileNotFoundError:
-        with open("common/wordlist.txt", "r") as words:
+        with open("common/wordlist.txt", "rb") as words:
             maxval = 0
             structured_data = []
-            for i in words.read().encode("utf8").split(b"\n"):
-                if i:
+            for i in words.read().split(b"\n"):
+                if i and not len(i) > 85 and not b"\xc3" in i:
+
+                    i = i.decode("utf8")
+                    i = (i[0].upper() + i[1:].lower()).encode("utf8")
+
                     structured_data.append(bytes([len(i)]) + i)
                     if len(i) + 1 > maxval:
                         maxval = len(i) + 1

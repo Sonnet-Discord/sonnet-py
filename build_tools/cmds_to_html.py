@@ -23,7 +23,6 @@ outlist = []
 starter_padding = 3
 outlist.append("")
 
-
 # Make alias mappings
 aliashmap = {}
 [aliashmap.update(module.commands) for module in command_modules]
