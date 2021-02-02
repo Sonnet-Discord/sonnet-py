@@ -10,7 +10,7 @@ import sys
 import lib_loaders
 importlib.reload(lib_loaders)
 
-from lib_loaders import read_vnum
+from lib_loaders import read_vnum, clib_exists
 
 
 def prettyprint(inlist):
@@ -53,6 +53,8 @@ async def print_version_info(message, args, client, **kwargs):
 
     for a in prettyprint([[i.category_info['pretty_name'], i.version_info] for i in modules]):
         fmt += f"  {a}\n"
+
+    fmt += f"\nRunning C accel: {clib_exists}\n"
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
 
@@ -149,4 +151,4 @@ commands = {
         }
     }
 
-version_info = "1.1.3"
+version_info = "1.1.4-DEV"
