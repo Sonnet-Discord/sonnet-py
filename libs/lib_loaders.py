@@ -137,7 +137,7 @@ def load_message_config(guild_id, ramfs):
 def generate_infractionid():
     if os.path.isfile("datastore/wordlist.cache.db"):
         if clib_exists:
-            buf = bytes(255)
+            buf = bytes(256)
             loader.load_words(3, int(time.time() * 1000000), buf)
             return buf.decode("utf8")
         else:
