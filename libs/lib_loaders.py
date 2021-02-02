@@ -11,7 +11,7 @@ importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
 
 try:
-    loader = ctypes.CDLL("./libs/compiled/libsfdbc.sonnet.so")
+    loader = ctypes.CDLL("./libs/compiled/sonnet.1.1.4-DEV.0.so")
     loader.load_words.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p]
     loader.load_words.restype = ctypes.c_void_p
     clib_exists = True
