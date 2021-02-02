@@ -10,6 +10,14 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
 
+try:
+    loader = ctypes.CDLL("./libs/compiled/libsfdbc.sonnet.so")
+    loader.load_words.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p]
+    loader.load_words.restype = ctypes.c_void_p
+    clib_exists = True
+except OSError:
+    clib_exists = False
+
 
 # LCIF system ported for blacklist loader, converted to little endian
 def directBinNumber(inData, length):
@@ -127,19 +135,24 @@ def load_message_config(guild_id, ramfs):
 
 
 def generate_infractionid():
-    try:
-        with open("datastore/wordlist.cache.db", "rb") as words:
-            chunksize = words.read(1)[0]
-            num_words = (words.seek(0, io.SEEK_END) - 1) / chunksize
-            values = ([random.randint(0, (num_words - 1)) for i in range(3)])
-            output = []
-            for i in values:
-                words.seek(i * chunksize + 1)
-                output.append((words.read(words.read(1)[0])).decode("utf8"))
+    if os.path.isfile("datastore/wordlist.cache.db"):
+        if clib_exists:
+            buf = bytes(255)
+            loader.load_words(3, int(time.time() * 1000000), buf)
+            return buf.decode("utf8")
+        else:
+            with open("datastore/wordlist.cache.db", "rb") as words:
+                chunksize = words.read(1)[0]
+                num_words = (words.seek(0, io.SEEK_END) - 1) / chunksize
+                values = ([random.randint(0, (num_words - 1)) for i in range(3)])
+                output = []
+                for i in values:
+                    words.seek(i * chunksize + 1)
+                    output.append((words.read(words.read(1)[0])).decode("utf8"))
 
-        return "".join(output)
+            return "".join(output)
 
-    except FileNotFoundError:
+    else:
         with open("common/wordlist.txt", "rb") as words:
             maxval = 0
             structured_data = []
