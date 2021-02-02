@@ -239,7 +239,7 @@ async def parse_role(message, args, db_entry):
         role = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
-            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry)))}")
+            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
         return
 
     try:
