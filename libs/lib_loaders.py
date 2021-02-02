@@ -139,7 +139,7 @@ def generate_infractionid():
         if clib_exists:
             buf = bytes(256)
             loader.load_words(3, int(time.time() * 1000000), buf)
-            return buf.decode("utf8")
+            return buf.rstrip(b"\x00").decode("utf8")
         else:
             with open("datastore/wordlist.cache.db", "rb") as words:
                 chunksize = words.read(1)[0]
