@@ -13,10 +13,13 @@ void load_words(int retamount, unsigned long long seed, char* pointer) {
     int size = (ftell(fp) - 1) / maxln ;
 
     // Make mini buffer to hold words
-    char buf[maxln];
+    char buf[256];
 
     // Seed random number generator
     srand(seed);
+
+    // Empty buffer
+    memset(pointer, 0, strlen(pointer));
 
     // Grab X amount of words
     for ( int i = 0 ; i < retamount; i++ ) {
