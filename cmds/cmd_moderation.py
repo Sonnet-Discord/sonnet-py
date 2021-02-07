@@ -198,6 +198,9 @@ async def unban_user(message, args, client, **kwargs):
     except IndexError:
         await message.channel.send("No user specified")
         return
+    except discord.errors.NotFound:
+        await message.channel.send("Invalid User")
+        return
 
     if not user:
         await message.channel.send("Invalid User")
@@ -622,4 +625,4 @@ commands = {
             }
     }
 
-version_info = "1.1.3"
+version_info = "1.1.3-1"
