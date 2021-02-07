@@ -52,25 +52,10 @@ async def on_reaction_add(reaction, user, **kargs):
                     await channel.send(embed=starboard_embed)
 
 
-async def on_raw_reaction_add(payload, **kargs):
-    if payload.guild_id:
-        inc_statistics([payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"]])
-        try:
-            message = await kargs["client"].get_channel(payload.channel_id).fetch_message(payload.message_id)
-            reaction = [i for i in message.reactions if str(i) == str(payload.emoji)]
-            if reaction:
-                reaction = reaction[0]
-                await asyncio.sleep(0.05)  # Wait 50ms to not overload db
-                await on_reaction_add(reaction, payload.user_id, client=kargs["client"], ramfs=kargs["ramfs"], kernel_ramfs=kargs["kernel_ramfs"])
-        except discord.errors.HTTPException:
-            pass  # never again, never again
-
-
-category_info = {'name': 'Reactions'}
+category_info = {'name': 'Starboard'}
 
 commands = {
-    "on-raw-reaction-add": on_raw_reaction_add,
     "on-reaction-add": on_reaction_add,
     }
 
-version_info = "1.1.3"
+version_info = "1.1.3-2"
