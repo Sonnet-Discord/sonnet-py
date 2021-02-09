@@ -293,7 +293,7 @@ async def mute_user(message, args, client, **kwargs):
 
                 try:
                     await user.remove_roles(mute_role)
-                except discord.errors.Forbidden:
+                except discord.errors.HTTPException:
                     pass
 
 
@@ -625,4 +625,4 @@ commands = {
             }
     }
 
-version_info = "1.1.3-1"
+version_info = "1.1.4-DEV"
