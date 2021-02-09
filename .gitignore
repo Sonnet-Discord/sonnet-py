@@ -12,3 +12,6 @@ err.log
 
 # Remove compiled binaries
 compiled
+
+# Remove blacklist file
+blacklist.json
