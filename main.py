@@ -37,7 +37,7 @@ dynamiclib_modules = []
 dynamiclib_modules_dict = {}
 
 
-def sonnet_load_command_modules():
+def sonnet_load_command_modules(*args):
     print("Loading Kernel Modules")
     # Globalize variables
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -181,12 +181,12 @@ kernel_ramfs = ram_filesystem()
 from LeXdPyK_conf import BOT_OWNER
 
 
-def regenerate_ramfs():
+def regenerate_ramfs(*args):
     global ramfs
     ramfs = ram_filesystem()
 
 
-def sonnet_reload_command_modules():
+def sonnet_reload_command_modules(*args):
     print("Reloading Kernel Modules")
     # Init vars
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -205,9 +205,37 @@ def sonnet_reload_command_modules():
     # Regen tempramfs
     regenerate_ramfs()
 
+# import blacklist
+import json
+
+# Im sorry sweet prince - UB 2021-02-09
+try:
+    with open("common/blacklist.json", "r") as blacklist_file:
+        blacklist = json.load(blacklist_file)
+except FileNotFoundError:
+    blacklist = {"guild":[],"user":[]}
+    with open("common/blacklist.json", "w") as blacklist_file:
+        json.dump(blacklist, blacklist_file)
+
+
+def sonnet_blacklist_guild(*args):
+
+    blacklist["guild"].append(int(args[0][0]))
+    with open("common/blacklist.json", "w") as blacklist_file:
+        json.dump(blacklist, blacklist_file)
+
+
+def sonnet_blacklist_user(*args):
+
+    blacklist["user"].append(int(args[0][0]))
+    with open("common/blacklist.json", "w") as blacklist_file:
+        json.dump(blacklist, blacklist_file)
+
 
 # Generate debug command subset
 debug_commands = {}
+debug_commands["debug-add-guild-blacklist"] = sonnet_blacklist_guild
+debug_commands["debug-add-user-blacklist"] = sonnet_blacklist_user
 debug_commands["debug-modules-load"] = sonnet_load_command_modules
 debug_commands["debug-modules-reload"] = sonnet_reload_command_modules
 debug_commands["debug-drop-cache"] = regenerate_ramfs
@@ -261,6 +289,40 @@ async def kernel_2(argtype, arg1, arg2):
             )
 
 
+async def blacklist_message(message):
+
+    if message.guild.id in blacklist["guild"] or message.author.id in blacklist["user"]:
+        try:
+            message.delete()
+        except discord.errors.HTTPException:
+            pass
+        return True
+
+    return False
+
+
+async def blacklist_reaction(reaction, user):
+
+    if reaction.message.guild.id in blacklist["guild"]:
+        try:
+            message.delete()
+        except discord.errors.HTTPException:
+            pass
+        return True
+    elif user.id in blacklist["user"]:
+        return True
+
+    return False
+
+
+async def blacklist_payload_0(payload):
+    return payload.guild_id in blacklist["guild"]
+
+
+async def blacklist_payload_1(payload):
+    return payload.guild_id in blacklist["guild"] or payload.user_id in blacklist["user"]
+
+
 @Client.event
 async def on_connect():
     await kernel_0("on-connect")
@@ -284,9 +346,14 @@ async def on_resumed():
 @Client.event
 async def on_message(message):
 
+    if await blacklist_message(message):
+        return
+
+    static_args = message.content.split(" ")
+
     # If bot owner run a debug command
-    if message.content in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER):
-        debug_commands[message.content]()
+    if static_args[0] in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER):
+        debug_commands[static_args[0]](static_args[1:])
         await message.channel.send("Debug command has run")
         return
 
@@ -299,6 +366,10 @@ async def on_message(message):
 
 @Client.event
 async def on_message_delete(message):
+
+    if await blacklist_message(message):
+        return
+
     try:
         await kernel_1("on-message-delete", message)
     except Exception as e:
@@ -317,6 +388,10 @@ async def on_bulk_message_delete(messages):
 
 @Client.event
 async def on_raw_message_delete(payload):
+
+    if await blacklist_payload_0(payload):
+        return
+
     try:
         await kernel_1("on-raw-message-delete", payload)
     except Exception as e:
@@ -326,6 +401,10 @@ async def on_raw_message_delete(payload):
 
 @Client.event
 async def on_raw_bulk_message_delete(payload):
+
+    if await blacklist_payload_0(payload):
+        return
+
     try:
         await kernel_1("on-raw-bulk-message-delete", payload)
     except Exception as e:
@@ -335,6 +414,10 @@ async def on_raw_bulk_message_delete(payload):
 
 @Client.event
 async def on_message_edit(old_message, message):
+
+    if await blacklist_message(message):
+        return
+
     try:
         await kernel_2("on-message-edit", old_message, message)
     except Exception as e:
@@ -353,6 +436,10 @@ async def on_raw_message_edit(payload):
 
 @Client.event
 async def on_reaction_add(reaction, user):
+
+    if await blacklist_reaction(reaction, user):
+        return
+
     try:
         await kernel_2("on-reaction-add", reaction, user)
     except Exception as e:
@@ -362,6 +449,10 @@ async def on_reaction_add(reaction, user):
 
 @Client.event
 async def on_raw_reaction_add(payload):
+
+    if await blacklist_payload_1(payload):
+        return
+
     try:
         await kernel_1("on-raw-reaction-add", payload)
     except Exception as e:
@@ -371,6 +462,10 @@ async def on_raw_reaction_add(payload):
 
 @Client.event
 async def on_reaction_remove(reaction, user):
+
+    if await blacklist_reaction(reaction, user):
+        return
+
     try:
         await kernel_2("on-reaction-remove", reaction, user)
     except Exception as e:
@@ -380,6 +475,10 @@ async def on_reaction_remove(reaction, user):
 
 @Client.event
 async def on_raw_reaction_remove(payload):
+
+    if await blacklist_payload_1(payload):
+        return
+
     try:
         await kernel_1("on-raw-reaction-remove", payload)
     except Exception as e:
@@ -389,6 +488,10 @@ async def on_raw_reaction_remove(payload):
 
 @Client.event
 async def on_reaction_clear(message, reactions):
+
+    if await blacklist_message(message):
+        return
+
     try:
         await kernel_2("on-reaction-clear", message, reactions)
     except Exception as e:
@@ -398,6 +501,10 @@ async def on_reaction_clear(message, reactions):
 
 @Client.event
 async def on_raw_reaction_clear(payload):
+
+    if await blacklist_payload_0(payload):
+        return
+
     try:
         await kernel_1("on-raw-reaction-clear", payload)
     except Exception as e:
@@ -416,6 +523,10 @@ async def on_reaction_clear_emoji(reaction):
 
 @Client.event
 async def on_raw_reaction_clear_emoji(payload):
+
+    if await blacklist_payload_0(payload):
+        return
+
     try:
         await kernel_1("on-raw-reaction-clear-emoji", payload)
     except Exception as e:
@@ -463,7 +574,7 @@ async def on_member_unban(guild, user):
     await kernel_2("on-member-unban", guild, user)
 
 
-version_info = "1.1.1 'LeXdPyK 1.1'"
+version_info = "1.1.3-3 'LeXdPyK 1.1.1' KILNOV"
 bot_start_time = time.time()
 if TOKEN:
     Client.run(TOKEN, bot=True, reconnect=True)
