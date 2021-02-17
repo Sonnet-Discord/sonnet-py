@@ -46,15 +46,15 @@ def sonnet_load_command_modules(*args):
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
     importlib.invalidate_caches()
+
     # Init imports
-    for f in os.listdir('./cmds'):
-        if f.startswith("cmd_") and f.endswith(".py"):
-            print(f)
-            command_modules.append(importlib.import_module(f[:-3]))
-    for f in os.listdir("./dlibs"):
-        if f.startswith("dlib_") and f.endswith(".py"):
-            print(f)
-            dynamiclib_modules.append(importlib.import_module(f[:-3]))
+    for f in filter(lambda f: f.startswith("cmd_") and f.endswith(".py"), os.listdir('./cmds')):
+        print(f)
+        command_modules.append(importlib.import_module(f[:-3]))
+    for f in filter(lambda f: f.startswith("dlib_") and f.endswith(".py"), os.listdir("./dlibs")):
+        print(f)
+        dynamiclib_modules.append(importlib.import_module(f[:-3]))
+
     # Update hashmaps
     for module in command_modules:
         command_modules_dict.update(module.commands)
@@ -160,18 +160,13 @@ class ram_filesystem:
                 else:
                     return self.directory_table[folderpath[0]].tree()
             else:
-                return self.internal_tree()
+                datamap = [list(self.data_table.keys()), {}]
+                for folder in self.directory_table.keys():
+                    datamap[1][folder] = self.directory_table[folder].tree()
+                return datamap
+
         except KeyError:
             raise FileNotFoundError("Filepath does not exist")
-
-    def internal_tree(self):
-
-        datamap = [[], {}]
-        for folder in self.directory_table.keys():
-            datamap[1][folder] = self.directory_table[folder].internal_tree()
-        datamap[0] = list(self.data_table.keys())
-
-        return datamap
 
 
 # Initalize ramfs, kernel ramfs
@@ -205,6 +200,7 @@ def sonnet_reload_command_modules(*args):
     # Regen tempramfs
     regenerate_ramfs()
 
+
 # import blacklist
 import json
 
@@ -213,7 +209,7 @@ try:
     with open("common/blacklist.json", "r") as blacklist_file:
         blacklist = json.load(blacklist_file)
 except FileNotFoundError:
-    blacklist = {"guild":[],"user":[]}
+    blacklist = {"guild": [], "user": []}
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
@@ -241,6 +237,13 @@ debug_commands["debug-modules-reload"] = sonnet_reload_command_modules
 debug_commands["debug-drop-cache"] = regenerate_ramfs
 
 
+# A object used to pass error messages from the kernel callers to the event handlers
+class errtype:
+    def __init__(self, err, argtype):
+        self.err = err
+        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact <@!{BOT_OWNER}>"
+
+
 # Catch errors.
 @Client.event
 async def on_error(event, *args, **kwargs):
@@ -248,107 +251,88 @@ async def on_error(event, *args, **kwargs):
 
 
 async def kernel_0(argtype):
-    if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](
-            client=Client,
-            ramfs=ramfs,
-            bot_start=bot_start_time,
-            command_modules=[command_modules, command_modules_dict],
-            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info,
-            kernel_ramfs=kernel_ramfs
-            )
+    try:
+        if argtype in dynamiclib_modules_dict.keys():
+            await dynamiclib_modules_dict[argtype](
+                client=Client,
+                ramfs=ramfs,
+                bot_start=bot_start_time,
+                command_modules=[command_modules, command_modules_dict],
+                dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+                kernel_version=version_info,
+                kernel_ramfs=kernel_ramfs
+                )
+    except Exception as e:
+        return errtype(e, argtype)
+
+    return None
 
 
 async def kernel_1(argtype, arg1):
-    if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](
-            arg1,
-            client=Client,
-            ramfs=ramfs,
-            bot_start=bot_start_time,
-            command_modules=[command_modules, command_modules_dict],
-            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info,
-            kernel_ramfs=kernel_ramfs
-            )
+    try:
+        if argtype in dynamiclib_modules_dict.keys():
+            await dynamiclib_modules_dict[argtype](
+                arg1,
+                client=Client,
+                ramfs=ramfs,
+                bot_start=bot_start_time,
+                command_modules=[command_modules, command_modules_dict],
+                dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+                kernel_version=version_info,
+                kernel_ramfs=kernel_ramfs
+                )
+    except Exception as e:
+        return errtype(e, argtype)
+
+    return None
 
 
 async def kernel_2(argtype, arg1, arg2):
-    if argtype in dynamiclib_modules_dict.keys():
-        await dynamiclib_modules_dict[argtype](
-            arg1,
-            arg2,
-            client=Client,
-            ramfs=ramfs,
-            bot_start=bot_start_time,
-            command_modules=[command_modules, command_modules_dict],
-            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-            kernel_version=version_info,
-            kernel_ramfs=kernel_ramfs
-            )
+    try:
+        if argtype in dynamiclib_modules_dict.keys():
+            await dynamiclib_modules_dict[argtype](
+                arg1,
+                arg2,
+                client=Client,
+                ramfs=ramfs,
+                bot_start=bot_start_time,
+                command_modules=[command_modules, command_modules_dict],
+                dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+                kernel_version=version_info,
+                kernel_ramfs=kernel_ramfs
+                )
+    except Exception as e:
+        return errtype(e, argtype)
 
-
-async def blacklist_message(message):
-
-    if message.guild.id in blacklist["guild"] or message.author.id in blacklist["user"]:
-        try:
-            message.delete()
-        except discord.errors.HTTPException:
-            pass
-        return True
-
-    return False
-
-
-async def blacklist_reaction(reaction, user):
-
-    if reaction.message.guild.id in blacklist["guild"]:
-        try:
-            message.delete()
-        except discord.errors.HTTPException:
-            pass
-        return True
-    elif user.id in blacklist["user"]:
-        return True
-
-    return False
-
-
-async def blacklist_payload_0(payload):
-    return payload.guild_id in blacklist["guild"]
-
-
-async def blacklist_payload_1(payload):
-    return payload.guild_id in blacklist["guild"] or payload.user_id in blacklist["user"]
+    return None
 
 
 @Client.event
 async def on_connect():
-    await kernel_0("on-connect")
+    if e := await kernel_0("on-connect"):
+        raise e.err
 
 
 @Client.event
 async def on_disconnect():
-    await kernel_0("on-disconnect")
+    if e := await kernel_0("on-disconnect"):
+        raise e.err
 
 
 @Client.event
 async def on_ready():
-    await kernel_0("on-ready")
+    if e := await kernel_0("on-ready"):
+        raise e.err
 
 
 @Client.event
 async def on_resumed():
-    await kernel_0("on-resumed")
+    if e := await kernel_0("on-resumed"):
+        raise e.err
 
 
 @Client.event
 async def on_message(message):
-
-    if await blacklist_message(message):
-        return
-
     static_args = message.content.split(" ")
 
     # If bot owner run a debug command
@@ -357,224 +341,158 @@ async def on_message(message):
         await message.channel.send("Debug command has run")
         return
 
-    try:
-        await kernel_1("on-message", message)
-    except Exception as e:
-        await message.channel.send(f"FATAL ERROR in on-message\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-message", message):
+        await message.channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_message_delete(message):
-
-    if await blacklist_message(message):
-        return
-
-    try:
-        await kernel_1("on-message-delete", message)
-    except Exception as e:
-        await message.channel.send(f"FATAL ERROR in on-message-delete\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-message-delete", message):
+        await message.channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_bulk_message_delete(messages):
-    try:
-        await kernel_1("on-bulk-message-delete", messages)
-    except Exception as e:
-        await messages[0].channel.send(f"FATAL ERROR in on-bulk-message-delete\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-bulk-message-delete", messages):
+        await messages[0].channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_raw_message_delete(payload):
-
-    if await blacklist_payload_0(payload):
-        return
-
-    try:
-        await kernel_1("on-raw-message-delete", payload)
-    except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-message-delete\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-raw-message-delete", payload):
+        await Client.get_channel(payload.channel_id).send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_raw_bulk_message_delete(payload):
-
-    if await blacklist_payload_0(payload):
-        return
-
-    try:
-        await kernel_1("on-raw-bulk-message-delete", payload)
-    except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-bulk-message-delete\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-raw-bulk-message-delete", payload):
+        await Client.get_channel(payload.channel_id).send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_message_edit(old_message, message):
-
-    if await blacklist_message(message):
-        return
-
-    try:
-        await kernel_2("on-message-edit", old_message, message)
-    except Exception as e:
-        await message.channel.send(f"FATAL ERROR in on-message-edit\nPlease contact bot owner")
-        raise e
+    if e := await kernel_2("on-message-edit", old_message, message):
+        await message.channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_raw_message_edit(payload):
-    try:
-        await kernel_1("on-raw-message-edit", payload)
-    except Exception as e:
-        await Client.get_channel(payload.channel_id).send(f"FATAL ERROR in on-raw-message-edit\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-raw-message-edit", payload):
+        await Client.get_channel(payload.channel_id).send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_reaction_add(reaction, user):
-
-    if await blacklist_reaction(reaction, user):
-        return
-
-    try:
-        await kernel_2("on-reaction-add", reaction, user)
-    except Exception as e:
-        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-add\nPlease contact bot owner")
-        raise e
+    if e := await kernel_2("on-reaction-add", reaction, user):
+        await reaction.message.channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_raw_reaction_add(payload):
-
-    if await blacklist_payload_1(payload):
-        return
-
-    try:
-        await kernel_1("on-raw-reaction-add", payload)
-    except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-add\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-raw-reaction-add", payload):
+        await Client.get_channel(payload.channel_id).send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_reaction_remove(reaction, user):
-
-    if await blacklist_reaction(reaction, user):
-        return
-
-    try:
-        await kernel_2("on-reaction-remove", reaction, user)
-    except Exception as e:
-        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-remove\nPlease contact bot owner")
-        raise e
+    if e := await kernel_2("on-reaction-remove", reaction, user):
+        await reaction.message.channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_raw_reaction_remove(payload):
-
-    if await blacklist_payload_1(payload):
-        return
-
-    try:
-        await kernel_1("on-raw-reaction-remove", payload)
-    except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-remove\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-raw-reaction-remove", payload):
+        await Client.get_channel(payload.channel_id).send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_reaction_clear(message, reactions):
-
-    if await blacklist_message(message):
-        return
-
-    try:
-        await kernel_2("on-reaction-clear", message, reactions)
-    except Exception as e:
-        await message.channel.send(f"FATAL ERROR in on-reaction-clear\nPlease contact bot owner")
-        raise e
+    if e := await kernel_2("on-reaction-clear", message, reactions):
+        await message.channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_raw_reaction_clear(payload):
-
-    if await blacklist_payload_0(payload):
-        return
-
-    try:
-        await kernel_1("on-raw-reaction-clear", payload)
-    except Exception as e:
-        await Client.get_channel(payload.channel_id).send(f"FATAL ERROR in on-raw-reaction-clear\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-raw-reaction-clear", payload):
+        await Client.get_channel(payload.channel_id).send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_reaction_clear_emoji(reaction):
-    try:
-        await kernel_1("on-reaction-clear-emoji", reaction)
-    except Exception as e:
-        await reaction.message.channel.send(f"FATAL ERROR in on-reaction-clear-emoji\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-reaction-clear-emoji", reaction):
+        await reaction.message.channel.send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_raw_reaction_clear_emoji(payload):
-
-    if await blacklist_payload_0(payload):
-        return
-
-    try:
-        await kernel_1("on-raw-reaction-clear-emoji", payload)
-    except Exception as e:
-        await Client.get_channel(payload.channel_id).send("FATAL ERROR in on-raw-reaction-clear-emoji\nPlease contact bot owner")
-        raise e
+    if e := await kernel_1("on-raw-reaction-clear-emoji", payload):
+        await Client.get_channel(payload.channel_id).send(e.errmsg)
+        raise e.err
 
 
 @Client.event
 async def on_member_join(member):
-    await kernel_1("on-member-join", member)
+    if e := await kernel_1("on-member-join", member):
+        raise e.err
 
 
 @Client.event
 async def on_member_remove(member):
-    await kernel_1("on-member-remove", member)
+    if e := await kernel_1("on-member-remove", member):
+        raise e.err
 
 
 @Client.event
 async def on_member_update(before, after):
-    await kernel_2("on-member-update", before, after)
+    if e := await kernel_2("on-member-update", before, after):
+        raise e.err
 
 
 @Client.event
 async def on_guild_join(guild):
-    await kernel_1("on-guild-join", guild)
+    if e := await kernel_1("on-guild-join", guild):
+        raise e.err
 
 
 @Client.event
 async def on_guild_remove(guild):
-    await kernel_1("on-guild-remove", guild)
+    if e := await kernel_1("on-guild-remove", guild):
+        raise e.err
 
 
 @Client.event
 async def on_guild_update(before, after):
-    await kernel_2("on-guild-update", before, after)
+    if e := await kernel_2("on-guild-update", before, after):
+        raise e.err
 
 
 @Client.event
 async def on_member_ban(guild, user):
-    await kernel_2("on-member-ban", guild, user)
+    if e := await kernel_2("on-member-ban", guild, user):
+        raise e.err
 
 
 @Client.event
 async def on_member_unban(guild, user):
-    await kernel_2("on-member-unban", guild, user)
+    if e := await kernel_2("on-member-unban", guild, user):
+        raise e.err
 
 
-version_info = "1.1.3-3 'LeXdPyK 1.1.1' KILNOV"
+version_info = "LeXdPyK 1.2-DEV"
 bot_start_time = time.time()
 if TOKEN:
     Client.run(TOKEN, bot=True, reconnect=True)
