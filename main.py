@@ -1,20 +1,13 @@
 # Import core systems
-import os, importlib, io
+import os, importlib, io, sys, time, glob, json
 
 # Start Discord.py
 import discord
 
-# Initialise system library for editing PATH.
-import sys
-# Initialise time for health monitoring.
-import time
-# Import Globstar library
-import glob
-
 # Get token from environment variables.
 TOKEN = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
 
-# insert at 1, 0 is the script path (or '' in REPL)
+# Initialize kernel workspace
 sys.path.insert(1, os.getcwd() + '/cmds')
 sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
@@ -29,40 +22,6 @@ intents.reactions = True
 
 # Initialise Discord Client.
 Client = discord.Client(case_insensitive=True, status=discord.Status.online, intents=intents)
-
-# Import libraries.
-command_modules = []
-command_modules_dict = {}
-dynamiclib_modules = []
-dynamiclib_modules_dict = {}
-
-
-def sonnet_load_command_modules(*args):
-    print("Loading Kernel Modules")
-    # Globalize variables
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
-    command_modules = []
-    command_modules_dict = {}
-    dynamiclib_modules = []
-    dynamiclib_modules_dict = {}
-    importlib.invalidate_caches()
-
-    # Init imports
-    for f in filter(lambda f: f.startswith("cmd_") and f.endswith(".py"), os.listdir('./cmds')):
-        print(f)
-        command_modules.append(importlib.import_module(f[:-3]))
-    for f in filter(lambda f: f.startswith("dlib_") and f.endswith(".py"), os.listdir("./dlibs")):
-        print(f)
-        dynamiclib_modules.append(importlib.import_module(f[:-3]))
-
-    # Update hashmaps
-    for module in command_modules:
-        command_modules_dict.update(module.commands)
-    for module in dynamiclib_modules:
-        dynamiclib_modules_dict.update(module.commands)
-
-
-sonnet_load_command_modules()
 
 
 # Define ramfs
@@ -169,11 +128,75 @@ class ram_filesystem:
             raise FileNotFoundError("Filepath does not exist")
 
 
+# Import blacklist
+try:
+    with open("common/blacklist.json", "r") as blacklist_file:
+        blacklist = json.load(blacklist_file)
+except FileNotFoundError:
+    blacklist = {"guild": [], "user": []}
+    with open("common/blacklist.json", "w") as blacklist_file:
+        json.dump(blacklist, blacklist_file)
+
+# Define debug commands
+
+command_modules = []
+command_modules_dict = {}
+dynamiclib_modules = []
+dynamiclib_modules_dict = {}
+
 # Initalize ramfs, kernel ramfs
 ramfs = ram_filesystem()
 kernel_ramfs = ram_filesystem()
+
+# Define kernel syntax error
+class KernelSyntaxError(SyntaxError):
+    pass
+
+
 # Import configs
 from LeXdPyK_conf import BOT_OWNER
+
+
+def sonnet_load_command_modules(*args):
+    print("Loading Kernel Modules")
+    # Globalize variables
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
+    command_modules = []
+    command_modules_dict = {}
+    dynamiclib_modules = []
+    dynamiclib_modules_dict = {}
+    importlib.invalidate_caches()
+
+    # Init return state
+    err = []
+
+    # Init imports
+    for f in filter(lambda f: f.startswith("cmd_") and f.endswith(".py"), os.listdir('./cmds')):
+        print(f)
+        try:
+            command_modules.append(importlib.import_module(f[:-3]))
+        except Exception as e:
+            err.append([e, f[:-3]])
+    for f in filter(lambda f: f.startswith("dlib_") and f.endswith(".py"), os.listdir("./dlibs")):
+        print(f)
+        try:
+            dynamiclib_modules.append(importlib.import_module(f[:-3]))
+        except Exception as e:
+            err.append([e, f[:-3]])
+
+    # Update hashmaps
+    for module in command_modules:
+        try:
+            command_modules_dict.update(module.commands)
+        except AttributeError:
+            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+    for module in dynamiclib_modules:
+        try:
+            dynamiclib_modules_dict.update(module.commands)
+        except AttributeError:
+            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+
+    if err: return ("\n".join([f"Error importing {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
 
 
 def regenerate_ramfs(*args):
@@ -187,31 +210,38 @@ def sonnet_reload_command_modules(*args):
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
     command_modules_dict = {}
     dynamiclib_modules_dict = {}
+
+    # Init ret state
+    err = []
+
     # Update set
     for i in range(len(command_modules)):
-        command_modules[i] = (importlib.reload(command_modules[i]))
+        try:
+            command_modules[i] = (importlib.reload(command_modules[i]))
+        except Exception as e:
+            err.append([e, command_modules[i].__name__])
     for i in range(len(dynamiclib_modules)):
-        dynamiclib_modules[i] = (importlib.reload(dynamiclib_modules[i]))
+        try:
+            dynamiclib_modules[i] = (importlib.reload(dynamiclib_modules[i]))
+        except Exception as e:
+            err.append([e, dynamiclib_modules[i].__name__])
+
     # Update hashmaps
     for module in command_modules:
-        command_modules_dict.update(module.commands)
+        try:
+            command_modules_dict.update(module.commands)
+        except AttributeError:
+            err.append([KernelSyntaxError("Missing commands"), module.__name__])
     for module in dynamiclib_modules:
-        dynamiclib_modules_dict.update(module.commands)
+        try:
+            dynamiclib_modules_dict.update(module.commands)
+        except AttributeError:
+            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+
     # Regen tempramfs
     regenerate_ramfs()
 
-
-# import blacklist
-import json
-
-# Im sorry sweet prince - UB 2021-02-09
-try:
-    with open("common/blacklist.json", "r") as blacklist_file:
-        blacklist = json.load(blacklist_file)
-except FileNotFoundError:
-    blacklist = {"guild": [], "user": []}
-    with open("common/blacklist.json", "w") as blacklist_file:
-        json.dump(blacklist, blacklist_file)
+    if err: return ("\n".join([f"Error reimporting {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
 
 
 def sonnet_blacklist_guild(*args):
@@ -235,6 +265,10 @@ debug_commands["debug-add-user-blacklist"] = sonnet_blacklist_user
 debug_commands["debug-modules-load"] = sonnet_load_command_modules
 debug_commands["debug-modules-reload"] = sonnet_reload_command_modules
 debug_commands["debug-drop-cache"] = regenerate_ramfs
+
+# Load command modules
+if e := sonnet_load_command_modules():
+    print(e[0])
 
 
 # A object used to pass error messages from the kernel callers to the event handlers
@@ -337,9 +371,12 @@ async def on_message(message):
 
     # If bot owner run a debug command
     if static_args[0] in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER):
-        debug_commands[static_args[0]](static_args[1:])
-        await message.channel.send("Debug command has run")
-        return
+        if e := debug_commands[static_args[0]](static_args[1:]):
+            await message.channel.send(e[0])
+            raise e[1][0]
+        else: 
+            await message.channel.send("Debug command returned no error status")
+            return
 
     if e := await kernel_1("on-message", message):
         await message.channel.send(e.errmsg)
