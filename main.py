@@ -76,10 +76,10 @@ class ram_filesystem:
         file_to_write = file_to_write.split("/")
         if len(file_to_write) > 1:
             try:
-                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]))
+                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]), f_type=f_type, f_args=f_args)
             except KeyError:
                 self.mkdir("/".join(file_to_write[:-1]))
-                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]))
+                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]), f_type=f_type, f_args=f_args)
         else:
             self.data_table[file_to_write[0]] = f_type(*f_args)
 
