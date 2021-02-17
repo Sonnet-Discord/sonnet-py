@@ -112,7 +112,7 @@ class ram_filesystem:
         except KeyError:
             raise FileNotFoundError("File does not exist")
 
-    def create_f(self, file_to_write):
+    def create_f(self, file_to_write, f_type=io.BytesIO, f_args=[]):
 
         file_to_write = file_to_write.split("/")
         if len(file_to_write) > 1:
@@ -122,7 +122,7 @@ class ram_filesystem:
                 self.mkdir("/".join(file_to_write[:-1]))
                 return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]))
         else:
-            self.data_table[file_to_write[0]] = io.BytesIO()
+            self.data_table[file_to_write[0]] = f_type(*f_args)
 
         return self.data_table[file_to_write[0]]
 
