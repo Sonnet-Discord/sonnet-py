@@ -148,6 +148,7 @@ dynamiclib_modules_dict = {}
 ramfs = ram_filesystem()
 kernel_ramfs = ram_filesystem()
 
+
 # Define kernel syntax error
 class KernelSyntaxError(SyntaxError):
     pass
@@ -284,49 +285,11 @@ async def on_error(event, *args, **kwargs):
     raise
 
 
-async def kernel_0(argtype):
+async def event_call(argtype, *args):
     try:
         if argtype in dynamiclib_modules_dict.keys():
             await dynamiclib_modules_dict[argtype](
-                client=Client,
-                ramfs=ramfs,
-                bot_start=bot_start_time,
-                command_modules=[command_modules, command_modules_dict],
-                dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-                kernel_version=version_info,
-                kernel_ramfs=kernel_ramfs
-                )
-    except Exception as e:
-        return errtype(e, argtype)
-
-    return None
-
-
-async def kernel_1(argtype, arg1):
-    try:
-        if argtype in dynamiclib_modules_dict.keys():
-            await dynamiclib_modules_dict[argtype](
-                arg1,
-                client=Client,
-                ramfs=ramfs,
-                bot_start=bot_start_time,
-                command_modules=[command_modules, command_modules_dict],
-                dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-                kernel_version=version_info,
-                kernel_ramfs=kernel_ramfs
-                )
-    except Exception as e:
-        return errtype(e, argtype)
-
-    return None
-
-
-async def kernel_2(argtype, arg1, arg2):
-    try:
-        if argtype in dynamiclib_modules_dict.keys():
-            await dynamiclib_modules_dict[argtype](
-                arg1,
-                arg2,
+                *args,
                 client=Client,
                 ramfs=ramfs,
                 bot_start=bot_start_time,
@@ -343,25 +306,25 @@ async def kernel_2(argtype, arg1, arg2):
 
 @Client.event
 async def on_connect():
-    if e := await kernel_0("on-connect"):
+    if e := await event_call("on-connect"):
         raise e.err
 
 
 @Client.event
 async def on_disconnect():
-    if e := await kernel_0("on-disconnect"):
+    if e := await event_call("on-disconnect"):
         raise e.err
 
 
 @Client.event
 async def on_ready():
-    if e := await kernel_0("on-ready"):
+    if e := await event_call("on-ready"):
         raise e.err
 
 
 @Client.event
 async def on_resumed():
-    if e := await kernel_0("on-resumed"):
+    if e := await event_call("on-resumed"):
         raise e.err
 
 
@@ -374,158 +337,158 @@ async def on_message(message):
         if e := debug_commands[static_args[0]](static_args[1:]):
             await message.channel.send(e[0])
             raise e[1][0]
-        else: 
+        else:
             await message.channel.send("Debug command returned no error status")
             return
 
-    if e := await kernel_1("on-message", message):
+    if e := await event_call("on-message", message):
         await message.channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_message_delete(message):
-    if e := await kernel_1("on-message-delete", message):
+    if e := await event_call("on-message-delete", message):
         await message.channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_bulk_message_delete(messages):
-    if e := await kernel_1("on-bulk-message-delete", messages):
+    if e := await event_call("on-bulk-message-delete", messages):
         await messages[0].channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_raw_message_delete(payload):
-    if e := await kernel_1("on-raw-message-delete", payload):
+    if e := await event_call("on-raw-message-delete", payload):
         await Client.get_channel(payload.channel_id).send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_raw_bulk_message_delete(payload):
-    if e := await kernel_1("on-raw-bulk-message-delete", payload):
+    if e := await event_call("on-raw-bulk-message-delete", payload):
         await Client.get_channel(payload.channel_id).send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_message_edit(old_message, message):
-    if e := await kernel_2("on-message-edit", old_message, message):
+    if e := await event_call("on-message-edit", old_message, message):
         await message.channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_raw_message_edit(payload):
-    if e := await kernel_1("on-raw-message-edit", payload):
+    if e := await event_call("on-raw-message-edit", payload):
         await Client.get_channel(payload.channel_id).send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_reaction_add(reaction, user):
-    if e := await kernel_2("on-reaction-add", reaction, user):
+    if e := await event_call("on-reaction-add", reaction, user):
         await reaction.message.channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_raw_reaction_add(payload):
-    if e := await kernel_1("on-raw-reaction-add", payload):
+    if e := await event_call("on-raw-reaction-add", payload):
         await Client.get_channel(payload.channel_id).send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_reaction_remove(reaction, user):
-    if e := await kernel_2("on-reaction-remove", reaction, user):
+    if e := await event_call("on-reaction-remove", reaction, user):
         await reaction.message.channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_raw_reaction_remove(payload):
-    if e := await kernel_1("on-raw-reaction-remove", payload):
+    if e := await event_call("on-raw-reaction-remove", payload):
         await Client.get_channel(payload.channel_id).send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_reaction_clear(message, reactions):
-    if e := await kernel_2("on-reaction-clear", message, reactions):
+    if e := await event_call("on-reaction-clear", message, reactions):
         await message.channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_raw_reaction_clear(payload):
-    if e := await kernel_1("on-raw-reaction-clear", payload):
+    if e := await event_call("on-raw-reaction-clear", payload):
         await Client.get_channel(payload.channel_id).send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_reaction_clear_emoji(reaction):
-    if e := await kernel_1("on-reaction-clear-emoji", reaction):
+    if e := await event_call("on-reaction-clear-emoji", reaction):
         await reaction.message.channel.send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_raw_reaction_clear_emoji(payload):
-    if e := await kernel_1("on-raw-reaction-clear-emoji", payload):
+    if e := await event_call("on-raw-reaction-clear-emoji", payload):
         await Client.get_channel(payload.channel_id).send(e.errmsg)
         raise e.err
 
 
 @Client.event
 async def on_member_join(member):
-    if e := await kernel_1("on-member-join", member):
+    if e := await event_call("on-member-join", member):
         raise e.err
 
 
 @Client.event
 async def on_member_remove(member):
-    if e := await kernel_1("on-member-remove", member):
+    if e := await event_call("on-member-remove", member):
         raise e.err
 
 
 @Client.event
 async def on_member_update(before, after):
-    if e := await kernel_2("on-member-update", before, after):
+    if e := await event_call("on-member-update", before, after):
         raise e.err
 
 
 @Client.event
 async def on_guild_join(guild):
-    if e := await kernel_1("on-guild-join", guild):
+    if e := await event_call("on-guild-join", guild):
         raise e.err
 
 
 @Client.event
 async def on_guild_remove(guild):
-    if e := await kernel_1("on-guild-remove", guild):
+    if e := await event_call("on-guild-remove", guild):
         raise e.err
 
 
 @Client.event
 async def on_guild_update(before, after):
-    if e := await kernel_2("on-guild-update", before, after):
+    if e := await event_call("on-guild-update", before, after):
         raise e.err
 
 
 @Client.event
 async def on_member_ban(guild, user):
-    if e := await kernel_2("on-member-ban", guild, user):
+    if e := await event_call("on-member-ban", guild, user):
         raise e.err
 
 
 @Client.event
 async def on_member_unban(guild, user):
-    if e := await kernel_2("on-member-unban", guild, user):
+    if e := await event_call("on-member-unban", guild, user):
         raise e.err
 
 
