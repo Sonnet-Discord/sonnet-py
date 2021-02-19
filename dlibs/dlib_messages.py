@@ -41,10 +41,7 @@ async def catch_logging_error(channel, contents, files):
 
 async def on_message_delete(message, **kargs):
 
-    if kargs["kernel_version"] != "1.1.0 'LeXdPyK'":
-        files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
-    else:
-        files = None
+    files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
     client = kargs["client"]
     # Ignore bots
