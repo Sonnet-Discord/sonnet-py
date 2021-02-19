@@ -4,8 +4,9 @@ __pycache__
 # Remove all DB stuff.
 *.db
 
-# Remove error log.
+# Remove logs
 err.log
+discord.log
 
 # Remove mariadb login
 .login-info.txt

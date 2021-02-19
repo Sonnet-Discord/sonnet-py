@@ -4,6 +4,15 @@ import os, importlib, io, sys, time, glob, json
 # Start Discord.py
 import discord, asyncio
 
+# Start Logging
+import logging
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
+
 # Get token from environment variables.
 TOKEN = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
 
@@ -280,6 +289,13 @@ def kernel_drop_cmds(*args):
     command_modules_dict = {}
 
 
+def logging_toggle(*args):
+    if logger.isEnabledFor(10):
+        logger.setLevel(20)
+    else:
+        logger.setLevel(10)
+
+
 # Generate debug command subset
 debug_commands = {}
 debug_commands["debug-add-guild-blacklist"] = kernel_blacklist_guild
@@ -291,6 +307,7 @@ debug_commands["debug-drop-ramfs"] = regenerate_ramfs
 debug_commands["debug-drop-kramfs"] = regenerate_kernel_ramfs
 debug_commands["debug-drop-modules"] = kernel_drop_dlibs
 debug_commands["debug-drop-commands"] = kernel_drop_cmds
+debug_commands["debug-toggle-logging"] = logging_toggle
 
 # Load command modules
 if e := kernel_load_command_modules():
