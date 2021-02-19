@@ -2,7 +2,7 @@
 import os, importlib, io, sys, time, glob, json
 
 # Start Discord.py
-import discord
+import discord, asyncio
 
 # Get token from environment variables.
 TOKEN = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
@@ -158,7 +158,7 @@ class KernelSyntaxError(SyntaxError):
 from LeXdPyK_conf import BOT_OWNER
 
 
-def sonnet_load_command_modules(*args):
+def kernel_load_command_modules(*args):
     print("Loading Kernel Modules")
     # Globalize variables
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -205,7 +205,12 @@ def regenerate_ramfs(*args):
     ramfs = ram_filesystem()
 
 
-def sonnet_reload_command_modules(*args):
+def regenerate_kernel_ramfs(*args):
+    global kernel_ramfs
+    kernel_ramfs = ram_filesystem()
+
+
+def kernel_reload_command_modules(*args):
     print("Reloading Kernel Modules")
     # Init vars
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -245,30 +250,50 @@ def sonnet_reload_command_modules(*args):
     if err: return ("\n".join([f"Error reimporting {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
 
 
-def sonnet_blacklist_guild(*args):
+def kernel_blacklist_guild(*args):
 
     blacklist["guild"].append(int(args[0][0]))
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
 
-def sonnet_blacklist_user(*args):
+def kernel_blacklist_user(*args):
 
     blacklist["user"].append(int(args[0][0]))
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
 
+def kernel_logout(*args):
+    asyncio.create_task(Client.logout())
+
+
+def kernel_drop_dlibs(*args):
+    global dynamiclib_modules, dynamiclib_modules_dict
+    dynamiclib_modules = []
+    dynamiclib_modules_dict = {}
+
+
+def kernel_drop_cmds(*args):
+    global command_modules, command_modules_dict
+    command_modules = []
+    command_modules_dict = {}
+
+
 # Generate debug command subset
 debug_commands = {}
-debug_commands["debug-add-guild-blacklist"] = sonnet_blacklist_guild
-debug_commands["debug-add-user-blacklist"] = sonnet_blacklist_user
-debug_commands["debug-modules-load"] = sonnet_load_command_modules
-debug_commands["debug-modules-reload"] = sonnet_reload_command_modules
-debug_commands["debug-drop-cache"] = regenerate_ramfs
+debug_commands["debug-add-guild-blacklist"] = kernel_blacklist_guild
+debug_commands["debug-add-user-blacklist"] = kernel_blacklist_user
+debug_commands["debug-modules-load"] = kernel_load_command_modules
+debug_commands["debug-modules-reload"] = kernel_reload_command_modules
+debug_commands["debug-logout-system"] = kernel_logout
+debug_commands["debug-drop-ramfs"] = regenerate_ramfs
+debug_commands["debug-drop-kramfs"] = regenerate_kernel_ramfs
+debug_commands["debug-drop-modules"] = kernel_drop_dlibs
+debug_commands["debug-drop-commands"] = kernel_drop_cmds
 
 # Load command modules
-if e := sonnet_load_command_modules():
+if e := kernel_load_command_modules():
     print(e[0])
 
 

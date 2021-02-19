@@ -230,7 +230,7 @@ async def log_message_files(message, kernel_ramfs):
         file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 
-        threading.Thread(target=download_single_file, args=([i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id]], )).run()
+        threading.Thread(target=download_single_file, args=([i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id]], )).start()
 
 
 async def on_message(message, **kargs):
