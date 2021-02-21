@@ -346,6 +346,57 @@ async def event_call(argtype, *args):
     return None
 
 
+async def safety_check(guild=None, guild_id=None, user=None, user_id=None):
+
+    if guild: guild_id = guild.id
+    if user: user_id = user.id
+
+    if user_id and user_id in blacklist["user"] and guild_id:
+
+        try:
+            user = await Client.fetch_user(user_id)
+        except discord.errors.HTTPException:
+            return False
+
+        try:
+            guild = await Client.fetch_guild(guild_id)
+        except discord.errors.HTTPException:
+            return False
+
+        try:
+            await guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST")
+        except discord.errors.Forbidden:
+
+            blacklist["guild"].append(guild_id)
+            try:
+                await guild.leave()
+                return False
+            except discord.errors.HTTPException:
+                pass
+
+        except discord.errors.HTTPException:
+            return False
+
+        return False
+
+    if guild_id and guild_id in blacklist["guild"]:
+
+        try:
+            guild = await Client.fetch_guild(guild_id)
+        except discord.errors.HTTPException:
+            return False
+
+        try:
+            await guild.leave()
+            return False
+        except discord.errors.HTTPException:
+            pass
+
+        return False
+
+    return True
+
+
 @Client.event
 async def on_connect():
     if e := await event_call("on-connect"):
@@ -372,55 +423,62 @@ async def on_resumed():
 
 @Client.event
 async def on_message(message):
-    static_args = message.content.split(" ")
+
+    args = message.content.split(" ")
 
     # If bot owner run a debug command
-    if static_args[0] in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER):
-        if e := debug_commands[static_args[0]](static_args[1:]):
+    if len(args) >= 2 and args[0] in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER) and args[1] == str(Client.user.id):
+        if e := debug_commands[args[0]](args[2:]):
             await message.channel.send(e[0])
             raise e[1][0]
         else:
             await message.channel.send("Debug command returned no error status")
             return
 
-    if e := await event_call("on-message", message):
-        await message.channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=message.guild, user=message.author):
+        if e := await event_call("on-message", message):
+            await message.channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_message_delete(message):
-    if e := await event_call("on-message-delete", message):
-        await message.channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=message.guild, user=message.author):
+        if e := await event_call("on-message-delete", message):
+            await message.channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_bulk_message_delete(messages):
-    if e := await event_call("on-bulk-message-delete", messages):
-        await messages[0].channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=messages[0].guild, user=messages[0].author):
+        if e := await event_call("on-bulk-message-delete", messages):
+            await messages[0].channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_raw_message_delete(payload):
-    if e := await event_call("on-raw-message-delete", payload):
-        await Client.get_channel(payload.channel_id).send(e.errmsg)
-        raise e.err
+    if await safety_check(guild_id=payload.guild_id):
+        if e := await event_call("on-raw-message-delete", payload):
+            await Client.get_channel(payload.channel_id).send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_raw_bulk_message_delete(payload):
-    if e := await event_call("on-raw-bulk-message-delete", payload):
-        await Client.get_channel(payload.channel_id).send(e.errmsg)
-        raise e.err
+    if await safety_check(guild_id=payload.guild_id):
+        if e := await event_call("on-raw-bulk-message-delete", payload):
+            await Client.get_channel(payload.channel_id).send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_message_edit(old_message, message):
-    if e := await event_call("on-message-edit", old_message, message):
-        await message.channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=message.guild, user=message.author):
+        if e := await event_call("on-message-edit", old_message, message):
+            await message.channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
@@ -432,106 +490,113 @@ async def on_raw_message_edit(payload):
 
 @Client.event
 async def on_reaction_add(reaction, user):
-    if e := await event_call("on-reaction-add", reaction, user):
-        await reaction.message.channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=reaction.message.guild, user=user):
+        if e := await event_call("on-reaction-add", reaction, user):
+            await reaction.message.channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_raw_reaction_add(payload):
-    if e := await event_call("on-raw-reaction-add", payload):
-        await Client.get_channel(payload.channel_id).send(e.errmsg)
-        raise e.err
+    if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
+        if e := await event_call("on-raw-reaction-add", payload):
+            await Client.get_channel(payload.channel_id).send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_reaction_remove(reaction, user):
-    if e := await event_call("on-reaction-remove", reaction, user):
-        await reaction.message.channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=reaction.message.guild, user=user):
+        if e := await event_call("on-reaction-remove", reaction, user):
+            await reaction.message.channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_raw_reaction_remove(payload):
-    if e := await event_call("on-raw-reaction-remove", payload):
-        await Client.get_channel(payload.channel_id).send(e.errmsg)
-        raise e.err
+    if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
+        if e := await event_call("on-raw-reaction-remove", payload):
+            await Client.get_channel(payload.channel_id).send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_reaction_clear(message, reactions):
-    if e := await event_call("on-reaction-clear", message, reactions):
-        await message.channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=message.guild, user=message.author):
+        if e := await event_call("on-reaction-clear", message, reactions):
+            await message.channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_raw_reaction_clear(payload):
-    if e := await event_call("on-raw-reaction-clear", payload):
-        await Client.get_channel(payload.channel_id).send(e.errmsg)
-        raise e.err
+    if await safety_check(guild_id=payload.guild_id):
+        if e := await event_call("on-raw-reaction-clear", payload):
+            await Client.get_channel(payload.channel_id).send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_reaction_clear_emoji(reaction):
-    if e := await event_call("on-reaction-clear-emoji", reaction):
-        await reaction.message.channel.send(e.errmsg)
-        raise e.err
+    if await safety_check(guild=reaction.message.guild):
+        if e := await event_call("on-reaction-clear-emoji", reaction):
+            await reaction.message.channel.send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_raw_reaction_clear_emoji(payload):
-    if e := await event_call("on-raw-reaction-clear-emoji", payload):
-        await Client.get_channel(payload.channel_id).send(e.errmsg)
-        raise e.err
+    if await safety_check(guild_id=payload.guild_id):
+        if e := await event_call("on-raw-reaction-clear-emoji", payload):
+            await Client.get_channel(payload.channel_id).send(e.errmsg)
+            raise e.err
 
 
 @Client.event
 async def on_member_join(member):
-    if e := await event_call("on-member-join", member):
-        raise e.err
+    if await safety_check(user=member, guild=member.guild):
+        if e := await event_call("on-member-join", member): raise e.err
 
 
 @Client.event
 async def on_member_remove(member):
-    if e := await event_call("on-member-remove", member):
-        raise e.err
+    if await safety_check(guild=member.guild):
+        if e := await event_call("on-member-remove", member): raise e.err
 
 
 @Client.event
 async def on_member_update(before, after):
-    if e := await event_call("on-member-update", before, after):
-        raise e.err
+    if await safety_check(user=before, guild=before.guild):
+        if e := await event_call("on-member-update", before, after): raise e.err
 
 
 @Client.event
 async def on_guild_join(guild):
-    if e := await event_call("on-guild-join", guild):
-        raise e.err
+    if await safety_check(guild=guild):
+        if e := await event_call("on-guild-join", guild): raise e.err
 
 
 @Client.event
 async def on_guild_remove(guild):
-    if e := await event_call("on-guild-remove", guild):
-        raise e.err
+    if e := await event_call("on-guild-remove", guild): raise e.err
 
 
 @Client.event
 async def on_guild_update(before, after):
-    if e := await event_call("on-guild-update", before, after):
-        raise e.err
+    if await safety_check(guild=before):
+        if e := await event_call("on-guild-update", before, after): raise e.err
 
 
 @Client.event
 async def on_member_ban(guild, user):
-    if e := await event_call("on-member-ban", guild, user):
-        raise e.err
+    if await safety_check(guild=guild):
+        if e := await event_call("on-member-ban", guild, user): raise e.err
 
 
 @Client.event
 async def on_member_unban(guild, user):
-    if e := await event_call("on-member-unban", guild, user):
-        raise e.err
+    if await safety_check(guild=guild, user=user):
+        if e := await event_call("on-member-unban", guild, user): raise e.err
 
 
 version_info = "LeXdPyK 1.2-DEV"
