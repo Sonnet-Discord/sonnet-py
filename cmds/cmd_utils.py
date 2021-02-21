@@ -170,7 +170,7 @@ async def initialise_poll(message, args, client, **kwargs):
     try:
         await message.add_reaction("👍")
         await message.add_reaction("👎")
-    except discord.Errors.Forbidden:
+    except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permissions to add a reaction here")
 
 
@@ -244,4 +244,4 @@ commands = {
         }
     }
 
-version_info = "1.1.3"
+version_info = "1.1.3-3"
