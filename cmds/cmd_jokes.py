@@ -23,6 +23,6 @@ async def joke_ban_user(message, args, client, **kwargs):
 
 category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke commands, because because'}
 
-commands = {'jban': {'pretty_name': 'jban <uid>', 'description': '"bans" a user', 'permission': 'moderator', 'cache': 'keep', 'execute': joke_ban_user}}
+commands = {'jb': {'pretty_name': 'jb <uid>', 'description': '"bans" a user', 'permission': 'moderator', 'cache': 'keep', 'execute': joke_ban_user}}
 
-version_info = "1.1.2"
+version_info = "1.1.4-DEV"
