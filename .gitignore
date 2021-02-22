@@ -8,8 +8,9 @@ __pycache__
 err.log
 discord.log
 
-# Remove mariadb login
+# Remove mariadb login, discord login
 .login-info.txt
+.tokenfile
 
 # Remove compiled binaries
 compiled

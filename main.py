@@ -1,12 +1,13 @@
 # Import core systems
-import os, importlib, io, sys, time, glob, json
+import os, importlib, sys, io, time
+
+# Import sub dependencies
+import glob, json, hashlib, logging
 
 # Start Discord.py
 import discord, asyncio
 
 # Start Logging
-import logging
-
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
@@ -31,6 +32,55 @@ intents.reactions = True
 
 # Initialise Discord Client.
 Client = discord.Client(case_insensitive=True, status=discord.Status.online, intents=intents)
+
+
+# Define token encryption system "miniflip"
+class miniflip:
+    def __init__(self, password):
+        key = hashlib.sha256(password.encode("utf8")).digest()
+        self._width = 4
+        self._passkey = [int.from_bytes(key[i:i + self._width], "little") for i in range(0, len(key), self._width)]
+
+    def _btod(self, data):
+        return [int.from_bytes(data[i:i + self._width], "little") for i in range(0, len(data), self._width)]
+
+    def _dtob(self, data):
+        out = []
+        for chunk in data:
+            out.extend([(chunk >> (8 * i) & 0xff) for i in range(self._width)])
+        return bytes(out)
+
+    def _encrypt(self, data: bytes):
+        data = self._btod(data)
+        for i in self._passkey:
+            data = [chunk ^ i for chunk in data]
+        return self._dtob(data)
+
+    def _decrypt(self, data: bytes):
+        data = self._btod(data)
+        for i in self._passkey[::-1]:
+            data = [i ^ chunk for chunk in data]
+        return self._dtob(data)
+
+    def encrypt(self, data: str):
+
+        if type(data) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(data).__name__}`")
+
+        data = data.encode("utf8")
+        for i in range(2):
+            data = self._encrypt(data)[::-1]
+        return data
+
+    def decrypt(self, data: bytes):
+
+        if type(data) != bytes: raise TypeError(f"decrypt only accepts type 'bytes', not type `{type(data).__name__}`")
+
+        for i in range(2):
+            data = self._decrypt(data)[::-1]
+        try:
+            return data.rstrip(b"\x00").decode("utf8")
+        except UnicodeDecodeError:
+            return None
 
 
 # Define ramfs
@@ -599,12 +649,37 @@ async def on_member_unban(guild, user):
         if e := await event_call("on-member-unban", guild, user): raise e.err
 
 
+# Define version info and start time
 version_info = "LeXdPyK 1.2-DEV"
 bot_start_time = time.time()
+
+# Generate tokenfile
+if len(sys.argv) >= 2 and "--generate-token" in sys.argv:
+    import getpass
+    tokenfile = open(".tokenfile", "wb")
+    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+    tokenfile.write(encryptor.encrypt(getpass.getpass("Enter TOKEN: ")))
+    tokenfile.close()
+    sys.exit(0)
+
+# Load token
+if not TOKEN and os.path.isfile(".tokenfile"):
+    import getpass
+    tokenfile = open(".tokenfile", "rb")
+    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+    TOKEN = encryptor.decrypt(tokenfile.read())
+    tokenfile.close()
+
+# Start bot
 if TOKEN:
-    Client.run(TOKEN, bot=True, reconnect=True)
+    try:
+        Client.run(TOKEN, bot=True, reconnect=True)
+    except discord.errors.LoginFailure:
+        print("Invalid token passed")
+        sys.exit(1)
 else:
-    print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables to use sonnet")
+    print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables, or a encrypted token in .tokenfile, to use sonnet")
+    sys.exit(1)
 
 # Clear cache at exit
 for i in glob.glob("datastore/*.cache.db"):
