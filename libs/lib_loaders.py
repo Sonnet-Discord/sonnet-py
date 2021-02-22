@@ -64,13 +64,12 @@ def load_message_config(guild_id, ramfs):
         return message_config
 
     except FileNotFoundError:
-        db = db_hlapi(guild_id)
         message_config = {}
 
         # Loads base db
-        for i in datatypes["csv"] + datatypes["text"] + datatypes["list"]:
-            message_config[i] = db.grab_config(i)
-        db.close()
+        with db_hlapi(guild_id) as db:
+            for i in datatypes["csv"] + datatypes["text"] + datatypes["list"]:
+                message_config[i] = db.grab_config(i)
 
         # Loads word, filetype blacklist
         for i in datatypes["csv"]:
