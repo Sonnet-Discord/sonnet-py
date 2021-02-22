@@ -5,7 +5,7 @@ import importlib
 
 import re2 as re
 from sonnet_cfg import DB_TYPE
-import lz4.frame, io, discord, os
+import lz4.frame, io, discord, os, time
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
@@ -191,7 +191,12 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
             key = keys.read(32)
             iv = keys.read(16)
 
-            encrypted_file = encrypted_reader(pointer, key, iv)
+            try:
+                encrypted_file = encrypted_reader(pointer, key, iv)
+            except ValueError:
+                time.sleep(1)
+                encrypted_file = encrypted_reader(pointer, key, iv)
+
             rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
             discord_files.append(discord.File(rawfile, filename=i))
             rawfile.close()
