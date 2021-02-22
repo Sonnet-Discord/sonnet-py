@@ -1,8 +1,11 @@
+# Intro
+print("Booting LeXdPyK")
+
 # Import core systems
 import os, importlib, sys, io, time
 
 # Import sub dependencies
-import glob, json, hashlib, logging
+import glob, json, hashlib, logging, getpass
 
 # Start Discord.py
 import discord, asyncio
@@ -37,8 +40,8 @@ Client = discord.Client(case_insensitive=True, status=discord.Status.online, int
 # Define token encryption system "miniflip"
 class miniflip:
     def __init__(self, password):
-        key = hashlib.sha256(password.encode("utf8")).digest()
-        self._width = 4
+        key = hashlib.sha512(password.encode("utf8")).digest()
+        self._width = 8
         self._passkey = [int.from_bytes(key[i:i + self._width], "little") for i in range(0, len(key), self._width)]
 
     def _btod(self, data):
@@ -67,16 +70,21 @@ class miniflip:
         if type(data) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(data).__name__}`")
 
         data = data.encode("utf8")
-        for i in range(2):
-            data = self._encrypt(data)[::-1]
+
+        data = self._encrypt(data)[::-1]
+        data = self._encrypt(data)
+        data = self._encrypt(data)[::-1]
+
         return data
 
     def decrypt(self, data: bytes):
 
         if type(data) != bytes: raise TypeError(f"decrypt only accepts type 'bytes', not type `{type(data).__name__}`")
 
-        for i in range(2):
-            data = self._decrypt(data)[::-1]
+        data = self._decrypt(data)[::-1]
+        data = self._decrypt(data)
+        data = self._decrypt(data)[::-1]
+
         try:
             return data.rstrip(b"\x00").decode("utf8")
         except UnicodeDecodeError:
@@ -311,14 +319,22 @@ def kernel_reload_command_modules(*args):
 
 def kernel_blacklist_guild(*args):
 
-    blacklist["guild"].append(int(args[0][0]))
+    try:
+        blacklist["guild"].append(int(args[0][0]))
+    except ValueError:
+        return ["Asking value is not INT", []]
+
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
 
 def kernel_blacklist_user(*args):
 
-    blacklist["user"].append(int(args[0][0]))
+    try:
+        blacklist["user"].append(int(args[0][0]))
+    except ValueError:
+        return ["Asking value is not INT", []]
+
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
@@ -342,8 +358,10 @@ def kernel_drop_cmds(*args):
 def logging_toggle(*args):
     if logger.isEnabledFor(10):
         logger.setLevel(20)
+        return ["Logging at L20", []]
     else:
         logger.setLevel(10)
+        return ["Logging at L10", []]
 
 
 # Generate debug command subset
@@ -358,6 +376,23 @@ debug_commands["debug-drop-kramfs"] = regenerate_kernel_ramfs
 debug_commands["debug-drop-modules"] = kernel_drop_dlibs
 debug_commands["debug-drop-commands"] = kernel_drop_cmds
 debug_commands["debug-toggle-logging"] = logging_toggle
+
+# Generate tokenfile
+if len(sys.argv) >= 2 and "--generate-token" in sys.argv:
+    tokenfile = open(".tokenfile", "wb")
+    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+    tokenfile.write(encryptor.encrypt(TOKEN := getpass.getpass("Enter TOKEN: ")))
+    tokenfile.close()
+
+# Load token
+if not TOKEN and os.path.isfile(".tokenfile"):
+    tokenfile = open(".tokenfile", "rb")
+    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+    TOKEN = encryptor.decrypt(tokenfile.read())
+    tokenfile.close()
+    if not TOKEN:
+        print("Invalid TOKEN password")
+        sys.exit(1)
 
 # Load command modules
 if e := kernel_load_command_modules():
@@ -480,7 +515,7 @@ async def on_message(message):
     if len(args) >= 2 and args[0] in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER) and args[1] == str(Client.user.id):
         if e := debug_commands[args[0]](args[2:]):
             await message.channel.send(e[0])
-            raise e[1][0]
+            if e[1]: raise e[1][0]
         else:
             await message.channel.send("Debug command returned no error status")
             return
@@ -650,25 +685,8 @@ async def on_member_unban(guild, user):
 
 
 # Define version info and start time
-version_info = "LeXdPyK 1.2"
+version_info = "LeXdPyK 1.2.1"
 bot_start_time = time.time()
-
-# Generate tokenfile
-if len(sys.argv) >= 2 and "--generate-token" in sys.argv:
-    import getpass
-    tokenfile = open(".tokenfile", "wb")
-    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-    tokenfile.write(encryptor.encrypt(getpass.getpass("Enter TOKEN: ")))
-    tokenfile.close()
-    sys.exit(0)
-
-# Load token
-if not TOKEN and os.path.isfile(".tokenfile"):
-    import getpass
-    tokenfile = open(".tokenfile", "rb")
-    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-    TOKEN = encryptor.decrypt(tokenfile.read())
-    tokenfile.close()
 
 # Start bot
 if TOKEN:
