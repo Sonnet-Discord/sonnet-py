@@ -126,7 +126,7 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
         raise InfractionGenerationError(f"Attempted self {infraction_type}")
 
     # Do a permission sweep
-    if is_member and message.guild.roles.index(message.author.roles[-1]) <= message.guild.roles.index(user.roles[-1]):
+    if not automod and is_member and message.guild.roles.index(message.author.roles[-1]) <= message.guild.roles.index(user.roles[-1]):
         await message.channel.send(f"Cannot {infraction_type} a user with the same or higher role as yourself")
         raise InfractionGenerationError(f"Attempted nonperm {infraction_type}")
 
