@@ -183,7 +183,8 @@ async def ban_user(message, args, client, **kwargs):
     try:
         if is_member:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.channel.guild._state.http.ban(args[0].strip("<@!>"), message.channel.guild.id, 0, reason=reason)
+        userOBJ = discord.Object(int(args[0].strip("<@!>")))
+        await message.guild.ban(userOBJ, delete_message_days=0, reason=reason)
 
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to ban this user.")
