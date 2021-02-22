@@ -48,6 +48,7 @@ class gdpr_functions:
         with db_hlapi(message.guild.id) as database:
             database.delete_guild_db()
         ramfs.remove_f(f"antispam/{guild_id}.cache.asam")
+        ramfs.rmdir(f"regex/{guild_id}")
 
         global_stats = kramfs.read_f("persistent/global/stats")
         global_stats.seek(0)

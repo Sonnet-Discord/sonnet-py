@@ -4,11 +4,16 @@ __pycache__
 # Remove all DB stuff.
 *.db
 
-# Remove error log.
+# Remove logs
 err.log
+discord.log
 
-# Remove mariadb login
+# Remove mariadb login, discord login
 .login-info.txt
+.tokenfile
 
-# Remove config file to preserve sanity
-sonnet_cfg.py
+# Remove compiled binaries
+compiled
+
+# Remove blacklist file
+blacklist.json

@@ -5,7 +5,7 @@ import importlib
 
 import re2 as re
 from sonnet_cfg import DB_TYPE
-import lz4.frame, io, discord, os
+import lz4.frame, io, discord, os, json
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
@@ -15,9 +15,11 @@ importlib.reload(lib_encryption_wrapper)
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
+unicodeFilter = re.compile(r'[^a-z0-9 ]+')
+
 
 def parse_blacklist(indata):
-    message, blacklist = indata
+    message, blacklist, ramfs = indata
 
     # Preset values
     broke_blacklist = False
@@ -28,7 +30,28 @@ def parse_blacklist(indata):
     if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
         return [False, False, []]
 
-    text_to_blacklist = re.sub(r'[^a-z0-9 ]+', '', message.content.lower().replace(":", " ").replace("\n", " "))
+    # Compilecheck regex
+    try:
+        ramfs.ls(f"regex/{message.guild.id}")
+    except FileNotFoundError:
+
+        with db_hlapi(message.guild.id) as db:
+            reglist = {}
+            for regex_type in ["regex-blacklist", "regex-notifier"]:
+                if dat := db.grab_config(regex_type):
+                    reglist[regex_type] = [" ".join(i.split(" ")[1:])[1:-2] for i in json.loads(dat)["blacklist"]]
+                else:
+                    reglist[regex_type] = []
+
+        for regex_type in ["regex-blacklist", "regex-notifier"]:
+            ramfs.mkdir(f"regex/{message.guild.id}/{regex_type}")
+            for i in reglist[regex_type]:
+                ramfs.create_f(f"regex/{message.guild.id}/{regex_type}/{i}", f_type=re.compile, f_args=[i])
+
+    blacklist["regex-blacklist"] = [ramfs.read_f(f"regex/{message.guild.id}/regex-blacklist/{i}") for i in ramfs.ls(f"regex/{message.guild.id}/regex-blacklist")[0]]
+    blacklist["regex-notifier"] = [ramfs.read_f(f"regex/{message.guild.id}/regex-notifier/{i}") for i in ramfs.ls(f"regex/{message.guild.id}/regex-notifier")[0]]
+
+    text_to_blacklist = unicodeFilter.sub('', message.content.lower().replace(":", " ").replace("\n", " "))
 
     # Check message agaist word blacklist
     word_blacklist = blacklist["word-blacklist"]
@@ -50,7 +73,7 @@ def parse_blacklist(indata):
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if re.findall(i, message.content.lower()):
+            if i.match(message.content.lower()):
                 broke_blacklist = True
                 infraction_type.append("RegEx")
         except re.error:
@@ -59,7 +82,7 @@ def parse_blacklist(indata):
     # Check message against REGEXP notifier list
     regex_blacklist = blacklist["regex-notifier"]
     for i in regex_blacklist:
-        if re.findall(i, message.content.lower()):
+        if i.match(message.content.lower()):
             notifier = True
 
     # Check against filetype blacklist
@@ -239,7 +262,7 @@ async def parse_role(message, args, db_entry):
         role = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
-            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry)))}")
+            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
         return
 
     try:

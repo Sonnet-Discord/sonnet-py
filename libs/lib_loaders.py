@@ -3,12 +3,20 @@
 
 import importlib
 
-import json, random, os, math
+import json, random, os, math, ctypes, time, io
 from sonnet_cfg import *
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
+
+try:
+    loader = ctypes.CDLL("./libs/compiled/sonnet.1.1.4-DEV.1.so")
+    loader.load_words.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p]
+    loader.load_words.restype = ctypes.c_void_p
+    clib_exists = True
+except OSError:
+    clib_exists = False
 
 
 # LCIF system ported for blacklist loader, converted to little endian
@@ -21,7 +29,7 @@ def load_message_config(guild_id, ramfs):
     datatypes = {
         "csv": ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "antispam"],
         "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist", "regex-notifier-log", "admin-role", "moderator-role"],
-        "list": ["regex-blacklist", "regex-notifier"]
+        "list": []
         }
     try:
 
@@ -56,20 +64,12 @@ def load_message_config(guild_id, ramfs):
         return message_config
 
     except FileNotFoundError:
-        db = db_hlapi(guild_id)
         message_config = {}
 
         # Loads base db
-        for i in datatypes["csv"] + datatypes["text"] + datatypes["list"]:
-            message_config[i] = db.grab_config(i)
-        db.close()
-
-        # Loads regex
-        for regex_type in ["regex-blacklist", "regex-notifier"]:
-            if message_config[regex_type]:
-                message_config[regex_type] = [" ".join(i.split(" ")[1:])[1:-2] for i in json.loads(message_config[regex_type])["blacklist"]]
-            else:
-                message_config[regex_type] = []
+        with db_hlapi(guild_id) as db:
+            for i in datatypes["csv"] + datatypes["text"] + datatypes["list"]:
+                message_config[i] = db.grab_config(i)
 
         # Loads word, filetype blacklist
         for i in datatypes["csv"]:
@@ -127,25 +127,33 @@ def load_message_config(guild_id, ramfs):
 
 
 def generate_infractionid():
-    try:
-        num_words = os.path.getsize("datastore/wordlist.cache.db") - 1
-        with open("datastore/wordlist.cache.db", "rb") as words:
-            chunksize = int.from_bytes(words.read(1), "big")
-            num_words /= chunksize
-            values = ([random.randint(0, (num_words - 1)) for i in range(3)])
-            output = ""
-            for i in values:
-                words.seek(i * chunksize + 1)
-                preout = (words.read(int.from_bytes(words.read(1), "big"))).decode("utf8")
-                output += preout[0].upper() + preout[1:]
-        return output
+    if os.path.isfile("datastore/wordlist.cache.db"):
+        if clib_exists:
+            buf = bytes(256 * 3)
+            loader.load_words(3, int(time.time() * 1000000), buf)
+            return buf.rstrip(b"\x00").decode("utf8")
+        else:
+            with open("datastore/wordlist.cache.db", "rb") as words:
+                chunksize = words.read(1)[0]
+                num_words = (words.seek(0, io.SEEK_END) - 1) / chunksize
+                values = ([random.randint(0, (num_words - 1)) for i in range(3)])
+                output = []
+                for i in values:
+                    words.seek(i * chunksize + 1)
+                    output.append((words.read(words.read(1)[0])).decode("utf8"))
 
-    except FileNotFoundError:
-        with open("common/wordlist.txt", "r") as words:
+            return "".join(output)
+
+    else:
+        with open("common/wordlist.txt", "rb") as words:
             maxval = 0
             structured_data = []
-            for i in words.read().encode("utf8").split(b"\n"):
-                if i:
+            for i in words.read().split(b"\n"):
+                if i and not len(i) > 85 and not b"\xc3" in i:
+
+                    i = i.decode("utf8")
+                    i = (i[0].upper() + i[1:].lower()).encode("utf8")
+
                     structured_data.append(bytes([len(i)]) + i)
                     if len(i) + 1 > maxval:
                         maxval = len(i) + 1

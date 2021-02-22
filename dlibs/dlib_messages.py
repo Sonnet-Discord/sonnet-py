@@ -41,10 +41,7 @@ async def catch_logging_error(channel, contents, files):
 
 async def on_message_delete(message, **kargs):
 
-    if kargs["kernel_version"] != "1.1.0 'LeXdPyK'":
-        files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
-    else:
-        files = None
+    files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
     client = kargs["client"]
     # Ignore bots
@@ -137,7 +134,7 @@ async def on_message_edit(old_message, message, **kargs):
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf])
+    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
@@ -207,9 +204,7 @@ async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
         pass
 
 
-def download_single_file(contents):
-
-    discord_file, filename, key, iv, ramfs, mgid = contents
+def download_single_file(discord_file, filename, key, iv, ramfs, mgid):
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -233,7 +228,7 @@ async def log_message_files(message, kernel_ramfs):
         file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 
-        threading.Thread(target=download_single_file, args=([i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id]], )).run()
+        download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id])
 
 
 async def on_message(message, **kargs):
@@ -265,7 +260,7 @@ async def on_message(message, **kargs):
     message_deleted = False
 
     # If blacklist broken generate infraction
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf])
+    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
@@ -326,6 +321,10 @@ async def on_message(message, **kargs):
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
                     ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
+                    try:
+                        ramfs.rmdir(f"regex/{message.guild.id}")
+                    except FileNotFoundError:
+                        pass
                     if command_modules_dict[command]['cache'] == "regenerate":
                         load_message_config(message.guild.id, ramfs)
         except discord.errors.Forbidden:
@@ -340,4 +339,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.3"
+version_info = "1.1.4"
