@@ -204,9 +204,7 @@ async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
         pass
 
 
-def download_single_file(contents):
-
-    discord_file, filename, key, iv, ramfs, mgid = contents
+def download_single_file(discord_file, filename, key, iv, ramfs, mgid):
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -230,7 +228,7 @@ async def log_message_files(message, kernel_ramfs):
         file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 
-        threading.Thread(target=download_single_file, args=([i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id]], )).start()
+        download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id])
 
 
 async def on_message(message, **kargs):
@@ -337,4 +335,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.3"
+version_info = "1.1.4-DEV"

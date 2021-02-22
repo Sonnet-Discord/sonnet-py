@@ -191,12 +191,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
             key = keys.read(32)
             iv = keys.read(16)
 
-            try:
-                encrypted_file = encrypted_reader(pointer, key, iv)
-            except ValueError:
-                time.sleep(1)
-                encrypted_file = encrypted_reader(pointer, key, iv)
-
+            encrypted_file = encrypted_reader(pointer, key, iv)
             rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
             discord_files.append(discord.File(rawfile, filename=i))
             rawfile.close()
