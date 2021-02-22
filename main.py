@@ -650,7 +650,7 @@ async def on_member_unban(guild, user):
 
 
 # Define version info and start time
-version_info = "LeXdPyK 1.2-DEV"
+version_info = "LeXdPyK 1.2"
 bot_start_time = time.time()
 
 # Generate tokenfile
