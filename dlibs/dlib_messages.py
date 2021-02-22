@@ -134,7 +134,7 @@ async def on_message_edit(old_message, message, **kargs):
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf])
+    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
@@ -260,7 +260,7 @@ async def on_message(message, **kargs):
     message_deleted = False
 
     # If blacklist broken generate infraction
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf])
+    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
@@ -321,6 +321,10 @@ async def on_message(message, **kargs):
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
                     ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
+                    try:
+                        ramfs.rmdir(f"regex/{message.guild.id}")
+                    except FileNotFoundError:
+                        pass
                     if command_modules_dict[command]['cache'] == "regenerate":
                         load_message_config(message.guild.id, ramfs)
         except discord.errors.Forbidden:

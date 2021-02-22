@@ -29,7 +29,7 @@ def load_message_config(guild_id, ramfs):
     datatypes = {
         "csv": ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "antispam"],
         "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist", "regex-notifier-log", "admin-role", "moderator-role"],
-        "list": ["regex-blacklist", "regex-notifier"]
+        "list": []
         }
     try:
 
@@ -71,13 +71,6 @@ def load_message_config(guild_id, ramfs):
         for i in datatypes["csv"] + datatypes["text"] + datatypes["list"]:
             message_config[i] = db.grab_config(i)
         db.close()
-
-        # Loads regex
-        for regex_type in ["regex-blacklist", "regex-notifier"]:
-            if message_config[regex_type]:
-                message_config[regex_type] = [" ".join(i.split(" ")[1:])[1:-2] for i in json.loads(message_config[regex_type])["blacklist"]]
-            else:
-                message_config[regex_type] = []
 
         # Loads word, filetype blacklist
         for i in datatypes["csv"]:
