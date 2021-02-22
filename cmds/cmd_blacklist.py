@@ -334,4 +334,4 @@ commands = {
             },
     }
 
-version_info = "1.1.3"
+version_info = "1.1.4"
