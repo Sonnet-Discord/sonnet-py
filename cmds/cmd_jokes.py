@@ -25,7 +25,7 @@ async def joke_ban_user(message, args, client, **kwargs):
 
 async def joke_ban_deprecation(message, args, client, **kwargs):
 
-    await message.channel.send("`jban` is deprecated, please us `jkb` instead")
+    await message.channel.send("`jban` is deprecated, please use `jkb` instead")
 
 
 category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke commands, because because'}
