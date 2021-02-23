@@ -73,7 +73,7 @@ def parse_blacklist(indata):
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if i.match(message.content.lower()):
+            if i.findall(message.content.lower()):
                 broke_blacklist = True
                 infraction_type.append("RegEx")
         except re.error:
@@ -82,7 +82,7 @@ def parse_blacklist(indata):
     # Check message against REGEXP notifier list
     regex_blacklist = blacklist["regex-notifier"]
     for i in regex_blacklist:
-        if i.match(message.content.lower()):
+        if i.findall(message.content.lower()):
             notifier = True
 
     # Check against filetype blacklist
