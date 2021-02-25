@@ -101,13 +101,15 @@ async def print_stats(message, args, client, **kwargs):
         global_datamap[i] = read_vnum(global_statistics_file)
         global_total += global_datamap[i]
 
-    outputmap = [["This Guild:", "Count:"]]
-    for i in statistics_list:
-        outputmap.append([i, datamap[i]])
+    outputmap = []
+
+    outputmap.append(["This Guild:", "Count:"])
+    [outputmap.append([i, datamap[i]]) for i in statistics_list if datamap[i]]
+
     outputmap.append(["", ""])
+
     outputmap.append(["Globally:", "Count:"])
-    for i in statistics_list:
-        outputmap.append([i, global_datamap[i]])
+    [outputmap.append([i, global_datamap[i]]) for i in statistics_list if global_datamap[i]]
 
     for i in prettyprint(outputmap):
         fmt += f"{i}\n"
@@ -151,4 +153,4 @@ commands = {
         }
     }
 
-version_info = "1.1.4"
+version_info = "1.1.5-DEV"
