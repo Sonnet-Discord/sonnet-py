@@ -152,7 +152,7 @@ def antispam_check(indata):
     timecount = int(timecount) * 1000
 
     try:
-        messages = ramfs.read_f(f"antispam/{guildid}.cache.asam")
+        messages = ramfs.read_f(f"{guildid}/asam")
         messages.seek(0)
         droptime = round(time.time() * 1000) - timecount
         userlist = []
@@ -181,7 +181,7 @@ def antispam_check(indata):
             return False
 
     except FileNotFoundError:
-        messages = ramfs.create_f(f"antispam/{guildid}.cache.asam")
+        messages = ramfs.create_f(f"{guildid}/asam")
         messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time() * 1000), 8)))
         return False
 
@@ -199,7 +199,7 @@ async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
     except FileNotFoundError:
         pass
     try:
-        ramfs.rmdir(f"files/{mgid[0]}/{mgid[1]}")
+        ramfs.rmdir(f"{mgid[0]}/files/{mgid[1]}")
     except FileNotFoundError:
         pass
 
@@ -217,7 +217,7 @@ async def log_message_files(message, kernel_ramfs):
 
     for i in message.attachments:
 
-        ramfs_path = f"files/{message.channel.guild.id}/{message.id}/{i.filename}"
+        ramfs_path = f"{message.channel.guild.id}/files/{message.id}/{i.filename}"
 
         keyfile = kernel_ramfs.create_f(f"{ramfs_path}/key")
         keyfile.write(key := os.urandom(32))
@@ -320,11 +320,7 @@ async def on_message(message, **kargs):
 
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
-                    ramfs.remove_f(f"datastore/{message.guild.id}.cache.db")
-                    try:
-                        ramfs.rmdir(f"regex/{message.guild.id}")
-                    except FileNotFoundError:
-                        pass
+                    ramfs.rmdir(str(message.guild.id))
                     if command_modules_dict[command]['cache'] == "regenerate":
                         load_message_config(message.guild.id, ramfs)
         except discord.errors.Forbidden:

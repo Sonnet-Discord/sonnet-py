@@ -28,7 +28,7 @@ def parse_blacklist(indata):
 
     # Compilecheck regex
     try:
-        ramfs.ls(f"regex/{message.guild.id}")
+        ramfs.ls(f"{message.guild.id}/regex")
     except FileNotFoundError:
 
         with db_hlapi(message.guild.id) as db:
@@ -40,12 +40,12 @@ def parse_blacklist(indata):
                     reglist[regex_type] = []
 
         for regex_type in ["regex-blacklist", "regex-notifier"]:
-            ramfs.mkdir(f"regex/{message.guild.id}/{regex_type}")
+            ramfs.mkdir(f"{message.guild.id}/regex/{regex_type}")
             for i in reglist[regex_type]:
-                ramfs.create_f(f"regex/{message.guild.id}/{regex_type}/{i}", f_type=re.compile, f_args=[i])
+                ramfs.create_f(f"{message.guild.id}/regex/{regex_type}/{i}", f_type=re.compile, f_args=[i])
 
-    blacklist["regex-blacklist"] = [ramfs.read_f(f"regex/{message.guild.id}/regex-blacklist/{i}") for i in ramfs.ls(f"regex/{message.guild.id}/regex-blacklist")[0]]
-    blacklist["regex-notifier"] = [ramfs.read_f(f"regex/{message.guild.id}/regex-notifier/{i}") for i in ramfs.ls(f"regex/{message.guild.id}/regex-notifier")[0]]
+    blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
+    blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
 
     # If in whitelist, skip parse to save resources
     if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
@@ -201,15 +201,15 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
 
     try:
 
-        files = ramfs.ls(f"files/{guild_id}/{message_id}")[1]
+        files = ramfs.ls(f"{guild_id}/files/{message_id}")[1]
         discord_files = []
         for i in files:
 
-            loc = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/pointer")
+            loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
             loc.seek(0)
             pointer = loc.read()
 
-            keys = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/key")
+            keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
             keys.seek(0)
             key = keys.read(32)
             iv = keys.read(16)
@@ -226,7 +226,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
 
         if delete:
             try:
-                ramfs.rmdir(f"files/{guild_id}/{message_id}")
+                ramfs.rmdir(f"{guild_id}/files/{message_id}")
             except FileNotFoundError:
                 pass
 

@@ -47,30 +47,9 @@ class gdpr_functions:
 
         with db_hlapi(message.guild.id) as database:
             database.delete_guild_db()
-        ramfs.remove_f(f"antispam/{guild_id}.cache.asam")
-        ramfs.rmdir(f"regex/{guild_id}")
 
-        global_stats = kramfs.read_f("persistent/global/stats")
-        global_stats.seek(0)
-        guild_stats = kramfs.read_f(f"persistent/{guild_id}/stats")
-        guild_stats.seek(0)
-
-        stats_of = ["on-message", "on-message-edit", "on-message-delete", "on-reaction-add", "on-raw-reaction-add"]
-
-        global_stats_dict = {}
-        for i in stats_of:
-            global_stats_dict[i] = read_vnum(global_stats) - read_vnum(guild_stats)
-
-        kramfs.rmdir(f"persistent/{guild_id}")
-
-        global_stats.seek(0)
-        for i in stats_of:
-            write_vnum(global_stats, global_stats_dict[i])
-
-        try:
-            kramfs.rmdir(f"files/{guild_id}")
-        except FileNotFoundError:
-            pass
+        ramfs.rmdir(f"{guild_id}")
+        kramfs.rmdir(f"{guild_id}")
 
         for i in glob.glob(f"./datastore/{guild_id}-*.cache.db"):
             os.remove(i)
@@ -93,11 +72,11 @@ class gdpr_functions:
         db.seek(0)
 
         # Add cache files
-        cache = ramfs.read_f(f"datastore/{guild_id}.cache.db")
+        cache = ramfs.read_f(f"{guild_id}/dbcache")
         cache.seek(0)
-        antispam = ramfs.read_f(f"antispam/{guild_id}.cache.asam")
+        antispam = ramfs.read_f(f"{guild_id}/asam")
         antispam.seek(0)
-        stats = kramfs.read_f(f"persistent/{guild_id}/stats")
+        stats = kramfs.read_f(f"{guild_id}/stats")
         stats.seek(0)
 
         # Finalize discord file objs

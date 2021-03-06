@@ -86,8 +86,8 @@ async def print_stats(message, args, client, **kwargs):
 
     datamap = {}
     global_datamap = {}
-    statistics_file = kernel_ramfs.read_f(f"persistent/{message.guild.id}/stats")
-    global_statistics_file = kernel_ramfs.read_f(f"persistent/global/stats")
+    statistics_file = kernel_ramfs.read_f(f"{message.guild.id}/stats")
+    global_statistics_file = kernel_ramfs.read_f(f"global/stats")
     statistics_file.seek(0)
     global_statistics_file.seek(0)
 

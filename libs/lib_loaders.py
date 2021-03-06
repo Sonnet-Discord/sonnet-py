@@ -34,7 +34,7 @@ def load_message_config(guild_id, ramfs):
     try:
 
         # Loads fileio object
-        blacklist_cache = ramfs.read_f(f"datastore/{guild_id}.cache.db")
+        blacklist_cache = ramfs.read_f(f"{guild_id}/cache")
         blacklist_cache.seek(0)
         message_config = {}
 
@@ -96,7 +96,7 @@ def load_message_config(guild_id, ramfs):
             message_config["antispam"] = ["3", "2"]
 
         # Generate SNOWFLAKE DBCACHE
-        blacklist_cache = ramfs.create_f(f"datastore/{guild_id}.cache.db")
+        blacklist_cache = ramfs.create_f(f"{guild_id}/cache")
         # Add csv based configs
         for i in datatypes["csv"]:
             if message_config[i]:
@@ -182,18 +182,18 @@ def inc_statistics(indata):
     stats_of = ["on-message", "on-message-edit", "on-message-delete", "on-reaction-add", "on-raw-reaction-add"]
 
     try:
-        statistics_file = kernel_ramfs.read_f(f"persistent/{guild}/stats")
+        statistics_file = kernel_ramfs.read_f(f"{guild}/stats")
         statistics_file.seek(0)
     except FileNotFoundError:
-        statistics_file = kernel_ramfs.create_f(f"persistent/{guild}/stats")
+        statistics_file = kernel_ramfs.create_f(f"{guild}/stats")
         statistics_file.write(bytes(len(stats_of)))
         statistics_file.seek(0)
 
     try:
-        global_statistics_file = kernel_ramfs.read_f(f"persistent/global/stats")
+        global_statistics_file = kernel_ramfs.read_f(f"global/stats")
         global_statistics_file.seek(0)
     except FileNotFoundError:
-        global_statistics_file = kernel_ramfs.create_f(f"persistent/global/stats")
+        global_statistics_file = kernel_ramfs.create_f(f"global/stats")
         global_statistics_file.write(bytes(len(stats_of)))
         global_statistics_file.seek(0)
 
