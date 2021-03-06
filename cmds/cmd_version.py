@@ -21,11 +21,7 @@ def prettyprint(inlist):
         if len(i[0]) > maxln:
             maxln = len(i[0])
 
-    outlist = []
-    for i in inlist:
-        outlist.append(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}")
-
-    return outlist
+    return [(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}") for i in inlist]
 
 
 def zpad(innum):

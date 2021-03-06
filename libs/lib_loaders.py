@@ -193,11 +193,8 @@ def inc_statistics(indata):
         statistics[inctype] += 1
     else:
         statistics[inctype] = 1
-    
+
     if inctype in global_statistics:
         global_statistics[inctype] += 1
     else:
         global_statistics[inctype] = 1
-
-        
-
