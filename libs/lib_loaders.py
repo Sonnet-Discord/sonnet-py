@@ -179,39 +179,25 @@ def inc_statistics(indata):
 
     guild, inctype, kernel_ramfs = indata
 
-    stats_of = ["on-message", "on-message-edit", "on-message-delete", "on-reaction-add", "on-raw-reaction-add"]
+    try:
+        statistics = kernel_ramfs.read_f(f"{guild}/stats")
+    except FileNotFoundError:
+        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=dict)
 
     try:
-        statistics_file = kernel_ramfs.read_f(f"{guild}/stats")
-        statistics_file.seek(0)
+        global_statistics = kernel_ramfs.read_f(f"global/stats")
     except FileNotFoundError:
-        statistics_file = kernel_ramfs.create_f(f"{guild}/stats")
-        statistics_file.write(bytes(len(stats_of)))
-        statistics_file.seek(0)
+        global_statistics = kernel_ramfs.create_f(f"global/stats", f_type=dict)
 
-    try:
-        global_statistics_file = kernel_ramfs.read_f(f"global/stats")
-        global_statistics_file.seek(0)
-    except FileNotFoundError:
-        global_statistics_file = kernel_ramfs.create_f(f"global/stats")
-        global_statistics_file.write(bytes(len(stats_of)))
-        global_statistics_file.seek(0)
+    if inctype in statistics:
+        statistics[inctype] += 1
+    else:
+        statistics[inctype] = 1
+    
+    if inctype in global_statistics:
+        global_statistics[inctype] += 1
+    else:
+        global_statistics[inctype] = 1
 
-    # Read vnum and write to dict
-    datamap = {}
-    global_datamap = {}
-    for i in stats_of:
-        datamap[i] = read_vnum(statistics_file)
-        global_datamap[i] = read_vnum(global_statistics_file)
+        
 
-    datamap[inctype] += 1
-    global_datamap[inctype] += 1
-
-    statistics_file.seek(0)
-    global_statistics_file.seek(0)
-    for i in stats_of:
-        write_vnum(statistics_file, datamap[i])
-        write_vnum(global_statistics_file, global_datamap[i])
-
-    statistics_file.truncate()
-    global_statistics_file.truncate()
