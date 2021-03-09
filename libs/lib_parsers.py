@@ -290,7 +290,7 @@ class message_parse_failure(Exception):
 
 
 async def parse_channel_message(message, args, client):
-    
+
     try:
         message_link = args[0].replace("-", "/").split("/")
         log_channel = message_link[-2]

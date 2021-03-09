@@ -15,7 +15,6 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_channel_message, message_parse_failure
 
 
-
 async def add_reactionroles(message, args, client, **kwargs):
 
     try:
@@ -32,7 +31,7 @@ async def add_reactionroles(message, args, client, **kwargs):
     emoji = args[0]
 
     role = args[1].strip("<@&>")
-    
+
     try:
         role = message.guild.get_role(int(role))
     except ValueError:
@@ -77,13 +76,14 @@ commands = {
         'cache': 'regenerate',
         'execute': add_reactionroles
         },
-    'rr-remove': {
-        'pretty_name': 'rr-remove <message> <emoji>',
-        'description': 'Remove a reactionrole from a message',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': remove_reactionroles
-        },
+    'rr-remove':
+        {
+            'pretty_name': 'rr-remove <message> <emoji>',
+            'description': 'Remove a reactionrole from a message',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': remove_reactionroles
+            },
     }
 
 version_info = "1.1.5-DEV"

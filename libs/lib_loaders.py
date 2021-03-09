@@ -24,42 +24,37 @@ def directBinNumber(inData, length):
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 
 
+defaultcache = {
+    "csv": [["word-blacklist", []], ["filetype-blacklist", []], ["word-in-word-blacklist", []], ["antispam", ["3", "2"]]],
+    "text": [["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""]],
+    0: "sonnet_default"
+    }
+
+
 # Load config from cache, or load from db if cache isint existant
-def load_message_config(guild_id, ramfs):
-    datatypes = {
-        "csv": ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "antispam"],
-        "text": ["prefix", "blacklist-action", "starboard-emoji", "starboard-enabled", "starboard-count", "blacklist-whitelist", "regex-notifier-log", "admin-role", "moderator-role"],
-        "list": []
-        }
+def load_message_config(guild_id, ramfs, datatypes=defaultcache):
     try:
 
         # Loads fileio object
-        blacklist_cache = ramfs.read_f(f"{guild_id}/cache")
+        blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
         blacklist_cache.seek(0)
         message_config = {}
 
         # Imports csv style data
         for i in datatypes["csv"]:
-            message_config[i] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
-            if message_config[i]:
-                message_config[i] = message_config[i].split(",")
+            message_config[i[0]] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
+            if message_config[i[0]]:
+                message_config[i[0]] = message_config[i[0]].split(",")
             else:
-                message_config[i] = []
+                message_config[i[0]] = i[1]
 
         # Imports text style data
         for i in datatypes["text"]:
             preout = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little"))
             if preout:
-                message_config[i] = preout.decode("utf8")
+                message_config[i[0]] = preout.decode("utf8")
             else:
-                message_config[i] = ""
-
-        # Imports list style data
-        for lists in datatypes["list"]:
-            prelist = []
-            for i in range(int.from_bytes(blacklist_cache.read(2), "little")):
-                prelist.append(blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8"))
-            message_config[lists] = prelist
+                message_config[i[0]] = i[1]
 
         return message_config
 
@@ -68,58 +63,31 @@ def load_message_config(guild_id, ramfs):
 
         # Loads base db
         with db_hlapi(guild_id) as db:
-            for i in datatypes["csv"] + datatypes["text"] + datatypes["list"]:
-                message_config[i] = db.grab_config(i)
+            for i in datatypes["csv"] + datatypes["text"]:
+                message_config[i[0]] = db.grab_config(i[0])
+                if not message_config[i[0]]:
+                    message_config[i[0]] = i[1]
 
-        # Loads word, filetype blacklist
+        # Load CSV datatype
         for i in datatypes["csv"]:
-            if message_config[i]:
-                message_config[i] = message_config[i].lower().split(",")
-
-        # Generate various defaults
-        if not message_config["prefix"]:
-            message_config["prefix"] = GLOBAL_PREFIX
-
-        if not message_config["blacklist-action"]:
-            message_config["blacklist-action"] = BLACKLIST_ACTION
-
-        if not message_config["starboard-emoji"]:
-            message_config["starboard-emoji"] = STARBOARD_EMOJI
-
-        if not message_config["starboard-enabled"]:
-            message_config["starboard-enabled"] = "0"
-
-        if not message_config["starboard-count"]:
-            message_config["starboard-count"] = STARBOARD_COUNT
-
-        if not message_config["antispam"]:
-            message_config["antispam"] = ["3", "2"]
+            if message_config[i[0]]:
+                message_config[i[0]] = message_config[i[0]].lower().split(",")
 
         # Generate SNOWFLAKE DBCACHE
-        blacklist_cache = ramfs.create_f(f"{guild_id}/cache")
+        blacklist_cache = ramfs.create_f(f"{guild_id}/caches/{datatypes[0]}")
         # Add csv based configs
         for i in datatypes["csv"]:
-            if message_config[i]:
-                outdat = ",".join(message_config[i]).encode("utf8")
+            if message_config[i[0]]:
+                outdat = ",".join(message_config[i[0]]).encode("utf8")
                 blacklist_cache.write(bytes(directBinNumber(len(outdat), 2)) + outdat)
             else:
                 blacklist_cache.write(bytes(2))
 
         # Add text based configs
         for i in datatypes["text"]:
-            if message_config[i]:
-                outdat = message_config[i].encode("utf8")
+            if message_config[i[0]]:
+                outdat = message_config[i[0]].encode("utf8")
                 blacklist_cache.write(bytes(directBinNumber(len(outdat), 2)) + outdat)
-            else:
-                blacklist_cache.write(bytes(2))
-
-        # Add list based configs
-        for i in datatypes["list"]:
-            if message_config[i]:
-                preout = b""
-                for regex in message_config[i]:
-                    preout += bytes(directBinNumber(len(regex.encode("utf8")), 2)) + regex.encode("utf8")
-                blacklist_cache.write(bytes(directBinNumber(len(message_config[i]), 2)) + preout)
             else:
                 blacklist_cache.write(bytes(2))
 
