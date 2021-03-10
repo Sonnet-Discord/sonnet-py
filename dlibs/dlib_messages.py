@@ -320,9 +320,7 @@ async def on_message(message, **kargs):
 
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
-                    ramfs.rmdir(str(message.guild.id))
-                    if command_modules_dict[command]['cache'] == "regenerate":
-                        load_message_config(message.guild.id, ramfs)
+                    ramfs.rmdir(f"{message.guild.id}/caches")
         except discord.errors.Forbidden:
             pass  # Nothing we can do if we lack perms to speak
 
@@ -335,4 +333,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.4"
+version_info = "1.1.5-DEV"
