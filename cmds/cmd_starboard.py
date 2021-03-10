@@ -10,14 +10,14 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 importlib.reload(lib_parsers)
 
-from lib_parsers import parse_boolean, update_log_channel, log_channel_update_error
+from lib_parsers import parse_boolean, update_log_channel
 from lib_db_obfuscator import db_hlapi
 
 
 async def starboard_channel_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "starboard-channel")
-    except log_channel_update_error:
+    except lib_parsers.errors.log_channel_update_error:
         return
 
 

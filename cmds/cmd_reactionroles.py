@@ -12,14 +12,14 @@ import lib_parsers
 importlib.reload(lib_parsers)
 
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_channel_message, message_parse_failure
+from lib_parsers import parse_channel_message
 
 
 async def add_reactionroles(message, args, client, **kwargs):
 
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
-    except message_parse_failure:
+    except lib_parsers.errors.message_parse_failure:
         return
 
     args = args[nargs:]
@@ -40,6 +40,15 @@ async def add_reactionroles(message, args, client, **kwargs):
 
     if not role:
         await message.channel.send("Invalid role")
+        return
+
+    rindex = message.guild.roles.index(role)
+
+    if rindex >= message.guild.roles.index(message.author.roles[-1]):
+        await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
+        return
+    elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
+        await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
         return
 
     with db_hlapi(message.guild.id) as db:
@@ -63,7 +72,43 @@ async def add_reactionroles(message, args, client, **kwargs):
 
 
 async def remove_reactionroles(message, args, client, **kwargs):
-    await message.channel.send("Ultra needs to add this lolol")
+
+    try:
+        rr_message, nargs = await parse_channel_message(message, args, client)
+    except lib_parsers.errors.message_parse_failure:
+        return
+
+    args = args[nargs:]
+
+    if not args:
+        await message.channel.send("Not enough args supplied")
+        return
+
+    emoji = args[0]
+
+    with db_hlapi(message.guild.id) as db:
+        reactionroles = db.grab_config("reaction-role-data")
+
+    if not reactionroles:
+        await message.channel.send("ERROR: This guild has no reactionroles")
+        return
+
+    reactionroles = json.loads(reactionroles)
+
+    if str(rr_message.id) in reactionroles:
+        if emoji in reactionroles[str(rr_message.id)]:
+            del reactionroles[str(rr_message.id)][emoji]
+        else:
+            await message.channel.send(f"This message does not have {emoji} reactionrole on it")
+            return
+    else:
+        await message.channel.send("This message has no reactionroles on it")
+        return
+
+    with db_hlapi(message.guild.id) as db:
+        db.add_config("reaction-role-data", json.dumps(reactionroles))
+
+    await message.channel.send(f"Removed reactionrole {emoji} from message id {rr_message.id}")
 
 
 category_info = {'name': 'rr', 'pretty_name': 'Reaction Roles', 'description': 'Commands for controlling Reaction Role settings'}

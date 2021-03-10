@@ -16,7 +16,7 @@ importlib.reload(lib_parsers)
 import lib_loaders
 importlib.reload(lib_loaders)
 
-from lib_parsers import parse_boolean, update_log_channel, parse_role, log_channel_update_error
+from lib_parsers import parse_boolean, update_log_channel, parse_role
 from lib_loaders import read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
@@ -24,21 +24,21 @@ from lib_db_obfuscator import db_hlapi
 async def inflog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "infraction-log")
-    except log_channel_update_error:
+    except lib_parsers.errors.log_channel_update_error:
         return
 
 
 async def msglog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "message-log")
-    except log_channel_update_error:
+    except lib_parsers.errors.log_channel_update_error:
         return
 
 
 async def notifier_log_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "regex-notifier-log")
-    except log_channel_update_error:
+    except lib_parsers.errors.log_channel_update_error:
         return
 
 

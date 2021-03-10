@@ -15,6 +15,15 @@ importlib.reload(lib_encryption_wrapper)
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
+
+class errors:
+    class log_channel_update_error(RuntimeError):
+        pass
+
+    class message_parse_failure(Exception):
+        pass
+
+
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
 
@@ -129,10 +138,6 @@ def parse_boolean(instr):
     return 0
 
 
-class log_channel_update_error(RuntimeError):
-    pass
-
-
 # Put channel item in DB, and check for collisions
 async def update_log_channel(message, args, client, log_name):
 
@@ -145,22 +150,22 @@ async def update_log_channel(message, args, client, log_name):
             else:
                 log_channel = "nothing"
         await message.channel.send(f"{log_name} is set to {log_channel}")
-        raise log_channel_update_error("No Channel supplied")
+        raise errors.log_channel_update_error("No Channel supplied")
 
     try:
         log_channel = int(log_channel)
     except ValueError:
         await message.channel.send("Channel is not a valid channel")
-        raise log_channel_update_error("Channel is not a valid channel")
+        raise errors.log_channel_update_error("Channel is not a valid channel")
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
         await message.channel.send("Channel is not a valid channel")
-        raise log_channel_update_error("Channel is not a valid channel")
+        raise errors.log_channel_update_error("Channel is not a valid channel")
 
     if discord_channel.guild.id != message.channel.guild.id:
         await message.channel.send("Channel is not in guild")
-        raise log_channel_update_error("Channel is not in guild")
+        raise errors.log_channel_update_error("Channel is not in guild")
 
     # Nothing failed so send to db
     with db_hlapi(message.guild.id) as db:
@@ -285,10 +290,6 @@ async def parse_role(message, args, db_entry):
     await message.channel.send(f"Updated {db_entry} to {role}")
 
 
-class message_parse_failure(Exception):
-    pass
-
-
 async def parse_channel_message(message, args, client):
 
     try:
@@ -303,31 +304,31 @@ async def parse_channel_message(message, args, client):
             nargs = 2
         except IndexError:
             await message.channel.send("Not enough args supplied")
-            raise message_parse_failure
+            raise errors.message_parse_failure
 
     try:
         log_channel = int(log_channel)
     except ValueError:
         await message.channel.send("Channel is not a valid channel")
-        raise message_parse_failure
+        raise errors.message_parse_failure
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
         await message.channel.send("Channel is not a valid channel")
-        raise message_parse_failure
+        raise errors.message_parse_failure
 
     if discord_channel.guild.id != message.channel.guild.id:
         await message.channel.send("Channel is not in guild")
-        raise message_parse_failure
+        raise errors.message_parse_failure
 
     try:
         discord_message = await discord_channel.fetch_message(int(message_id))
     except (ValueError, discord.errors.HTTPException):
         await message.channel.send("Invalid MessageID")
-        raise message_parse_failure
+        raise errors.message_parse_failure
 
     if not discord_message:
         await message.channel.send("Invalid MessageID")
-        raise message_parse_failure
+        raise errors.message_parse_failure
 
     return (discord_message, nargs)
