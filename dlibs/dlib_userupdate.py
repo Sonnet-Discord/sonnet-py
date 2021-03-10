@@ -42,7 +42,7 @@ async def on_member_update(before, after, **kargs):
 category_info = {'name': 'UserUpdate'}
 
 commands = {
-    "on-member-update":on_member_update,
+    "on-member-update": on_member_update,
     }
 
-version_info = "1.1.5-DEV"
+version_info = "1.1.5"

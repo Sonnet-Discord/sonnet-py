@@ -144,4 +144,4 @@ commands = {
         }
     }
 
-version_info = "1.1.5-DEV"
+version_info = "1.1.5"
