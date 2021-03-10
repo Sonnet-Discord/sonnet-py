@@ -149,7 +149,6 @@ async def regex_notifier_remove(message, args, client, **kwargs):
 
 async def list_blacklist(message, args, client, **kwargs):
 
-    # Load temp ramfs to avoid passing as args
     mconf = kwargs["conf_cache"]
 
     # Format blacklist

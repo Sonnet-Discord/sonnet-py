@@ -10,7 +10,7 @@ import sys
 import lib_loaders
 importlib.reload(lib_loaders)
 
-from lib_loaders import read_vnum, clib_exists
+from lib_loaders import clib_exists
 
 
 def prettyprint(inlist):
@@ -21,11 +21,7 @@ def prettyprint(inlist):
         if len(i[0]) > maxln:
             maxln = len(i[0])
 
-    outlist = []
-    for i in inlist:
-        outlist.append(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}")
-
-    return outlist
+    return [(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}") for i in inlist]
 
 
 def zpad(innum):
@@ -82,32 +78,29 @@ async def print_stats(message, args, client, **kwargs):
 
     kernel_ramfs = kwargs["kernel_ramfs"]
 
-    statistics_list = ["on-message", "on-message-edit", "on-message-delete", "on-reaction-add", "on-raw-reaction-add"]
-
-    datamap = {}
-    global_datamap = {}
-    statistics_file = kernel_ramfs.read_f(f"persistent/{message.guild.id}/stats")
-    global_statistics_file = kernel_ramfs.read_f(f"persistent/global/stats")
-    statistics_file.seek(0)
-    global_statistics_file.seek(0)
+    statistics_file = kernel_ramfs.read_f(f"{message.guild.id}/stats")
+    global_statistics_file = kernel_ramfs.read_f(f"global/stats")
 
     fmt = "```py\n"
 
     guild_total = 0
     global_total = 0
-    for i in statistics_list:
-        datamap[i] = read_vnum(statistics_file)
-        guild_total += datamap[i]
-        global_datamap[i] = read_vnum(global_statistics_file)
-        global_total += global_datamap[i]
 
-    outputmap = [["This Guild:", "Count:"]]
-    for i in statistics_list:
-        outputmap.append([i, datamap[i]])
+    for i in statistics_file:
+        guild_total += statistics_file[i]
+
+    for i in global_statistics_file:
+        global_total += global_statistics_file[i]
+
+    outputmap = []
+
+    outputmap.append(["This Guild:", "Count:"])
+    [outputmap.append([i, statistics_file[i]]) for i in statistics_file]
+
     outputmap.append(["", ""])
+
     outputmap.append(["Globally:", "Count:"])
-    for i in statistics_list:
-        outputmap.append([i, global_datamap[i]])
+    [outputmap.append([i, global_statistics_file[i]]) for i in global_statistics_file]
 
     for i in prettyprint(outputmap):
         fmt += f"{i}\n"
@@ -151,4 +144,4 @@ commands = {
         }
     }
 
-version_info = "1.1.4"
+version_info = "1.1.5"

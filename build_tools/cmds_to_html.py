@@ -61,7 +61,7 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
         if i in aliasmap.keys():
             aliases = ", ".join(aliasmap[i])
         else:
-            aliases = ""
+            aliases = "None"
 
         outlist.append("\t<tr>")
         outlist.append(f"\t\t<td>{command_name}</td>")

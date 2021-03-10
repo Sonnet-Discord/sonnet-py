@@ -17,7 +17,7 @@ from lib_db_obfuscator import db_hlapi
 async def starboard_channel_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "starboard-channel")
-    except RuntimeError:
+    except lib_parsers.errors.log_channel_update_error:
         return
 
 
@@ -99,4 +99,4 @@ commands = {
             }
     }
 
-version_info = "1.1.3"
+version_info = "1.1.5"

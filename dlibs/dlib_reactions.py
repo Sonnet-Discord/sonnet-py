@@ -17,6 +17,10 @@ from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics
 from lib_parsers import ifgate, generate_reply_field
 
+from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
+
+starboard_types = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
+
 
 async def on_reaction_add(reaction, user, **kargs):
 
@@ -27,7 +31,7 @@ async def on_reaction_add(reaction, user, **kargs):
     message = reaction.message
 
     inc_statistics([message.guild.id, "on-reaction-add", kargs["kernel_ramfs"]])
-    mconf = load_message_config(message.guild.id, kargs["ramfs"])
+    mconf = load_message_config(message.guild.id, kargs["ramfs"], datatypes=starboard_types)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(message.guild.id) as db:
@@ -58,4 +62,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info = "1.1.3-2"
+version_info = "1.1.5"

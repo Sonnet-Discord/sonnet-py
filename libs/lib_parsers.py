@@ -15,6 +15,15 @@ importlib.reload(lib_encryption_wrapper)
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
+
+class errors:
+    class log_channel_update_error(RuntimeError):
+        pass
+
+    class message_parse_failure(Exception):
+        pass
+
+
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
 
@@ -28,7 +37,7 @@ def parse_blacklist(indata):
 
     # Compilecheck regex
     try:
-        ramfs.ls(f"regex/{message.guild.id}")
+        ramfs.ls(f"{message.guild.id}/regex")
     except FileNotFoundError:
 
         with db_hlapi(message.guild.id) as db:
@@ -40,12 +49,12 @@ def parse_blacklist(indata):
                     reglist[regex_type] = []
 
         for regex_type in ["regex-blacklist", "regex-notifier"]:
-            ramfs.mkdir(f"regex/{message.guild.id}/{regex_type}")
+            ramfs.mkdir(f"{message.guild.id}/regex/{regex_type}")
             for i in reglist[regex_type]:
-                ramfs.create_f(f"regex/{message.guild.id}/{regex_type}/{i}", f_type=re.compile, f_args=[i])
+                ramfs.create_f(f"{message.guild.id}/regex/{regex_type}/{i}", f_type=re.compile, f_args=[i])
 
-    blacklist["regex-blacklist"] = [ramfs.read_f(f"regex/{message.guild.id}/regex-blacklist/{i}") for i in ramfs.ls(f"regex/{message.guild.id}/regex-blacklist")[0]]
-    blacklist["regex-notifier"] = [ramfs.read_f(f"regex/{message.guild.id}/regex-notifier/{i}") for i in ramfs.ls(f"regex/{message.guild.id}/regex-notifier")[0]]
+    blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
+    blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
 
     # If in whitelist, skip parse to save resources
     if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
@@ -141,22 +150,22 @@ async def update_log_channel(message, args, client, log_name):
             else:
                 log_channel = "nothing"
         await message.channel.send(f"{log_name} is set to {log_channel}")
-        raise RuntimeError("No Channel supplied")
+        raise errors.log_channel_update_error("No Channel supplied")
 
     try:
         log_channel = int(log_channel)
     except ValueError:
         await message.channel.send("Channel is not a valid channel")
-        raise RuntimeError("Channel is not a valid channel")
+        raise errors.log_channel_update_error("Channel is not a valid channel")
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
         await message.channel.send("Channel is not a valid channel")
-        raise RuntimeError("Channel is not a valid channel")
+        raise errors.log_channel_update_error("Channel is not a valid channel")
 
     if discord_channel.guild.id != message.channel.guild.id:
         await message.channel.send("Channel is not in guild")
-        raise RuntimeError("Channel is not in guild")
+        raise errors.log_channel_update_error("Channel is not in guild")
 
     # Nothing failed so send to db
     with db_hlapi(message.guild.id) as db:
@@ -201,15 +210,15 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
 
     try:
 
-        files = ramfs.ls(f"files/{guild_id}/{message_id}")[1]
+        files = ramfs.ls(f"{guild_id}/files/{message_id}")[1]
         discord_files = []
         for i in files:
 
-            loc = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/pointer")
+            loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
             loc.seek(0)
             pointer = loc.read()
 
-            keys = ramfs.read_f(f"files/{guild_id}/{message_id}/{i}/key")
+            keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
             keys.seek(0)
             key = keys.read(32)
             iv = keys.read(16)
@@ -226,7 +235,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
 
         if delete:
             try:
-                ramfs.rmdir(f"files/{guild_id}/{message_id}")
+                ramfs.rmdir(f"{guild_id}/files/{message_id}")
             except FileNotFoundError:
                 pass
 
@@ -279,3 +288,47 @@ async def parse_role(message, args, db_entry):
         db.add_config(db_entry, role.id)
 
     await message.channel.send(f"Updated {db_entry} to {role}")
+
+
+async def parse_channel_message(message, args, client):
+
+    try:
+        message_link = args[0].replace("-", "/").split("/")
+        log_channel = message_link[-2]
+        message_id = message_link[-1]
+        nargs = 1
+    except IndexError:
+        try:
+            log_channel = args[0].strip("<#!>")
+            message_id = args[1]
+            nargs = 2
+        except IndexError:
+            await message.channel.send("Not enough args supplied")
+            raise errors.message_parse_failure
+
+    try:
+        log_channel = int(log_channel)
+    except ValueError:
+        await message.channel.send("Channel is not a valid channel")
+        raise errors.message_parse_failure
+
+    discord_channel = client.get_channel(log_channel)
+    if not discord_channel:
+        await message.channel.send("Channel is not a valid channel")
+        raise errors.message_parse_failure
+
+    if discord_channel.guild.id != message.channel.guild.id:
+        await message.channel.send("Channel is not in guild")
+        raise errors.message_parse_failure
+
+    try:
+        discord_message = await discord_channel.fetch_message(int(message_id))
+    except (ValueError, discord.errors.HTTPException):
+        await message.channel.send("Invalid MessageID")
+        raise errors.message_parse_failure
+
+    if not discord_message:
+        await message.channel.send("Invalid MessageID")
+        raise errors.message_parse_failure
+
+    return (discord_message, nargs)
