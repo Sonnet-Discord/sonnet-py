@@ -25,10 +25,7 @@ from lib_encryption_wrapper import encrypted_writer
 
 async def catch_logging_error(channel, contents, files):
     try:
-        if files:
-            await channel.send(embed=contents, files=files)
-        else:
-            await channel.send(embed=contents)
+        await channel.send(embed=contents, files=files)
     except discord.errors.Forbidden:
         pass
     except discord.errors.HTTPException:

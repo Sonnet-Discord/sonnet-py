@@ -42,6 +42,13 @@ async def notifier_log_change(message, args, client, **kwargs):
         return
 
 
+async def username_log_change(message, args, client, **kwargs):
+    try:
+        await update_log_channel(message, args, client, "username-log")
+    except lib_parsers.errors.log_channel_update_error:
+        return
+
+
 class gdpr_functions:
     async def delete(message, guild_id, ramfs, kramfs):
 
@@ -175,6 +182,13 @@ commands = {
         'permission': 'administrator',
         'cache': 'regenerate',
         'execute': notifier_log_change
+        },
+    'username-log': {
+        'pretty_name': 'username-log <channel>',
+        'description': 'Change username log',
+        'permission': 'administrator',
+        'cache': 'keep',
+        'execute': username_log_change
         },
     'gdpr': {
         'pretty_name': 'gdpr',

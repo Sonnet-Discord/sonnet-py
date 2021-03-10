@@ -18,6 +18,8 @@ async def on_raw_reaction_add(payload, **kargs):
 
     if not payload.guild_id: return
 
+    inc_statistics([payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"]])
+
     client = kargs["client"]
     rrconf = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
 
@@ -35,6 +37,8 @@ async def on_raw_reaction_add(payload, **kargs):
 async def on_raw_reaction_remove(payload, **kargs):
 
     if not payload.guild_id: return
+
+    inc_statistics([payload.guild_id, "on-raw-reaction-remove", kargs["kernel_ramfs"]])
 
     client = kargs["client"]
     rrconf = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
