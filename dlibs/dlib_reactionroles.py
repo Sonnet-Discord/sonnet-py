@@ -14,6 +14,16 @@ from lib_loaders import load_message_config, inc_statistics
 reactionrole_types = {0: "sonnet_reactionroles", "csv": [], "text": [["reaction-role-data", ""], ]}
 
 
+def emojifrompayload(payload):
+    emoji = payload.emoji
+    if emoji.is_unicode_emoji():
+        return emoji.name
+    elif emoji.is_custom_emoji():
+        return f"<:{emoji.name}:{emoji.id}>"
+    else:
+        return ""
+
+
 async def on_raw_reaction_add(payload, **kargs):
 
     if not payload.guild_id: return
@@ -25,8 +35,9 @@ async def on_raw_reaction_add(payload, **kargs):
 
     if rrconf:
         rrconf = json.loads(rrconf)
-        if str(payload.message_id) in rrconf and payload.emoji.name in rrconf[str(payload.message_id)]:
-            role_id = rrconf[str(payload.message_id)][payload.emoji.name]
+        emojiname = emojifrompayload(payload)
+        if str(payload.message_id) in rrconf and emojiname in rrconf[str(payload.message_id)]:
+            role_id = rrconf[str(payload.message_id)][emojiname]
             if (guild := (await client.fetch_guild(payload.guild_id))) and (member := (await guild.fetch_member(payload.user_id))) and (role := guild.get_role(role_id)):
                 try:
                     await member.add_roles(role)
@@ -45,8 +56,9 @@ async def on_raw_reaction_remove(payload, **kargs):
 
     if rrconf:
         rrconf = json.loads(rrconf)
-        if str(payload.message_id) in rrconf and payload.emoji.name in rrconf[str(payload.message_id)]:
-            role_id = rrconf[str(payload.message_id)][payload.emoji.name]
+        emojiname = emojifrompayload(payload)
+        if str(payload.message_id) in rrconf and emojiname in rrconf[str(payload.message_id)]:
+            role_id = rrconf[str(payload.message_id)][emojiname]
             if (guild := (await client.fetch_guild(payload.guild_id))) and (member := (await guild.fetch_member(payload.user_id))) and (role := guild.get_role(role_id)):
                 try:
                     await member.remove_roles(role)
