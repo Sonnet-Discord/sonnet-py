@@ -98,7 +98,7 @@ def generate_infractionid():
     if os.path.isfile("datastore/wordlist.cache.db"):
         if clib_exists:
             buf = bytes(256 * 3)
-            safe = loader.load_words(b"datastore/wordlist.cache.db", 3, int(time.time() * 1000000), buf, len(buf))
+            safe = loader.load_words(b"datastore/wordlist.cache.db\x00", 3, int(time.time() * 1000000), buf, len(buf))
             if safe == 0:
                 return buf.rstrip(b"\x00").decode("utf8")
             else:
