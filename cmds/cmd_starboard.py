@@ -16,6 +16,8 @@ from lib_parsers import parse_boolean, update_log_channel
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 
+from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
+
 starboard_types = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
 
 
