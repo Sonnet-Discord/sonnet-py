@@ -9,9 +9,14 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 import lib_parsers
 importlib.reload(lib_parsers)
+import lib_loaders
+importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel
+from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
+
+starboard_types = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
 
 
 async def starboard_channel_change(message, args, client, **kwargs):
@@ -28,7 +33,8 @@ async def set_starboard_emoji(message, args, client, **kwargs):
         with db_hlapi(message.guild.id) as database:
             database.add_config("starboard-emoji", emoji)
     else:
-        emoji = kwargs["conf_cache"]["starboard-emoji"]
+        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
+        emoji = mconf["starboard-emoji"]
 
     await message.channel.send(f"Updated starboard emoji to {emoji}")
 
@@ -40,7 +46,8 @@ async def set_starboard_use(message, args, client, **kwargs):
         with db_hlapi(message.guild.id) as database:
             database.add_config("starboard-enabled", int(gate))
     else:
-        gate = bool(int(kwargs["conf_cache"]["starboard-enabled"]))
+        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
+        gate = bool(int(mconf["starboard-enabled"]))
 
     await message.channel.send(f"Starboard set to {bool(gate)}")
 
@@ -61,7 +68,8 @@ async def set_starboard_count(message, args, client, **kwargs):
             await message.channel.send("Invalid input, please enter a number")
 
     else:
-        count = kwargs["conf_cache"]["starboard-count"]
+        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
+        count = mconf["starboard-count"]
         await message.channel.send(f"Starboard count is {count}")
 
 
@@ -99,4 +107,4 @@ commands = {
             }
     }
 
-version_info = "1.1.5"
+version_info = "1.1.5-2"
