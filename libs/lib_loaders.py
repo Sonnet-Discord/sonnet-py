@@ -11,9 +11,9 @@ importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
 
 try:
-    loader = ctypes.CDLL("./libs/compiled/sonnet.1.1.4-DEV.1.so")
-    loader.load_words.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p]
-    loader.load_words.restype = ctypes.c_void_p
+    loader = ctypes.CDLL("./libs/compiled/sonnet.1.1.6-DEV.0.so")
+    loader.load_words.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
+    loader.load_words.restype = ctypes.c_int
     clib_exists = True
 except OSError:
     clib_exists = False
@@ -98,8 +98,11 @@ def generate_infractionid():
     if os.path.isfile("datastore/wordlist.cache.db"):
         if clib_exists:
             buf = bytes(256 * 3)
-            loader.load_words(3, int(time.time() * 1000000), buf)
-            return buf.rstrip(b"\x00").decode("utf8")
+            safe = loader.load_words(b"datastore/wordlist.cache.db", 3, int(time.time() * 1000000), buf, len(buf))
+            if safe == 0:
+                return buf.rstrip(b"\x00").decode("utf8")
+            else:
+                raise RuntimeError("Wordlist generator recieved fatal status")
         else:
             with open("datastore/wordlist.cache.db", "rb") as words:
                 chunksize = words.read(1)[0]

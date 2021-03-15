@@ -2,10 +2,15 @@
 #include <string.h>
 #include <stdlib.h>
 
-void load_words(int retamount, unsigned long long seed, char* pointer) {
+int load_words ( char* filename, int retamount, unsigned long long seed, char* pointer, int pointer_length ) {
 
     // Open cache file
-    FILE* fp = fopen("datastore/wordlist.cache.db", "rb");
+    FILE* fp = fopen(filename, "rb");
+
+    // Exit if file does not exist
+    if ( fp == NULL ) {
+        return 1;
+    }
 
     // Grab length of file
     int maxln = fgetc(fp);
@@ -19,7 +24,7 @@ void load_words(int retamount, unsigned long long seed, char* pointer) {
     srand(seed);
 
     // Empty buffer
-    memset(pointer, 0, strlen(pointer));
+    memset(pointer, 0, pointer_length);
 
     // Grab X amount of words
     for ( int i = 0 ; i < retamount; i++ ) {
@@ -31,10 +36,19 @@ void load_words(int retamount, unsigned long long seed, char* pointer) {
         // Grab word and add it to buffer
         int curlen = fgetc(fp);
         fgets(buf, curlen, fp);
-        strcat(pointer, buf);
+
+        // Only add to buffer if it has space
+        if ( strlen(buf) + strlen(pointer) < pointer_length ) {
+            strcat(pointer, buf);
+        }
+        else {
+            fclose(fp);
+            return 1;
+        }
 
     }
 
     // Close file pointer
     fclose(fp);
+    return 0;
 }
