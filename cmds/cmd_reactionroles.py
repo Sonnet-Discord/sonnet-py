@@ -139,11 +139,11 @@ async def addmany_reactionroles(message, args, client, **kwargs):
     with db_hlapi(message.guild.id) as db:
         reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
 
-    for i in range(0, len(args), 2):
+    for i in range(len(args) // 2):
 
-        emoji = args[i]
+        emoji = args[i // 2]
 
-        role = args[i + 1].strip("<@&>")
+        role = args[i // 2 + 1].strip("<@&>")
 
         try:
             role = message.guild.get_role(int(role))
