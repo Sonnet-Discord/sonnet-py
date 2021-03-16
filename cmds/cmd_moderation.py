@@ -375,8 +375,10 @@ async def general_infraction_grabber(message, args, client):
     with db_hlapi(message.guild.id) as db:
         if user_affected:
             infractions = db.grab_user_infractions(user_affected)
+            sortmeth = "user"
         elif responsible_mod:
             infractions = db.grab_moderator_infractions(responsible_mod)
+            sortmeth = "mod"
         else:
             await message.channel.send("Please specify a user or moderator")
             return
@@ -384,16 +386,16 @@ async def general_infraction_grabber(message, args, client):
     # Generate sorts
     if not automod:
         automod_id = str(client.user.id)
-        infractions = [i for i in infractions if not (i[2] == automod_id or "[AUTOMOD]" in i[4])]
-    if responsible_mod:
-        infractions = [i for i in infractions if i[2] == responsible_mod]
-    if user_affected:
-        infractions = [i for i in infractions if i[1] == user_affected]
+        infractions = filter(lambda i: not (i[2] == automod_id or "[AUTOMOD]" in i[4]), infractions)
+    if responsible_mod and sortmeth != "mod":
+        infractions = filter(lambda i: i[2] == responsible_mod, infractions)
+    if user_affected and sortmeth != "user":
+        infractions = filter(lambda i: i[1] == user_affected, infractions)
     if infraction_type:
-        infractions = [i for i in infractions if i[3] == infraction_type]
+        infractions = filter(lambda i: i[3] == infraction_type, infractions)
 
     # Sort newest first
-    infractions.sort(reverse=True, key=lambda a: a[5])
+    infractions = sorted(infractions, reverse=True, key=lambda a: a[5])
 
     # Generate chunks from infractions
     do_not_exceed = 1900  # Discord message length limits
