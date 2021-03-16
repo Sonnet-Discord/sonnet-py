@@ -312,7 +312,7 @@ async def on_message(message, **kargs):
                     dlibs=kargs["dynamiclib_modules"][0],
                     main_version=main_version_info,
                     kernel_ramfs=kargs["kernel_ramfs"],
-                    conf_cache=mconf
+                    conf_cache=mconf,
                     verbose=True
                     )
 

@@ -23,28 +23,28 @@ from lib_db_obfuscator import db_hlapi
 
 async def inflog_change(message, args, client, **kwargs):
     try:
-        await update_log_channel(message, args, client, "infraction-log")
+        await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return
 
 
 async def msglog_change(message, args, client, **kwargs):
     try:
-        await update_log_channel(message, args, client, "message-log")
+        await update_log_channel(message, args, client, "message-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return
 
 
 async def notifier_log_change(message, args, client, **kwargs):
     try:
-        await update_log_channel(message, args, client, "regex-notifier-log")
+        await update_log_channel(message, args, client, "regex-notifier-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return
 
 
 async def username_log_change(message, args, client, **kwargs):
     try:
-        await update_log_channel(message, args, client, "username-log")
+        await update_log_channel(message, args, client, "username-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return
 
@@ -126,9 +126,9 @@ async def set_view_infractions(message, args, client, **kwargs):
             database.add_config("member-view-infractions", int(gate))
     else:
         with db_hlapi(message.guild.id) as database:
-            gate = bool(int(database.grab_config("member-view-infractions")))
+            gate = bool(int(database.grab_config("member-view-infractions") or 0))
 
-    await message.channel.send(f"Member View Own Infractions is set to {gate}")
+    if kwargs["verbose"]: await message.channel.send(f"Member View Own Infractions is set to {gate}")
 
 
 async def set_prefix(message, args, client, **kwargs):
@@ -141,22 +141,22 @@ async def set_prefix(message, args, client, **kwargs):
         with db_hlapi(message.guild.id) as database:
             prefix = database.grab_config("prefix")
 
-    await message.channel.send(f"Prefix set to `{prefix}`")
+    if kwargs["verbose"]: await message.channel.send(f"Prefix set to `{prefix}`")
 
 
 async def set_mute_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "mute-role")
+    await parse_role(message, args, "mute-role", verbose=kwargs["verbose"])
 
 
 async def set_admin_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "admin-role")
+    await parse_role(message, args, "admin-role", verbose=kwargs["verbose"])
 
 
 async def set_moderator_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "moderator-role")
+    await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
 
 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
@@ -238,4 +238,4 @@ commands = {
         }
     }
 
-version_info = "1.1.5"
+version_info = "1.1.6-DEV"

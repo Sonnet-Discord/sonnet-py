@@ -18,7 +18,7 @@ class blacklist_input_error(Exception):
     pass
 
 
-async def update_csv_blacklist(message, args, name):
+async def update_csv_blacklist(message, args, name, verbose=True):
 
     if not (args) or len(args) != 1:
         await message.channel.send(f"Malformed {name}")
@@ -27,13 +27,13 @@ async def update_csv_blacklist(message, args, name):
     with db_hlapi(message.guild.id) as db:
         db.add_config(name, args[0])
 
-    await message.channel.send(f"Updated {name} sucessfully")
+    if verbose: await message.channel.send(f"Updated {name} sucessfully")
 
 
 async def wb_change(message, args, client, **kwargs):
 
     try:
-        await update_csv_blacklist(message, args, "word-blacklist")
+        await update_csv_blacklist(message, args, "word-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
         pass
 
@@ -41,7 +41,7 @@ async def wb_change(message, args, client, **kwargs):
 async def word_in_word_change(message, args, client, **kwargs):
 
     try:
-        await update_csv_blacklist(message, args, "word-in-word-blacklist")
+        await update_csv_blacklist(message, args, "word-in-word-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
         pass
 
@@ -49,12 +49,12 @@ async def word_in_word_change(message, args, client, **kwargs):
 async def ftb_change(message, args, client, **kwargs):
 
     try:
-        await update_csv_blacklist(message, args, "filetype-blacklist")
+        await update_csv_blacklist(message, args, "filetype-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
         pass
 
 
-async def add_regex_type(message, args, db_entry):
+async def add_regex_type(message, args, db_entry, verbose=True):
 
     # Test if args supplied
     if not args:
@@ -85,10 +85,10 @@ async def add_regex_type(message, args, db_entry):
 
         database.add_config(db_entry, json.dumps(curlist))
 
-    await message.channel.send("Sucessfully Updated RegEx")
+    if verbose: await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def remove_regex_type(message, args, db_entry):
+async def remove_regex_type(message, args, db_entry, verbose=True):
 
     # Test if args supplied
     if not args:
@@ -116,33 +116,33 @@ async def remove_regex_type(message, args, db_entry):
         # Update DB
         database.add_config(db_entry, json.dumps(curlist))
 
-    await message.channel.send("Sucessfully Updated RegEx")
+    if verbose: await message.channel.send("Sucessfully Updated RegEx")
 
 
 async def regexblacklist_add(message, args, client, **kwargs):
     try:
-        await add_regex_type(message, args, "regex-blacklist")
+        await add_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
         pass
 
 
 async def regexblacklist_remove(message, args, client, **kwargs):
     try:
-        await remove_regex_type(message, args, "regex-blacklist")
+        await remove_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
         pass
 
 
 async def regex_notifier_add(message, args, client, **kwargs):
     try:
-        await add_regex_type(message, args, "regex-notifier")
+        await add_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
     except blacklist_input_error:
         pass
 
 
 async def regex_notifier_remove(message, args, client, **kwargs):
     try:
-        await remove_regex_type(message, args, "regex-notifier")
+        await remove_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
     except blacklist_input_error:
         pass
 
@@ -199,12 +199,12 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
     with db_hlapi(message.guild.id) as database:
         database.add_config("blacklist-action", action)
 
-    await message.channel.send(f"Updated blacklist action to `{action}`")
+    if kwargs["verbose"]: await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
 async def change_rolewhitelist(message, args, client, **kwargs):
 
-    await parse_role(message, args, "blacklist-whitelist")
+    await parse_role(message, args, "blacklist-whitelist", verbose=kwargs["verbose"])
 
 
 async def antispam_set(message, args, client, **kwargs):
@@ -232,7 +232,7 @@ async def antispam_set(message, args, client, **kwargs):
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{messages},{seconds}")
 
-    await message.channel.send(f"Updated antispam timings to M:{messages},S:{seconds}")
+    if kwargs["verbose"]: await message.channel.send(f"Updated antispam timings to M:{messages},S:{seconds}")
 
 
 category_info = {'name': 'automod', 'pretty_name': 'Automod', 'description': 'Automod management commands.'}
@@ -333,4 +333,4 @@ commands = {
             },
     }
 
-version_info = "1.1.4"
+version_info = "1.1.6-DEV"

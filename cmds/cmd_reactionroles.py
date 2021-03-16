@@ -68,7 +68,7 @@ async def add_reactionroles(message, args, client, **kwargs):
     with db_hlapi(message.guild.id) as db:
         db.add_config("reaction-role-data", json.dumps(reactionroles))
 
-    await message.channel.send(f"Added reactionrole to message id {rr_message.id}: {emoji}:{role.mention}", allowed_mentions=discord.AllowedMentions.none())
+    if kwargs["verbose"]: await message.channel.send(f"Added reactionrole to message id {rr_message.id}: {emoji}:{role.mention}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def remove_reactionroles(message, args, client, **kwargs):
@@ -108,7 +108,7 @@ async def remove_reactionroles(message, args, client, **kwargs):
     with db_hlapi(message.guild.id) as db:
         db.add_config("reaction-role-data", json.dumps(reactionroles))
 
-    await message.channel.send(f"Removed reactionrole {emoji} from message id {rr_message.id}")
+    if kwargs["verbose"]: await message.channel.send(f"Removed reactionrole {emoji} from message id {rr_message.id}")
 
 
 category_info = {'name': 'rr', 'pretty_name': 'Reaction Roles', 'description': 'Commands for controlling Reaction Role settings'}
@@ -131,4 +131,4 @@ commands = {
             },
     }
 
-version_info = "1.1.5"
+version_info = "1.1.6-DEV"

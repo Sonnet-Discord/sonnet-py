@@ -139,7 +139,7 @@ def parse_boolean(instr):
 
 
 # Put channel item in DB, and check for collisions
-async def update_log_channel(message, args, client, log_name):
+async def update_log_channel(message, args, client, log_name, verbose=True):
 
     if args:
         log_channel = args[0].strip("<#!>")
@@ -171,7 +171,7 @@ async def update_log_channel(message, args, client, log_name):
     with db_hlapi(message.guild.id) as db:
         db.add_config(log_name, log_channel)
 
-    await message.channel.send(f"Successfully updated {log_name}")
+    if verbose: await message.channel.send(f"Successfully updated {log_name}")
 
 
 async def parse_permissions(message, mconf, perms, verbose=True):
@@ -265,7 +265,7 @@ def generate_reply_field(message):
     return message_content
 
 
-async def parse_role(message, args, db_entry):
+async def parse_role(message, args, db_entry, verbose=True):
 
     if args:
         role = args[0].strip("<@&>")
@@ -287,7 +287,7 @@ async def parse_role(message, args, db_entry):
     with db_hlapi(message.guild.id) as db:
         db.add_config(db_entry, role.id)
 
-    await message.channel.send(f"Updated {db_entry} to {role}")
+    if verbose: await message.channel.send(f"Updated {db_entry} to {role}")
 
 
 async def parse_channel_message(message, args, client):
