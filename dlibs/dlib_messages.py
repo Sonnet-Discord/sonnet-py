@@ -135,7 +135,7 @@ async def on_message_edit(old_message, message, **kargs):
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
-        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client)
+        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False)
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf))
@@ -261,14 +261,14 @@ async def on_message(message, **kargs):
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client))
+        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False))
 
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client, verbose=False))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf))
@@ -313,6 +313,7 @@ async def on_message(message, **kargs):
                     main_version=main_version_info,
                     kernel_ramfs=kargs["kernel_ramfs"],
                     conf_cache=mconf
+                    verbose=True
                     )
 
                 # Regenerate cache
