@@ -638,4 +638,4 @@ commands = {
             }
     }
 
-version_info = "1.1.6-DEV"
+version_info = "1.1.6"

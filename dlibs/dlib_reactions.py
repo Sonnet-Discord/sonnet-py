@@ -65,4 +65,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info = "1.1.6-DEV"
+version_info = "1.1.6"
