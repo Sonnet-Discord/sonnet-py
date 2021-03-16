@@ -313,7 +313,8 @@ async def on_message(message, **kargs):
                     main_version=main_version_info,
                     kernel_ramfs=kargs["kernel_ramfs"],
                     conf_cache=mconf,
-                    verbose=True
+                    verbose=True,
+                    cmds_dict=command_modules_dict
                     )
 
                 # Regenerate cache
