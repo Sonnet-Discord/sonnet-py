@@ -10,7 +10,6 @@ import shlex
 import lib_parsers
 importlib.reload(lib_parsers)
 
-
 from lib_parsers import parse_permissions
 
 
@@ -33,7 +32,7 @@ async def sonnet_sh(message, args, client, **kwargs):
         if total[0] in kwargs["cmds_dict"] and total[0] != self_name:
             argout = total[1:]
             for index, i in enumerate(rawargs):
-                argout = [arg.replace("${%d}"%index, i) for arg in argout]
+                argout = [arg.replace("${%d}" % index, i) for arg in argout]
             commandsparse.append([total[0], argout])
         else:
             await message.channel.send(f"{total[0]} is not a valid command\nScript commands have no prefix for cross compatability\nAnd {self_name} is not runnable inside itself")
@@ -42,7 +41,7 @@ async def sonnet_sh(message, args, client, **kwargs):
     cache_purge = False
 
     for totalcommand in commandsparse:
-        
+
         command = totalcommand[0]
         arguments = totalcommand[1]
 
@@ -69,7 +68,7 @@ async def sonnet_sh(message, args, client, **kwargs):
                     cmds_dict=kwargs["cmds_dict"],
                     verbose=False,
                     )
-    
+
                 # Regenerate cache
                 if kwargs["cmds_dict"][command]['cache'] in ["purge", "regenerate"]:
                     cache_purge = True
@@ -84,20 +83,17 @@ async def sonnet_sh(message, args, client, **kwargs):
                 pass
 
 
-
-
-
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
 
 commands = {
-    'sonnetsh': {
-        'pretty_name': 'sonnetsh [args] \\n <command> <args>',
-        'description': 'Sonnet shell runtime, useful for automating setup',
-        'permission': 'everyone',
-        'cache': 'keep',
-        'execute': sonnet_sh
-        },
+    'sonnetsh':
+        {
+            'pretty_name': 'sonnetsh [args] \\n <command> <args>',
+            'description': 'Sonnet shell runtime, useful for automating setup',
+            'permission': 'everyone',
+            'cache': 'keep',
+            'execute': sonnet_sh
+            },
     }
 
 version_info = "1.1.6-DEV"
-

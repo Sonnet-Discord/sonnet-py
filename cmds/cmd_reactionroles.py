@@ -111,6 +111,22 @@ async def remove_reactionroles(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Removed reactionrole {emoji} from message id {rr_message.id}")
 
 
+async def list_reactionroles(message, args, client, **kwargs):
+
+    with db_hlapi(message.guild.id) as db:
+        data = json.loads(db.grab_config("reaction-role-data") or "{}")
+
+    reactionrole_embed = discord.Embed(title=f"ReactionRoles in {message.guild}")
+
+    for i in data:
+        reactionrole_embed.add_field(name=i, value="\n".join([f"{emoji}: <@&{data[i][emoji]}>" for emoji in data[i]]))
+
+    try:
+        await message.channel.send(embed=reactionrole_embed)
+    except discord.errors.HTTPException:
+        await message.channel.send("Too many messages to display")
+
+
 category_info = {'name': 'rr', 'pretty_name': 'Reaction Roles', 'description': 'Commands for controlling Reaction Role settings'}
 
 commands = {
@@ -129,6 +145,13 @@ commands = {
             'cache': 'regenerate',
             'execute': remove_reactionroles
             },
+    'rr-list': {
+        'pretty_name': 'rr-list',
+        'description': 'List all reactionroles in guild',
+        'permission': 'administrator',
+        'cache': 'keep',
+        'execute': list_reactionroles
+        },
     }
 
 version_info = "1.1.6-DEV"
