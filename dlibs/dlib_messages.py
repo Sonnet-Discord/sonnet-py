@@ -317,10 +317,11 @@ async def on_message(message, **kargs):
 
                 # Regenerate cache
                 if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
-                    try:
-                        ramfs.rmdir(f"{message.guild.id}/caches")
-                    except FileNotFoundError:
-                        pass
+                    for i in ["caches", "regex"]:
+                        try:
+                            ramfs.rmdir(f"{message.guild.id}/{i}")
+                        except FileNotFoundError:
+                            pass
         except discord.errors.Forbidden:
             pass  # Nothing we can do if we lack perms to speak
 
