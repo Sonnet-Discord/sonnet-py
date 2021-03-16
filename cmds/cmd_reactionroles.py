@@ -127,6 +127,55 @@ async def list_reactionroles(message, args, client, **kwargs):
         await message.channel.send("Too many messages to display")
 
 
+async def addmany_reactionroles(message, args, client, **kwargs):
+
+    try:
+        rr_message, nargs = await parse_channel_message(message, args, client)
+    except lib_parsers.errors.message_parse_failure:
+        return
+
+    args = (" ".join(args[nargs:])).replace("\n", " ").split()
+
+    with db_hlapi(message.guild.id) as db:
+        reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
+
+    for i in range(0, len(args), 2):
+
+        emoji = args[i]
+
+        role = args[i + 1].strip("<@&>")
+
+        try:
+            role = message.guild.get_role(int(role))
+        except ValueError:
+            await message.channel.send("Invalid role")
+            return
+
+        if not role:
+            await message.channel.send("Invalid role")
+            return
+
+        rindex = message.guild.roles.index(role)
+
+        if rindex >= message.guild.roles.index(message.author.roles[-1]):
+            await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
+            return
+        elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
+            await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
+            return
+
+        if str(rr_message.id) in reactionroles:
+            reactionroles[str(rr_message.id)][emoji] = role.id
+        else:
+            reactionroles[str(rr_message.id)] = {}
+            reactionroles[str(rr_message.id)][emoji] = role.id
+
+    with db_hlapi(message.guild.id) as db:
+        db.add_config("reaction-role-data", json.dumps(reactionroles))
+
+    if kwargs["verbose"]: await message.channel.send("Added Multiple reactionroles")
+
+
 category_info = {'name': 'rr', 'pretty_name': 'Reaction Roles', 'description': 'Commands for controlling Reaction Role settings'}
 
 commands = {
@@ -152,6 +201,14 @@ commands = {
         'cache': 'keep',
         'execute': list_reactionroles
         },
+    'rr-addmany':
+        {
+            'pretty_name': 'rr-addmany <message> (?:<emoji> <role>)+',
+            'description': 'Add multiple reactionroles',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': addmany_reactionroles
+            },
     }
 
 version_info = "1.1.6"
