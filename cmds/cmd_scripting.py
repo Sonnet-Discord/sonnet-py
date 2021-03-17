@@ -90,10 +90,10 @@ commands = {
         {
             'pretty_name': 'sonnetsh [args] \\n <command> <args>',
             'description': 'Sonnet shell runtime, useful for automating setup',
-            'permission': 'everyone',
+            'permission': 'moderator',
             'cache': 'keep',
             'execute': sonnet_sh
             },
     }
 
-version_info = "1.1.6"
+version_info = "1.1.6-1"
