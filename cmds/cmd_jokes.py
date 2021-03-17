@@ -23,11 +23,6 @@ async def joke_ban_user(message, args, client, **kwargs):
         await message.channel.send(f"'Banned' {user.mention} with ID {user.id} for {reason}")
 
 
-async def joke_ban_deprecation(message, args, client, **kwargs):
-
-    await message.channel.send("`jban` is deprecated, please use `jkb` instead")
-
-
 category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke commands, because because'}
 
 commands = {
@@ -38,13 +33,6 @@ commands = {
         'cache': 'keep',
         'execute': joke_ban_user
         },
-    'jban': {
-        'pretty_name': 'jban',
-        'description': 'deprecated use jkb instead',
-        'permission': 'moderator',
-        'cache': 'keep',
-        'execute': joke_ban_deprecation
-        }
     }
 
-version_info = "1.1.4-1"
+version_info = "1.1.6"

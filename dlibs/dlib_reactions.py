@@ -53,7 +53,10 @@ async def on_reaction_add(reaction, user, **kargs):
                     starboard_embed.timestamp = message.created_at
                     starboard_embed.set_footer(text=f"#{message.channel}")
 
-                    await channel.send(embed=starboard_embed)
+                    try:
+                        await channel.send(embed=starboard_embed)
+                    except discord.errors.Forbidden:
+                        pass
 
 
 category_info = {'name': 'Starboard'}
@@ -62,4 +65,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info = "1.1.5"
+version_info = "1.1.6"
