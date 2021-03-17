@@ -140,10 +140,8 @@ async def addmany_reactionroles(message, args, client, **kwargs):
         reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
 
     for i in range(len(args) // 2):
-
-        emoji = args[i // 2]
-
-        role = args[i // 2 + 1].strip("<@&>")
+        emoji = args[i * 2]
+        role = args[i * 2 + 1].strip("<@&>")
 
         try:
             role = message.guild.get_role(int(role))
