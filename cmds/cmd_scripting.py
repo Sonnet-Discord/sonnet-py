@@ -88,7 +88,8 @@ category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description':
 commands = {
     'sonnetsh':
         {
-            'pretty_name': 'sonnetsh [args] \\n <command> <args>',
+            'pretty_name': 'sonnetsh [args]\n<command1>\n...',
+            'rich_description': 'To use [args] use syntax ${index}, 0 is commands own name',
             'description': 'Sonnet shell runtime, useful for automating setup',
             'permission': 'moderator',
             'cache': 'keep',
@@ -96,4 +97,4 @@ commands = {
             },
     }
 
-version_info = "1.1.6-1"
+version_info = "1.2.0-DEV"

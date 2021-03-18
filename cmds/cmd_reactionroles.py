@@ -134,7 +134,7 @@ async def addmany_reactionroles(message, args, client, **kwargs):
     except lib_parsers.errors.message_parse_failure:
         return
 
-    args = (" ".join(args[nargs:])).replace("\n", " ").split()
+    args = args[nargs:]
 
     with db_hlapi(message.guild.id) as db:
         reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
@@ -209,4 +209,4 @@ commands = {
             },
     }
 
-version_info = "1.1.6"
+version_info = "1.2.0-DEV"
