@@ -481,7 +481,10 @@ async def delete_infraction(message, args, client, **kwargs):
 
 async def grab_guild_message(message, args, client, **kwargs):
 
-    discord_message, nargs = await parse_channel_message(message, args, client)
+    try:
+        discord_message, nargs = await parse_channel_message(message, args, client)
+    except lib_parsers.errors.message_parse_failure:
+        return
 
     # Generate replies
     message_content = generate_reply_field(discord_message)
