@@ -276,8 +276,11 @@ commands = {
         'execute': ftb_change
         },
     'list-blacklist': {
-        'pretty_name': 'list-blacklist',
-        'description': 'List all blacklists',
+        'alias': 'list-automod'
+        },
+    'list-automod': {
+        'pretty_name': 'list-automod',
+        'description': 'List automod configs',
         'permission': 'moderator',
         'cache': 'keep',
         'execute': list_blacklist
@@ -333,4 +336,4 @@ commands = {
             },
     }
 
-version_info = "1.1.6"
+version_info = "1.2.0-DEV"
