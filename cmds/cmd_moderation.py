@@ -596,14 +596,13 @@ commands = {
     'get-message': {
         'alias': 'grab-message'
         },
-    'grab-message':
-        {
-            'pretty_name': 'grab-message <message>',
-            'description': 'Grab a message and show its contents',
-            'permission': 'moderator',
-            'cache': 'keep',
-            'execute': grab_guild_message
-            }
+    'grab-message': {
+        'pretty_name': 'grab-message <message>',
+        'description': 'Grab a message and show its contents',
+        'permission': 'moderator',
+        'cache': 'keep',
+        'execute': grab_guild_message
+        }
     }
 
 version_info = "1.2.0-DEV"

@@ -215,14 +215,15 @@ commands = {
         'cache': 'keep',
         'execute': profile_function
         },
-    'help': {
-        'pretty_name': 'help [category|command]',
-        'description': 'Print helptext',
-        'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
-        'permission': 'everyone',
-        'cache': 'keep',
-        'execute': help_function
-        },
+    'help':
+        {
+            'pretty_name': 'help [category|command]',
+            'description': 'Print helptext',
+            'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
+            'permission': 'everyone',
+            'cache': 'keep',
+            'execute': help_function
+            },
     'avatar': {
         'pretty_name': 'avatar [user]',
         'description': 'Get avatar of a user',

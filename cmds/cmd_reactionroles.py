@@ -197,14 +197,15 @@ commands = {
             'cache': 'regenerate',
             'execute': remove_reactionroles
             },
-    'rr-list': {
-        'pretty_name': 'rr-list',
-        'description': 'List all reactionroles in guild',
-        'rich_description': 'Does not display in guilds with more than 25 messages, will instead drop a file',
-        'permission': 'administrator',
-        'cache': 'keep',
-        'execute': list_reactionroles
-        },
+    'rr-list':
+        {
+            'pretty_name': 'rr-list',
+            'description': 'List all reactionroles in guild',
+            'rich_description': 'Does not display in guilds with more than 25 messages, will instead drop a file',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': list_reactionroles
+            },
     'rr-addmany':
         {
             'pretty_name': 'rr-addmany <message> (?:<emoji> <role>)+',
