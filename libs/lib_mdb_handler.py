@@ -21,6 +21,8 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Save database name
         self.db_name = login_info["db_name"]
 
+        self.closed = False
+
     def __enter__(self):
         return self
 
@@ -128,9 +130,15 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def close(self):
         self.con.commit()
         self.con.close()
+        self.closed = True
+
+    def __del__(self):
+        if not self.closed:
+            self.close()
 
     def __exit__(self, err_type, err_value, err_traceback):
         self.con.commit()
         self.con.close()
+        self.closed = True
         if err_type:
             raise err_type(err_value)
