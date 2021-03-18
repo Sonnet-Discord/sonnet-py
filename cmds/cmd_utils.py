@@ -138,9 +138,11 @@ async def help_function(message, args, client, **kwargs):
             if "rich_description" in kwargs["cmds_dict"][a]:
                 cmd_embed.add_field(name="Detailed information:", value=kwargs["cmds_dict"][a]["rich_description"], inline=False)
 
-            aliases = list(filter(lambda c: "alias" in kwargs["cmds_dict"][c] and kwargs["cmds_dict"][c]["alias"] == a, kwargs["cmds_dict"]))
+            cmd_embed.add_field(name="Permission level:", value=kwargs["cmds_dict"][a]["permission"])
+
+            aliases = ", ".join(filter(lambda c: "alias" in kwargs["cmds_dict"][c] and kwargs["cmds_dict"][c]["alias"] == a, kwargs["cmds_dict"]))
             if aliases:
-                cmd_embed.add_field(name="Aliases:", value=", ".join(aliases), inline=False)
+                cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
 
             await message.channel.send(embed=cmd_embed)
 
