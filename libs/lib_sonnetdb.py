@@ -21,10 +21,35 @@ elif DB_TYPE == "sqlite3":
     db_connection_parameters = SQLITE3_LOCATION
 
 
+class DATABASE_FATAL_CONNECTION_LOSS(Exception):
+    pass
+
+
+try:
+    db_connection = db_handler(db_connection_parameters)
+except db_error.Error:
+    print("FATAL: DATABASE CONNECTION ERROR")
+    raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
+
+
+def db_reconnect():
+    global db_connection
+    try:
+        db_connection.commit()
+        return db_connection
+    except (db_error.Error, db_error.InterfaceError):
+        try:
+            db_connection = db_handler(db_connection_parameters)
+            return db_connection
+        except db_error.Error:
+            print("FATAL: DATABASE CONNECTION ERROR")
+            raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
+
+
 # Because being lazy writes good code
 class db_hlapi:
     def __init__(self, guild_id):
-        self.database = db_handler(db_connection_parameters)
+        self.database = db_reconnect()
         self.guild = guild_id
 
     def __enter__(self):
@@ -202,9 +227,9 @@ class db_hlapi:
         return muted
 
     def close(self):
-        self.database.close()
+        self.database.commit()
 
     def __exit__(self, err_type, err_value, err_traceback):
-        self.database.close()
+        self.database.commit()
         if err_type:
             raise err_type(err_value)
