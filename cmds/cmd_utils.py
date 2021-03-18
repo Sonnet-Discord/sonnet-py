@@ -108,43 +108,56 @@ async def avatar_function(message, args, client, **kwargs):
 
 async def help_function(message, args, client, **kwargs):
 
-    if not args:
-        # We're just doing category info.
+    if args:
 
-        # Initialise embed.
-        commands_embed = discord.Embed(title="Category Listing", color=0x00db87)
-        commands_embed.set_author(name="Sonnet Help")
-
-        # Start creating module listing.
-        for modules in kwargs["cmds"]:
-            commands_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
-    else:
-
-        # Initialise embed.
-        commands_embed = discord.Embed(title=f"Commands in Category \"{args[0].lower()}\"", color=0x00db87)
-        commands_embed.set_author(name="Sonnet Help")
-
-        # Start creating command listing.
-        command_module = [i for i in kwargs["cmds"] if i.category_info['name'] == args[0].lower()]
-        if command_module:
-            module = command_module[0]
-            cmds = [module.commands[i] for i in module.commands.keys() if not 'alias' in module.commands[i].keys()]
-
-        else:
-            commands_embed.add_field(name="No commands found in this category.", value="Maybe you misspelled?", inline=False)
-            await message.channel.send(embed=commands_embed)
-            return
-
-        # Load prefix
+        modules = {mod.category_info["name"] for mod in kwargs["cmds"]}
         PREFIX = kwargs["conf_cache"]["prefix"]
 
-        # Now we generate the actual embed.
-        for command in cmds:
-            # Add field.
-            commands_embed.add_field(name=PREFIX + command['pretty_name'], value=command['description'], inline=False)
+        # Per module help
+        if (a := args[0].lower()) in modules:
 
-    # Now we have the final embed. Send it.
-    await message.channel.send(embed=commands_embed)
+            curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
+            cmd_embed = discord.Embed(title=f'Commands in Category "{a}"', color=0x00db87)
+            cmd_embed.set_author(name="Sonent Help")
+
+            for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
+                cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
+
+            await message.channel.send(embed=cmd_embed)
+
+        # Per command help
+        elif a in kwargs["cmds_dict"]:
+            if "alias" in kwargs["cmds_dict"][a]:
+                a = kwargs["cmds_dict"][a]["alias"]
+
+            cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=0x00db87)
+            cmd_embed.set_author(name="Sonent Help")
+
+            cmd_embed.add_field(name="Usage:", value=PREFIX + kwargs["cmds_dict"][a]["pretty_name"], inline=False)
+
+            if "rich_description" in kwargs["cmds_dict"][a]:
+                cmd_embed.add_field(name="Detailed information:", value=kwargs["cmds_dict"][a]["rich_description"], inline=False)
+
+            aliases = list(filter(lambda c: "alias" in kwargs["cmds_dict"][c] and kwargs["cmds_dict"][c]["alias"] == a, kwargs["cmds_dict"]))
+            if aliases:
+                cmd_embed.add_field(name="Aliases:", value=", ".join(aliases), inline=False)
+
+            await message.channel.send(embed=cmd_embed)
+
+        # Do not echo user input
+        else:
+            await message.channel.send("No command or command module with that name")
+
+    # Total help
+    else:
+
+        cmd_embed = discord.Embed(title="Category Listing", color=0x00db87)
+        cmd_embed.set_author(name="Sonnet Help")
+
+        for modules in kwargs["cmds"]:
+            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
+
+        await message.channel.send(embed=cmd_embed)
 
 
 async def grab_guild_info(message, args, client, **kwargs):
@@ -205,7 +218,7 @@ commands = {
         'execute': profile_function
         },
     'help': {
-        'pretty_name': 'help [category]',
+        'pretty_name': 'help [category|command]',
         'description': 'Print helptext',
         'permission': 'everyone',
         'cache': 'keep',
@@ -244,4 +257,4 @@ commands = {
         }
     }
 
-version_info = "1.1.3-3"
+version_info = "1.2.0-DEV"
