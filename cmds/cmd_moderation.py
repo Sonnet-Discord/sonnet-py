@@ -14,7 +14,7 @@ importlib.reload(lib_parsers)
 
 from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message
 
 
 # Catches error if the bot cannot message the user
@@ -481,42 +481,7 @@ async def delete_infraction(message, args, client, **kwargs):
 
 async def grab_guild_message(message, args, client, **kwargs):
 
-    try:
-        message_link = args[0].replace("-", "/").split("/")
-        log_channel = message_link[-2]
-        message_id = message_link[-1]
-    except IndexError:
-        try:
-            log_channel = args[0].strip("<#!>")
-            message_id = args[1]
-        except IndexError:
-            await message.channel.send("Not enough args supplied")
-            return
-
-    try:
-        log_channel = int(log_channel)
-    except ValueError:
-        await message.channel.send("Channel is not a valid channel")
-        return
-
-    discord_channel = client.get_channel(log_channel)
-    if not discord_channel:
-        await message.channel.send("Channel is not a valid channel")
-        return
-
-    if discord_channel.guild.id != message.channel.guild.id:
-        await message.channel.send("Channel is not in guild")
-        return
-
-    try:
-        discord_message = await discord_channel.fetch_message(int(message_id))
-    except (ValueError, discord.errors.HTTPException):
-        await message.channel.send("Invalid MessageID")
-        return
-
-    if not discord_message:
-        await message.channel.send("Invalid MessageID")
-        return
+    discord_message, nargs = await parse_channel_message(message, args, client)
 
     # Generate replies
     message_content = generate_reply_field(discord_message)
@@ -630,7 +595,7 @@ commands = {
         },
     'grab-message':
         {
-            'pretty_name': 'grab-message <channelID> <messageID>',
+            'pretty_name': 'grab-message <message>',
             'description': 'Grab a message and show its contents',
             'permission': 'moderator',
             'cache': 'keep',
@@ -638,4 +603,4 @@ commands = {
             }
     }
 
-version_info = "1.1.6"
+version_info = "1.2.0-DEV"
