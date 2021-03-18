@@ -16,7 +16,7 @@ import lib_parsers
 importlib.reload(lib_parsers)
 
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_permissions
+from lib_parsers import parse_permissions, parse_boolean
 
 
 async def parse_userid(message, args):
@@ -60,7 +60,7 @@ async def profile_function(message, args, client, **kwargs):
         return
 
     # Status hashmap
-    status_map = {"online": "🟢", "offline": "⚫", "idle": "🟡", "dnd": "🔴", "do_not_disturb": "🔴", "invisible": "⚫"}
+    status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
 
     # Put here to comply with formatting guidelines.
     created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
@@ -69,7 +69,7 @@ async def profile_function(message, args, client, **kwargs):
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
     joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
 
-    embed = discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
+    embed = discord.Embed(title="User Information", description=f"User information for {user_object.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
     embed.add_field(name="User ID", value=user_object.id, inline=True)
@@ -80,11 +80,7 @@ async def profile_function(message, args, client, **kwargs):
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
-        viewinfs = db.grab_config("member-view-infractions")
-        if viewinfs:
-            viewinfs = bool(int(viewinfs))
-        else:
-            viewinfs = False
+        viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
         moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
         if moderator or (viewinfs and user_object.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
@@ -222,6 +218,7 @@ commands = {
     'help': {
         'pretty_name': 'help [category|command]',
         'description': 'Print helptext',
+        'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
         'permission': 'everyone',
         'cache': 'keep',
         'execute': help_function
