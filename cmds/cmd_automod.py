@@ -153,8 +153,8 @@ async def list_blacklist(message, args, client, **kwargs):
 
     # Format blacklist
     blacklist = {}
-    blacklist["regex-blacklist"] = ["/" + i.pattern + "/g" for i in mconf["regex-blacklist"]]
-    blacklist["regex-notifier"] = ["/" + i.pattern + "/g" for i in mconf["regex-notifier"]]
+    blacklist["regex-blacklist"] = [f"/{i.pattern}/g" for i in mconf["regex-blacklist"]]
+    blacklist["regex-notifier"] = [f"/{i.pattern}/g" for i in mconf["regex-notifier"]]
     blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
     blacklist["word-in-word-blacklist"] = ",".join(mconf["word-in-word-blacklist"])
     blacklist["filetype-blacklist"] = ",".join(mconf["filetype-blacklist"])
