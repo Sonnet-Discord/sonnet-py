@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives import hashes, hmac
 
 import io
 
+
 def directBinNumber(inData, length):
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 

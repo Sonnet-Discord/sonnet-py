@@ -348,7 +348,7 @@ async def unmute_user(message, args, client, **kwargs):
 async def general_infraction_grabber(message, args, client):
 
     # Reparse args
-    args = message.content.replace("=", " ").split(" ")[1:]
+    args = (" ".join(args)).replace("=", " ").split()
 
     # Parse flags
     selected_chunk = 0
