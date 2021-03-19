@@ -4,7 +4,7 @@
 import importlib
 
 import discord
-import json
+import json, io
 
 import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
@@ -118,13 +118,18 @@ async def list_reactionroles(message, args, client, **kwargs):
 
     reactionrole_embed = discord.Embed(title=f"ReactionRoles in {message.guild}")
 
-    for i in data:
-        reactionrole_embed.add_field(name=i, value="\n".join([f"{emoji}: <@&{data[i][emoji]}>" for emoji in data[i]]))
+    if len(data) <= 25:
+        for i in data:
+            reactionrole_embed.add_field(name=i, value="\n".join([f"{emoji}: <@&{data[i][emoji]}>" for emoji in data[i]]))
 
-    try:
         await message.channel.send(embed=reactionrole_embed)
-    except discord.errors.HTTPException:
-        await message.channel.send("Too many messages to display")
+
+    else:
+        fileobj = io.BytesIO()
+        fileobj.write(json.dumps(data).encode("utf8"))
+        fileobj.seek(0)
+        dfile = discord.File(fileobj, filename="RR.json")
+        await message.channel.send("Too many rr messages to send in embed", file=dfile)
 
 
 async def addmany_reactionroles(message, args, client, **kwargs):
@@ -134,7 +139,7 @@ async def addmany_reactionroles(message, args, client, **kwargs):
     except lib_parsers.errors.message_parse_failure:
         return
 
-    args = (" ".join(args[nargs:])).replace("\n", " ").split()
+    args = args[nargs:]
 
     with db_hlapi(message.guild.id) as db:
         reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
@@ -192,21 +197,24 @@ commands = {
             'cache': 'regenerate',
             'execute': remove_reactionroles
             },
-    'rr-list': {
-        'pretty_name': 'rr-list',
-        'description': 'List all reactionroles in guild',
-        'permission': 'administrator',
-        'cache': 'keep',
-        'execute': list_reactionroles
-        },
+    'rr-list':
+        {
+            'pretty_name': 'rr-list',
+            'description': 'List all reactionroles in guild',
+            'rich_description': 'Does not display in guilds with more than 25 messages, will instead drop a file',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': list_reactionroles
+            },
     'rr-addmany':
         {
             'pretty_name': 'rr-addmany <message> (?:<emoji> <role>)+',
             'description': 'Add multiple reactionroles',
+            'rich_description': 'Multiple reactionroles can be space or newline seperated',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': addmany_reactionroles
             },
     }
 
-version_info = "1.1.6"
+version_info = "1.2.0"

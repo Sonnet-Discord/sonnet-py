@@ -14,6 +14,7 @@ class db_handler:
     def __init__(self, db_location):
         self.con = sqlite3.connect(db_location)
         self.cur = self.con.cursor()
+        self.closed = False
 
     def __enter__(self):
         return self
@@ -144,9 +145,15 @@ class db_handler:
     def close(self):
         self.con.commit()
         self.con.close()
+        self.closed = True
+
+    def __del__(self):
+        if not self.closed:
+            self.close()
 
     def __exit__(self, err_type, err_value, err_traceback):
         self.con.commit()
         self.con.close()
+        self.closed = True
         if err_type:
             raise err_type(err_value)

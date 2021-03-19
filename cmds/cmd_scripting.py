@@ -23,11 +23,15 @@ async def sonnet_sh(message, args, client, **kwargs):
         await message.channel.send("ERROR: shlex parser could not parse args")
         return
 
+    if kwargs["verbose"] == False:
+        await message.channel.send(f"Shell ERROR: detected anomalous command execution")
+        return
+
     self_name = rawargs[0][len(kwargs["conf_cache"]["prefix"]):]
 
     commandsparse = []
 
-    for single_cmd in arguments[1:]:
+    for hlindex, single_cmd in enumerate(arguments[1:]):
         total = single_cmd.split()
         if total[0] in kwargs["cmds_dict"] and total[0] != self_name:
             argout = total[1:]
@@ -35,7 +39,7 @@ async def sonnet_sh(message, args, client, **kwargs):
                 argout = [arg.replace("${%d}" % index, i) for arg in argout]
             commandsparse.append([total[0], argout])
         else:
-            await message.channel.send(f"{total[0]} is not a valid command\nScript commands have no prefix for cross compatability\nAnd {self_name} is not runnable inside itself")
+            await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatability\nAnd {self_name} is not runnable inside itself")
             return
 
     cache_purge = False
@@ -83,17 +87,76 @@ async def sonnet_sh(message, args, client, **kwargs):
                 pass
 
 
+async def sonnet_map(message, args, client, **kwargs):
+
+    try:
+        targs = shlex.split(" ".join(args))
+    except ValueError:
+        await message.channel.send("ERROR: shlex parser could not parse args")
+        return
+
+    if targs:
+        command = targs[0]
+    else:
+        await message.channel.send("No command specified")
+        return
+
+    if command not in kwargs["cmds_dict"]:
+        await message.channel.send("Invalid command")
+        return
+
+    if "alias" in kwargs["cmds_dict"][command]:
+        command = kwargs["cmds_dict"][command]["alias"]
+
+    permission = await parse_permissions(message, kwargs["conf_cache"], kwargs["cmds_dict"][command]['permission'])
+    if not permission:
+        return
+
+    for i in targs[1:]:
+
+        await kwargs["cmds_dict"][command]['execute'](
+            message,
+            i.split(),
+            client,
+            stats=kwargs["stats"],
+            cmds=kwargs["cmds"],
+            ramfs=kwargs["ramfs"],
+            bot_start=kwargs["bot_start"],
+            dlibs=kwargs["dlibs"],
+            main_version=kwargs["main_version"],
+            kernel_ramfs=kwargs["kernel_ramfs"],
+            conf_cache=kwargs["conf_cache"],
+            cmds_dict=kwargs["cmds_dict"],
+            verbose=False,
+            )
+
+    if kwargs["cmds_dict"][command]['cache'] in ["purge", "regenerate"]:
+        for i in ["caches", "regex"]:
+            try:
+                kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
+            except FileNotFoundError:
+                pass
+
+
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
 
 commands = {
     'sonnetsh':
         {
-            'pretty_name': 'sonnetsh [args] \\n <command> <args>',
+            'pretty_name': 'sonnetsh [args]\n<command1>\n...',
+            'rich_description': 'To use [args] use syntax ${index}, 0 is commands own name',
             'description': 'Sonnet shell runtime, useful for automating setup',
             'permission': 'moderator',
             'cache': 'keep',
             'execute': sonnet_sh
             },
+    'map': {
+        'pretty_name': 'map <command> (<args>)+',
+        'description': 'Map a single command with multiple arguments',
+        'permission': 'moderator',
+        'cache': 'keep',
+        'execute': sonnet_map
+        },
     }
 
-version_info = "1.1.6-1"
+version_info = "1.2.0"

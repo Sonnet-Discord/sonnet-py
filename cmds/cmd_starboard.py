@@ -80,7 +80,7 @@ category_info = {'name': 'starboard', 'pretty_name': 'Starboard', 'description':
 commands = {
     'starboard-channel': {
         'pretty_name': 'starboard-channel <channel>',
-        'description': 'Change Starboard',
+        'description': 'Change Starboard channel',
         'permission': 'administrator',
         'cache': 'keep',
         'execute': starboard_channel_change
@@ -109,4 +109,4 @@ commands = {
             }
     }
 
-version_info = "1.1.6"
+version_info = "1.2.0"

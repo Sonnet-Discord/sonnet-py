@@ -16,7 +16,7 @@ import lib_parsers
 importlib.reload(lib_parsers)
 
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_permissions
+from lib_parsers import parse_permissions, parse_boolean
 
 
 async def parse_userid(message, args):
@@ -60,7 +60,7 @@ async def profile_function(message, args, client, **kwargs):
         return
 
     # Status hashmap
-    status_map = {"online": "🟢", "offline": "⚫", "idle": "🟡", "dnd": "🔴", "do_not_disturb": "🔴", "invisible": "⚫"}
+    status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
 
     # Put here to comply with formatting guidelines.
     created_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.created_at)))
@@ -69,7 +69,7 @@ async def profile_function(message, args, client, **kwargs):
     joined_string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(user_object.joined_at)))
     joined_string += f" ({(datetime.utcnow() - user_object.joined_at).days} days ago)"
 
-    embed = discord.Embed(title="User Information", description=f"Cached user information for {user_object.mention}:", color=0x758cff)
+    embed = discord.Embed(title="User Information", description=f"User information for {user_object.mention}:", color=0x758cff)
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
     embed.add_field(name="User ID", value=user_object.id, inline=True)
@@ -80,11 +80,7 @@ async def profile_function(message, args, client, **kwargs):
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
-        viewinfs = db.grab_config("member-view-infractions")
-        if viewinfs:
-            viewinfs = bool(int(viewinfs))
-        else:
-            viewinfs = False
+        viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
         moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
         if moderator or (viewinfs and user_object.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
@@ -108,43 +104,58 @@ async def avatar_function(message, args, client, **kwargs):
 
 async def help_function(message, args, client, **kwargs):
 
-    if not args:
-        # We're just doing category info.
+    if args:
 
-        # Initialise embed.
-        commands_embed = discord.Embed(title="Category Listing", color=0x00db87)
-        commands_embed.set_author(name="Sonnet Help")
-
-        # Start creating module listing.
-        for modules in kwargs["cmds"]:
-            commands_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
-    else:
-
-        # Initialise embed.
-        commands_embed = discord.Embed(title=f"Commands in Category \"{args[0].lower()}\"", color=0x00db87)
-        commands_embed.set_author(name="Sonnet Help")
-
-        # Start creating command listing.
-        command_module = [i for i in kwargs["cmds"] if i.category_info['name'] == args[0].lower()]
-        if command_module:
-            module = command_module[0]
-            cmds = [module.commands[i] for i in module.commands.keys() if not 'alias' in module.commands[i].keys()]
-
-        else:
-            commands_embed.add_field(name="No commands found in this category.", value="Maybe you misspelled?", inline=False)
-            await message.channel.send(embed=commands_embed)
-            return
-
-        # Load prefix
+        modules = {mod.category_info["name"] for mod in kwargs["cmds"]}
         PREFIX = kwargs["conf_cache"]["prefix"]
 
-        # Now we generate the actual embed.
-        for command in cmds:
-            # Add field.
-            commands_embed.add_field(name=PREFIX + command['pretty_name'], value=command['description'], inline=False)
+        # Per module help
+        if (a := args[0].lower()) in modules:
 
-    # Now we have the final embed. Send it.
-    await message.channel.send(embed=commands_embed)
+            curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
+            cmd_embed = discord.Embed(title=f'Commands in Category "{a}"', color=0x00db87)
+            cmd_embed.set_author(name="Sonent Help")
+
+            for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
+                cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
+
+            await message.channel.send(embed=cmd_embed)
+
+        # Per command help
+        elif a in kwargs["cmds_dict"]:
+            if "alias" in kwargs["cmds_dict"][a]:
+                a = kwargs["cmds_dict"][a]["alias"]
+
+            cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=0x00db87)
+            cmd_embed.set_author(name="Sonent Help")
+
+            cmd_embed.add_field(name="Usage:", value=PREFIX + kwargs["cmds_dict"][a]["pretty_name"], inline=False)
+
+            if "rich_description" in kwargs["cmds_dict"][a]:
+                cmd_embed.add_field(name="Detailed information:", value=kwargs["cmds_dict"][a]["rich_description"], inline=False)
+
+            cmd_embed.add_field(name="Permission level:", value=kwargs["cmds_dict"][a]["permission"])
+
+            aliases = ", ".join(filter(lambda c: "alias" in kwargs["cmds_dict"][c] and kwargs["cmds_dict"][c]["alias"] == a, kwargs["cmds_dict"]))
+            if aliases:
+                cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
+
+            await message.channel.send(embed=cmd_embed)
+
+        # Do not echo user input
+        else:
+            await message.channel.send("No command or command module with that name")
+
+    # Total help
+    else:
+
+        cmd_embed = discord.Embed(title="Category Listing", color=0x00db87)
+        cmd_embed.set_author(name="Sonnet Help")
+
+        for modules in kwargs["cmds"]:
+            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
+
+        await message.channel.send(embed=cmd_embed)
 
 
 async def grab_guild_info(message, args, client, **kwargs):
@@ -204,13 +215,15 @@ commands = {
         'cache': 'keep',
         'execute': profile_function
         },
-    'help': {
-        'pretty_name': 'help [category]',
-        'description': 'Print helptext',
-        'permission': 'everyone',
-        'cache': 'keep',
-        'execute': help_function
-        },
+    'help':
+        {
+            'pretty_name': 'help [category|command]',
+            'description': 'Print helptext',
+            'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
+            'permission': 'everyone',
+            'cache': 'keep',
+            'execute': help_function
+            },
     'avatar': {
         'pretty_name': 'avatar [user]',
         'description': 'Get avatar of a user',
@@ -244,4 +257,4 @@ commands = {
         }
     }
 
-version_info = "1.1.3-3"
+version_info = "1.2.0"

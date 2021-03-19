@@ -153,8 +153,8 @@ async def list_blacklist(message, args, client, **kwargs):
 
     # Format blacklist
     blacklist = {}
-    blacklist["regex-blacklist"] = ["/" + i.pattern + "/g" for i in mconf["regex-blacklist"]]
-    blacklist["regex-notifier"] = ["/" + i.pattern + "/g" for i in mconf["regex-notifier"]]
+    blacklist["regex-blacklist"] = [f"/{i.pattern}/g" for i in mconf["regex-blacklist"]]
+    blacklist["regex-notifier"] = [f"/{i.pattern}/g" for i in mconf["regex-notifier"]]
     blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
     blacklist["word-in-word-blacklist"] = ",".join(mconf["word-in-word-blacklist"])
     blacklist["filetype-blacklist"] = ",".join(mconf["filetype-blacklist"])
@@ -276,8 +276,11 @@ commands = {
         'execute': ftb_change
         },
     'list-blacklist': {
-        'pretty_name': 'list-blacklist',
-        'description': 'List all blacklists',
+        'alias': 'list-automod'
+        },
+    'list-automod': {
+        'pretty_name': 'list-automod',
+        'description': 'List automod configs',
         'permission': 'moderator',
         'cache': 'keep',
         'execute': list_blacklist
@@ -333,4 +336,4 @@ commands = {
             },
     }
 
-version_info = "1.1.6"
+version_info = "1.2.0"
