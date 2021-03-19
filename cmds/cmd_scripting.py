@@ -159,4 +159,4 @@ commands = {
         },
     }
 
-version_info = "1.2.0-DEV"
+version_info = "1.2.0"
