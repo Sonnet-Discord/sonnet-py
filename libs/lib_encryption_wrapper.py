@@ -172,7 +172,8 @@ class encrypted_reader:
 
     def seek(self, seekloc: int) -> int:
 
-        return self.pointer := seekloc
+        self.pointer = seekloc
+        return int(self.pointer)
 
     def seekable(self) -> bool:
 
