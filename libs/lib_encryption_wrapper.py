@@ -163,7 +163,7 @@ class encrypted_reader:
         else:
 
             returndata = self._read_exact(size)
-            self.pointer += amount_wanted
+            self.pointer += size
 
             return returndata
 
