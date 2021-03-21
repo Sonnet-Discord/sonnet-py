@@ -138,6 +138,8 @@ async def help_function(message, args, client, **kwargs):
                 perms = kwargs["cmds_dict"][a]["permission"]
             elif t == tuple or t == list:
                 perms = kwargs["cmds_dict"][a]["permission"][0]
+            else:
+                perms = "NULL"
 
             cmd_embed.add_field(name="Permission level:", value=perms)
 
