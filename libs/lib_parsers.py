@@ -191,8 +191,8 @@ async def parse_permissions(message, mconf, perms, verbose=True):
     elif perms == "owner":
         you_shall_pass = message.author.id == message.channel.guild.owner.id
     elif (t := type(perms)) != str and (t == tuple or t == list):
-        perms = t[0]
-        you_shall_pass = t[1](message)
+        you_shall_pass = perms[1](message)
+        perms = perms[0]
 
     if you_shall_pass:
         return True
