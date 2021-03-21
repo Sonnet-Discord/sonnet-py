@@ -134,7 +134,12 @@ async def help_function(message, args, client, **kwargs):
             if "rich_description" in kwargs["cmds_dict"][a]:
                 cmd_embed.add_field(name="Detailed information:", value=kwargs["cmds_dict"][a]["rich_description"], inline=False)
 
-            cmd_embed.add_field(name="Permission level:", value=kwargs["cmds_dict"][a]["permission"])
+            if (t := type(kwargs["cmds_dict"][a]["permission"])) == str:
+                perms = kwargs["cmds_dict"][a]["permission"]
+            elif t == tuple or t == list:
+                perms = kwargs["cmds_dict"][a]["permission"][0]
+
+            cmd_embed.add_field(name="Permission level:", value=perms)
 
             aliases = ", ".join(filter(lambda c: "alias" in kwargs["cmds_dict"][c] and kwargs["cmds_dict"][c]["alias"] == a, kwargs["cmds_dict"]))
             if aliases:
@@ -257,4 +262,4 @@ commands = {
         }
     }
 
-version_info = "1.2.0"
+version_info = "1.2.1-DEV"
