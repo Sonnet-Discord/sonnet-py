@@ -34,8 +34,8 @@ int load_words ( char* filename, int retamount, unsigned long long seed, char* p
         fseek(fp, rval, SEEK_SET);
 
         // Grab word and add it to buffer
-        int curlen = fgetc(fp);
-        fgets(buf, curlen, fp);
+        // The plus one makes no sense i think it just reads one less than its supposed to cause \x00 terminator?
+        fgets(buf, fgetc(fp)+1, fp);
 
         // Only add to buffer if it has space
         if ( strlen(buf) + strlen(pointer) < pointer_length ) {

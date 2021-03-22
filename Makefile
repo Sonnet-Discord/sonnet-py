@@ -1,3 +1,6 @@
+CC=gcc
+version=1.2.1-DEV.0
+
 sfdbcload: ./libs/sfdbcloader.c
 	mkdir -p ./libs/compiled
-	gcc -fPIC -shared -o ./libs/compiled/sonnet.1.1.6-DEV.0.so ./libs/sfdbcloader.c
+	${CC} -fPIC -shared -o ./libs/compiled/sonnet.${version}.so ./libs/sfdbcloader.c

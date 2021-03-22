@@ -13,7 +13,7 @@ from lib_db_obfuscator import db_hlapi
 
 class DotHeaders:
 
-    version = "1.1.6-DEV.0"
+    version = "1.2.1-DEV.0"
 
     class load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
@@ -132,7 +132,7 @@ def generate_infractionid():
             for i in words.read().split(b"\n"):
                 if i and not len(i) > 85 and not b"\xc3" in i:
 
-                    i = i.decode("utf8")
+                    i = i.rstrip(b"\r").decode("utf8")
                     i = (i[0].upper() + i[1:].lower()).encode("utf8")
 
                     structured_data.append(bytes([len(i)]) + i)
