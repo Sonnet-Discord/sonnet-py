@@ -1,5 +1,5 @@
 CC=gcc
-version=1.2.1-DEV.0
+version=1.2.1-DEV.1
 
 sfdbcload: ./libs/sfdbcloader.c
 	mkdir -p ./libs/compiled

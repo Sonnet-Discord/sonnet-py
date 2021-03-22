@@ -13,7 +13,7 @@ from lib_db_obfuscator import db_hlapi
 
 class DotHeaders:
 
-    version = "1.2.1-DEV.0"
+    version = "1.2.1-DEV.1"
 
     class load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
