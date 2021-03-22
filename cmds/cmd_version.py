@@ -10,7 +10,7 @@ import sys
 import lib_loaders
 importlib.reload(lib_loaders)
 
-from lib_loaders import clib_exists
+from lib_loaders import clib_exists, DotHeaders
 
 
 def prettyprint(inlist):
@@ -50,7 +50,7 @@ async def print_version_info(message, args, client, **kwargs):
     for a in prettyprint([[i.category_info['pretty_name'], i.version_info] for i in modules]):
         fmt += f"  {a}\n"
 
-    fmt += f"\nRunning C accel: {clib_exists}\n"
+    fmt += f"\nC accel: {DotHeaders.version}={clib_exists}\n"
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
 
@@ -144,4 +144,4 @@ commands = {
         }
     }
 
-version_info = "1.1.5"
+version_info = "1.2.1-DEV"
