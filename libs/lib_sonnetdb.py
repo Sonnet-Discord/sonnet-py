@@ -32,7 +32,7 @@ except db_error.Error:
     raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
 
 
-def db_reconnect():
+def db_grab_connection():
     global db_connection
     try:
         db_connection.commit()
@@ -49,7 +49,7 @@ def db_reconnect():
 # Because being lazy writes good code
 class db_hlapi:
     def __init__(self, guild_id):
-        self.database = db_reconnect()
+        self.database = db_grab_connection()
         self.guild = guild_id
 
     def __enter__(self):
@@ -60,12 +60,12 @@ class db_hlapi:
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
         except db_error.OperationalError:
-            data = []
+            data = None
 
         if data:
             return data[0][1]
         else:
-            return []
+            return None
 
     def add_config(self, config, value):
 
