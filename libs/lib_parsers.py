@@ -68,7 +68,7 @@ def parse_blacklist(indata):
         for i in text_to_blacklist.split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
-                infraction_type.append("Word")
+                infraction_type.append(f"Word({i})")
 
     # Check message agaist word in word blacklist
     word_blacklist = blacklist["word-in-word-blacklist"]
@@ -76,15 +76,15 @@ def parse_blacklist(indata):
         for i in word_blacklist:
             if i in text_to_blacklist.replace(" ", ""):
                 broke_blacklist = True
-                infraction_type.append("WordInWord")
+                infraction_type.append(f"WordInWord({i})")
 
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if i.findall(message.content.lower()):
+            if (broke := i.findall(message.content.lower())):
                 broke_blacklist = True
-                infraction_type.append("RegEx")
+                infraction_type.append(f"RegEx({', '.join(broke)})")
         except re.error:
             pass  # GC for old regex
 
@@ -101,7 +101,7 @@ def parse_blacklist(indata):
             for a in filetype_blacklist:
                 if i.filename.lower().endswith(a):
                     broke_blacklist = True
-                    infraction_type.append("FileType")
+                    infraction_type.append(f"FileType({a})")
 
     return (broke_blacklist, notifier, infraction_type)
 
