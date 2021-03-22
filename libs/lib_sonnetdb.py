@@ -211,17 +211,15 @@ class db_hlapi:
             except db_error.OperationalError:
                 pass
 
-    def add_infraction(self, infractionid, userid, moderatorid, infractiontype, reason, timestamp):
+    def add_infraction(self, *din):
+
+        quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), din))
 
         try:
-            self.database.add_to_table(
-                f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]]
-                )
+            self.database.add_to_table(f"{self.guild}_infractions", quer)
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(
-                f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]]
-                )
+            self.database.add_to_table(f"{self.guild}_infractions", quer)
 
     def fetch_all_mutes(self):
 
