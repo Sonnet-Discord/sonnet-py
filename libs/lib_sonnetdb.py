@@ -112,10 +112,6 @@ class db_hlapi:
 
         try:
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-        except db_error.Error:
-            # Raw reaction and nonraw reaction are trying to access the db at the same time
-            # I cant think of a better solution
-            return False
         except db_error.OperationalError:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
