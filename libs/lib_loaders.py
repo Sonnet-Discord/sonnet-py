@@ -10,10 +10,20 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
 
+
+class DotHeaders:
+
+    version = "1.1.6-DEV.0"
+
+    class load_words:
+        argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
+        restype = ctypes.c_int
+
+
 try:
-    loader = ctypes.CDLL("./libs/compiled/sonnet.1.1.6-DEV.0.so")
-    loader.load_words.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
-    loader.load_words.restype = ctypes.c_int
+    loader = ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")
+    loader.load_words.argtypes = DotHeaders.load_words.argtypes
+    loader.load_words.restype = DotHeaders.load_words.restype
     clib_exists = True
 except OSError:
     clib_exists = False
