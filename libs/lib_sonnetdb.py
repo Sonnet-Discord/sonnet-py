@@ -201,7 +201,7 @@ class db_hlapi:
         for i in reimport.keys():
             for row in reimport[i][1:]:
                 try:
-                    self.database.add_to_table(f"{self.guild}_{i}", zip(reimport[i][0], row))
+                    self.database.add_to_table(f"{self.guild}_{i}", tuple(zip(reimport[i][0], row)))
                 except db_error.OperationalError:
                     return False
 
