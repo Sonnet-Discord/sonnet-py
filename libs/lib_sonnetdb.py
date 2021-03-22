@@ -183,6 +183,30 @@ class db_hlapi:
 
         return dbdict
 
+    def upload_guild_db(self, dbdict):
+
+        reimport = {
+            "config": [["property", "value"]],
+            "infractions": [["infractionID", "userID", "moderatorID", "type", "reason", "timestamp"]],
+            "mutes": [["infractionID", "userID", "endMute"]],
+            "starboard": [["messageID"]]
+            }
+
+        for i in reimport.keys():
+            if i in dbdict:
+                reimport[i].extend(dbdict[i][1:])
+
+        self.create_guild_db()
+
+        for i in reimport.keys():
+            for row in reimport[i][1:]:
+                try:
+                    self.database.add_to_table(f"{self.guild}_{i}", zip(reimport[i][0], row))
+                except db_error.OperationalError:
+                    return False
+
+        return True
+
     def delete_guild_db(self):
 
         for i in ["config", "infractions", "starboard", "mutes"]:
