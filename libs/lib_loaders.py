@@ -15,21 +15,25 @@ class DotHeaders:
 
     version = "1.2.1-DEV.2"
 
-    class load_words:
+    class cdef_load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
         restype = ctypes.c_int
 
-    class load_words_test:
+    class cdef_load_words_test:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
         restype = ctypes.c_int
 
+    def __init__(self, lib):
+        self.lib = lib
+        for i in filter(lambda i: i.startswith("cdef_"), dir(self)):
+            self._wrap(i)
+
+    def _wrap(self, funcname):
+        self.lib.__getitem__(funcname[5:]).argtypes = self.__getattribute__(funcname).argtypes
+        self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
 try:
-    loader = ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")
-    loader.load_words.argtypes = DotHeaders.load_words.argtypes
-    loader.load_words.restype = DotHeaders.load_words.restype
-    loader.load_words_test.argtypes = DotHeaders.load_words_test.argtypes
-    loader.load_words_test.restype = DotHeaders.load_words_test.restype
+    loader = DotHeaders(ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")).lib
     clib_exists = True
 except OSError:
     clib_exists = False
