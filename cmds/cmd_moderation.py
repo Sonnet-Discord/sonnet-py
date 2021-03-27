@@ -456,10 +456,10 @@ async def delete_infraction(message, args, client, **kwargs):
     if args:
         with db_hlapi(message.guild.id) as db:
             infraction = db.grab_infraction(args[0])
+            if not infraction:
+                await message.channel.send("Infraction ID does not exist")
+                return
             db.delete_infraction(infraction[0])
-        if not infraction:
-            await message.channel.send("Infraction ID does not exist")
-            return
     else:
         await message.channel.send("No argument supplied")
         return
@@ -605,4 +605,4 @@ commands = {
         }
     }
 
-version_info = "1.2.0"
+version_info = "1.2.0-2"
