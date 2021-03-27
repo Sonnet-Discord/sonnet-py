@@ -13,10 +13,14 @@ from lib_db_obfuscator import db_hlapi
 
 class DotHeaders:
 
-    version = "1.2.1-DEV.1"
+    version = "1.2.1-DEV.2"
 
     class load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
+        restype = ctypes.c_int
+
+    class load_words_test:
+        argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
         restype = ctypes.c_int
 
 
@@ -24,6 +28,8 @@ try:
     loader = ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")
     loader.load_words.argtypes = DotHeaders.load_words.argtypes
     loader.load_words.restype = DotHeaders.load_words.restype
+    loader.load_words_test.argtypes = DotHeaders.load_words_test.argtypes
+    loader.load_words_test.restype = DotHeaders.load_words_test.restype
     clib_exists = True
 except OSError:
     clib_exists = False
