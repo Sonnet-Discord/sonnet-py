@@ -21,6 +21,13 @@ from lib_loaders import read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
 
+async def joinlog_change(message, args, client, **kwargs):
+    try:
+        await update_log_channel(message, args, client, "join-log", verbose=kwargs["verbose"])
+    except lib_parsers.errors.log_channel_update_error:
+        return
+
+
 async def inflog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
@@ -169,6 +176,18 @@ commands = {
         'cache': 'keep',
         'execute': msglog_change
         },
+    'leave-log': {
+        'alias': 'join-log'
+        },
+    'join-log':
+        {
+            'pretty_name': 'join-log <channel>',
+            'description': 'Change join log',
+            'rich_description': 'This log channel logs member joins and member leaves',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': joinlog_change
+            },
     'infraction-log': {
         'pretty_name': 'infraction-log <channel>',
         'description': 'Change infraction log',

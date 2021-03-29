@@ -32,6 +32,7 @@ class DotHeaders:
         self.lib.__getitem__(funcname[5:]).argtypes = self.__getattribute__(funcname).argtypes
         self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
+
 try:
     loader = DotHeaders(ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")).lib
     clib_exists = True
