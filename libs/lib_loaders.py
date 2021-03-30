@@ -33,20 +33,14 @@ class DotHeaders:
         self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
 
-def getnull():
-    if platform.system() == "Windows":
-        return "NUL"
-    else:
-        return "/dev/null"
-
-
 clib_exists = True
+clib_name = f"./libs/compiled/sonnet.{DotHeaders.version}.so"
 try:
-    loader = DotHeaders(ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")).lib
+    loader = DotHeaders(ctypes.CDLL(clib_name)).lib
 except OSError:
     try:
-        os.system(f"make 2> {getnull()}")
-        loader = DotHeaders(ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")).lib
+        os.system(f"make 2> /dev/null")
+        loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
         clib_exists = False
 
