@@ -38,11 +38,14 @@ async def on_member_update(before, after, **kargs):
             pass
 
 
-async def catch_embed(call, embed):
-    try:
-        await call(embed=embed)
-    except discord.errors.Forbidden:
-        pass
+async def send_joinlog(member, client, embed):
+    with db_hlapi(member.guild.id) as db:
+        if joinlog := db.grab_config("join-log"):
+            if logging_channel := client.get_channel(int(joinlog)):
+                try:
+                    logging_channel.send(embed=embed)
+                except discord.errors.Forbidden:
+                    pass
 
 
 def parsedate(indata):
@@ -56,16 +59,12 @@ async def on_member_join(member, **kargs):
     inc_statistics([member.guild.id, "on-member-join", kargs["kernel_ramfs"]])
 
     embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=0x758cff)
-
     embed.set_thumbnail(url=member.avatar_url)
-    embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
-
     embed.set_footer(text=f"id: {member.id}")
 
-    with db_hlapi(member.guild.id) as db:
-        if joinlog := db.grab_config("join-log"):
-            if logging_channel := kargs["client"].get_channel(int(joinlog)):
-                await catch_embed(logging_channel.send, embed)
+    embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
+
+    await send_joinlog(member, kargs["client"], embed)
 
 
 async def on_member_remove(member, **kargs):
@@ -75,13 +74,11 @@ async def on_member_remove(member, **kargs):
     embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=0xffe875)
     embed.set_thumbnail(url=member.avatar_url)
     embed.set_footer(text=f"id: {member.id}")
+
     embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
     embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
 
-    with db_hlapi(member.guild.id) as db:
-        if joinlog := db.grab_config("join-log"):
-            if logging_channel := kargs["client"].get_channel(int(joinlog)):
-                await catch_embed(logging_channel.send, embed)
+    await send_joinlog(member, kargs["client"], embed)
 
 
 category_info = {'name': 'UserUpdate'}
