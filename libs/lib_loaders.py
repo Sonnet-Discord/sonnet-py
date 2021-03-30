@@ -3,7 +3,7 @@
 
 import importlib
 
-import json, random, os, math, ctypes, time, io, platform
+import json, random, os, math, ctypes, time, io
 from sonnet_cfg import *
 
 import lib_db_obfuscator
