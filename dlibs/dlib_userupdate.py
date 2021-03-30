@@ -49,9 +49,7 @@ async def send_joinlog(member, client, embed):
 
 
 def parsedate(indata):
-    string = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(datetime.timestamp(indata)))
-    string += f" ({(datetime.utcnow() - indata).days} days ago)"
-    return string
+    return f"{time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(datetime.timestamp(indata)))} ({(datetime.utcnow() - indata).days} days ago)"
 
 
 async def on_member_join(member, **kargs):
