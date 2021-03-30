@@ -145,11 +145,8 @@ async def update_log_channel(message, args, client, log_name, verbose=True):
         log_channel = args[0].strip("<#!>")
     else:
         with db_hlapi(message.guild.id) as db:
-            if log_channel := db.grab_config(log_name):
-                log_channel = f"<#{log_channel}>"
-            else:
-                log_channel = "nothing"
-        await message.channel.send(f"{log_name} is set to {log_channel}")
+            lchannel = f"<#{lchannel}>" if (lchannel := db.grab_config(log_name)) else "nothing"
+        await message.channel.send(f"{log_name} is set to {lchannel}")
         raise errors.log_channel_update_error("No Channel supplied")
 
     try:
