@@ -27,6 +27,7 @@ class errors:
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
 
+# Run a blacklist pass over a messages content and files
 def parse_blacklist(indata):
     message, blacklist, ramfs = indata
 
@@ -138,7 +139,7 @@ def parse_boolean(instr):
     return 0
 
 
-# Put channel item in DB, and check for collisions
+# Parse channel from message and put it into specified config
 async def update_log_channel(message, args, client, log_name, verbose=True):
 
     if args:
@@ -175,6 +176,7 @@ def _parse_role_perms(message, permrole):
     return permrole and bool([i.id for i in message.author.roles if int(permrole) == i.id])
 
 
+# Parse user permissions to run a command
 async def parse_permissions(message, mconf, perms, verbose=True):
 
     you_shall_pass = False
@@ -203,6 +205,7 @@ async def parse_permissions(message, mconf, perms, verbose=True):
         return False
 
 
+# Returns true if any of the items in the list return true, more of an orgate
 def ifgate(inlist):
     for i in inlist:
         if i:
@@ -210,6 +213,7 @@ def ifgate(inlist):
     return False
 
 
+# Grab files of a message from the internal cache or using webrequests
 def grab_files(guild_id, message_id, ramfs, delete=False):
 
     try:
@@ -250,6 +254,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
         return None
 
 
+# Generate a prettified reply field from a message for displaying in embeds
 def generate_reply_field(message):
 
     # Generate replies
@@ -269,6 +274,7 @@ def generate_reply_field(message):
     return message_content
 
 
+# Parse a role name and put it into the specified db conf
 async def parse_role(message, args, db_entry, verbose=True):
 
     if args:
@@ -294,6 +300,7 @@ async def parse_role(message, args, db_entry, verbose=True):
     if verbose: await message.channel.send(f"Updated {db_entry} to {role}")
 
 
+# Grab a message object from a link or message mention
 async def parse_channel_message(message, args, client):
 
     try:
