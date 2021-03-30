@@ -3,7 +3,7 @@
 
 import importlib
 
-import json, random, os, math, ctypes, time, io
+import json, random, os, math, ctypes, time, io, platform
 from sonnet_cfg import *
 
 import lib_db_obfuscator
@@ -33,11 +33,22 @@ class DotHeaders:
         self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
 
+def getnull():
+    if platform.system() == "Windows":
+        return "NUL"
+    else:
+        return "/dev/null"
+
+
+clib_exists = True
 try:
     loader = DotHeaders(ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")).lib
-    clib_exists = True
 except OSError:
-    clib_exists = False
+    try:
+        os.system(f"make 2> {getnull()}")
+        loader = DotHeaders(ctypes.CDLL(f"./libs/compiled/sonnet.{DotHeaders.version}.so")).lib
+    except OSError:
+        clib_exists = False
 
 
 # LCIF system ported for blacklist loader, converted to little endian
