@@ -87,4 +87,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info = "1.2.1-DEV"
+version_info = "1.2.1"
