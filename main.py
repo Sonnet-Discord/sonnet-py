@@ -224,6 +224,11 @@ class KernelSyntaxError(SyntaxError):
 # Import configs
 from LeXdPyK_conf import BOT_OWNER
 
+if (t := type(BOT_OWNER)) == str or t == int:
+    BOT_OWNER = [int(BOT_OWNER)] if BOT_OWNER else []
+elif BOT_OWNER:
+    BOT_OWNER = [int(i) for i in BOT_OWNER]
+
 
 def kernel_load_command_modules(*args):
     print("Loading Kernel Modules")
@@ -321,7 +326,7 @@ def kernel_blacklist_guild(*args):
 
     try:
         blacklist["guild"].append(int(args[0][0]))
-    except ValueError:
+    except (ValueError, IndexError):
         return ["Asking value is not INT", []]
 
     with open("common/blacklist.json", "w") as blacklist_file:
@@ -332,7 +337,35 @@ def kernel_blacklist_user(*args):
 
     try:
         blacklist["user"].append(int(args[0][0]))
-    except ValueError:
+    except (ValueError, IndexError):
+        return ["Asking value is not INT", []]
+
+    with open("common/blacklist.json", "w") as blacklist_file:
+        json.dump(blacklist, blacklist_file)
+
+
+def kernel_unblacklist_guild(*args):
+
+    try:
+        if int(args[0][0]) in blacklist["guild"]:
+            del blacklist["guild"][blacklist["guild"].index(int(args[0][0]))]
+        else:
+            return ["Item is not blacklisted", []]
+    except (ValueError, IndexError):
+        return ["Asking value is not INT", []]
+
+    with open("common/blacklist.json", "w") as blacklist_file:
+        json.dump(blacklist, blacklist_file)
+
+
+def kernel_unblacklist_user(*args):
+
+    try:
+        if int(args[0][0]) in blacklist["user"]:
+            del blacklist["user"][blacklist["user"].index(int(args[0][0]))]
+        else:
+            return ["Item is not blacklisted", []]
+    except (ValueError, IndexError):
         return ["Asking value is not INT", []]
 
     with open("common/blacklist.json", "w") as blacklist_file:
@@ -368,6 +401,8 @@ def logging_toggle(*args):
 debug_commands = {}
 debug_commands["debug-add-guild-blacklist"] = kernel_blacklist_guild
 debug_commands["debug-add-user-blacklist"] = kernel_blacklist_user
+debug_commands["debug-remove-guild-blacklist"] = kernel_unblacklist_guild
+debug_commands["debug-remove-user-blacklist"] = kernel_unblacklist_user
 debug_commands["debug-modules-load"] = kernel_load_command_modules
 debug_commands["debug-modules-reload"] = kernel_reload_command_modules
 debug_commands["debug-logout-system"] = kernel_logout
@@ -403,7 +438,8 @@ if e := kernel_load_command_modules():
 class errtype:
     def __init__(self, err, argtype):
         self.err = err
-        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact <@!{BOT_OWNER}>"
+        owner = f"<@!{BOT_OWNER[0]}>" if BOT_OWNER else "BOT OWNER"
+        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nerr: {type(err).__name__}: {err}"
 
 
 # Catch errors.
@@ -412,23 +448,42 @@ async def on_error(event, *args, **kwargs):
     raise
 
 
+async def do_event(event, args):
+    await dynamiclib_modules_dict[event](
+        *args,
+        client=Client,
+        ramfs=ramfs,
+        bot_start=bot_start_time,
+        command_modules=[command_modules, command_modules_dict],
+        dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+        kernel_version=version_info,
+        kernel_ramfs=kernel_ramfs
+        )
+
+
 async def event_call(argtype, *args):
+
+    etypes = []
+
     try:
         if argtype in dynamiclib_modules_dict.keys():
-            await dynamiclib_modules_dict[argtype](
-                *args,
-                client=Client,
-                ramfs=ramfs,
-                bot_start=bot_start_time,
-                command_modules=[command_modules, command_modules_dict],
-                dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-                kernel_version=version_info,
-                kernel_ramfs=kernel_ramfs
-                )
+            await do_event(argtype, args)
     except Exception as e:
-        return errtype(e, argtype)
+        etypes.append(errtype(e, argtype))
 
-    return None
+    call = 0
+    while (exname := f"{argtype}-{call}") in dynamiclib_modules_dict.keys():
+        try:
+            await do_event(exname, args)
+        except Exception as e:
+            etypes.append(errtype(e, exname))
+
+        call += 1
+
+    if etypes:
+        return etypes[0]
+    else:
+        return None
 
 
 async def safety_check(guild=None, guild_id=None, user=None, user_id=None):
@@ -512,7 +567,7 @@ async def on_message(message):
     args = message.content.split(" ")
 
     # If bot owner run a debug command
-    if len(args) >= 2 and args[0] in debug_commands.keys() and BOT_OWNER and message.author.id == int(BOT_OWNER) and args[1] == str(Client.user.id):
+    if len(args) >= 2 and args[0] in debug_commands.keys() and message.author.id in BOT_OWNER and args[1] == str(Client.user.id):
         if e := debug_commands[args[0]](args[2:]):
             await message.channel.send(e[0])
             if e[1]: raise e[1][0]
@@ -685,7 +740,7 @@ async def on_member_unban(guild, user):
 
 
 # Define version info and start time
-version_info = "LeXdPyK 1.2.1"
+version_info = "LeXdPyK 1.3"
 bot_start_time = time.time()
 
 # Start bot
