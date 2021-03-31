@@ -120,6 +120,7 @@ def load_message_config(guild_id, ramfs, datatypes=defaultcache):
         return message_config
 
 
+# Generate an infraction id from the wordlist cache format
 def generate_infractionid():
     if os.path.isfile("datastore/wordlist.cache.db"):
         if clib_exists:
