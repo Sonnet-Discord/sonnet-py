@@ -6,10 +6,13 @@ import importlib
 import discord, datetime, time, asyncio
 
 import lib_db_obfuscator
+
 importlib.reload(lib_db_obfuscator)
 import lib_loaders
+
 importlib.reload(lib_loaders)
 import lib_parsers
+
 importlib.reload(lib_parsers)
 
 from lib_loaders import generate_infractionid

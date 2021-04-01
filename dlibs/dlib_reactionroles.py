@@ -7,6 +7,7 @@ import discord
 import json
 
 import lib_loaders
+
 importlib.reload(lib_loaders)
 
 from lib_loaders import load_message_config, inc_statistics

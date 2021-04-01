@@ -9,12 +9,16 @@ from datetime import datetime
 import discord, lz4.frame
 
 import lib_db_obfuscator
+
 importlib.reload(lib_db_obfuscator)
 import lib_parsers
+
 importlib.reload(lib_parsers)
 import lib_loaders
+
 importlib.reload(lib_loaders)
 import lib_encryption_wrapper
+
 importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi

@@ -7,8 +7,10 @@ import discord, time
 from datetime import datetime
 
 import lib_loaders
+
 importlib.reload(lib_loaders)
 import lib_db_obfuscator
+
 importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
