@@ -31,4 +31,9 @@ jobs:
     - name: yapf integrity check
       run: |
         yapf -d -r .
-        
+    - name: check syntax integrity
+      run: |
+        python build_tools/testimport.py
+    - name: check commands structure integrity
+      run: |
+        python build_tools/cmds_to_html.py
