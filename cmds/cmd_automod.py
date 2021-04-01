@@ -343,4 +343,4 @@ commands = {
             },
     }
 
-version_info = "1.2.0"
+version_info = "1.2.2-DEV"
