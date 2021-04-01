@@ -31,6 +31,9 @@ jobs:
     - name: yapf integrity check
       run: |
         yapf -d -r .
+    - name: use lite config
+      run: |
+        cp -f common/sonnet_cfg_lite.py common/sonnet_cfg.py
     - name: check syntax integrity
       run: |
         python build_tools/testimport.py
