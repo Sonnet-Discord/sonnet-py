@@ -8,8 +8,10 @@ from sonnet_cfg import DB_TYPE
 import lz4.frame, io, discord, os, json
 
 import lib_db_obfuscator
+
 importlib.reload(lib_db_obfuscator)
 import lib_encryption_wrapper
+
 importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi

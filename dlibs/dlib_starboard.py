@@ -7,10 +7,13 @@ import discord, asyncio
 from datetime import datetime
 
 import lib_db_obfuscator
+
 importlib.reload(lib_db_obfuscator)
 import lib_parsers
+
 importlib.reload(lib_parsers)
 import lib_loaders
+
 importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi

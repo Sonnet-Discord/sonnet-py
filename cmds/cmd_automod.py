@@ -6,8 +6,10 @@ import json, io, discord
 import re2 as re
 
 import lib_db_obfuscator
+
 importlib.reload(lib_db_obfuscator)
 import lib_parsers
+
 importlib.reload(lib_parsers)
 
 from lib_db_obfuscator import db_hlapi
