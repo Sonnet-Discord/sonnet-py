@@ -95,7 +95,8 @@ class db_handler:
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
-        return self.cur.fetchall()
+
+        return tuple(self.cur.fetchall())
 
     # deletes rows from table where collumn i[0] has value i[1]
     def delete_rows_from_table(self, table, collumn_search):
@@ -128,16 +129,14 @@ class db_handler:
         self.cur.execute(f"SELECT * FROM '{table}';")
 
         # Send data
-        returndata = list(self.cur.fetchall())
-        return returndata
+        return tuple(self.cur.fetchall())
 
     def list_tables(self, searchterm):
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm, ))
 
         # Send data
-        returndata = list(self.cur.fetchall())
-        return returndata
+        return tuple(self.cur.fetchall())
 
     def commit(self):  # Commits data to db
         self.con.commit()

@@ -34,11 +34,11 @@ async def set_starboard_emoji(message, args, client, **kwargs):
         emoji = args[0]
         with db_hlapi(message.guild.id) as database:
             database.add_config("starboard-emoji", emoji)
+            if kwargs["verbose"]: await message.channel.send(f"Updated starboard emoji to {emoji}")
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
         emoji = mconf["starboard-emoji"]
-
-    if kwargs["verbose"]: await message.channel.send(f"Updated starboard emoji to {emoji}")
+        await message.channel.send(f"Starboard emoji is {emoji}")
 
 
 async def set_starboard_use(message, args, client, **kwargs):
@@ -47,11 +47,11 @@ async def set_starboard_use(message, args, client, **kwargs):
         gate = parse_boolean(args[0])
         with db_hlapi(message.guild.id) as database:
             database.add_config("starboard-enabled", int(gate))
+            if kwargs["verbose"]: await message.channel.send(f"Set starboard enabled to {bool(gate)}")
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
         gate = bool(int(mconf["starboard-enabled"]))
-
-    if kwargs["verbose"]: await message.channel.send(f"Starboard set to {bool(gate)}")
+        await message.channel.send(f"Starboard enabled is {bool(gate)}")
 
 
 async def set_starboard_count(message, args, client, **kwargs):
@@ -67,7 +67,7 @@ async def set_starboard_count(message, args, client, **kwargs):
             if kwargs["verbose"]: await message.channel.send(f"Updated starboard count to {count}")
 
         except ValueError:
-            await message.channel.send("Invalid input, please enter a number")
+            await message.channel.send("ERROR: Invalid input, enter a number")
 
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
@@ -109,4 +109,4 @@ commands = {
             }
     }
 
-version_info = "1.2.0"
+version_info = "1.2.1"

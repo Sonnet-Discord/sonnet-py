@@ -92,7 +92,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
         # Send data
-        returndata = list(self.cur)
+        returndata = tuple(self.cur)
         return returndata
 
     def delete_rows_from_table(self, table, collumn_search):
@@ -113,7 +113,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         self.cur.execute(f"SELECT * FROM {table};")
 
         # Send data
-        returndata = list(self.cur)
+        returndata = tuple(self.cur)
         return returndata
 
     def list_tables(self, searchterm):
@@ -121,7 +121,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         self.cur.execute(f"SHOW TABLES WHERE Tables_in_{self.db_name} LIKE ?", (searchterm, ))
 
         # Send data
-        returndata = list(self.cur)
+        returndata = tuple(self.cur)
         return returndata
 
     def commit(self):  # Commits data to db

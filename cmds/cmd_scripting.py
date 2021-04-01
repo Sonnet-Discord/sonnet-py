@@ -43,11 +43,14 @@ async def sonnet_sh(message, args, client, **kwargs):
             return
 
     cache_purge = False
+    # Keep reference to original message content
+    keepref = message.content
 
     for totalcommand in commandsparse:
 
         command = totalcommand[0]
         arguments = totalcommand[1]
+        message.content = f'{kwargs["conf_cache"]["prefix"]}{totalcommand[0]} ' + " ".join(totalcommand[1])
 
         if command in kwargs["cmds_dict"]:
             if "alias" in kwargs["cmds_dict"][command]:
@@ -77,7 +80,11 @@ async def sonnet_sh(message, args, client, **kwargs):
                 if kwargs["cmds_dict"][command]['cache'] in ["purge", "regenerate"]:
                     cache_purge = True
             else:
+                # dont forget to re reference message content even if exec stops
+                message.content = keepref
                 return
+
+    message.content = keepref
 
     if cache_purge:
         for i in ["caches", "regex"]:
@@ -159,4 +166,4 @@ commands = {
         },
     }
 
-version_info = "1.2.0"
+version_info = "1.2.1"

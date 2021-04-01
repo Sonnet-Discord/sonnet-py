@@ -32,7 +32,7 @@ except db_error.Error:
     raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
 
 
-def db_reconnect():
+def db_grab_connection():
     global db_connection
     try:
         db_connection.commit()
@@ -49,7 +49,7 @@ def db_reconnect():
 # Because being lazy writes good code
 class db_hlapi:
     def __init__(self, guild_id):
-        self.database = db_reconnect()
+        self.database = db_grab_connection()
         self.guild = guild_id
 
     def __enter__(self):
@@ -60,12 +60,12 @@ class db_hlapi:
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
         except db_error.OperationalError:
-            data = []
+            data = None
 
         if data:
             return data[0][1]
         else:
-            return []
+            return None
 
     def add_config(self, config, value):
 
@@ -112,10 +112,6 @@ class db_hlapi:
 
         try:
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-        except db_error.Error:
-            # Raw reaction and nonraw reaction are trying to access the db at the same time
-            # I cant think of a better solution
-            return False
         except db_error.OperationalError:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
@@ -183,6 +179,30 @@ class db_hlapi:
 
         return dbdict
 
+    def upload_guild_db(self, dbdict):
+
+        reimport = {
+            "config": [["property", "value"]],
+            "infractions": [["infractionID", "userID", "moderatorID", "type", "reason", "timestamp"]],
+            "mutes": [["infractionID", "userID", "endMute"]],
+            "starboard": [["messageID"]]
+            }
+
+        for i in reimport.keys():
+            if i in dbdict:
+                reimport[i].extend(dbdict[i][1:])
+
+        self.create_guild_db()
+
+        for i in reimport.keys():
+            for row in reimport[i][1:]:
+                try:
+                    self.database.add_to_table(f"{self.guild}_{i}", tuple(zip(reimport[i][0], row)))
+                except db_error.OperationalError:
+                    return False
+
+        return True
+
     def delete_guild_db(self):
 
         for i in ["config", "infractions", "starboard", "mutes"]:
@@ -191,17 +211,15 @@ class db_hlapi:
             except db_error.OperationalError:
                 pass
 
-    def add_infraction(self, infractionid, userid, moderatorid, infractiontype, reason, timestamp):
+    def add_infraction(self, *din):
+
+        quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), din))
 
         try:
-            self.database.add_to_table(
-                f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]]
-                )
+            self.database.add_to_table(f"{self.guild}_infractions", quer)
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(
-                f"{self.guild}_infractions", [["infractionID", infractionid], ["userID", userid], ["moderatorID", moderatorid], ["type", infractiontype], ["reason", reason], ["timestamp", timestamp]]
-                )
+            self.database.add_to_table(f"{self.guild}_infractions", quer)
 
     def fetch_all_mutes(self):
 

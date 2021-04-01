@@ -27,6 +27,7 @@ class errors:
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
 
+# Run a blacklist pass over a messages content and files
 def parse_blacklist(indata):
     message, blacklist, ramfs = indata
 
@@ -68,7 +69,7 @@ def parse_blacklist(indata):
         for i in text_to_blacklist.split(" "):
             if i in word_blacklist:
                 broke_blacklist = True
-                infraction_type.append("Word")
+                infraction_type.append(f"Word({i})")
 
     # Check message agaist word in word blacklist
     word_blacklist = blacklist["word-in-word-blacklist"]
@@ -76,15 +77,15 @@ def parse_blacklist(indata):
         for i in word_blacklist:
             if i in text_to_blacklist.replace(" ", ""):
                 broke_blacklist = True
-                infraction_type.append("WordInWord")
+                infraction_type.append(f"WordInWord({i})")
 
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if i.findall(message.content.lower()):
+            if (broke := i.findall(message.content.lower())):
                 broke_blacklist = True
-                infraction_type.append("RegEx")
+                infraction_type.append(f"RegEx({', '.join(broke)})")
         except re.error:
             pass  # GC for old regex
 
@@ -101,7 +102,7 @@ def parse_blacklist(indata):
             for a in filetype_blacklist:
                 if i.filename.lower().endswith(a):
                     broke_blacklist = True
-                    infraction_type.append("FileType")
+                    infraction_type.append(f"FileType({a})")
 
     return (broke_blacklist, notifier, infraction_type)
 
@@ -138,33 +139,30 @@ def parse_boolean(instr):
     return 0
 
 
-# Put channel item in DB, and check for collisions
+# Parse channel from message and put it into specified config
 async def update_log_channel(message, args, client, log_name, verbose=True):
 
     if args:
         log_channel = args[0].strip("<#!>")
     else:
         with db_hlapi(message.guild.id) as db:
-            if log_channel := db.grab_config(log_name):
-                log_channel = f"<#{log_channel}>"
-            else:
-                log_channel = "nothing"
-        await message.channel.send(f"{log_name} is set to {log_channel}")
-        raise errors.log_channel_update_error("No Channel supplied")
+            lchannel = f"<#{lchannel}>" if (lchannel := db.grab_config(log_name)) else "nothing"
+        await message.channel.send(f"{log_name} is set to {lchannel}")
+        raise errors.log_channel_update_error("ERROR: No Channel supplied")
 
     try:
         log_channel = int(log_channel)
     except ValueError:
-        await message.channel.send("Channel is not a valid channel")
+        await message.channel.send("ERROR: Channel is not a valid int")
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
-        await message.channel.send("Channel is not a valid channel")
+        await message.channel.send("ERROR: Channel is not a valid channel")
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
     if discord_channel.guild.id != message.channel.guild.id:
-        await message.channel.send("Channel is not in guild")
+        await message.channel.send("ERROR: Channel is not in guild")
         raise errors.log_channel_update_error("Channel is not in guild")
 
     # Nothing failed so send to db
@@ -174,6 +172,11 @@ async def update_log_channel(message, args, client, log_name, verbose=True):
     if verbose: await message.channel.send(f"Successfully updated {log_name}")
 
 
+def _parse_role_perms(message, permrole):
+    return permrole and bool([i.id for i in message.author.roles if int(permrole) == i.id])
+
+
+# Parse user permissions to run a command
 async def parse_permissions(message, mconf, perms, verbose=True):
 
     you_shall_pass = False
@@ -181,15 +184,18 @@ async def parse_permissions(message, mconf, perms, verbose=True):
         you_shall_pass = True
     elif perms == "moderator":
         default = message.author.permissions_in(message.channel).ban_members
-        roleperm = mconf["moderator-role"] and (int(mconf["moderator-role"]) in [i.id for i in message.author.roles])
-        adminperm = mconf["admin-role"] and (int(mconf["admin-role"]) in [i.id for i in message.author.roles])
-        you_shall_pass = default or roleperm or adminperm
+        modperm = (message, mconf["moderator-role"])
+        adminperm = (message, mconf["admin-role"])
+        you_shall_pass = default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm)
     elif perms == "administrator":
         default = message.author.permissions_in(message.channel).administrator
-        roleperm = mconf["admin-role"] and (int(mconf["admin-role"]) in [i.id for i in message.author.roles])
-        you_shall_pass = default or roleperm
+        adminperm = (message, mconf["admin-role"])
+        you_shall_pass = default or _parse_role_perms(*adminperm)
     elif perms == "owner":
         you_shall_pass = message.author.id == message.channel.guild.owner.id
+    elif (t := type(perms)) != str and (t == tuple or t == list):
+        you_shall_pass = perms[1](message)
+        perms = perms[0]
 
     if you_shall_pass:
         return True
@@ -199,6 +205,7 @@ async def parse_permissions(message, mconf, perms, verbose=True):
         return False
 
 
+# Returns true if any of the items in the list return true, more of an orgate
 def ifgate(inlist):
     for i in inlist:
         if i:
@@ -206,6 +213,7 @@ def ifgate(inlist):
     return False
 
 
+# Grab files of a message from the internal cache or using webrequests
 def grab_files(guild_id, message_id, ramfs, delete=False):
 
     try:
@@ -246,6 +254,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
         return None
 
 
+# Generate a prettified reply field from a message for displaying in embeds
 def generate_reply_field(message):
 
     # Generate replies
@@ -265,6 +274,7 @@ def generate_reply_field(message):
     return message_content
 
 
+# Parse a role name and put it into the specified db conf
 async def parse_role(message, args, db_entry, verbose=True):
 
     if args:
@@ -277,11 +287,11 @@ async def parse_role(message, args, db_entry, verbose=True):
     try:
         role = message.guild.get_role(int(role))
     except ValueError:
-        await message.channel.send("Invalid role")
+        await message.channel.send("ERROR: Role is not valid int")
         return
 
     if not role:
-        await message.channel.send("Invalid role")
+        await message.channel.send("ERROR: Role does not exist")
         return
 
     with db_hlapi(message.guild.id) as db:
@@ -290,6 +300,7 @@ async def parse_role(message, args, db_entry, verbose=True):
     if verbose: await message.channel.send(f"Updated {db_entry} to {role}")
 
 
+# Grab a message object from a link or message mention
 async def parse_channel_message(message, args, client):
 
     try:
@@ -303,32 +314,32 @@ async def parse_channel_message(message, args, client):
             message_id = args[1]
             nargs = 2
         except IndexError:
-            await message.channel.send("Not enough args supplied")
+            await message.channel.send("ERROR: Not enough args supplied")
             raise errors.message_parse_failure
 
     try:
         log_channel = int(log_channel)
     except ValueError:
-        await message.channel.send("Channel is not a valid channel")
+        await message.channel.send("ERROR: Channel is not a valid int")
         raise errors.message_parse_failure
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
-        await message.channel.send("Channel is not a valid channel")
+        await message.channel.send("ERROR: Channel is not a valid channel")
         raise errors.message_parse_failure
 
     if discord_channel.guild.id != message.channel.guild.id:
-        await message.channel.send("Channel is not in guild")
+        await message.channel.send("ERROR: Channel is not in guild")
         raise errors.message_parse_failure
 
     try:
         discord_message = await discord_channel.fetch_message(int(message_id))
     except (ValueError, discord.errors.HTTPException):
-        await message.channel.send("Invalid MessageID")
+        await message.channel.send("ERROR: Invalid MessageID")
         raise errors.message_parse_failure
 
     if not discord_message:
-        await message.channel.send("Invalid MessageID")
+        await message.channel.send("ERROR: Invalid MessageID")
         raise errors.message_parse_failure
 
     return (discord_message, nargs)
