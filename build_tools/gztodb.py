@@ -10,4 +10,5 @@ with gzip.open(sys.argv[1], "rb") as fname:
     dbdict = json.loads(fname.read())
 
 with db_hlapi(sys.argv[2]) as db:
-    db.upload_guild_db(dbdict)
+    if not db.upload_guild_db(dbdict):
+        print("gztodb failed on db upload")
