@@ -138,8 +138,7 @@ class db_handler:
         self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm, ))
 
         # Send data
-        returndata = tuple(self.cur.fetchall())
-        return returndata
+        return tuple(self.cur.fetchall())
 
     def commit(self):  # Commits data to db
         self.con.commit()
