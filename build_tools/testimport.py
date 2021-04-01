@@ -10,7 +10,6 @@ import glob, json, hashlib, logging, getpass
 # Start Discord.py
 import discord, asyncio
 
-
 # Initialize kernel workspace
 sys.path.insert(1, os.getcwd() + '/cmds')
 sys.path.insert(1, os.getcwd() + '/common')
@@ -70,6 +69,7 @@ def kernel_load_command_modules(*args):
             err.append([KernelSyntaxError("Missing commands"), module.__name__])
 
     if err: return ("\n".join([f"Error importing {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
+
 
 if e := kernel_load_command_modules():
     print(e[0])
