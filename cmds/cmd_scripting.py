@@ -120,7 +120,11 @@ async def sonnet_map(message, args, client, **kwargs):
     if not permission:
         return
 
+    keepref = message.content
+
     for i in targs[1:]:
+
+        message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i}'
 
         await kwargs["cmds_dict"][command]['execute'](
             message,
@@ -137,6 +141,8 @@ async def sonnet_map(message, args, client, **kwargs):
             cmds_dict=kwargs["cmds_dict"],
             verbose=False,
             )
+
+    message.content = keepref
 
     if kwargs["cmds_dict"][command]['cache'] in ["purge", "regenerate"]:
         for i in ["caches", "regex"]:
@@ -167,4 +173,4 @@ commands = {
         },
     }
 
-version_info = "1.2.1"
+version_info = "1.2.2-DEV"
