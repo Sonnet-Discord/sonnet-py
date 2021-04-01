@@ -257,4 +257,4 @@ commands = {
         }
     }
 
-version_info = "1.1.6"
+version_info = "1.2.1"
