@@ -8,8 +8,6 @@ import importlib
 import discord, time, asyncio, random
 from datetime import datetime
 
-import sonnet_cfg
-
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
