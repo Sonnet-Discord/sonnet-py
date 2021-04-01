@@ -27,7 +27,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install yapf
-        sudo apt install google-re2
+        sudo apt install libre2-dev
         pip install -r requirements.txt
     - name: yapf integrity check
       run: |
