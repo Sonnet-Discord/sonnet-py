@@ -21,6 +21,7 @@ from lib_encryption_wrapper import encrypted_reader
 
 re = importlib.import_module(REGEX_VERSION)
 
+
 class errors:
     class log_channel_update_error(RuntimeError):
         pass
