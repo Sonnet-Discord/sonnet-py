@@ -42,15 +42,31 @@ async def parse_userid(message, args):
     return user_object
 
 
+def add_timestamp(embed, name, start, end):
+    embed.add_field(name=name, value=f"{(end - start) / 100}ms", inline=False)
+
+
+def ctime(t):
+    return round(t * 100000)
+
+
 async def ping_function(message, args, client, **kwargs):
+
     stats = kwargs["stats"]
+
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
-    ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"]) / 100) + "ms", inline=False)
-    ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"]) / 100) + "ms", inline=False)
-    ping_embed.add_field(name="Process Automod", value=str((stats["end-automod"] - stats["start-automod"]) / 100) + "ms", inline=False)
-    time_to_send = round(time.time() * 10000)
+
+    add_timestamp(ping_embed, "Total Process Time", stats["start"], stats["end"])
+    add_timestamp(ping_embed, "Load Configs", stats["start-load-blacklist"], stats["end-load-blacklist"])
+    add_timestamp(ping_embed, "Process Automod", stats["start-automod"], stats["end-automod"])
+    add_timestamp(ping_embed, "WS Latency", 0, ctime(client.latency))
+
+    send_start = ctime(time.time())
     sent_message = await message.channel.send(embed=ping_embed)
-    ping_embed.add_field(name="Send Message", value=str((round(time.time() * 10000) - time_to_send) / 100) + "ms", inline=False)
+    send_end = ctime(time.time())
+
+    add_timestamp(ping_embed, "Send Message", send_start, send_end)
+
     await sent_message.edit(embed=ping_embed)
 
 
