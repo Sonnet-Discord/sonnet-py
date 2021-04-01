@@ -30,11 +30,13 @@ int load_words ( char* filename, int retamount, unsigned long long seed, char* p
 	for ( int i = 0 ; i < retamount; i++ ) {
 
 		// Seek to random word pointer
-		fseek(fp, (((rand() % (size)) * maxln) + 1), SEEK_SET);
+		int randval = ((rand() % (size)) * maxln) + 1;
+		fseek(fp, randval, SEEK_SET);
 
 		// Grab word and add it to buffer
 		// The plus one makes no sense i think it just reads one less than its supposed to cause \x00 terminator?
-		fgets(buf, fgetc(fp)+1, fp);
+		int getamnt = fgetc(fp)+1;
+		fgets(buf, getamnt, fp);
 
 		// Only add to buffer if it has space
 		if ( strlen(buf) + strlen(pointer) < pointer_length ) {
