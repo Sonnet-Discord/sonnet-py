@@ -3,8 +3,6 @@
 
 import importlib
 
-import re2 as re
-from sonnet_cfg import DB_TYPE
 import lz4.frame, io, discord, os, json
 
 import lib_db_obfuscator
@@ -13,10 +11,15 @@ importlib.reload(lib_db_obfuscator)
 import lib_encryption_wrapper
 
 importlib.reload(lib_encryption_wrapper)
+import sonnet_cfg
 
+importlib.reload(sonnet_cfg)
+
+from sonnet_cfg import DB_TYPE, REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
+re = importlib.import_module(REGEX_VERSION)
 
 class errors:
     class log_channel_update_error(RuntimeError):

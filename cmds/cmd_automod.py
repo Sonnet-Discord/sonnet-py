@@ -3,7 +3,6 @@
 import importlib
 
 import json, io, discord
-import re2 as re
 
 import lib_db_obfuscator
 
@@ -11,9 +10,15 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import sonnet_cfg
+
+importlib.reload(sonnet_cfg)
 
 from lib_db_obfuscator import db_hlapi
+from sonnet_cfg import REGEX_VERSION
 from lib_parsers import parse_role
+
+re = importlib.import_module(REGEX_VERSION)
 
 
 class blacklist_input_error(Exception):
