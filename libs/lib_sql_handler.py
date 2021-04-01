@@ -129,8 +129,7 @@ class db_handler:
         self.cur.execute(f"SELECT * FROM '{table}';")
 
         # Send data
-        returndata = tuple(self.cur.fetchall())
-        return returndata
+        return tuple(self.cur.fetchall())
 
     def list_tables(self, searchterm):
 
