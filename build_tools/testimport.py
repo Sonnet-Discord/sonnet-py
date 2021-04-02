@@ -2,13 +2,8 @@
 print("Booting LeXdPyK test env")
 
 # Import core systems
-import os, importlib, sys, io, time
+import os, importlib, sys
 
-# Import sub dependencies
-import glob, json, hashlib, logging, getpass
-
-# Start Discord.py
-import discord, asyncio
 
 # Initialize kernel workspace
 sys.path.insert(1, os.getcwd() + '/cmds')

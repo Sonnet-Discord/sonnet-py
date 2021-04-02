@@ -41,4 +41,4 @@ jobs:
         python build_tools/cmds_to_html.py > /dev/null
     - name: linting pass
       run: |
-        pyflakes ./libs ./cmds ./dlibs ./common
+        pyflakes .
