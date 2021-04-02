@@ -272,7 +272,7 @@ async def on_message(message, **kargs):
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client, verbose=False))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", "Antispam"], client, verbose=False))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf))

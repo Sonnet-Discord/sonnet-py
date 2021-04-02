@@ -242,6 +242,28 @@ async def antispam_set(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Updated antispam timings to M:{messages},S:{seconds}")
 
 
+async def antispam_time_set(message, args, client, **kwargs):
+
+    if args:
+        try:
+            if args[0][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
+                mutetime = int(args[0][:-1]) * multi[args[0][-1]]
+            else:
+                mutetime = int(args[0])
+        except (ValueError, TypeError):
+            await message.channel.send("ERROR: Invalid time format")
+            return
+    else:
+        mutetime = int(kwargs["conf_cache"]["antispam-time"])
+        await message.channel.send(f"Antispam mute time is {mutetime} seconds")
+        return
+
+    with db_hlapi(message.guild.id) as db:
+        db.add_config("antispam-time", str(mutetime))
+
+    if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {mutetime} seconds")
+
+
 category_info = {'name': 'automod', 'pretty_name': 'Automod', 'description': 'Automod management commands.'}
 
 commands = {
@@ -324,6 +346,14 @@ commands = {
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': antispam_set
+            },
+    'set-mutetime':
+        {
+            'pretty_name': 'set-mutetime <time>',
+            'description': 'Set how long a person should be muted for with antispam automute',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': antispam_time_set
             },
     'add-regexnotifier':
         {

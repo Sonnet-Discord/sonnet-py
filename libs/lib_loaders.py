@@ -53,7 +53,11 @@ def directBinNumber(inData, length):
 
 defaultcache = {
     "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["antispam", "3,2"]],
-    "text": [["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""]],
+    "text":
+        [
+            ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""],
+            ["antispam-time", "20"]
+            ],
     0: "sonnet_default"
     }
 
