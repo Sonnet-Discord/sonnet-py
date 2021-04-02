@@ -23,10 +23,14 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install syntax checkers
+    - name: Install base deps
       run: |
         python -m pip install yapf pyflakes pylint
         python -m pip install -r requirements.txt
+    - name: Install mariadb cause pylint actually wants to kill me
+      run: |
+        sudo apt install libmariadb-dev-compat
+        python -m pip install mariadb
     - name: yapf integrity check
       run: |
         yapf -d -r .
