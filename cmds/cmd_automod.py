@@ -237,13 +237,13 @@ async def antispam_set(message, args, client, **kwargs):
             return
 
     # Prevent bullshit
-    if messages < 2: messages = 2
-    if seconds > 10: seconds = 10
+    if messages < 2: messages = 2.0
+    if seconds > 10: seconds = 10.0
 
     with db_hlapi(message.guild.id) as database:
-        database.add_config("antispam", f"{messages},{seconds}")
+        database.add_config("antispam", f"{int(messages)},{seconds}")
 
-    if kwargs["verbose"]: await message.channel.send(f"Updated antispam timings to M:{messages},S:{seconds}")
+    if kwargs["verbose"]: await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
 
 
 async def antispam_time_set(message, args, client, **kwargs):
