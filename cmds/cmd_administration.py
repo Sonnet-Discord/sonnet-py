@@ -6,14 +6,12 @@ import importlib
 import discord, os, glob
 import json, gzip, io, time
 
-
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
-
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
 from lib_db_obfuscator import db_hlapi
