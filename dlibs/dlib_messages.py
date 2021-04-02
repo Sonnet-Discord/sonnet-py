@@ -149,8 +149,8 @@ def antispam_check(indata):
 
     guildid, userid, msend, ramfs, messagecount, timecount = indata
 
-    messagecount = int(messagecount)
-    timecount = int(timecount) * 1000
+    messagecount = int(float(messagecount))
+    timecount = int(float(timecount) * 1000)
 
     try:
         messages = ramfs.read_f(f"{guildid}/asam")

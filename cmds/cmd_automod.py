@@ -223,18 +223,22 @@ async def antispam_set(message, args, client, **kwargs):
 
     if len(args) == 1:
         try:
-            messages, seconds = [int(float(i)) for i in args[0].split(",")]
+            messages, seconds = [float(i) for i in args[0].split(",")]
         except ValueError:
-            await message.channel.send("Incorrect args supplied")
+            await message.channel.send("ERROR: Incorrect args supplied")
             return
 
     elif len(args) > 1:
         try:
-            messages = int(float(args[0]))
-            seconds = int(float(args[1]))
+            messages = float(args[0])
+            seconds = float(args[1])
         except ValueError:
-            await message.channel.send("Incorrect args supplied")
+            await message.channel.send("ERROR: Incorrect args supplied")
             return
+
+    # Prevent bullshit
+    if messages < 2: messages = 2
+    if seconds > 10: seconds = 10
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{messages},{seconds}")
