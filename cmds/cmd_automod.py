@@ -263,6 +263,8 @@ async def antispam_time_set(message, args, client, **kwargs):
         await message.channel.send(f"Antispam mute time is {mutetime} seconds")
         return
 
+    if mutetime < 0: mutetime = 0
+
     with db_hlapi(message.guild.id) as db:
         db.add_config("antispam-time", str(mutetime))
 
