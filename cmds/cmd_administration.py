@@ -53,7 +53,10 @@ async def username_log_change(message, args, client, **kwargs):
 
 
 class gdpr_functions:
-    async def delete(message, guild_id, ramfs, kramfs):
+    def __init__(self):
+        self.commands = {"delete": self.delete, "download": self.download}
+
+    async def delete(self, message, guild_id, ramfs, kramfs):
 
         with db_hlapi(message.guild.id) as database:
             database.delete_guild_db()
@@ -68,7 +71,7 @@ class gdpr_functions:
             f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"
             )
 
-    async def download(message, guild_id, ramfs, kramfs):
+    async def download(self, message, guild_id, ramfs, kramfs):
 
         timestart = time.time()
 
@@ -108,10 +111,10 @@ async def gdpr_database(message, args, client, **kwargs):
 
     PREFIX = kwargs["conf_cache"]["prefix"]
 
-    commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
-    if command and command in commands_dict.keys():
+    gdprfunctions = gdpr_functions()
+    if command and command in gdprfunctions.commands:
         if confirmation and confirmation == str(message.guild.id):
-            await commands_dict[command](message, message.guild.id, ramfs, kwargs["kernel_ramfs"])
+            await gdprfunctions.commands[command](message, message.guild.id, ramfs, kwargs["kernel_ramfs"])
         else:
             await message.channel.send(f"Please provide the guildid to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
