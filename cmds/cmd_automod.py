@@ -239,6 +239,7 @@ async def antispam_set(message, args, client, **kwargs):
     # Prevent bullshit
     if messages < 2: messages = 2.0
     if seconds > 10: seconds = 10.0
+    if seconds < 0: seconds = 0.0
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{int(messages)},{seconds}")

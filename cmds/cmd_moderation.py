@@ -248,7 +248,7 @@ async def mute_user(message, args, client, **kwargs):
         mutetime = 0
 
     # This ones for you, curl
-    if mutetime >= 60 * 60 * 256:
+    if mutetime >= 60 * 60 * 256 or mutetime < 0:
         mutetime = 0
 
     try:
@@ -608,4 +608,4 @@ commands = {
         }
     }
 
-version_info = "1.2.0-2"
+version_info = "1.2.2-DEV"
