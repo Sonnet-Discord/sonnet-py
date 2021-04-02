@@ -70,10 +70,10 @@ class db_hlapi:
     def add_config(self, config, value):
 
         try:
-            data = self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
+            self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
         except db_error.OperationalError:
             self.create_guild_db()
-            data = self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
+            self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
     # Grab infractions of a user
     def grab_user_infractions(self, userid):

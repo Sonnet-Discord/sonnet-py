@@ -3,9 +3,7 @@
 
 import importlib
 
-import discord, asyncio
-from datetime import datetime
-
+import discord
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)

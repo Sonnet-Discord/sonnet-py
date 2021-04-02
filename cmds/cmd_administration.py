@@ -4,10 +4,8 @@
 import importlib
 
 import discord, os, glob
-from datetime import datetime
 import json, gzip, io, time
 
-from sonnet_cfg import GLOBAL_PREFIX
 
 import lib_db_obfuscator
 
@@ -15,12 +13,9 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
-import lib_loaders
 
-importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
-from lib_loaders import read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
 

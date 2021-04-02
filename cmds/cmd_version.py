@@ -80,7 +80,7 @@ async def print_stats(message, args, client, **kwargs):
     kernel_ramfs = kwargs["kernel_ramfs"]
 
     statistics_file = kernel_ramfs.read_f(f"{message.guild.id}/stats")
-    global_statistics_file = kernel_ramfs.read_f(f"global/stats")
+    global_statistics_file = kernel_ramfs.read_f("global/stats")
 
     fmt = "```py\n"
 

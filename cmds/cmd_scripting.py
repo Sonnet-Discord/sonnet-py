@@ -25,7 +25,7 @@ async def sonnet_sh(message, args, client, **kwargs):
         return
 
     if kwargs["verbose"] == False:
-        await message.channel.send(f"Shell ERROR: detected anomalous command execution")
+        await message.channel.send("Shell ERROR: detected anomalous command execution")
         return
 
     self_name = rawargs[0][len(kwargs["conf_cache"]["prefix"]):]

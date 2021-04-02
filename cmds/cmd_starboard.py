@@ -3,8 +3,6 @@
 
 import importlib
 
-from sonnet_cfg import STARBOARD_EMOJI, DB_TYPE
-
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)

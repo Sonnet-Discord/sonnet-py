@@ -3,7 +3,7 @@
 
 import importlib
 
-import lz4.frame, io, discord, os, json
+import lz4.frame, discord, os, json
 
 import lib_db_obfuscator
 
@@ -15,7 +15,7 @@ import sonnet_cfg
 
 importlib.reload(sonnet_cfg)
 
-from sonnet_cfg import DB_TYPE, REGEX_VERSION
+from sonnet_cfg import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 

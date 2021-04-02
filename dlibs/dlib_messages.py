@@ -3,7 +3,7 @@
 
 import importlib
 
-import time, asyncio, os, threading, hashlib
+import time, asyncio, os, hashlib
 from datetime import datetime
 
 import discord, lz4.frame

@@ -3,8 +3,8 @@
 
 import importlib
 
-import json, random, os, math, ctypes, time, io
-from sonnet_cfg import *
+import random, os, math, ctypes, time, io
+from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 
 import lib_db_obfuscator
 
@@ -40,7 +40,7 @@ try:
     loader = DotHeaders(ctypes.CDLL(clib_name)).lib
 except OSError:
     try:
-        os.system(f"make 2> /dev/null")
+        os.system("make 2> /dev/null")
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
         clib_exists = False
@@ -184,9 +184,9 @@ def inc_statistics(indata):
         statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=dict)
 
     try:
-        global_statistics = kernel_ramfs.read_f(f"global/stats")
+        global_statistics = kernel_ramfs.read_f("global/stats")
     except FileNotFoundError:
-        global_statistics = kernel_ramfs.create_f(f"global/stats", f_type=dict)
+        global_statistics = kernel_ramfs.create_f("global/stats", f_type=dict)
 
     if inctype in statistics:
         statistics[inctype] += 1
