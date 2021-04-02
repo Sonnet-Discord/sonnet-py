@@ -4,7 +4,6 @@ print("Booting LeXdPyK test env")
 # Import core systems
 import os, importlib, sys
 
-
 # Initialize kernel workspace
 sys.path.insert(1, os.getcwd() + '/cmds')
 sys.path.insert(1, os.getcwd() + '/common')
