@@ -23,9 +23,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install syntax checkers
       run: |
-        python -m pip install yapf
+        python -m pip install yapf, pyflakes
         python -m pip install -r requirements.txt
     - name: yapf integrity check
       run: |
@@ -39,3 +39,6 @@ jobs:
     - name: check commands structure integrity
       run: |
         python build_tools/cmds_to_html.py > /dev/null
+    - name: linting pass
+      run: |
+        pyflakes ./libs ./cmds ./dlibs ./common
