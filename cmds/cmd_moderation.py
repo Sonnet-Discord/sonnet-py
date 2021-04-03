@@ -252,13 +252,11 @@ async def mute_user(message, args, client, **kwargs):
 
     if len(args) >= 2:
         try:
-            multiplicative_factor = {"s": 1, "m": 60, "h": 3600}
-            tmptime = args[1]
-            if not tmptime[-1] in ["s", "m", "h"]:
-                mutetime = int(tmptime)
+            if args[1][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
+                mutetime = int(args[1][:-1]) * multi[args[1][-1]]
                 del args[1]
             else:
-                mutetime = int(tmptime[:-1]) * multiplicative_factor[tmptime[-1]]
+                mutetime = int(args[1])
                 del args[1]
         except (ValueError, TypeError):
             mutetime = 0
