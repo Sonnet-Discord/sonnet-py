@@ -230,6 +230,24 @@ async def unban_user(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Unbanned {user.mention} with ID {user.id}")
 
 
+class NoMuteRole(Exception):
+    pass
+
+
+async def grab_mute_role(message):
+
+    with db_hlapi(message.guild.id) as db:
+        if (mute_role := db.grab_config("mute-role")):
+            if (mute_role := message.guild.get_role(int(mute_role))):
+                return mute_role
+            else:
+                await message.channel.send("ERROR: no muterole set")
+                raise NoMuteRole("No mute role")
+        else:
+            await message.channel.send("ERROR: no muterole set")
+            raise NoMuteRole("No mute role")
+
+
 async def mute_user(message, args, client, **kwargs):
 
     if len(args) >= 2:
@@ -265,17 +283,9 @@ async def mute_user(message, args, client, **kwargs):
         await message.channel.send("User is not in this guild")
         return
 
-    # Get muterole from DB
-    with db_hlapi(message.guild.id) as db:
-        mute_role = db.grab_config("mute-role")
-
-    if mute_role:
-        mute_role = message.guild.get_role(int(mute_role))
-        if not mute_role:
-            await message.channel.send("ERROR: no muterole set")
-            return
-    else:
-        await message.channel.send("ERROR: no muterole set")
+    try:
+        mute_role = grab_mute_role(message)
+    except NoMuteRole:
         return
 
     # Attempt to mute user
@@ -324,18 +334,9 @@ async def unmute_user(message, args, client, **kwargs):
         await message.channel.send("Invalid User")
         return
 
-    # Get muterole from DB
-    with db_hlapi(message.guild.id) as db:
-        mute_role = db.grab_config("mute-role")
-        db.unmute_user(userid=user.id)
-
-    if mute_role:
-        mute_role = message.guild.get_role(int(mute_role))
-        if not mute_role:
-            await message.channel.send("ERROR: no muterole set")
-            return
-    else:
-        await message.channel.send("ERROR: no muterole set")
+    try:
+        mute_role = grab_mute_role(message)
+    except NoMuteRole:
         return
 
     # Attempt to unmute user
