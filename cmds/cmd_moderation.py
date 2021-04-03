@@ -83,7 +83,7 @@ async def process_infraction(message, args, client, infraction_type):
     except IndexError:
         pass
 
-    reason = " ".join(args[1:])[:1024] if args else "No Reason Specified"
+    reason = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
     moderator_id = client.user.id if automod else message.author.id
 
