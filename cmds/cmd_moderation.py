@@ -96,7 +96,7 @@ async def process_infraction(message, args, client, infraction_type):
 
     # Test if user is valid
     try:
-        member = message.channel.guild.get_member(int(args[0].strip("<@!>")))
+        member = message.guild.get_member(int(args[0].strip("<@!>")))
         if not (user := client.get_user(int(args[0].strip("<@!>")))):
             user = await client.fetch_user(int(args[0].strip("<@!>")))
     except ValueError:
@@ -298,7 +298,7 @@ async def unmute_user(message, args, client, **kwargs):
 
     # Test if user is valid
     try:
-        user = message.channel.guild.get_member(int(args[0].strip("<@!>")))
+        user = message.guild.get_member(int(args[0].strip("<@!>")))
     except ValueError:
         await message.channel.send("Invalid User")
         return
