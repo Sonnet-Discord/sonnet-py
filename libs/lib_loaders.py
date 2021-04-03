@@ -9,7 +9,12 @@ from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
+import sonnet_cfg
+
+importlib.reload(sonnet_cfg)
+
 from lib_db_obfuscator import db_hlapi
+from sonnet_cfg import CLIB_LOAD
 
 
 class DotHeaders:
@@ -36,14 +41,17 @@ class DotHeaders:
 
 clib_exists = True
 clib_name = f"./libs/compiled/sonnet.{DotHeaders.version}.so"
-try:
-    loader = DotHeaders(ctypes.CDLL(clib_name)).lib
-except OSError:
+if CLIB_LOAD:
     try:
-        os.system("make 2> /dev/null")
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
-        clib_exists = False
+        try:
+            os.system("make 2> /dev/null")
+            loader = DotHeaders(ctypes.CDLL(clib_name)).lib
+        except OSError:
+            clib_exists = False
+else:
+    clib_exists = False
 
 
 # LCIF system ported for blacklist loader, converted to little endian
