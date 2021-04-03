@@ -284,7 +284,7 @@ async def mute_user(message, args, client, **kwargs):
         return
 
     try:
-        mute_role = grab_mute_role(message)
+        mute_role = await grab_mute_role(message)
     except NoMuteRole:
         return
 
@@ -335,7 +335,7 @@ async def unmute_user(message, args, client, **kwargs):
         return
 
     try:
-        mute_role = grab_mute_role(message)
+        mute_role = await grab_mute_role(message)
     except NoMuteRole:
         return
 
