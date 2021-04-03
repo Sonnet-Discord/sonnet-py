@@ -97,13 +97,17 @@ async def process_infraction(message, args, client, infraction_type):
     # Test if user is valid
     try:
         member = message.channel.guild.get_member(int(args[0].strip("<@!>")))
-        user = client.get_user(int(args[0].strip("<@!>")))
+        if not (user := client.get_user(int(args[0].strip("<@!>")))):
+            user = await client.fetch_user(int(args[0].strip("<@!>")))
     except ValueError:
-        await message.channel.send("Invalid User")
+        await message.channel.send("Invalid UserID")
         raise InfractionGenerationError("Invalid User")
     except IndexError:
         await message.channel.send("No user specified")
         raise InfractionGenerationError("No user specified")
+    except (discord.errors.NotFound, discord.errors.HTTPException):
+        await message.channel.send("User does not exist")
+        raise InfractionGenerationError("User does not exist")
 
     # Test if user is self
     if member and moderator_id == member.id:
@@ -159,7 +163,7 @@ async def kick_user(message, args, client, **kwargs):
 async def ban_user(message, args, client, **kwargs):
 
     try:
-        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "ban")
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban")
     except InfractionGenerationError:
         return
 
@@ -167,14 +171,10 @@ async def ban_user(message, args, client, **kwargs):
     try:
         if member:
             await dm_sent  # Wait for dm to be sent before banning
-        userOBJ = discord.Object(int(args[0].strip("<@!>")))
-        await message.guild.ban(userOBJ, delete_message_days=0, reason=reason)
+        await message.guild.ban(user, delete_message_days=0, reason=reason)
 
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to ban this user.")
-        return
-    except (discord.errors.NotFound, discord.errors.HTTPException):
-        await message.channel.send("This user does not exist")
         return
 
     if kwargs["verbose"]: await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}")
