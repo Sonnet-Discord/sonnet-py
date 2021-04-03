@@ -35,47 +35,35 @@ async def log_infraction(message, client, user, moderator_id, infraction_reason,
     if not user:
         return (None, None)
 
-    send_message = True
-    with db_hlapi(message.guild.id) as database:
-
+    with db_hlapi(message.guild.id) as db:
         # Collision test
-        generated_id = generate_infractionid()
-        while database.grab_infraction(generated_id):
-            generated_id = generate_infractionid()
-
-        # Grab log channel id from db
-        channel_id = database.grab_config("infraction-log")
-
-        # Generate log channel object
-        if channel_id:  # If ID exists then use it
-            log_channel = client.get_channel(int(channel_id))
-        else:
-            log_channel = None
-            send_message = False
-
-        # If channel doesnt exist simply skip it
-        if not log_channel:
-            send_message = False
-
+        while db.grab_infraction(generated_id := generate_infractionid()):
+            pass
+        # Grab log channel
+        log_channel = client.get_channel(int(db.grab_config("infraction-log") or 0))
         # Send infraction to database
-        database.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, round(time.time()))
+        db.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, round(time.time()))
 
-    embed = discord.Embed(title="Sonnet", description=f"New infraction for {user.mention}:", color=0x758cff)
-    embed.set_thumbnail(url=user.avatar_url)
-    embed.add_field(name="Infraction ID", value=str(generated_id))
-    embed.add_field(name="Moderator", value=f"{client.get_user(int(moderator_id))}")
-    embed.add_field(name="User", value=f"{user}")
-    embed.add_field(name="Type", value=infraction_type)
-    embed.add_field(name="Reason", value=infraction_reason)
+    if log_channel:
 
-    dm_embed = discord.Embed(title="Sonnet", description=f"Your punishment in {message.guild.name} has been updated:", color=0x758cff)
+        log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user.mention}:", color=0x758cff)
+        log_embed.set_thumbnail(url=user.avatar_url)
+        log_embed.add_field(name="Infraction ID", value=str(generated_id))
+        log_embed.add_field(name="Moderator", value=f"{client.get_user(int(moderator_id))}")
+        log_embed.add_field(name="User", value=f"{user}")
+        log_embed.add_field(name="Type", value=infraction_type)
+        log_embed.add_field(name="Reason", value=infraction_reason)
+
+        asyncio.create_task(log_channel.send(embed=log_embed))
+
+    dm_embed = discord.Embed(title="Sonnet", description=f"You received an infraction in {message.guild.name}:", color=0x758cff)
     dm_embed.set_thumbnail(url=user.avatar_url)
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
-    if send_message:
-        asyncio.create_task(log_channel.send(embed=embed))
+
     dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed, log_channel))
+
     return (generated_id, dm_sent)
 
 
