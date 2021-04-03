@@ -262,12 +262,8 @@ async def mute_user(message, args, client, **kwargs):
         mutetime = 0
 
     try:
-        member, user, reason, infractionID, _ = await process_infraction(message, args, client, "mute")
+        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute")
     except InfractionGenerationError:
-        return
-
-    if not user:
-        await message.channel.send("User does not exist")
         return
 
     # Check they are in the guild
