@@ -84,7 +84,7 @@ class InfractionGenerationError(Exception):
 
 
 # General processor for infractions
-async def process_infraction(message, args, client, infraction_type, pretty_infraction_type):
+async def process_infraction(message, args, client, infraction_type):
 
     # Check if automod
     automod = False
@@ -108,8 +108,8 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
 
     # Test if user is valid
     try:
-        user = message.channel.guild.get_member(int(args[0].strip("<@!>")))
-        is_member = True
+        member = message.channel.guild.get_member(int(args[0].strip("<@!>")))
+        user = client.get_user(int(args[0].strip("<@!>")))
     except ValueError:
         await message.channel.send("Invalid User")
         raise InfractionGenerationError("Invalid User")
@@ -117,37 +117,31 @@ async def process_infraction(message, args, client, infraction_type, pretty_infr
         await message.channel.send("No user specified")
         raise InfractionGenerationError("No user specified")
 
-    if not user:
-        is_member = False
-        user = client.get_user(int(args[0].strip("<@!>")))
-        if not user:
-            user = None
-
     # Test if user is self
-    if user and moderator_id == user.id:
-        await message.channel.send(f"{pretty_infraction_type} yourself is not allowed")
+    if member and moderator_id == member.id:
+        await message.channel.send(f"Cannot {infraction_type} yourself")
         raise InfractionGenerationError(f"Attempted self {infraction_type}")
 
     # Do a permission sweep
-    if not automod and is_member and message.guild.roles.index(message.author.roles[-1]) <= message.guild.roles.index(user.roles[-1]):
+    if not automod and member and message.guild.roles.index(message.author.roles[-1]) <= message.guild.roles.index(member.roles[-1]):
         await message.channel.send(f"Cannot {infraction_type} a user with the same or higher role as yourself")
         raise InfractionGenerationError(f"Attempted nonperm {infraction_type}")
 
     # Log infraction
     infraction_id, dm_sent = await log_infraction(message, client, user, moderator_id, reason, infraction_type)
 
-    return (user, reason, infraction_id, is_member, dm_sent)
+    return (member, user, reason, infraction_id, dm_sent)
 
 
 async def warn_user(message, args, client, **kwargs):
 
     try:
-        user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "warn", "Warning")
+        _, user, reason, _, _ = await process_infraction(message, args, client, "warn")
     except InfractionGenerationError:
         return
 
     if kwargs["verbose"] and user:
-        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}"[:2000])
+        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}")
     elif not user:
         await message.channel.send("User does not exist")
 
@@ -155,15 +149,15 @@ async def warn_user(message, args, client, **kwargs):
 async def kick_user(message, args, client, **kwargs):
 
     try:
-        user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "kick", "Kicking")
+        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick")
     except InfractionGenerationError:
         return
 
     # Attempt to kick user
-    if is_member and user:
+    if member:
         try:
             await dm_sent  # Wait for dm to be sent before kicking
-            await message.guild.kick((user), reason=reason)
+            await message.guild.kick((member), reason=reason)
         except discord.errors.Forbidden:
             await message.channel.send("The bot does not have permission to kick this user.")
             return
@@ -171,19 +165,19 @@ async def kick_user(message, args, client, **kwargs):
         await message.channel.send("User is not in this guild")
         return
 
-    if kwargs["verbose"]: await message.channel.send(f"Kicked {user.mention} with ID {user.id} for {reason}"[:2000])
+    if kwargs["verbose"]: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}")
 
 
 async def ban_user(message, args, client, **kwargs):
 
     try:
-        user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "ban", "Banning")
+        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "ban")
     except InfractionGenerationError:
         return
 
     # Attempt to ban user
     try:
-        if is_member:
+        if member:
             await dm_sent  # Wait for dm to be sent before banning
         userOBJ = discord.Object(int(args[0].strip("<@!>")))
         await message.guild.ban(userOBJ, delete_message_days=0, reason=reason)
@@ -195,7 +189,7 @@ async def ban_user(message, args, client, **kwargs):
         await message.channel.send("This user does not exist")
         return
 
-    if kwargs["verbose"]: await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}"[:2000])
+    if kwargs["verbose"]: await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}")
 
 
 async def unban_user(message, args, client, **kwargs):
@@ -268,7 +262,7 @@ async def mute_user(message, args, client, **kwargs):
         mutetime = 0
 
     try:
-        user, reason, infractionID, is_member, dm_sent = await process_infraction(message, args, client, "mute", "Muting")
+        member, user, reason, infractionID, _ = await process_infraction(message, args, client, "mute")
     except InfractionGenerationError:
         return
 
@@ -277,7 +271,7 @@ async def mute_user(message, args, client, **kwargs):
         return
 
     # Check they are in the guild
-    if not is_member:
+    if not member:
         await message.channel.send("User is not in this guild")
         return
 
@@ -288,20 +282,20 @@ async def mute_user(message, args, client, **kwargs):
 
     # Attempt to mute user
     try:
-        await user.add_roles(mute_role)
+        await member.add_roles(mute_role)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to mute this user.")
         return
 
     if kwargs["verbose"] and not mutetime:
-        await message.channel.send(f"Muted {user.mention} with ID {user.id} for {reason}"[:2000])
+        await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}")
 
     if mutetime:
         if kwargs["verbose"]:
-            asyncio.create_task(message.channel.send(f"Muted {user.mention} with ID {user.id} for {mutetime}s for {reason}"[:2000]))
+            asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}"))
         # add to mutedb
         with db_hlapi(message.guild.id) as db:
-            db.mute_user(user.id, time.time() + mutetime, infractionID)
+            db.mute_user(member.id, time.time() + mutetime, infractionID)
 
         await asyncio.sleep(mutetime)
 
@@ -311,7 +305,7 @@ async def mute_user(message, args, client, **kwargs):
                 db.unmute_user(infractionid=infractionID)
 
                 try:
-                    await user.remove_roles(mute_role)
+                    await member.remove_roles(mute_role)
                 except discord.errors.HTTPException:
                     pass
 
