@@ -133,21 +133,27 @@ async def sonnet_map(message, args, client, **kwargs):
 
         message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i}'
 
-        await kwargs["cmds_dict"][command]['execute'](
-            message,
-            i.split(),
-            client,
-            stats=kwargs["stats"],
-            cmds=kwargs["cmds"],
-            ramfs=kwargs["ramfs"],
-            bot_start=kwargs["bot_start"],
-            dlibs=kwargs["dlibs"],
-            main_version=kwargs["main_version"],
-            kernel_ramfs=kwargs["kernel_ramfs"],
-            conf_cache=kwargs["conf_cache"],
-            cmds_dict=kwargs["cmds_dict"],
-            verbose=False,
-            )
+        suc = (
+            await kwargs["cmds_dict"][command]['execute'](
+                message,
+                i.split(),
+                client,
+                stats=kwargs["stats"],
+                cmds=kwargs["cmds"],
+                ramfs=kwargs["ramfs"],
+                bot_start=kwargs["bot_start"],
+                dlibs=kwargs["dlibs"],
+                main_version=kwargs["main_version"],
+                kernel_ramfs=kwargs["kernel_ramfs"],
+                conf_cache=kwargs["conf_cache"],
+                cmds_dict=kwargs["cmds_dict"],
+                verbose=False,
+                )
+            ) or 0
+
+        if suc != 0:
+            await message.channel.send(f"ERROR: command `{command}` exited with non sucess status")
+            return 1
 
     message.content = keepref
 
