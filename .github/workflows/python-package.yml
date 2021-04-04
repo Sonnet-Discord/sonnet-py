@@ -31,19 +31,19 @@ jobs:
     - name: run pyflakes before running expensive tests
       run: |
         pyflakes .
-     - name: use lite config
+    - name: use lite config
       run: |
         cp -f common/sonnet_cfg_lite.py common/sonnet_cfg.py
     - name: check commands structure integrity
       run: |
         python build_tools/cmds_to_html.py > /dev/null
-     - name: check syntax integrity
+    - name: check syntax integrity
       run: |
         python build_tools/testimport.py
-     - name: yapf integrity check
+    - name: yapf integrity check
       run: |
         yapf -d -r .
-     - name: Install mariadb cause pylint actually wants to kill me
+    - name: Install mariadb cause pylint actually wants to kill me
       run: |
         sudo apt install libmariadb-dev-compat
         python -m pip install mariadb
