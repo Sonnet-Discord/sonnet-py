@@ -82,6 +82,7 @@ async def sonnet_sh(message, args, client, **kwargs):
                 # Stop processing if error
                 if suc != 0:
                     await message.channel.send(f"ERROR: {self_name}: command `{command}` exited with non sucess status")
+                    message.content = keepref
                     return 1
 
                 # Regenerate cache
@@ -153,6 +154,7 @@ async def sonnet_map(message, args, client, **kwargs):
 
         if suc != 0:
             await message.channel.send(f"ERROR: command `{command}` exited with non sucess status")
+            message.content = keepref
             return 1
 
     message.content = keepref
