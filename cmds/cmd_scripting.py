@@ -143,7 +143,7 @@ async def sonnet_map(message, args, client, **kwargs):
 
     for i in targs[targlen:]:
 
-        message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i}'
+        message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
 
         suc = (
             await kwargs["cmds_dict"][command]['execute'](
