@@ -24,11 +24,11 @@ async def sonnet_sh(message, args, client, **kwargs):
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
 
-    if kwargs["verbose"] == False:
-        await message.channel.send("Shell ERROR: detected anomalous command execution")
-        return 1
-
     self_name = rawargs[0][len(kwargs["conf_cache"]["prefix"]):]
+
+    if kwargs["verbose"] == False:
+        await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
+        return 1
 
     commandsparse = []
 
@@ -81,7 +81,7 @@ async def sonnet_sh(message, args, client, **kwargs):
 
                 # Stop processing if error
                 if suc != 0:
-                    await message.channel.send(f"{self_name}: command exited with non sucess status")
+                    await message.channel.send(f"ERROR: {self_name}: command `{command}` exited with non sucess status")
                     return 1
 
                 # Regenerate cache
