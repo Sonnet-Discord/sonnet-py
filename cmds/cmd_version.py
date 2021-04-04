@@ -81,8 +81,6 @@ async def print_stats(message, args, client, **kwargs):
     statistics_file = kernel_ramfs.read_f(f"{message.guild.id}/stats")
     global_statistics_file = kernel_ramfs.read_f("global/stats")
 
-    fmt = "```py\n"
-
     guild_total = 0
     global_total = 0
 
@@ -102,9 +100,9 @@ async def print_stats(message, args, client, **kwargs):
     outputmap.append(["Globally:", "Count:"])
     [outputmap.append([i, global_statistics_file[i]]) for i in global_statistics_file]
 
-    for i in prettyprint(outputmap):
-        fmt += f"{i}\n"
-    fmt += f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% of total processed events since boot```"
+    fmt = f"```py\n{'\n'.join(prettyprint(outputmap))}\n"
+
+    fmt += f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% ({guild_total}/{global_total}) of total processed events since boot```"
 
     await message.channel.send(fmt)
 
