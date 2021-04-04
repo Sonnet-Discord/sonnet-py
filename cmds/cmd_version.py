@@ -29,6 +29,17 @@ def zpad(innum):
     return (2 - len(str(innum))) * "0" + str(innum)
 
 
+def getdelta(past):
+
+    trunning = (datetime.utcnow() - datetime.utcfromtimestamp(past))
+
+    seconds = trunning.seconds % 60
+    minutes = ((trunning.seconds) // 60 % 60)
+    hours = ((trunning.seconds) // (60 * 60))
+
+    return f"{trunning.days} Day{'s'*(trunning.days != 1)}, {zpad(hours)}:{zpad(minutes)}:{zpad(seconds)}"
+
+
 async def print_version_info(message, args, client, **kwargs):
 
     bot_start_time = kwargs["bot_start"]
@@ -53,26 +64,14 @@ async def print_version_info(message, args, client, **kwargs):
 
     fmt += f"\nC accel: {DotHeaders.version}={clib_exists}\n"
 
-    trunning = (datetime.utcnow() - datetime.utcfromtimestamp(bot_start_time))
-
-    minutes = int((trunning.seconds - (seconds := trunning.seconds % 60)) / 60 % 60)
-    hours = int((trunning.seconds - seconds - 60 * minutes) / (60 * 60))
-
-    fmt += f"\nBot Uptime: {trunning.days} Days, {zpad(hours)}:{zpad(minutes)}:{zpad(seconds)}\n```"
+    fmt += f"\nBot Uptime: {getdelta(bot_start_time)}\n```"
 
     await message.channel.send(fmt)
 
 
 async def uptime(message, args, client, **kwargs):
 
-    trunning = (datetime.utcnow() - datetime.utcfromtimestamp(kwargs["bot_start"]))
-
-    minutes = int((trunning.seconds - (seconds := trunning.seconds % 60)) / 60 % 60)
-    hours = int((trunning.seconds - seconds - 60 * minutes) / (60 * 60))
-
-    fmt = f"{trunning.days} Days, {zpad(hours)}:{zpad(minutes)}:{zpad(seconds)}"
-
-    await message.channel.send(fmt)
+    await message.channel.send(getdelta(kwargs["bot_start"]))
 
 
 async def print_stats(message, args, client, **kwargs):
@@ -145,4 +144,4 @@ commands = {
         }
     }
 
-version_info = "1.2.1"
+version_info = "1.2.2-DEV"
