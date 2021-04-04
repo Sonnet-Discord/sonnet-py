@@ -294,11 +294,11 @@ async def parse_role(message, args, db_entry, verbose=True):
         role = message.guild.get_role(int(role))
     except ValueError:
         await message.channel.send("ERROR: Role is not valid int")
-        return
+        return 1
 
     if not role:
         await message.channel.send("ERROR: Role does not exist")
-        return
+        return 1
 
     with db_hlapi(message.guild.id) as db:
         db.add_config(db_entry, role.id)

@@ -21,35 +21,35 @@ async def joinlog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "join-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def inflog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def msglog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "message-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def notifier_log_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "regex-notifier-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def username_log_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "username-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 class gdpr_functions:
@@ -152,17 +152,17 @@ async def set_prefix(message, args, client, **kwargs):
 
 async def set_mute_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "mute-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "mute-role", verbose=kwargs["verbose"])
 
 
 async def set_admin_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "admin-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "admin-role", verbose=kwargs["verbose"])
 
 
 async def set_moderator_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
 
 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}

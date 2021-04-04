@@ -26,7 +26,7 @@ async def starboard_channel_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "starboard-channel", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def set_starboard_emoji(message, args, client, **kwargs):
@@ -69,6 +69,7 @@ async def set_starboard_count(message, args, client, **kwargs):
 
         except ValueError:
             await message.channel.send("ERROR: Invalid input, enter a number")
+            return 1
 
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
@@ -110,4 +111,4 @@ commands = {
             }
     }
 
-version_info = "1.2.1"
+version_info = "1.2.2-DEV"

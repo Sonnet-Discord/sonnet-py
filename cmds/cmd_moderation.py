@@ -123,12 +123,13 @@ async def warn_user(message, args, client, **kwargs):
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "warn")
     except InfractionGenerationError:
-        return
+        return 1
 
     if kwargs["verbose"] and user:
         await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}")
     elif not user:
         await message.channel.send("User does not exist")
+        return 1
 
 
 async def kick_user(message, args, client, **kwargs):
@@ -136,7 +137,7 @@ async def kick_user(message, args, client, **kwargs):
     try:
         member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick")
     except InfractionGenerationError:
-        return
+        return 1
 
     # Attempt to kick user
     if member:
@@ -145,10 +146,10 @@ async def kick_user(message, args, client, **kwargs):
             await message.guild.kick((member), reason=reason)
         except discord.errors.Forbidden:
             await message.channel.send("The bot does not have permission to kick this user.")
-            return
+            return 1
     else:
         await message.channel.send("User is not in this guild")
-        return
+        return 1
 
     if kwargs["verbose"]: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}")
 
@@ -158,7 +159,7 @@ async def ban_user(message, args, client, **kwargs):
     try:
         member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban")
     except InfractionGenerationError:
-        return
+        return 1
 
     # Attempt to ban user
     try:
@@ -168,7 +169,7 @@ async def ban_user(message, args, client, **kwargs):
 
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to ban this user.")
-        return
+        return 1
 
     if kwargs["verbose"]: await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}")
 
@@ -180,27 +181,27 @@ async def unban_user(message, args, client, **kwargs):
         user = await client.fetch_user(int(args[0].strip("<@!>")))
     except ValueError:
         await message.channel.send("Invalid User")
-        return
+        return 1
     except IndexError:
         await message.channel.send("No user specified")
-        return
+        return 1
     except discord.errors.NotFound:
         await message.channel.send("Invalid User")
-        return
+        return 1
 
     if not user:
         await message.channel.send("Invalid User")
-        return
+        return 1
 
     # Attempt to unban user
     try:
         await message.guild.unban(user)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unban this user.")
-        return
+        return 1
     except discord.errors.NotFound:
         await message.channel.send("This user is not banned")
-        return
+        return 1
 
     if kwargs["verbose"]: await message.channel.send(f"Unbanned {user.mention} with ID {user.id}")
 
@@ -245,24 +246,24 @@ async def mute_user(message, args, client, **kwargs):
     try:
         member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute")
     except InfractionGenerationError:
-        return
+        return 1
 
     # Check they are in the guild
     if not member:
         await message.channel.send("User is not in this guild")
-        return
+        return 1
 
     try:
         mute_role = await grab_mute_role(message)
     except NoMuteRole:
-        return
+        return 1
 
     # Attempt to mute user
     try:
         await member.add_roles(mute_role)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to mute this user.")
-        return
+        return 1
 
     if kwargs["verbose"] and not mutetime:
         await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}")
@@ -294,26 +295,26 @@ async def unmute_user(message, args, client, **kwargs):
         user = message.guild.get_member(int(args[0].strip("<@!>")))
     except ValueError:
         await message.channel.send("Invalid User")
-        return
+        return 1
     except IndexError:
         await message.channel.send("No user specified")
-        return
+        return 1
 
     if not user:
         await message.channel.send("Invalid User")
-        return
+        return 1
 
     try:
         mute_role = await grab_mute_role(message)
     except NoMuteRole:
-        return
+        return 1
 
     # Attempt to unmute user
     try:
         await user.remove_roles(mute_role)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unmute this user.")
-        return
+        return 1
 
     if kwargs["verbose"]: await message.channel.send(f"Unmuted {user.mention} with ID {user.id}")
 
@@ -343,7 +344,7 @@ async def general_infraction_grabber(message, args, client):
                 automod = False
         except (ValueError, IndexError):
             await message.channel.send("Invalid flags supplied")
-            return
+            return 1
 
     with db_hlapi(message.guild.id) as db:
         if user_affected:
@@ -354,7 +355,7 @@ async def general_infraction_grabber(message, args, client):
             sortmeth = "mod"
         else:
             await message.channel.send("Please specify a user or moderator")
-            return
+            return 1
 
     # Generate sorts
     if not automod:
@@ -385,7 +386,7 @@ async def general_infraction_grabber(message, args, client):
     # Test if valid page
     if selected_chunk == -1:
         await message.channel.send("ERROR: Cannot go to page 0")
-        return
+        return 1
     elif selected_chunk < -1:
         selected_chunk += 1
 
@@ -393,7 +394,7 @@ async def general_infraction_grabber(message, args, client):
         outdata = chunks[selected_chunk]
     except IndexError:
         await message.channel.send(f"ERROR: No such page {selected_chunk}")
-        return
+        return 1
 
     if infractions:
         await message.channel.send(f"Page {selected_chunk%len(chunks)+1} of {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
@@ -403,7 +404,7 @@ async def general_infraction_grabber(message, args, client):
 
 async def search_infractions_by_user(message, args, client, **kwargs):
 
-    await general_infraction_grabber(message, args, client)
+    return await general_infraction_grabber(message, args, client)
 
 
 async def get_detailed_infraction(message, args, client, **kwargs):
@@ -413,10 +414,10 @@ async def get_detailed_infraction(message, args, client, **kwargs):
             infraction = db.grab_infraction(args[0])
         if not infraction:
             await message.channel.send("Infraction ID does not exist")
-            return
+            return 1
     else:
         await message.channel.send("No argument supplied")
-        return
+        return 1
 
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
@@ -437,11 +438,11 @@ async def delete_infraction(message, args, client, **kwargs):
             infraction = db.grab_infraction(args[0])
             if not infraction:
                 await message.channel.send("Infraction ID does not exist")
-                return
+                return 1
             db.delete_infraction(infraction[0])
     else:
         await message.channel.send("No argument supplied")
-        return
+        return 1
 
     if not kwargs["verbose"]:
         return
@@ -463,7 +464,7 @@ async def grab_guild_message(message, args, client, **kwargs):
     try:
         discord_message, nargs = await parse_channel_message(message, args, client)
     except lib_parsers.errors.message_parse_failure:
-        return
+        return 1
 
     # Generate replies
     message_content = generate_reply_field(discord_message)

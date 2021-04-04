@@ -15,10 +15,10 @@ async def joke_ban_user(message, args, client, **kwargs):
         user = None
     except IndexError:
         await message.channel.send("No user specified")
-        return
+        return 1
 
     if not user:
-        await message.channel.send(f"'Banned' {user} for {reason}")
+        await message.channel.send(f"'Banned' {args[0]} for {reason}")
     else:
         await message.channel.send(f"'Banned' {user.mention} with ID {user.id} for {reason}")
 
@@ -35,4 +35,4 @@ commands = {
         },
     }
 
-version_info = "1.1.6"
+version_info = "1.2.2-DEV"

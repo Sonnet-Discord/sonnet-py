@@ -22,13 +22,13 @@ async def add_reactionroles(message, args, client, **kwargs):
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
     except lib_parsers.errors.message_parse_failure:
-        return
+        return 1
 
     args = args[nargs:]
 
     if len(args) < 2:
         await message.channel.send("Not enough args supplied")
-        return
+        return 1
 
     emoji = args[0]
 
@@ -38,20 +38,20 @@ async def add_reactionroles(message, args, client, **kwargs):
         role = message.guild.get_role(int(role))
     except ValueError:
         await message.channel.send("Invalid role")
-        return
+        return 1
 
     if not role:
         await message.channel.send("Invalid role")
-        return
+        return 1
 
     rindex = message.guild.roles.index(role)
 
     if rindex >= message.guild.roles.index(message.author.roles[-1]):
         await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
-        return
+        return 1
     elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
         await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
-        return
+        return 1
 
     with db_hlapi(message.guild.id) as db:
         reactionroles = db.grab_config("reaction-role-data")
@@ -78,13 +78,13 @@ async def remove_reactionroles(message, args, client, **kwargs):
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
     except lib_parsers.errors.message_parse_failure:
-        return
+        return 1
 
     args = args[nargs:]
 
     if not args:
         await message.channel.send("Not enough args supplied")
-        return
+        return 1
 
     emoji = args[0]
 
@@ -93,7 +93,7 @@ async def remove_reactionroles(message, args, client, **kwargs):
 
     if not reactionroles:
         await message.channel.send("ERROR: This guild has no reactionroles")
-        return
+        return 1
 
     reactionroles = json.loads(reactionroles)
 
@@ -102,10 +102,10 @@ async def remove_reactionroles(message, args, client, **kwargs):
             del reactionroles[str(rr_message.id)][emoji]
         else:
             await message.channel.send(f"This message does not have {emoji} reactionrole on it")
-            return
+            return 1
     else:
         await message.channel.send("This message has no reactionroles on it")
-        return
+        return 1
 
     with db_hlapi(message.guild.id) as db:
         db.add_config("reaction-role-data", json.dumps(reactionroles))
@@ -139,7 +139,7 @@ async def addmany_reactionroles(message, args, client, **kwargs):
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
     except lib_parsers.errors.message_parse_failure:
-        return
+        return 1
 
     args = args[nargs:]
 
@@ -154,20 +154,20 @@ async def addmany_reactionroles(message, args, client, **kwargs):
             role = message.guild.get_role(int(role))
         except ValueError:
             await message.channel.send("Invalid role")
-            return
+            return 1
 
         if not role:
             await message.channel.send("Invalid role")
-            return
+            return 1
 
         rindex = message.guild.roles.index(role)
 
         if rindex >= message.guild.roles.index(message.author.roles[-1]):
             await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
-            return
+            return 1
         elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
             await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
-            return
+            return 1
 
         if str(rr_message.id) in reactionroles:
             reactionroles[str(rr_message.id)][emoji] = role.id
@@ -219,4 +219,4 @@ commands = {
             },
     }
 
-version_info = "1.2.0"
+version_info = "1.2.2-DEV"

@@ -42,7 +42,7 @@ async def wb_change(message, args, client, **kwargs):
     try:
         await update_csv_blacklist(message, args, "word-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
-        pass
+        return 1
 
 
 async def word_in_word_change(message, args, client, **kwargs):
@@ -50,7 +50,7 @@ async def word_in_word_change(message, args, client, **kwargs):
     try:
         await update_csv_blacklist(message, args, "word-in-word-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
-        pass
+        return 1
 
 
 async def ftb_change(message, args, client, **kwargs):
@@ -58,7 +58,7 @@ async def ftb_change(message, args, client, **kwargs):
     try:
         await update_csv_blacklist(message, args, "filetype-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
-        pass
+        return 1
 
 
 async def add_regex_type(message, args, db_entry, verbose=True):
@@ -130,28 +130,28 @@ async def regexblacklist_add(message, args, client, **kwargs):
     try:
         await add_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
-        pass
+        return 1
 
 
 async def regexblacklist_remove(message, args, client, **kwargs):
     try:
         await remove_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
-        pass
+        return 1
 
 
 async def regex_notifier_add(message, args, client, **kwargs):
     try:
         await add_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
     except blacklist_input_error:
-        pass
+        return 1
 
 
 async def regex_notifier_remove(message, args, client, **kwargs):
     try:
         await remove_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
     except blacklist_input_error:
-        pass
+        return 1
 
 
 async def list_blacklist(message, args, client, **kwargs):
@@ -200,8 +200,8 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
         return
 
     if not action in ["warn", "kick", "mute", "ban"]:
-        await message.channel.send("Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
-        return
+        await message.channel.send("ERROR: Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
+        return 1
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("blacklist-action", action)
@@ -226,7 +226,7 @@ async def antispam_set(message, args, client, **kwargs):
             messages, seconds = [float(i) for i in args[0].split(",")]
         except ValueError:
             await message.channel.send("ERROR: Incorrect args supplied")
-            return
+            return 1
 
     elif len(args) > 1:
         try:
@@ -234,18 +234,18 @@ async def antispam_set(message, args, client, **kwargs):
             seconds = float(args[1])
         except ValueError:
             await message.channel.send("ERROR: Incorrect args supplied")
-            return
+            return 1
 
     # Prevent bullshit
     if messages < 2:
         await message.channel.send("ERROR: Cannot go below 2 messages")
-        return
+        return 1
     elif seconds > 10:
         await message.channel.send("ERROR: Cannot go above 10 seconds")
-        return
+        return 1
     elif seconds < 0:
         await message.channel.send("ERROR: Cannot go below 0 seconds")
-        return
+        return 1
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{int(messages)},{seconds}")
@@ -263,7 +263,7 @@ async def antispam_time_set(message, args, client, **kwargs):
                 mutetime = int(args[0])
         except (ValueError, TypeError):
             await message.channel.send("ERROR: Invalid time format")
-            return
+            return 1
     else:
         mutetime = int(kwargs["conf_cache"]["antispam-time"])
         await message.channel.send(f"Antispam mute time is {mutetime} seconds")
@@ -271,7 +271,7 @@ async def antispam_time_set(message, args, client, **kwargs):
 
     if mutetime < 0:
         await message.channel.send("ERROR: Mutetime cannot be negative")
-        return
+        return 1
 
     with db_hlapi(message.guild.id) as db:
         db.add_config("antispam-time", str(mutetime))
