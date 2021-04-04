@@ -383,14 +383,20 @@ async def general_infraction_grabber(message, args, client):
             chunks[curchunk] = chunks[curchunk] + infraction_data
 
     # Test if valid page
+    if selected_chunk == -1:
+        await message.channel.send("ERROR: Cannot go to page 0")
+        return
+    elif selected_chunk < -1:
+        selected_chunk += 1
+
     try:
         outdata = chunks[selected_chunk]
     except IndexError:
-        outdata = chunks[0]
-        selected_chunk = 0
+        await message.channel.send(f"ERROR: No such page {selected_chunk}")
+        return
 
     if infractions:
-        await message.channel.send(f"Page {selected_chunk+1} of {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
+        await message.channel.send(f"Page {selected_chunk%len(chunks)+1} of {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
     else:
         await message.channel.send("No infractions found")
 
@@ -537,6 +543,7 @@ commands = {
         {
             'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [--no-automod]',
             'description': 'Grab infractions of a user',
+            'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
             'cache': 'keep',
             'execute': search_infractions_by_user
