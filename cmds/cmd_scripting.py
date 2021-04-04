@@ -112,7 +112,18 @@ async def sonnet_map(message, args, client, **kwargs):
         return 1
 
     if targs:
-        command = targs[0]
+        if targs[0] == "-e":
+            if len(targs) >= 3:
+                endlargs = targs[1].split()
+                command = targs[2]
+                targlen = 3
+            else:
+                await message.channel.send("No command specified/-e specified but no input")
+                return 1
+        else:
+            endlargs = []
+            command = targs[0]
+            targlen = 1
     else:
         await message.channel.send("No command specified")
         return 1
@@ -130,14 +141,14 @@ async def sonnet_map(message, args, client, **kwargs):
 
     keepref = message.content
 
-    for i in targs[1:]:
+    for i in targs[targlen:]:
 
         message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i}'
 
         suc = (
             await kwargs["cmds_dict"][command]['execute'](
                 message,
-                i.split(),
+                i.split() + endlargs,
                 client,
                 stats=kwargs["stats"],
                 cmds=kwargs["cmds"],
@@ -179,13 +190,22 @@ commands = {
             'cache': 'keep',
             'execute': sonnet_sh
             },
-    'map': {
-        'pretty_name': 'map <command> (<args>)+',
-        'description': 'Map a single command with multiple arguments',
-        'permission': 'moderator',
-        'cache': 'keep',
-        'execute': sonnet_map
-        },
+    'map':
+        {
+            'pretty_name':
+                'map [-e args] <command> (<args>)+',
+            'description':
+                'Map a single command with multiple arguments',
+            'rich_description':
+                '''Use -e to append those args to the end of every run of the command
+For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 users for raiding and spam''',
+            'permission':
+                'moderator',
+            'cache':
+                'keep',
+            'execute':
+                sonnet_map
+            },
     }
 
 version_info = "1.2.2-DEV"
