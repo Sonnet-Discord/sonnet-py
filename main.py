@@ -373,7 +373,7 @@ def kernel_unblacklist_user(*args):
 
 
 def kernel_logout(*args):
-    asyncio.create_task(Client.logout())
+    asyncio.create_task(Client.close())
 
 
 def kernel_drop_dlibs(*args):
@@ -439,7 +439,7 @@ class errtype:
     def __init__(self, err, argtype):
         self.err = err
         owner = f"<@!{BOT_OWNER[0]}>" if BOT_OWNER else "BOT OWNER"
-        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nerr: {type(err).__name__}: {err}"
+        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nErr: `{type(err).__name__}: {err}`"
 
 
 # Catch errors.
@@ -740,7 +740,7 @@ async def on_member_unban(guild, user):
 
 
 # Define version info and start time
-version_info = "LeXdPyK 1.3"
+version_info = "LeXdPyK 1.3.1"
 bot_start_time = time.time()
 
 # Start bot
