@@ -181,6 +181,38 @@ async def addmany_reactionroles(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send("Added Multiple reactionroles")
 
 
+async def rr_purge(message, args, client, **kwargs):
+
+    try:
+        message_id = int(args[0].replace("-", "/").split("/")[-1])
+    except IndexError:
+        await message.channel.send("ERROR: No message id supplied")
+        return 1
+    except ValueError:
+        await message.channel.send("ERROR: Message id is not a valid int")
+        return 1
+
+    with db_hlapi(message.guild.id) as db:
+        reactionroles = db.grab_config("reaction-role-data")
+
+    if not reactionroles:
+        await message.channel.send("ERROR: This guild has no reactionroles")
+        return 1
+
+    reactionroles = json.loads(reactionroles)
+
+    if str(message_id) in reactionroles:
+        del reactionroles[str(message_id)]
+    else:
+        await message.channel.send("ERROR: This message has no reactionroles")
+        return 1
+
+    with db_hlapi(message.guild.id) as db:
+        db.add_config("reaction-role-data", json.dumps(reactionroles))
+
+    if kwargs["verbose"]: await message.channel.send(f"Purged reactionroles from message with id {message_id}")
+
+
 category_info = {'name': 'rr', 'pretty_name': 'Reaction Roles', 'description': 'Commands for controlling Reaction Role settings'}
 
 commands = {
@@ -191,6 +223,15 @@ commands = {
         'cache': 'regenerate',
         'execute': add_reactionroles
         },
+    'rr-purge':
+        {
+            'pretty_name': 'rr-purge <message id>',
+            'description': 'Purge all reactionroles from a message',
+            'rich_description': 'Currently the only way to remove reactionroles from a deleted message',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': rr_purge
+            },
     'rr-remove':
         {
             'pretty_name': 'rr-remove <message> <emoji>',
