@@ -3,7 +3,7 @@
 
 import importlib
 
-import lz4.frame, discord, os, json
+import lz4.frame, io, discord, os, json, hashlib
 
 import lib_db_obfuscator
 
@@ -58,7 +58,8 @@ def parse_blacklist(indata):
         for regex_type in ["regex-blacklist", "regex-notifier"]:
             ramfs.mkdir(f"{message.guild.id}/regex/{regex_type}")
             for i in reglist[regex_type]:
-                ramfs.create_f(f"{message.guild.id}/regex/{regex_type}/{i}", f_type=re.compile, f_args=[i])
+                regexname = hex(int.from_bytes(hashlib.sha256(i.encode("utf8")).digest(), "big"))[-32:]
+                ramfs.create_f(f"{message.guild.id}/regex/{regex_type}/{regexname}", f_type=re.compile, f_args=[i])
 
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
