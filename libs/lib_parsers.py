@@ -3,7 +3,7 @@
 
 import importlib
 
-import lz4.frame, io, discord, os, json, hashlib
+import lz4.frame, discord, os, json, hashlib
 
 import lib_db_obfuscator
 
