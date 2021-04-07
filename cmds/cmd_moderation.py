@@ -510,7 +510,7 @@ commands = {
         },
     'note': {
         'pretty_name': 'note <uid> [note]',
-        'description': 'Put a note in a users infractions, does not dm user',
+        'description': 'Put a note into a users infraction log, does not dm user',
         'permission': 'moderator',
         'cache': 'keep',
         'execute': note_user
