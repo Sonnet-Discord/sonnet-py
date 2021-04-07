@@ -145,13 +145,13 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
 
-    def unmute_user(self, **kargs):
+    def unmute_user(self, infractionid=None, userid=None):
 
         try:
-            if "infractionid" in kargs.keys():
-                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", kargs["infractionid"]])
-            elif "userid" in kargs.keys():
-                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["userid", kargs["userid"]])
+            if infractionid:
+                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid])
+            if userid:
+                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["userid", userid])
         except db_error.OperationalError:
             pass
 
