@@ -30,7 +30,7 @@ async def catch_dm_error(user, contents, log_channel):
 
 
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(message, client, user, moderator_id, infraction_reason, infraction_type):
+async def log_infraction(message, client, user, moderator_id, infraction_reason, infraction_type, to_dm):
 
     if not user:
         return (None, None)
@@ -43,6 +43,9 @@ async def log_infraction(message, client, user, moderator_id, infraction_reason,
         log_channel = client.get_channel(int(db.grab_config("infraction-log") or 0))
         # Send infraction to database
         db.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, round(time.time()))
+
+    if not to_dm:
+        return (None, None)
 
     if log_channel:
 
@@ -72,7 +75,7 @@ class InfractionGenerationError(Exception):
 
 
 # General processor for infractions
-async def process_infraction(message, args, client, infraction_type):
+async def process_infraction(message, args, client, infraction_type, infraction=True):
 
     # Check if automod
     automod = False
@@ -113,7 +116,7 @@ async def process_infraction(message, args, client, infraction_type):
         raise InfractionGenerationError(f"Attempted nonperm {infraction_type}")
 
     # Log infraction
-    infraction_id, dm_sent = await log_infraction(message, client, user, moderator_id, reason, infraction_type)
+    infraction_id, dm_sent = await log_infraction(message, client, user, moderator_id, reason, infraction_type, infraction)
 
     return (member, user, reason, infraction_id, dm_sent)
 
@@ -127,6 +130,20 @@ async def warn_user(message, args, client, **kwargs):
 
     if kwargs["verbose"] and user:
         await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}")
+    elif not user:
+        await message.channel.send("User does not exist")
+        return 1
+
+
+async def note_user(message, args, client, **kwargs):
+
+    try:
+        _, user, reason, _, _ = await process_infraction(message, args, client, "note", infraction=False)
+    except InfractionGenerationError:
+        return 1
+
+    if kwargs["verbose"] and user:
+        await message.channel.send(f"Put a note on {user.mention} with ID {user.id}: {reason}")
     elif not user:
         await message.channel.send("User does not exist")
         return 1
@@ -171,31 +188,19 @@ async def ban_user(message, args, client, **kwargs):
         await message.channel.send("The bot does not have permission to ban this user.")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Banned <@!{args[0].strip('<@!>')}> with ID {args[0].strip('<@!>')} for {reason}")
+    if kwargs["verbose"]: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}")
 
 
 async def unban_user(message, args, client, **kwargs):
 
-    # Test if user is valid
     try:
-        user = await client.fetch_user(int(args[0].strip("<@!>")))
-    except ValueError:
-        await message.channel.send("Invalid User")
-        return 1
-    except IndexError:
-        await message.channel.send("No user specified")
-        return 1
-    except discord.errors.NotFound:
-        await message.channel.send("Invalid User")
-        return 1
-
-    if not user:
-        await message.channel.send("Invalid User")
+        _, user, reason, _, _ = await process_infraction(message, args, client, "unban", infraction=False)
+    except InfractionGenerationError:
         return 1
 
     # Attempt to unban user
     try:
-        await message.guild.unban(user)
+        await message.guild.unban(user, reason=reason)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unban this user.")
         return 1
@@ -203,7 +208,7 @@ async def unban_user(message, args, client, **kwargs):
         await message.channel.send("This user is not banned")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Unbanned {user.mention} with ID {user.id}")
+    if kwargs["verbose"]: await message.channel.send(f"Unbanned {user.mention} with ID {user.id} for {reason}")
 
 
 class NoMuteRole(Exception):
@@ -224,8 +229,24 @@ async def grab_mute_role(message):
             raise NoMuteRole("No mute role")
 
 
+async def sleep_and_unmute(guild, member, infractionID, mutetime):
+
+    await asyncio.sleep(mutetime)
+
+    # unmute in db
+    with db_hlapi(guild.id) as db:
+        if db.is_muted(infractionid=infractionID):
+            db.unmute_user(infractionid=infractionID)
+
+            try:
+                await member.remove_roles(mute_role)
+            except discord.errors.HTTPException:
+                pass
+
+
 async def mute_user(message, args, client, **kwargs):
 
+    # Grab mute time
     if len(args) >= 2:
         try:
             if args[1][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
@@ -244,18 +265,14 @@ async def mute_user(message, args, client, **kwargs):
         mutetime = 0
 
     try:
+        mute_role = await grab_mute_role(message)
         member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute")
-    except InfractionGenerationError:
+    except (NoMuteRole, InfractionGenerationError):
         return 1
 
     # Check they are in the guild
     if not member:
         await message.channel.send("User is not in this guild")
-        return 1
-
-    try:
-        mute_role = await grab_mute_role(message)
-    except NoMuteRole:
         return 1
 
     # Attempt to mute user
@@ -271,52 +288,44 @@ async def mute_user(message, args, client, **kwargs):
     if mutetime:
         if kwargs["verbose"]:
             asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}"))
-        # add to mutedb
+
+        # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
+            db.unmute_user(userid=member.id)
             db.mute_user(member.id, time.time() + mutetime, infractionID)
 
-        await asyncio.sleep(mutetime)
-
-        # unmute in db
-        with db_hlapi(message.guild.id) as db:
-            if db.is_muted(infractionid=infractionID):
-                db.unmute_user(infractionid=infractionID)
-
-                try:
-                    await member.remove_roles(mute_role)
-                except discord.errors.HTTPException:
-                    pass
+        # Create in other thread to not block command execution
+        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mutetime))
 
 
 async def unmute_user(message, args, client, **kwargs):
-
-    # Test if user is valid
-    try:
-        user = message.guild.get_member(int(args[0].strip("<@!>")))
-    except ValueError:
-        await message.channel.send("Invalid User")
-        return 1
-    except IndexError:
-        await message.channel.send("No user specified")
-        return 1
-
-    if not user:
-        await message.channel.send("Invalid User")
-        return 1
 
     try:
         mute_role = await grab_mute_role(message)
     except NoMuteRole:
         return 1
 
+    try:
+        member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", infraction=False)
+    except InfractionGenerationError:
+        return 1
+
+    if not member:
+        await message.channel.send("User is not in this guild")
+        return 1
+
     # Attempt to unmute user
     try:
-        await user.remove_roles(mute_role)
+        await member.remove_roles(mute_role)
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unmute this user.")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Unmuted {user.mention} with ID {user.id}")
+    # Unmute in DB
+    with db_hlapi(message.guild.id) as db:
+        db.unmute_user(userid=member.id)
+
+    if kwargs["verbose"]: await message.channel.send(f"Unmuted {user.mention} with ID {user.id} for {reason}")
 
 
 async def general_infraction_grabber(message, args, client):
@@ -499,6 +508,13 @@ commands = {
         'cache': 'keep',
         'execute': warn_user
         },
+    'note': {
+        'pretty_name': 'note <uid> [note]',
+        'description': 'Put a note in a users infractions, does not dm user',
+        'permission': 'moderator',
+        'cache': 'keep',
+        'execute': note_user
+        },
     'kick': {
         'pretty_name': 'kick <uid> [reason]',
         'description': 'Kick a user',
@@ -515,7 +531,7 @@ commands = {
         },
     'unban': {
         'pretty_name': 'unban <uid>',
-        'description': 'Unban a user',
+        'description': 'Unban a user, does not dm user',
         'permission': 'moderator',
         'cache': 'keep',
         'execute': unban_user
@@ -529,7 +545,7 @@ commands = {
         },
     'unmute': {
         'pretty_name': 'unmute <uid>',
-        'description': 'Unmute a user',
+        'description': 'Unmute a user, does not dm user',
         'permission': 'moderator',
         'cache': 'keep',
         'execute': unmute_user
