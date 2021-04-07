@@ -211,7 +211,7 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
 
 async def change_rolewhitelist(message, args, client, **kwargs):
 
-    await parse_role(message, args, "blacklist-whitelist", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "blacklist-whitelist", verbose=kwargs["verbose"])
 
 
 async def antispam_set(message, args, client, **kwargs):
@@ -388,4 +388,4 @@ commands = {
             },
     }
 
-version_info = "1.2.2-DEV"
+version_info = "1.2.2"
