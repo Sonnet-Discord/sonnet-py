@@ -129,7 +129,7 @@ async def warn_user(message, args, client, **kwargs):
         return 1
 
     if kwargs["verbose"] and user:
-        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}")
+        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
         return 1
@@ -143,7 +143,7 @@ async def note_user(message, args, client, **kwargs):
         return 1
 
     if kwargs["verbose"] and user:
-        await message.channel.send(f"Put a note on {user.mention} with ID {user.id}: {reason}")
+        await message.channel.send(f"Put a note on {user.mention} with ID {user.id}: {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
         return 1
@@ -168,7 +168,7 @@ async def kick_user(message, args, client, **kwargs):
         await message.channel.send("User is not in this guild")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}")
+    if kwargs["verbose"]: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def ban_user(message, args, client, **kwargs):
@@ -188,7 +188,7 @@ async def ban_user(message, args, client, **kwargs):
         await message.channel.send("The bot does not have permission to ban this user.")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}")
+    if kwargs["verbose"]: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def unban_user(message, args, client, **kwargs):
@@ -208,7 +208,7 @@ async def unban_user(message, args, client, **kwargs):
         await message.channel.send("This user is not banned")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Unbanned {user.mention} with ID {user.id} for {reason}")
+    if kwargs["verbose"]: await message.channel.send(f"Unbanned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 class NoMuteRole(Exception):
@@ -287,7 +287,7 @@ async def mute_user(message, args, client, **kwargs):
 
     if mutetime:
         if kwargs["verbose"]:
-            asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}"))
+            asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}", allowed_mentions=discord.AllowedMentions.none()))
 
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
@@ -325,7 +325,7 @@ async def unmute_user(message, args, client, **kwargs):
     with db_hlapi(message.guild.id) as db:
         db.unmute_user(userid=member.id)
 
-    if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}")
+    if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def general_infraction_grabber(message, args, client):
