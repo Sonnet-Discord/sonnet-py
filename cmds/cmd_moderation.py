@@ -325,7 +325,7 @@ async def unmute_user(message, args, client, **kwargs):
     with db_hlapi(message.guild.id) as db:
         db.unmute_user(userid=member.id)
 
-    if kwargs["verbose"]: await message.channel.send(f"Unmuted {user.mention} with ID {user.id} for {reason}")
+    if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}")
 
 
 async def general_infraction_grabber(message, args, client):
