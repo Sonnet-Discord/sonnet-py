@@ -229,7 +229,7 @@ async def grab_mute_role(message):
             raise NoMuteRole("No mute role")
 
 
-async def sleep_and_unmute(guild, member, infractionID, mutetime):
+async def sleep_and_unmute(guild, member, infractionID, mute_role, mutetime):
 
     await asyncio.sleep(mutetime)
 
@@ -295,7 +295,7 @@ async def mute_user(message, args, client, **kwargs):
             db.mute_user(member.id, time.time() + mutetime, infractionID)
 
         # Create in other thread to not block command execution
-        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mutetime))
+        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime))
 
 
 async def unmute_user(message, args, client, **kwargs):
