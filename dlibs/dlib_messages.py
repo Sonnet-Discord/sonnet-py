@@ -3,7 +3,7 @@
 
 import importlib
 
-import time, asyncio, os, threading, hashlib
+import time, asyncio, os, hashlib
 from datetime import datetime
 
 import discord, lz4.frame
@@ -149,8 +149,8 @@ def antispam_check(indata):
 
     guildid, userid, msend, ramfs, messagecount, timecount = indata
 
-    messagecount = int(messagecount)
-    timecount = int(timecount) * 1000
+    messagecount = int(float(messagecount))
+    timecount = int(float(timecount) * 1000)
 
     try:
         messages = ramfs.read_f(f"{guildid}/asam")
@@ -272,7 +272,7 @@ async def on_message(message, **kargs):
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), "20s", "[AUTOMOD]", "Antispam"], client, verbose=False))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", "Antispam"], client, verbose=False))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf))
@@ -340,4 +340,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.1.5-3"
+version_info = "1.2.2"

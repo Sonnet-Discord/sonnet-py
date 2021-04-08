@@ -1,7 +1,7 @@
 # Simple MariaDB handler
 # Ultrabear 2020
 
-import mariadb, json
+import mariadb
 
 
 class db_error:  # DB error codes

@@ -3,13 +3,18 @@
 
 import importlib
 
-import json, random, os, math, ctypes, time, io
-from sonnet_cfg import *
+import random, os, math, ctypes, time, io
+from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
+import sonnet_cfg
+
+importlib.reload(sonnet_cfg)
+
 from lib_db_obfuscator import db_hlapi
+from sonnet_cfg import CLIB_LOAD
 
 
 class DotHeaders:
@@ -36,14 +41,17 @@ class DotHeaders:
 
 clib_exists = True
 clib_name = f"./libs/compiled/sonnet.{DotHeaders.version}.so"
-try:
-    loader = DotHeaders(ctypes.CDLL(clib_name)).lib
-except OSError:
+if CLIB_LOAD:
     try:
-        os.system(f"make 2> /dev/null")
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
-        clib_exists = False
+        try:
+            os.system("make 2> /dev/null")
+            loader = DotHeaders(ctypes.CDLL(clib_name)).lib
+        except OSError:
+            clib_exists = False
+else:
+    clib_exists = False
 
 
 # LCIF system ported for blacklist loader, converted to little endian
@@ -53,7 +61,11 @@ def directBinNumber(inData, length):
 
 defaultcache = {
     "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["antispam", "3,2"]],
-    "text": [["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""]],
+    "text":
+        [
+            ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""],
+            ["antispam-time", "20"]
+            ],
     0: "sonnet_default"
     }
 
@@ -184,9 +196,9 @@ def inc_statistics(indata):
         statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=dict)
 
     try:
-        global_statistics = kernel_ramfs.read_f(f"global/stats")
+        global_statistics = kernel_ramfs.read_f("global/stats")
     except FileNotFoundError:
-        global_statistics = kernel_ramfs.create_f(f"global/stats", f_type=dict)
+        global_statistics = kernel_ramfs.create_f("global/stats", f_type=dict)
 
     if inctype in statistics:
         statistics[inctype] += 1

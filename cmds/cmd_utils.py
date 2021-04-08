@@ -8,8 +8,6 @@ import importlib
 import discord, time, asyncio, random
 from datetime import datetime
 
-import sonnet_cfg
-
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
@@ -21,6 +19,10 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean
 
 
+class UserParseError(RuntimeError):
+    pass
+
+
 async def parse_userid(message, args):
 
     # Get user ID from the message, otherwise use the author's ID.
@@ -30,27 +32,43 @@ async def parse_userid(message, args):
         id_to_probe = message.author.id
     except ValueError:
         await message.channel.send("Invalid userid")
-        raise RuntimeError
+        raise UserParseError
 
     # Get the Member object by user ID, otherwise fail.
     user_object = message.guild.get_member(id_to_probe)
 
     if not user_object:
         await message.channel.send("Invalid userid")
-        raise RuntimeError
+        raise UserParseError
 
     return user_object
 
 
+def add_timestamp(embed, name, start, end):
+    embed.add_field(name=name, value=f"{(end - start) / 100}ms", inline=False)
+
+
+def ctime(t):
+    return round(t * 100000)
+
+
 async def ping_function(message, args, client, **kwargs):
+
     stats = kwargs["stats"]
+
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
-    ping_embed.add_field(name="Total Process Time", value=str((stats["end"] - stats["start"]) / 100) + "ms", inline=False)
-    ping_embed.add_field(name="Load Configs", value=str((stats["end-load-blacklist"] - stats["start-load-blacklist"]) / 100) + "ms", inline=False)
-    ping_embed.add_field(name="Process Automod", value=str((stats["end-automod"] - stats["start-automod"]) / 100) + "ms", inline=False)
-    time_to_send = round(time.time() * 10000)
+
+    add_timestamp(ping_embed, "Total Process Time", stats["start"], stats["end"])
+    add_timestamp(ping_embed, "Load Configs", stats["start-load-blacklist"], stats["end-load-blacklist"])
+    add_timestamp(ping_embed, "Process Automod", stats["start-automod"], stats["end-automod"])
+    add_timestamp(ping_embed, "WS Latency", 0, ctime(client.latency))
+
+    send_start = ctime(time.time())
     sent_message = await message.channel.send(embed=ping_embed)
-    ping_embed.add_field(name="Send Message", value=str((round(time.time() * 10000) - time_to_send) / 100) + "ms", inline=False)
+    send_end = ctime(time.time())
+
+    add_timestamp(ping_embed, "Send Message", send_start, send_end)
+
     await sent_message.edit(embed=ping_embed)
 
 
@@ -62,8 +80,8 @@ async def profile_function(message, args, client, **kwargs):
 
     try:
         user_object = await parse_userid(message, args)
-    except RuntimeError:
-        return
+    except UserParseError:
+        return 1
 
     # Status hashmap
     status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
@@ -92,8 +110,8 @@ async def avatar_function(message, args, client, **kwargs):
 
     try:
         user_object = await parse_userid(message, args)
-    except RuntimeError:
-        return
+    except UserParseError:
+        return 1
 
     embed = discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
     embed.set_image(url=user_object.avatar_url)
@@ -151,6 +169,7 @@ async def help_function(message, args, client, **kwargs):
         # Do not echo user input
         else:
             await message.channel.send("No command or command module with that name")
+            return 1
 
     # Total help
     else:
@@ -186,6 +205,7 @@ async def initialise_poll(message, args, client, **kwargs):
         await message.add_reaction("👎")
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permissions to add a reaction here")
+        return 1
 
 
 async def coinflip(message, args, client, **kwargs):
@@ -260,4 +280,4 @@ commands = {
         }
     }
 
-version_info = "1.2.1"
+version_info = "1.2.2"

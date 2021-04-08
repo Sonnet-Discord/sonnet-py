@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python package
+name: Syntax and Build
 
 on:
   push:
@@ -9,13 +9,14 @@ on:
   pull_request:
     branches: [ main, dev-unstable ]
 
+
 jobs:
   build:
 
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: [3.8]
 
     steps:
     - uses: actions/checkout@v2
@@ -23,11 +24,29 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install base deps
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install yapf
+        python -m pip install yapf pyflakes pylint
+        python -m pip install -r requirements.txt
+    - name: run pyflakes before running expensive tests
+      run: |
+        pyflakes .
+    - name: use lite config
+      run: |
+        cp -f common/sonnet_cfg_lite.py common/sonnet_cfg.py
+    - name: check commands structure integrity
+      run: |
+        python build_tools/cmds_to_html.py > /dev/null
+    - name: check syntax integrity
+      run: |
+        python build_tools/testimport.py
     - name: yapf integrity check
       run: |
         yapf -d -r .
-        
+    - name: Install mariadb cause pylint actually wants to kill me
+      run: |
+        sudo apt install libmariadb-dev-compat
+        python -m pip install mariadb
+    - name: linting pass
+      run: |
+        pylint ./libs ./cmds ./common ./dlibs ./build_tools -E

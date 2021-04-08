@@ -47,7 +47,6 @@ async def on_member_update(before, after, **kargs):
 
     if username_log and (channel := kargs["client"].get_channel(int(username_log))):
         await log_name(before, after, channel, before.nick, after.nick, "Nickname")
-        await log_name(before, after, channel, str(before), str(after), "Username")
 
 
 def parsedate(indata):
@@ -97,4 +96,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info = "1.2.1-1"
+version_info = "1.2.2"

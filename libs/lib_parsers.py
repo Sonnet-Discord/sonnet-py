@@ -3,9 +3,7 @@
 
 import importlib
 
-import re2 as re
-from sonnet_cfg import DB_TYPE
-import lz4.frame, io, discord, os, json, hashlib
+import lz4.frame, discord, os, json, hashlib
 
 import lib_db_obfuscator
 
@@ -13,9 +11,15 @@ importlib.reload(lib_db_obfuscator)
 import lib_encryption_wrapper
 
 importlib.reload(lib_encryption_wrapper)
+import sonnet_cfg
 
+importlib.reload(sonnet_cfg)
+
+from sonnet_cfg import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
+
+re = importlib.import_module(REGEX_VERSION)
 
 
 class errors:
@@ -291,11 +295,11 @@ async def parse_role(message, args, db_entry, verbose=True):
         role = message.guild.get_role(int(role))
     except ValueError:
         await message.channel.send("ERROR: Role is not valid int")
-        return
+        return 1
 
     if not role:
         await message.channel.send("ERROR: Role does not exist")
-        return
+        return 1
 
     with db_hlapi(message.guild.id) as db:
         db.add_config(db_entry, role.id)

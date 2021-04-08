@@ -10,12 +10,12 @@ STARBOARD_EMOJI = "⭐"
 STARBOARD_COUNT = "5"
 
 # chose between using mariadb or sqlite3
-DB_TYPE = "mariadb"
+DB_TYPE = "sqlite3"
 # only needs to be set if using sqlite3 db in sonnet mode, mariadb login is stored in .login-info.txt
 SQLITE3_LOCATION = "datastore/sonnetdb.db"
 
 # Configure whether to use re2 or re, any public instance must use re2 due to exploits, however re is cross platform and easier to set up
-REGEX_VERSION = "re2"
+REGEX_VERSION = "re"
 
 # Configure whether or not to load the C loader
 CLIB_LOAD = True

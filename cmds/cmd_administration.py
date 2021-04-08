@@ -4,10 +4,7 @@
 import importlib
 
 import discord, os, glob
-from datetime import datetime
 import json, gzip, io, time
-
-from sonnet_cfg import GLOBAL_PREFIX
 
 import lib_db_obfuscator
 
@@ -15,12 +12,8 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
-import lib_loaders
-
-importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
-from lib_loaders import read_vnum, write_vnum
 from lib_db_obfuscator import db_hlapi
 
 
@@ -28,39 +21,42 @@ async def joinlog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "join-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def inflog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def msglog_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "message-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def notifier_log_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "regex-notifier-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 async def username_log_change(message, args, client, **kwargs):
     try:
         await update_log_channel(message, args, client, "username-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
-        return
+        return 1
 
 
 class gdpr_functions:
-    async def delete(message, guild_id, ramfs, kramfs):
+    def __init__(self):
+        self.commands = {"delete": self.delete, "download": self.download}
+
+    async def delete(self, message, guild_id, ramfs, kramfs):
 
         with db_hlapi(message.guild.id) as database:
             database.delete_guild_db()
@@ -75,7 +71,7 @@ class gdpr_functions:
             f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"
             )
 
-    async def download(message, guild_id, ramfs, kramfs):
+    async def download(self, message, guild_id, ramfs, kramfs):
 
         timestart = time.time()
 
@@ -115,10 +111,10 @@ async def gdpr_database(message, args, client, **kwargs):
 
     PREFIX = kwargs["conf_cache"]["prefix"]
 
-    commands_dict = {"delete": gdpr_functions.delete, "download": gdpr_functions.download}
-    if command and command in commands_dict.keys():
+    gdprfunctions = gdpr_functions()
+    if command and command in gdprfunctions.commands:
         if confirmation and confirmation == str(message.guild.id):
-            await commands_dict[command](message, message.guild.id, ramfs, kwargs["kernel_ramfs"])
+            await gdprfunctions.commands[command](message, message.guild.id, ramfs, kwargs["kernel_ramfs"])
         else:
             await message.channel.send(f"Please provide the guildid to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
@@ -156,17 +152,17 @@ async def set_prefix(message, args, client, **kwargs):
 
 async def set_mute_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "mute-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "mute-role", verbose=kwargs["verbose"])
 
 
 async def set_admin_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "admin-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "admin-role", verbose=kwargs["verbose"])
 
 
 async def set_moderator_role(message, args, client, **kwargs):
 
-    await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
 
 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
@@ -260,4 +256,4 @@ commands = {
         }
     }
 
-version_info = "1.2.1"
+version_info = "1.2.2"
