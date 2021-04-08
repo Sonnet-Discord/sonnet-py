@@ -218,7 +218,7 @@ async def antispam_set(message, args, client, **kwargs):
 
     if not args:
         antispam = kwargs["conf_cache"]["antispam"]
-        await message.channel.send(f"Antispam timings are {','.join(antispam)}")
+        await message.channel.send(f"Antispam timings are M:{antispam[0]},S:{antispam[1]}")
         return
 
     if len(args) == 1:
@@ -364,8 +364,8 @@ commands = {
             },
     'set-mutetime':
         {
-            'pretty_name': 'set-mutetime <time>',
-            'description': 'Set how long a person should be muted for with antispam automute',
+            'pretty_name': 'set-mutetime <time[h|m|S]>',
+            'description': 'Set how many seconds a person should be muted for with antispam automute',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': antispam_time_set
