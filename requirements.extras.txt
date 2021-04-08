@@ -1,2 +1,2 @@
-mariadb >= 1.0.5
+mariadb >= 1.0.6
 google-re2 >= 0.0.7
