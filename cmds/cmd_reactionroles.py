@@ -17,6 +17,31 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_channel_message
 
 
+class InvalidEmoji(Exception):
+    pass
+
+
+async def valid_emoji(message, pEmoji, client):
+
+    if len(pEmoji) == 1:
+        return pEmoji
+    else:
+
+        try:
+            em = int(pEmoji.split(":")[-1].rstrip(">"))
+        except ValueError:
+            await message.channel.send("ERROR: Could not validate emoji")
+            raise InvalidEmoji
+
+        em = client.get_emoji(em)
+
+        if not em:
+            await message.channel.send("ERROR: Emoji does not exist in scope")
+            raise InvalidEmoji
+
+        return str(em)
+
+
 async def add_reactionroles(message, args, client, **kwargs):
 
     try:
@@ -30,7 +55,10 @@ async def add_reactionroles(message, args, client, **kwargs):
         await message.channel.send("Not enough args supplied")
         return 1
 
-    emoji = args[0]
+    try:
+        emoji = await valid_emoji(message, args[0], client)
+    except InvalidEmoji:
+        return 1
 
     role = args[1].strip("<@&>")
 
@@ -86,7 +114,10 @@ async def remove_reactionroles(message, args, client, **kwargs):
         await message.channel.send("Not enough args supplied")
         return 1
 
-    emoji = args[0]
+    try:
+        emoji = await valid_emoji(message, args[0], client)
+    except InvalidEmoji:
+        return 1
 
     with db_hlapi(message.guild.id) as db:
         reactionroles = db.grab_config("reaction-role-data")
@@ -147,7 +178,10 @@ async def addmany_reactionroles(message, args, client, **kwargs):
         reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
 
     for i in range(len(args) // 2):
-        emoji = args[i * 2]
+        try:
+            emoji = await valid_emoji(message, args[i * 2], client)
+        except InvalidEmoji:
+            return 1
         role = args[i * 2 + 1].strip("<@&>")
 
         try:
@@ -260,4 +294,4 @@ commands = {
             },
     }
 
-version_info = "1.2.2"
+version_info = "1.2.3-DEV"
