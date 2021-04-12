@@ -18,9 +18,9 @@ async def joke_ban_user(message, args, client, **kwargs):
         return 1
 
     if not user:
-        await message.channel.send(f"'Banned' {args[0]} for {reason}")
+        await message.channel.send(f"'Banned' {args[0]} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     else:
-        await message.channel.send(f"'Banned' {user.mention} with ID {user.id} for {reason}")
+        await message.channel.send(f"'Banned' {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke commands, because because'}
@@ -35,4 +35,4 @@ commands = {
         },
     }
 
-version_info = "1.2.2"
+version_info = "1.2.3-DEV"
