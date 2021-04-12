@@ -1,6 +1,8 @@
 # Joke commands idk mck wanted this
 # Ultrabear 2020
 
+import discord
+
 
 async def joke_ban_user(message, args, client, **kwargs):
 
