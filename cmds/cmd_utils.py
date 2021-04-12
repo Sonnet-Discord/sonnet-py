@@ -204,7 +204,10 @@ async def initialise_poll(message, args, client, **kwargs):
         await message.add_reaction("👍")
         await message.add_reaction("👎")
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permissions to add a reaction here")
+        await message.channel.send("ERROR: The bot does not have permissions to add a reaction here")
+        return 1
+    except discord.errors.NotFound:
+        await message.channel.send("ERROR: Could not find the message [404]")
         return 1
 
 
@@ -280,4 +283,4 @@ commands = {
         }
     }
 
-version_info = "1.2.2"
+version_info = "1.2.3-DEV"
