@@ -42,6 +42,22 @@ async def valid_emoji(message, pEmoji, client):
         return str(em)
 
 
+class RindexFailure(Exception):
+    pass
+
+
+async def rindex_check(message, role):
+
+    rindex = message.guild.roles.index(role)
+
+    if rindex >= message.guild.roles.index(message.author.roles[-1]):
+        await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
+        raise RindexFailure
+    elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
+        await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
+        raise RindexFailure
+
+
 async def add_reactionroles(message, args, client, **kwargs):
 
     try:
@@ -72,13 +88,9 @@ async def add_reactionroles(message, args, client, **kwargs):
         await message.channel.send("Invalid role")
         return 1
 
-    rindex = message.guild.roles.index(role)
-
-    if rindex >= message.guild.roles.index(message.author.roles[-1]):
-        await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
-        return 1
-    elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
-        await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
+    try:
+        await rindex_check(message, role)
+    except RindexFailure:
         return 1
 
     with db_hlapi(message.guild.id) as db:
@@ -151,18 +163,24 @@ async def list_reactionroles(message, args, client, **kwargs):
 
     reactionrole_embed = discord.Embed(title=f"ReactionRoles in {message.guild}")
 
-    if len(data) <= 25:
-        for i in data:
-            reactionrole_embed.add_field(name=i, value="\n".join([f"{emoji}: <@&{data[i][emoji]}>" for emoji in data[i]]))
+    if data:
 
-        await message.channel.send(embed=reactionrole_embed)
+        if len(data) <= 25:
+            for i in data:
+                reactionrole_embed.add_field(name=i, value="\n".join([f"{emoji}: <@&{data[i][emoji]}>" for emoji in data[i]]))
+
+            await message.channel.send(embed=reactionrole_embed)
+
+        else:
+
+            fileobj = io.BytesIO()
+            fileobj.write(json.dumps(data).encode("utf8"))
+            fileobj.seek(0)
+            dfile = discord.File(fileobj, filename="RR.json")
+            await message.channel.send("Too many rr messages to send in embed", file=dfile)
 
     else:
-        fileobj = io.BytesIO()
-        fileobj.write(json.dumps(data).encode("utf8"))
-        fileobj.seek(0)
-        dfile = discord.File(fileobj, filename="RR.json")
-        await message.channel.send("Too many rr messages to send in embed", file=dfile)
+        await message.channel.send("This guild has no reactionroles")
 
 
 async def addmany_reactionroles(message, args, client, **kwargs):
@@ -194,13 +212,9 @@ async def addmany_reactionroles(message, args, client, **kwargs):
             await message.channel.send("Invalid role")
             return 1
 
-        rindex = message.guild.roles.index(role)
-
-        if rindex >= message.guild.roles.index(message.author.roles[-1]):
-            await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
-            return 1
-        elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
-            await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
+        try:
+            await rindex_check(message, role)
+        except RindexFailure:
             return 1
 
         if str(rr_message.id) in reactionroles:
