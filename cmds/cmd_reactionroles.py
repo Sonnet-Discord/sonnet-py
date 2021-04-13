@@ -51,11 +51,30 @@ async def rindex_check(message, role):
     rindex = message.guild.roles.index(role)
 
     if rindex >= message.guild.roles.index(message.author.roles[-1]):
-        await message.channel.send("Cannot autorole a role that is higher or the same as your current top role")
+        await message.channel.send("ERROR: Cannot autorole a role that is higher or the same as your current top role")
         raise RindexFailure
     elif rindex >= message.guild.roles.index(message.guild.me.roles[-1]):
-        await message.channel.send("Cannot autorole a role that is higher or the same as this bots top role")
+        await message.channel.send("ERROR: Cannot autorole a role that is higher or the same as this bots top role")
         raise RindexFailure
+
+
+class NoRoleError(Exception):
+    pass
+
+
+async def get_exact_role(message, role):
+
+    try:
+        role = message.guild.get_role(int(role.strip("<@&>")))
+    except ValueError:
+        await message.channel.send("ERROR: Invalid role")
+        raise NoRoleError
+
+    if not role:
+        await message.channel.send("ERROR: Invalid role")
+        raise NoRoleError
+
+    return role
 
 
 async def add_reactionroles(message, args, client, **kwargs):
@@ -68,38 +87,18 @@ async def add_reactionroles(message, args, client, **kwargs):
     args = args[nargs:]
 
     if len(args) < 2:
-        await message.channel.send("Not enough args supplied")
+        await message.channel.send("ERROR: Not enough args supplied")
         return 1
 
     try:
         emoji = await valid_emoji(message, args[0], client)
-    except InvalidEmoji:
-        return 1
-
-    role = args[1].strip("<@&>")
-
-    try:
-        role = message.guild.get_role(int(role))
-    except ValueError:
-        await message.channel.send("Invalid role")
-        return 1
-
-    if not role:
-        await message.channel.send("Invalid role")
-        return 1
-
-    try:
+        role = await get_exact_role(message, args[1])
         await rindex_check(message, role)
-    except RindexFailure:
+    except (InvalidEmoji, NoRoleError, RindexFailure):
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        reactionroles = db.grab_config("reaction-role-data")
-
-    if reactionroles:
-        reactionroles = json.loads(reactionroles)
-    else:
-        reactionroles = {}
+        reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
 
     if str(rr_message.id) in reactionroles:
         reactionroles[str(rr_message.id)][emoji] = role.id
@@ -123,7 +122,7 @@ async def remove_reactionroles(message, args, client, **kwargs):
     args = args[nargs:]
 
     if not args:
-        await message.channel.send("Not enough args supplied")
+        await message.channel.send("ERROR: Not enough args supplied")
         return 1
 
     try:
@@ -144,10 +143,10 @@ async def remove_reactionroles(message, args, client, **kwargs):
         if emoji in reactionroles[str(rr_message.id)]:
             del reactionroles[str(rr_message.id)][emoji]
         else:
-            await message.channel.send(f"This message does not have {emoji} reactionrole on it")
+            await message.channel.send(f"ERROR: This message does not have {emoji} reactionrole on it")
             return 1
     else:
-        await message.channel.send("This message has no reactionroles on it")
+        await message.channel.send("ERROR: This message has no reactionroles on it")
         return 1
 
     with db_hlapi(message.guild.id) as db:
@@ -198,23 +197,9 @@ async def addmany_reactionroles(message, args, client, **kwargs):
     for i in range(len(args) // 2):
         try:
             emoji = await valid_emoji(message, args[i * 2], client)
-        except InvalidEmoji:
-            return 1
-        role = args[i * 2 + 1].strip("<@&>")
-
-        try:
-            role = message.guild.get_role(int(role))
-        except ValueError:
-            await message.channel.send("Invalid role")
-            return 1
-
-        if not role:
-            await message.channel.send("Invalid role")
-            return 1
-
-        try:
+            role = await get_exact_role(message, args[i * 2 + 1])
             await rindex_check(message, role)
-        except RindexFailure:
+        except (InvalidEmoji, NoRoleError, RindexFailure):
             return 1
 
         if str(rr_message.id) in reactionroles:
