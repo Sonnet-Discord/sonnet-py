@@ -283,7 +283,7 @@ async def mute_user(message, args, client, **kwargs):
         return 1
 
     if kwargs["verbose"] and not mutetime:
-        await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}")
+        await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     if mutetime:
         if kwargs["verbose"]:
@@ -302,12 +302,8 @@ async def unmute_user(message, args, client, **kwargs):
 
     try:
         mute_role = await grab_mute_role(message)
-    except NoMuteRole:
-        return 1
-
-    try:
         member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", infraction=False)
-    except InfractionGenerationError:
+    except (InfractionGenerationError, NoMuteRole):
         return 1
 
     if not member:
@@ -380,20 +376,26 @@ async def general_infraction_grabber(message, args, client):
     # Sort newest first
     infractions = sorted(infractions, reverse=True, key=lambda a: a[5])
 
+    # Return if no infractions, this is not an error as it returned a valid status
+    if not infractions:
+        await message.channel.send("No infractions found")
+        return 0
+
     # Generate chunks from infractions
     do_not_exceed = 1900  # Discord message length limits
     chunks = [""]
     curchunk = 0
     for i in infractions:
-        infraction_data = ", ".join([i[0], i[3], i[4]]) + "\n"
+        infraction_data = f"{', '.join([i[0], i[3], i[4]])}\n"
+        # Make a new page if it overflows
         if (len(chunks[curchunk]) + len(infraction_data)) > do_not_exceed:
             curchunk += 1
             chunks.append("")
-        else:
-            chunks[curchunk] = chunks[curchunk] + infraction_data
+        # Add to the current chunk
+        chunks[curchunk] = chunks[curchunk] + infraction_data
 
     # Test if valid page
-    if selected_chunk == -1:
+    if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
         return 1
     elif selected_chunk < -1:
@@ -405,10 +407,7 @@ async def general_infraction_grabber(message, args, client):
         await message.channel.send(f"ERROR: No such page {selected_chunk}")
         return 1
 
-    if infractions:
-        await message.channel.send(f"Page {selected_chunk%len(chunks)+1} of {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
-    else:
-        await message.channel.send("No infractions found")
+    await message.channel.send(f"Page {selected_chunk%len(chunks)+1} / {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
 
 
 async def search_infractions_by_user(message, args, client, **kwargs):
@@ -422,12 +421,13 @@ async def get_detailed_infraction(message, args, client, **kwargs):
         with db_hlapi(message.guild.id) as db:
             infraction = db.grab_infraction(args[0])
         if not infraction:
-            await message.channel.send("Infraction ID does not exist")
+            await message.channel.send("ERROR: Infraction ID does not exist")
             return 1
     else:
-        await message.channel.send("No argument supplied")
+        await message.channel.send("ERROR: No argument supplied")
         return 1
 
+    # Unpack this nightmare lmao
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
     infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=0x758cff)
@@ -446,11 +446,11 @@ async def delete_infraction(message, args, client, **kwargs):
         with db_hlapi(message.guild.id) as db:
             infraction = db.grab_infraction(args[0])
             if not infraction:
-                await message.channel.send("Infraction ID does not exist")
+                await message.channel.send("ERROR: Infraction ID does not exist")
                 return 1
             db.delete_infraction(infraction[0])
     else:
-        await message.channel.send("No argument supplied")
+        await message.channel.send("ERROR: No argument supplied")
         return 1
 
     if not kwargs["verbose"]:
@@ -471,7 +471,7 @@ async def delete_infraction(message, args, client, **kwargs):
 async def grab_guild_message(message, args, client, **kwargs):
 
     try:
-        discord_message, nargs = await parse_channel_message(message, args, client)
+        discord_message, _ = await parse_channel_message(message, args, client)
     except lib_parsers.errors.message_parse_failure:
         return 1
 
@@ -602,4 +602,4 @@ commands = {
         }
     }
 
-version_info = "1.2.2"
+version_info = "1.2.3-DEV"
