@@ -46,7 +46,7 @@ if CLIB_LOAD:
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
         try:
-            os.system("make 2> /dev/null")
+            os.system("make")
             loader = DotHeaders(ctypes.CDLL(clib_name)).lib
         except OSError:
             clib_exists = False
