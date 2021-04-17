@@ -536,8 +536,8 @@ commands = {
         'cache': 'keep',
         'execute': unban_user
         },
-    'silence' : {
-        'alias' : "mute"
+    'silence': {
+        'alias': "mute"
         },
     'mute': {
         'pretty_name': 'mute <uid> [time[h|m|S]] [reason]',

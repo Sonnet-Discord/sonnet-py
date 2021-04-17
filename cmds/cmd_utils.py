@@ -253,7 +253,7 @@ commands = {
     'pfp': {
         'alias': 'avatar'
         },
-   'avatar': {
+    'avatar': {
         'pretty_name': 'avatar [user]',
         'description': 'Get avatar of a user',
         'permission': 'everyone',

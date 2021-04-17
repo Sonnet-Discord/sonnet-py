@@ -362,7 +362,7 @@ commands = {
             'cache': 'regenerate',
             'execute': antispam_set
             },
-     'mutetime-set': {
+    'mutetime-set': {
         'alias': 'set-mutetime'
         },
     'set-mutetime':

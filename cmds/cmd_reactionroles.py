@@ -265,8 +265,9 @@ commands = {
             'cache': 'regenerate',
             'execute': rr_purge
             },
-    'rr-rm' : {
-        'alias' : 'rr-remove'
+    'rr-rm': {
+        'alias': 'rr-remove'
+        },
     'rr-remove':
         {
             'pretty_name': 'rr-remove <message> <emoji>',
@@ -275,8 +276,9 @@ commands = {
             'cache': 'regenerate',
             'execute': remove_reactionroles
             },
-    'rr-ls' : {
-        'alias' : 'rr-list'
+    'rr-ls': {
+        'alias': 'rr-list'
+        },
     'rr-list':
         {
             'pretty_name': 'rr-list',
