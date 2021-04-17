@@ -536,10 +536,7 @@ commands = {
         'cache': 'keep',
         'execute': unban_user
         },
-    'silence': {
-        'alias': "mute"
-        },
-    'mute': {
+   'mute': {
         'pretty_name': 'mute <uid> [time[h|m|S]] [reason]',
         'description': 'Mute a user, defaults to no unmute (0s)',
         'permission': 'moderator',
