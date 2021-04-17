@@ -362,6 +362,9 @@ commands = {
             'cache': 'regenerate',
             'execute': antispam_set
             },
+     'mutetime-set': {
+        'alias': 'set-mutetime'
+        },
     'set-mutetime':
         {
             'pretty_name': 'set-mutetime <time[h|m|S]>',
@@ -388,4 +391,4 @@ commands = {
             },
     }
 
-version_info = "1.2.2"
+version_info = "1.2.3-DEV"
