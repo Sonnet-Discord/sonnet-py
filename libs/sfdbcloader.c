@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-int load_words ( char* filename, int retamount, unsigned long long seed, char* pointer, int pointer_length ) {
+int load_words ( char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length ) {
 
 	// Open cache file
 	FILE* fp = fopen(filename, "rb");
@@ -54,8 +54,9 @@ int load_words ( char* filename, int retamount, unsigned long long seed, char* p
 	return 0;
 }
 
-int load_words_test( char* filename, int retamount, unsigned long long seed, char* pointer, int pointer_length, int testcount) {
+int load_words_test( char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length, int testcount) {
 	for (int i = 0; i < testcount; i++) {
+		seed++;
 		load_words(filename, retamount, seed, pointer, pointer_length);
 	}
 	return 0;

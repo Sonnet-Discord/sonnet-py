@@ -19,14 +19,14 @@ from sonnet_cfg import CLIB_LOAD
 
 class DotHeaders:
 
-    version = "1.2.1-PATCH.0"
+    version = "1.2.3-DEV.0"
 
     class cdef_load_words:
-        argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int]
+        argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
         restype = ctypes.c_int
 
     class cdef_load_words_test:
-        argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
+        argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
         restype = ctypes.c_int
 
     def __init__(self, lib):
