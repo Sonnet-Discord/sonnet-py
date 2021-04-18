@@ -13,7 +13,7 @@ tstart = time.time()
 
 buf = bytes(256 * 3)
 
-loader.load_words_test(b"datastore/wordlist.cache.db\x00", 3, int(time.time() * 1000000)%(2**32), buf, len(buf), count)
+loader.load_words_test(b"datastore/wordlist.cache.db\x00", 3, int(time.time() * 1000000) % (2**32), buf, len(buf), count)
 
 tend = time.time()
 
