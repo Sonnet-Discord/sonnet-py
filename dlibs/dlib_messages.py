@@ -27,7 +27,7 @@ from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, 
 from lib_encryption_wrapper import encrypted_writer
 
 
-async def catch_logging_error(channel, contents, files):
+async def catch_logging_error(channel: discord.TextChannel, contents: str, files):
     try:
         await channel.send(embed=contents, files=files)
     except discord.errors.Forbidden:
@@ -40,7 +40,7 @@ async def catch_logging_error(channel, contents, files):
             pass
 
 
-async def on_message_delete(message, **kargs):
+async def on_message_delete(message: discord.Message, **kargs):
 
     files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
@@ -71,14 +71,14 @@ async def on_message_delete(message, **kargs):
                     i.fp.close()
 
 
-async def attempt_message_delete(message):
+async def attempt_message_delete(message: discord.Message):
     try:
         await message.delete()
     except (discord.errors.Forbidden, discord.errors.NotFound):
         pass
 
 
-async def grab_an_adult(discord_message, client, mconf):
+async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf):
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 
@@ -97,9 +97,9 @@ async def grab_an_adult(discord_message, client, mconf):
         await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
-async def on_message_edit(old_message, message, **kargs):
+async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs):
 
-    client = kargs["client"]
+    client: discord.Client = kargs["client"]
     ramfs = kargs["ramfs"]
 
     # Ignore bots
@@ -149,8 +149,8 @@ def antispam_check(indata):
 
     guildid, userid, msend, ramfs, messagecount, timecount = indata
 
-    messagecount = int(float(messagecount))
-    timecount = int(float(timecount) * 1000)
+    messagecount: int = int(float(messagecount))
+    timecount: int = int(float(timecount) * 1000)
 
     try:
         messages = ramfs.read_f(f"{guildid}/asam")
@@ -169,7 +169,7 @@ def antispam_check(indata):
                     ismute += 1
 
         # I barely write code comments but this unholy sin converts a datetime object to normal UTC
-        sent_at = (msend - datetime(1970, 1, 1)).total_seconds()
+        sent_at: int = (msend - datetime(1970, 1, 1)).total_seconds()
 
         userlist.append([userid, round(sent_at * 1000)])
         messages.seek(0)
@@ -205,7 +205,7 @@ async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
         pass
 
 
-def download_single_file(discord_file, filename, key, iv, ramfs, mgid):
+def download_single_file(discord_file, filename, key: bytes, iv: bytes, ramfs, mgid):
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -214,7 +214,7 @@ def download_single_file(discord_file, filename, key, iv, ramfs, mgid):
     asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
 
 
-async def log_message_files(message, kernel_ramfs):
+async def log_message_files(message: discord.Message, kernel_ramfs):
 
     for i in message.attachments:
 
@@ -232,7 +232,7 @@ async def log_message_files(message, kernel_ramfs):
         download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id])
 
 
-async def on_message(message, **kargs):
+async def on_message(message: discord.Message, **kargs):
 
     client = kargs["client"]
     ramfs = kargs["ramfs"]
@@ -258,7 +258,7 @@ async def on_message(message, **kargs):
 
     spammer = antispam_check([message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]])
 
-    message_deleted = False
+    message_deleted: bool = False
 
     # If blacklist broken generate infraction
     broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
@@ -340,4 +340,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.2.2"
+version_info = "1.2.3-DEV"
