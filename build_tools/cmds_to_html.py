@@ -18,7 +18,7 @@ for f in os.listdir('./cmds'):
         command_modules.append(importlib.import_module(f[:-3]))
     # Update hashmaps
     for module in command_modules:
-        command_modules_dict.update(module.commands) # type: ignore
+        command_modules_dict.update(module.commands)  # type: ignore
 
 outlist = []
 starter_padding = 3
@@ -26,7 +26,7 @@ outlist.append("")
 
 # Make alias mappings
 aliashmap = {}
-[aliashmap.update(module.commands) for module in command_modules] # type: ignore
+[aliashmap.update(module.commands) for module in command_modules]  # type: ignore
 aliasmap: Dict[str, list] = {}
 for i in aliashmap.keys():
     if 'alias' in aliashmap[i].keys():
@@ -35,11 +35,11 @@ for i in aliashmap.keys():
         else:
             aliasmap[aliashmap[i]['alias']] = [i]
 
-for module in sorted(command_modules, key=lambda a: a.category_info['name']): # type: ignore
+for module in sorted(command_modules, key=lambda a: a.category_info['name']):  # type: ignore
 
     # Append header
-    outlist.append(f"<h2 id=\"{module.category_info['name']}\">") # type: ignore
-    outlist.append(f"\t<a href=\"#{module.category_info['name']}\">{module.category_info['pretty_name']}</a>") # type: ignore
+    outlist.append(f"<h2 id=\"{module.category_info['name']}\">")  # type: ignore
+    outlist.append(f"\t<a href=\"#{module.category_info['name']}\">{module.category_info['pretty_name']}</a>")  # type: ignore
     outlist.append("</h2>")
 
     # Create table
@@ -52,12 +52,12 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']): # 
     outlist.append("\t\t<th>Permission Level</th>")
     outlist.append("\t</tr>")
 
-    for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]: # type: ignore
+    for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]:  # type: ignore
 
-        command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;") # type: ignore
+        command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;")  # type: ignore
 
-        command_perms = module.commands[i]['permission'][0].upper() # type: ignore
-        command_perms += module.commands[i]['permission'][1:].lower() # type: ignore
+        command_perms = module.commands[i]['permission'][0].upper()  # type: ignore
+        command_perms += module.commands[i]['permission'][1:].lower()  # type: ignore
 
         if i in aliasmap.keys():
             aliases = ", ".join(aliasmap[i])
@@ -66,7 +66,7 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']): # 
 
         outlist.append("\t<tr>")
         outlist.append(f"\t\t<td>{command_name}</td>")
-        outlist.append(f"\t\t<td>{module.commands[i]['description']}</td>") # type: ignore
+        outlist.append(f"\t\t<td>{module.commands[i]['description']}</td>")  # type: ignore
         outlist.append(f"\t\t<td>{aliases}</td>")
         outlist.append(f"\t\t<td>{command_perms}</td>")
         outlist.append("\t</tr>")
