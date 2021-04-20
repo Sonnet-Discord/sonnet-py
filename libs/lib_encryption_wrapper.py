@@ -9,12 +9,12 @@ import io
 from typing import Generator
 
 
-def directBinNumber(inData, length):
+def directBinNumber(inData: int, length: int):
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 
 
 class encrypted_writer:
-    def __init__(self, filename, key, iv):
+    def __init__(self, filename, key: bytes, iv: bytes):
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
@@ -24,10 +24,10 @@ class encrypted_writer:
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
 
         # Open rawfile and write headers
-        if isinstance(filename, io.IOBase):
+        if isinstance(filename, io.BytesIO):
             self.rawfile = filename
         else:
-            self.rawfile = open(filename, "wb+")
+            self.rawfile = open(filename, "wb+")  # type: ignore
         self.rawfile.write(b"SONNETAES\x01")
         self.rawfile.write(bytes(64))
 
@@ -93,13 +93,13 @@ class encrypted_writer:
 
 
 class encrypted_reader:
-    def __init__(self, filename, key, iv):
+    def __init__(self, filename, key: bytes, iv: bytes):
 
         # Open rawfile
-        if isinstance(filename, io.IOBase):
+        if isinstance(filename, io.BytesIO):
             self.rawfile = filename
         else:
-            self.rawfile = open(filename, "rb+")
+            self.rawfile = open(filename, "rb+")  # type: ignore
 
         # Make decryptor instance
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))

@@ -48,14 +48,14 @@ def db_grab_connection():
 
 # Because being lazy writes good code
 class db_hlapi:
-    def __init__(self, guild_id):
+    def __init__(self, guild_id: int):
         self.database = db_grab_connection()
         self.guild = guild_id
 
     def __enter__(self):
         return self
 
-    def grab_config(self, config):
+    def grab_config(self, config: str):
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
@@ -67,7 +67,7 @@ class db_hlapi:
         else:
             return None
 
-    def add_config(self, config, value):
+    def add_config(self, config: str, value: str):
 
         try:
             self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
@@ -76,7 +76,7 @@ class db_hlapi:
             self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
     # Grab infractions of a user
-    def grab_user_infractions(self, userid):
+    def grab_user_infractions(self, userid: int):
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
@@ -86,7 +86,7 @@ class db_hlapi:
         return data
 
     # grab infractions dealt by a mod
-    def grab_moderator_infractions(self, moderatorid):
+    def grab_moderator_infractions(self, moderatorid: int):
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
@@ -96,7 +96,7 @@ class db_hlapi:
         return data
 
     # Check if a message is on the starboard already
-    def in_starboard(self, message_id):
+    def in_starboard(self, message_id: int):
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
@@ -108,7 +108,7 @@ class db_hlapi:
         else:
             return False
 
-    def add_to_starboard(self, message_id):
+    def add_to_starboard(self, message_id: int):
 
         try:
             self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
@@ -118,7 +118,7 @@ class db_hlapi:
 
         return True
 
-    def grab_infraction(self, infractionID):
+    def grab_infraction(self, infractionID: str):
 
         try:
             infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
@@ -130,14 +130,14 @@ class db_hlapi:
         else:
             return False
 
-    def delete_infraction(self, infraction_id):
+    def delete_infraction(self, infraction_id: str):
 
         try:
             self.database.delete_rows_from_table(f"{self.guild}_infractions", ["infractionID", infraction_id])
         except db_error.OperationalError:
             pass
 
-    def mute_user(self, user, endtime, infractionID):
+    def mute_user(self, user: int, endtime: int, infractionID: str):
 
         try:
             self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
@@ -145,7 +145,7 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
 
-    def unmute_user(self, infractionid=None, userid=None):
+    def unmute_user(self, infractionid: int = None, userid: int = None):
 
         try:
             if infractionid:

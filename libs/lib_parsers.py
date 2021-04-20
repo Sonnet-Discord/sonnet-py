@@ -133,7 +133,7 @@ def parse_skip_message(Client, message):
 
 
 # Parse a boolean datatype from a string
-def parse_boolean(instr):
+def parse_boolean(instr: str):
 
     yeslist = ["yes", "true", "y", "t", "1"]
     nolist = ["no", "false", "n", "f", "0"]
@@ -147,7 +147,7 @@ def parse_boolean(instr):
 
 
 # Parse channel from message and put it into specified config
-async def update_log_channel(message, args, client, log_name, verbose=True):
+async def update_log_channel(message, args, client, log_name: str, verbose: bool = True):
 
     if args:
         log_channel = args[0].strip("<#!>")
@@ -184,7 +184,7 @@ def _parse_role_perms(message, permrole):
 
 
 # Parse user permissions to run a command
-async def parse_permissions(message, mconf, perms, verbose=True):
+async def parse_permissions(message, mconf, perms, verbose: bool = True) -> bool:
 
     you_shall_pass = False
     if perms == "everyone":
@@ -213,7 +213,7 @@ async def parse_permissions(message, mconf, perms, verbose=True):
 
 
 # Returns true if any of the items in the list return true, more of an orgate
-def ifgate(inlist):
+def ifgate(inlist) -> bool:
     for i in inlist:
         if i:
             return True
@@ -221,7 +221,7 @@ def ifgate(inlist):
 
 
 # Grab files of a message from the internal cache or using webrequests
-def grab_files(guild_id, message_id, ramfs, delete=False):
+def grab_files(guild_id: int, message_id: int, ramfs, delete: bool = False):
 
     try:
 
@@ -282,7 +282,7 @@ def generate_reply_field(message):
 
 
 # Parse a role name and put it into the specified db conf
-async def parse_role(message, args, db_entry, verbose=True):
+async def parse_role(message, args, db_entry, verbose: bool = True):
 
     if args:
         role = args[0].strip("<@&>")
@@ -325,7 +325,7 @@ async def parse_channel_message(message, args, client):
             raise errors.message_parse_failure
 
     try:
-        log_channel = int(log_channel)
+        log_channel: int = int(log_channel)
     except ValueError:
         await message.channel.send("ERROR: Channel is not a valid int")
         raise errors.message_parse_failure

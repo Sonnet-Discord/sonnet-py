@@ -75,10 +75,10 @@ class InfractionGenerationError(Exception):
 
 
 # General processor for infractions
-async def process_infraction(message, args, client, infraction_type, infraction=True):
+async def process_infraction(message, args, client, infraction_type: str, infraction: bool = True):
 
     # Check if automod
-    automod = False
+    automod: bool = False
     try:
         if (type(args[0]) == int):
             args[0] = str(args[0])
@@ -86,9 +86,9 @@ async def process_infraction(message, args, client, infraction_type, infraction=
     except IndexError:
         pass
 
-    reason = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
+    reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
-    moderator_id = client.user.id if automod else message.author.id
+    moderator_id: int = client.user.id if automod else message.author.id
 
     # Test if user is valid
     try:
@@ -229,7 +229,7 @@ async def grab_mute_role(message):
             raise NoMuteRole("No mute role")
 
 
-async def sleep_and_unmute(guild, member, infractionID, mute_role, mutetime):
+async def sleep_and_unmute(guild, member, infractionID: str, mute_role, mutetime: int):
 
     await asyncio.sleep(mutetime)
 
@@ -499,7 +499,7 @@ async def grab_guild_message(message, args, client, **kwargs):
 
 
 class purger:
-    def __init__(self, user_id):
+    def __init__(self, user_id: int):
         self.user_id = user_id
 
     def check(self, message):

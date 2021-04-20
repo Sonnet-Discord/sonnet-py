@@ -55,7 +55,7 @@ else:
 
 
 # LCIF system ported for blacklist loader, converted to little endian
-def directBinNumber(inData, length):
+def directBinNumber(inData: int, length: int):
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 
 
@@ -134,7 +134,7 @@ def load_message_config(guild_id, ramfs, datatypes=defaultcache):
 
 
 # Generate an infraction id from the wordlist cache format
-def generate_infractionid():
+def generate_infractionid() -> str:
     if os.path.isfile("datastore/wordlist.cache.db"):
         if clib_exists:
             buf = bytes(256 * 3)
@@ -146,7 +146,7 @@ def generate_infractionid():
         else:
             with open("datastore/wordlist.cache.db", "rb") as words:
                 chunksize = words.read(1)[0]
-                num_words = (words.seek(0, io.SEEK_END) - 1) / chunksize
+                num_words = (words.seek(0, io.SEEK_END) - 1) // chunksize
                 values = ([random.randint(0, (num_words - 1)) for i in range(3)])
                 output = []
                 for i in values:
@@ -159,28 +159,28 @@ def generate_infractionid():
         with open("common/wordlist.txt", "rb") as words:
             maxval = 0
             structured_data = []
-            for i in words.read().split(b"\n"):
-                if i and not len(i) > 85 and not b"\xc3" in i:
+            for byte in words.read().split(b"\n"):
+                if byte and not len(byte) > 85 and not b"\xc3" in byte:
 
-                    i = i.rstrip(b"\r").decode("utf8")
-                    i = (i[0].upper() + i[1:].lower()).encode("utf8")
+                    stv = byte.rstrip(b"\r").decode("utf8")
+                    byte = (stv[0].upper() + stv[1:].lower()).encode("utf8")
 
-                    structured_data.append(bytes([len(i)]) + i)
-                    if len(i) + 1 > maxval:
-                        maxval = len(i) + 1
+                    structured_data.append(bytes([len(byte)]) + byte)
+                    if len(byte) + 1 > maxval:
+                        maxval = len(byte) + 1
         with open("datastore/wordlist.cache.db", "wb") as structured_data_file:
             structured_data_file.write(bytes([maxval]))
-            for i in structured_data:
-                structured_data_file.write(i + bytes(maxval - len(i)))
+            for byte in structured_data:
+                structured_data_file.write(byte + bytes(maxval - len(byte)))
 
         return generate_infractionid()
 
 
-def read_vnum(fileobj):
+def read_vnum(fileobj) -> int:
     return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
 
 
-def write_vnum(fileobj, number):
+def write_vnum(fileobj, number: int):
     vnum_count = math.ceil((len(bin(number)) - 2) / 8)
     fileobj.write(bytes([vnum_count]))
     fileobj.write(bytes(directBinNumber(number, vnum_count)))

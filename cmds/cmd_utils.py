@@ -44,7 +44,7 @@ async def parse_userid(message, args):
     return user_object
 
 
-def add_timestamp(embed, name, start, end):
+def add_timestamp(embed, name: str, start: int, end: int):
     embed.add_field(name=name, value=f"{(end - start) / 100}ms", inline=False)
 
 

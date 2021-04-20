@@ -2,6 +2,7 @@
 # Ultrabear 2020
 
 import sqlite3
+from typing import List
 
 
 class db_error:  # DB error codes
@@ -11,15 +12,15 @@ class db_error:  # DB error codes
 
 
 class db_handler:
-    def __init__(self, db_location):
+    def __init__(self, db_location: str):
         self.con = sqlite3.connect(db_location)
         self.cur = self.con.cursor()
-        self.closed = False
+        self.closed: bool = False
 
     def __enter__(self):
         return self
 
-    def make_new_table(self, tablename, data):
+    def make_new_table(self, tablename: str, data: List[List]):
 
         # Load hashmap of python datatypes to SQLite3 datatypes
         datamap = {
@@ -65,7 +66,7 @@ class db_handler:
         # Exectute table generation
         self.cur.execute(db_inputStr)
 
-    def add_to_table(self, table, data):
+    def add_to_table(self, table: str, data: List[List]):
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -83,7 +84,7 @@ class db_handler:
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table, collumn_search):
+    def fetch_rows_from_table(self, table: str, collumn_search: List):
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -99,7 +100,7 @@ class db_handler:
         return tuple(self.cur.fetchall())
 
     # deletes rows from table where collumn i[0] has value i[1]
-    def delete_rows_from_table(self, table, collumn_search):
+    def delete_rows_from_table(self, table: str, collumn_search: List):
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -112,7 +113,7 @@ class db_handler:
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def delete_table(self, table):  # drops the table specified
+    def delete_table(self, table: str):  # drops the table specified
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -120,7 +121,7 @@ class db_handler:
 
         self.cur.execute(f"DROP TABLE IF EXISTS '{table}';")
 
-    def fetch_table(self, table):  # Fetches a full table
+    def fetch_table(self, table: str):  # Fetches a full table
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -131,7 +132,7 @@ class db_handler:
         # Send data
         return tuple(self.cur.fetchall())
 
-    def list_tables(self, searchterm):
+    def list_tables(self, searchterm: str):
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm, ))
 

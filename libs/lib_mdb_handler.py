@@ -2,6 +2,7 @@
 # Ultrabear 2020
 
 import mariadb
+from typing import List, Dict
 
 
 class db_error:  # DB error codes
@@ -11,7 +12,7 @@ class db_error:  # DB error codes
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
-    def __init__(self, login_info):
+    def __init__(self, login_info: Dict):
         # Connect to database with login info
         self.con = mariadb.connect(user=login_info["login"], password=login_info["password"], host=login_info["server"], database=login_info["db_name"], port=int(login_info["port"]))
 
@@ -26,7 +27,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __enter__(self):
         return self
 
-    def make_new_table(self, tablename, data):
+    def make_new_table(self, tablename: str, data: List[List]):
 
         # Load hashmap of python datatypes to MariaDB datatypes
         datamap = {
@@ -68,7 +69,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Exectute table generation
         self.cur.execute(db_inputStr)
 
-    def add_to_table(self, table, data):
+    def add_to_table(self, table: str, data: List[List]):
 
         # Add insert data and generate base tables
         db_inputStr = f"REPLACE INTO {table} ("
@@ -82,7 +83,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table, collumn_search):
+    def fetch_rows_from_table(self, table: str, collumn_search: List):
 
         # Add SELECT data
         db_inputStr = f"SELECT * FROM {table} WHERE {collumn_search[0]}=?"
@@ -95,7 +96,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
-    def delete_rows_from_table(self, table, collumn_search):
+    def delete_rows_from_table(self, table: str, collumn_search: List):
 
         # Do deletion setup
         db_inputStr = f"DELETE FROM {table} WHERE {collumn_search[0]}=?"
@@ -104,11 +105,11 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def delete_table(self, table):
+    def delete_table(self, table: str):
 
         self.cur.execute(f"DROP TABLE IF EXISTS {table};")
 
-    def fetch_table(self, table):
+    def fetch_table(self, table: str):
 
         self.cur.execute(f"SELECT * FROM {table};")
 
@@ -116,7 +117,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
-    def list_tables(self, searchterm):
+    def list_tables(self, searchterm: str):
 
         self.cur.execute(f"SHOW TABLES WHERE Tables_in_{self.db_name} LIKE ?", (searchterm, ))
 
