@@ -30,7 +30,7 @@ class errors:
         pass
 
 
-unicodeFilter = re.compile(r'[^a-z0-9 ]+')
+unicodeFilter = re.compile(r'[^a-z0-9 ]+')  # type: ignore
 
 
 # Run a blacklist pass over a messages content and files

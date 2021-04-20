@@ -10,14 +10,14 @@ if DB_TYPE == "mariadb":
     import lib_mdb_handler
     importlib.reload(lib_mdb_handler)
     import json
-    from lib_mdb_handler import db_handler, db_error
+    from lib_mdb_handler import db_handler, db_error  # type: ignore
     with open(".login-info.txt") as login_info_file:  # Grab login data
         db_connection_parameters = json.load(login_info_file)
 
 elif DB_TYPE == "sqlite3":
     import lib_sql_handler
     importlib.reload(lib_sql_handler)
-    from lib_sql_handler import db_handler, db_error
+    from lib_sql_handler import db_handler, db_error  # type: ignore
     db_connection_parameters = SQLITE3_LOCATION
 
 

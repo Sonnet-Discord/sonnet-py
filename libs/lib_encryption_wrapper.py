@@ -6,6 +6,8 @@ from cryptography.hazmat.primitives import hashes, hmac
 
 import io
 
+from typing import Generator
+
 
 def directBinNumber(inData, length):
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
@@ -32,7 +34,7 @@ class encrypted_writer:
         # Initialize writable buffer
         self.buf = bytes(2**16 + 256)
 
-    def _generate_chunks(self, data: bytes) -> bytes:
+    def _generate_chunks(self, data: bytes) -> Generator[bytes, None, None]:
 
         # Init mem map
         raw_data = memoryview(data)
