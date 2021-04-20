@@ -498,6 +498,42 @@ async def grab_guild_message(message, args, client, **kwargs):
         await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
 
 
+class purger:
+    def __init__(self, user_id):
+        self.user_id = user_id
+
+    def check(self, message):
+        return message.author.id == self.user_id
+
+
+async def purge_cli(message, args, client, **kwargs):
+
+    if args:
+        try:
+            limit = int(args[0])
+        except ValueError:
+            await message.channel.send("ERROR: limit is not valid int")
+            return 1
+    else:
+        await message.channel.send("ERROR: no limit specified")
+        return 1
+
+    try:
+        if not (user := client.get_user(int(args[1].strip("<@!>")))):
+            user = await client.fetch_user(int(args[1].strip("<@!>")))
+        ucheck = purger(user.id).check
+    except ValueError:
+        await message.channel.send("Invalid UserID")
+        return 1
+    except IndexError:
+        ucheck = None
+    except (discord.errors.NotFound, discord.errors.HTTPException):
+        await message.channel.send("User does not exist")
+        return 1
+
+    await message.channel.purge(limit=limit, check=ucheck)
+
+
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
 
 commands = {
@@ -599,7 +635,15 @@ commands = {
         'permission': 'moderator',
         'cache': 'keep',
         'execute': grab_guild_message
-        }
+        },
+    'purge':
+        {
+            'pretty_name': 'purge <limit> [user]',
+            'description': 'purge messages from a given channel and optionally only from a specified user',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': purge_cli
+            }
     }
 
 version_info = "1.2.3-DEV"
