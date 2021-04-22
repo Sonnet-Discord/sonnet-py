@@ -16,6 +16,8 @@ importlib.reload(lib_parsers)
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_channel_message
 
+from typing import List, Any
+
 
 class InvalidEmoji(Exception):
     pass
@@ -77,7 +79,7 @@ async def get_exact_role(message, role):
     return role
 
 
-async def add_reactionroles(message, args, client, **kwargs):
+async def add_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
@@ -112,7 +114,7 @@ async def add_reactionroles(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Added reactionrole to message id {rr_message.id}: {emoji}:{role.mention}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def remove_reactionroles(message, args, client, **kwargs):
+async def remove_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
@@ -155,7 +157,7 @@ async def remove_reactionroles(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Removed reactionrole {emoji} from message id {rr_message.id}")
 
 
-async def list_reactionroles(message, args, client, **kwargs):
+async def list_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     with db_hlapi(message.guild.id) as db:
         data = json.loads(db.grab_config("reaction-role-data") or "{}")
@@ -182,7 +184,7 @@ async def list_reactionroles(message, args, client, **kwargs):
         await message.channel.send("This guild has no reactionroles")
 
 
-async def addmany_reactionroles(message, args, client, **kwargs):
+async def addmany_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
@@ -214,7 +216,7 @@ async def addmany_reactionroles(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send("Added Multiple reactionroles")
 
 
-async def rr_purge(message, args, client, **kwargs):
+async def rr_purge(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         message_id = int(args[0].replace("-", "/").split("/")[-1])
@@ -299,4 +301,4 @@ commands = {
             },
     }
 
-version_info = "1.2.3-DEV"
+version_info: str = "1.2.3-DEV"

@@ -18,6 +18,8 @@ importlib.reload(lib_parsers)
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean
 
+from typing import List, Any
+
 
 class UserParseError(RuntimeError):
     pass
@@ -52,7 +54,7 @@ def ctime(t):
     return round(t * 100000)
 
 
-async def ping_function(message, args, client, **kwargs):
+async def ping_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     stats = kwargs["stats"]
 
@@ -76,7 +78,7 @@ def parsedate(indata):
     return f"{time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(datetime.timestamp(indata)))} ({(datetime.utcnow() - indata).days} days ago)"
 
 
-async def profile_function(message, args, client, **kwargs):
+async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         user_object = await parse_userid(message, args)
@@ -106,7 +108,7 @@ async def profile_function(message, args, client, **kwargs):
     await message.channel.send(embed=embed)
 
 
-async def avatar_function(message, args, client, **kwargs):
+async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         user_object = await parse_userid(message, args)
@@ -119,7 +121,7 @@ async def avatar_function(message, args, client, **kwargs):
     await message.channel.send(embed=embed)
 
 
-async def help_function(message, args, client, **kwargs):
+async def help_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
 
@@ -178,12 +180,12 @@ async def help_function(message, args, client, **kwargs):
         cmd_embed.set_author(name="Sonnet Help")
 
         for modules in kwargs["cmds"]:
-            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
+            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)  # type: ignore
 
         await message.channel.send(embed=cmd_embed)
 
 
-async def grab_guild_info(message, args, client, **kwargs):
+async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     guild = message.channel.guild
 
@@ -198,7 +200,7 @@ async def grab_guild_info(message, args, client, **kwargs):
     await message.channel.send(embed=guild_embed)
 
 
-async def initialise_poll(message, args, client, **kwargs):
+async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         await message.add_reaction("👍")
@@ -211,7 +213,7 @@ async def initialise_poll(message, args, client, **kwargs):
         return 1
 
 
-async def coinflip(message, args, client, **kwargs):
+async def coinflip(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     mobj = await message.channel.send("Flipping a coin...")
     await asyncio.sleep(random.randint(500, 1000) / 1000)
@@ -286,4 +288,4 @@ commands = {
         }
     }
 
-version_info = "1.2.3-DEV"
+version_info: str = "1.2.3-DEV"

@@ -3,8 +3,10 @@
 
 import discord
 
+from typing import Any, List
 
-async def joke_ban_user(message, args, client, **kwargs):
+
+async def joke_ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if len(args) > 1:
         reason = " ".join(args[1:])
@@ -37,4 +39,4 @@ commands = {
         },
     }
 
-version_info = "1.2.3-DEV"
+version_info: str = "1.2.3-DEV"

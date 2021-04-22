@@ -16,36 +16,38 @@ importlib.reload(lib_parsers)
 from lib_parsers import parse_boolean, update_log_channel, parse_role
 from lib_db_obfuscator import db_hlapi
 
+from typing import Any, List
 
-async def joinlog_change(message, args, client, **kwargs):
+
+async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "join-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def inflog_change(message, args, client, **kwargs):
+async def inflog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def msglog_change(message, args, client, **kwargs):
+async def msglog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "message-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def notifier_log_change(message, args, client, **kwargs):
+async def notifier_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "regex-notifier-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def username_log_change(message, args, client, **kwargs):
+async def username_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "username-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
@@ -96,7 +98,7 @@ class gdpr_functions:
         await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam])
 
 
-async def gdpr_database(message, args, client, **kwargs):
+async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     ramfs = kwargs["ramfs"]
 
@@ -105,9 +107,9 @@ async def gdpr_database(message, args, client, **kwargs):
         confirmation = args[1]
     elif len(args) >= 1:
         command = args[0]
-        confirmation = None
+        confirmation = ""
     else:
-        command = None
+        command = ""
 
     PREFIX = kwargs["conf_cache"]["prefix"]
 
@@ -124,7 +126,7 @@ async def gdpr_database(message, args, client, **kwargs):
         await message.channel.send(embed=message_embed)
 
 
-async def set_view_infractions(message, args, client, **kwargs):
+async def set_view_infractions(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         gate = parse_boolean(args[0])
@@ -137,7 +139,7 @@ async def set_view_infractions(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Member View Own Infractions is set to {gate}")
 
 
-async def set_prefix(message, args, client, **kwargs):
+async def set_prefix(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         prefix = args[0]
@@ -150,17 +152,17 @@ async def set_prefix(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Prefix set to `{prefix}`")
 
 
-async def set_mute_role(message, args, client, **kwargs):
+async def set_mute_role(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     return await parse_role(message, args, "mute-role", verbose=kwargs["verbose"])
 
 
-async def set_admin_role(message, args, client, **kwargs):
+async def set_admin_role(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     return await parse_role(message, args, "admin-role", verbose=kwargs["verbose"])
 
 
-async def set_moderator_role(message, args, client, **kwargs):
+async def set_moderator_role(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     return await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
 
@@ -256,4 +258,4 @@ commands = {
         }
     }
 
-version_info = "1.2.2"
+version_info: str = "1.2.3-DEV"

@@ -5,7 +5,7 @@
 
 import importlib
 
-import shlex
+import shlex, discord
 
 import lib_parsers
 
@@ -13,8 +13,10 @@ importlib.reload(lib_parsers)
 
 from lib_parsers import parse_permissions
 
+from typing import List, Any
 
-async def sonnet_sh(message, args, client, **kwargs):
+
+async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     arguments = message.content.split("\n")
 
@@ -103,7 +105,7 @@ async def sonnet_sh(message, args, client, **kwargs):
                 pass
 
 
-async def sonnet_map(message, args, client, **kwargs):
+async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         targs = shlex.split(" ".join(args))
@@ -208,4 +210,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             },
     }
 
-version_info = "1.2.2"
+version_info: str = "1.2.3-DEV"

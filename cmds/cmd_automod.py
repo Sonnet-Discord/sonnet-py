@@ -20,6 +20,8 @@ from lib_parsers import parse_role
 
 re = importlib.import_module(REGEX_VERSION)
 
+from typing import Any, Dict, List
+
 
 class blacklist_input_error(Exception):
     pass
@@ -37,7 +39,7 @@ async def update_csv_blacklist(message, args, name, verbose=True):
     if verbose: await message.channel.send(f"Updated {name} sucessfully")
 
 
-async def wb_change(message, args, client, **kwargs):
+async def wb_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         await update_csv_blacklist(message, args, "word-blacklist", verbose=kwargs["verbose"])
@@ -45,7 +47,7 @@ async def wb_change(message, args, client, **kwargs):
         return 1
 
 
-async def word_in_word_change(message, args, client, **kwargs):
+async def word_in_word_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         await update_csv_blacklist(message, args, "word-in-word-blacklist", verbose=kwargs["verbose"])
@@ -53,7 +55,7 @@ async def word_in_word_change(message, args, client, **kwargs):
         return 1
 
 
-async def ftb_change(message, args, client, **kwargs):
+async def ftb_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         await update_csv_blacklist(message, args, "filetype-blacklist", verbose=kwargs["verbose"])
@@ -126,40 +128,40 @@ async def remove_regex_type(message, args, db_entry, verbose=True):
     if verbose: await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def regexblacklist_add(message, args, client, **kwargs):
+async def regexblacklist_add(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await add_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
         return 1
 
 
-async def regexblacklist_remove(message, args, client, **kwargs):
+async def regexblacklist_remove(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await remove_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
     except blacklist_input_error:
         return 1
 
 
-async def regex_notifier_add(message, args, client, **kwargs):
+async def regex_notifier_add(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await add_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
     except blacklist_input_error:
         return 1
 
 
-async def regex_notifier_remove(message, args, client, **kwargs):
+async def regex_notifier_remove(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await remove_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
     except blacklist_input_error:
         return 1
 
 
-async def list_blacklist(message, args, client, **kwargs):
+async def list_blacklist(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     mconf = kwargs["conf_cache"]
 
     # Format blacklist
-    blacklist = {}
+    blacklist: Dict[str, Any] = {}
     blacklist["regex-blacklist"] = [f"/{i.pattern}/g" for i in mconf["regex-blacklist"]]
     blacklist["regex-notifier"] = [f"/{i.pattern}/g" for i in mconf["regex-notifier"]]
     blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
@@ -191,7 +193,7 @@ async def list_blacklist(message, args, client, **kwargs):
         await message.channel.send("Total Blacklist too large to be previewed", file=fileobj)
 
 
-async def set_blacklist_infraction_level(message, args, client, **kwargs):
+async def set_blacklist_infraction_level(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         action = args[0].lower()
@@ -209,12 +211,12 @@ async def set_blacklist_infraction_level(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
-async def change_rolewhitelist(message, args, client, **kwargs):
+async def change_rolewhitelist(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     return await parse_role(message, args, "blacklist-whitelist", verbose=kwargs["verbose"])
 
 
-async def antispam_set(message, args, client, **kwargs):
+async def antispam_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if not args:
         antispam = kwargs["conf_cache"]["antispam"]
@@ -253,7 +255,7 @@ async def antispam_set(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
 
 
-async def antispam_time_set(message, args, client, **kwargs):
+async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         try:
@@ -391,4 +393,4 @@ commands = {
             },
     }
 
-version_info = "1.2.3-DEV"
+version_info: str = "1.2.3-DEV"

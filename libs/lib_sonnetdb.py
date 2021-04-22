@@ -10,7 +10,7 @@ if DB_TYPE == "mariadb":
     import lib_mdb_handler
     importlib.reload(lib_mdb_handler)
     import json
-    from lib_mdb_handler import db_handler, db_error  # type: ignore
+    from lib_mdb_handler import db_handler, db_error
     with open(".login-info.txt") as login_info_file:  # Grab login data
         db_connection_parameters = json.load(login_info_file)
 

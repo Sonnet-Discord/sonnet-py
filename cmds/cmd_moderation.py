@@ -19,11 +19,11 @@ from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message
 
-from typing import List
+from typing import List, Any
 
 
 # Catches error if the bot cannot message the user
-async def catch_dm_error(user: discord.User, contents: str, log_channel: discord.TextChannel):
+async def catch_dm_error(user: discord.User, contents: str, log_channel: discord.TextChannel) -> None:
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
@@ -123,7 +123,7 @@ async def process_infraction(message: discord.Message, args: List[str], client: 
     return (member, user, reason, infraction_id, dm_sent)
 
 
-async def warn_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def warn_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "warn")
@@ -137,7 +137,7 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
         return 1
 
 
-async def note_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def note_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "note", infraction=False)
@@ -151,7 +151,7 @@ async def note_user(message: discord.Message, args: List[str], client: discord.C
         return 1
 
 
-async def kick_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def kick_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick")
@@ -173,7 +173,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     if kwargs["verbose"]: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban")
@@ -193,7 +193,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     if kwargs["verbose"]: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "unban", infraction=False)
@@ -246,7 +246,7 @@ async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infract
                 pass
 
 
-async def mute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def mute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     # Grab mute time
     if len(args) >= 2:
@@ -300,7 +300,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime))
 
 
-async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         mute_role = await grab_mute_role(message)
@@ -412,12 +412,12 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
     await message.channel.send(f"Page {selected_chunk%len(chunks)+1} / {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
 
 
-async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     return await general_infraction_grabber(message, args, client)
 
 
-async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -442,7 +442,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     await message.channel.send(embed=infraction_embed)
 
 
-async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -470,7 +470,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
     await message.channel.send(embed=infraction_embed)
 
 
-async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         discord_message, _ = await parse_channel_message(message, args, client)
@@ -504,11 +504,11 @@ class purger:
     def __init__(self, user_id: int):
         self.user_id = user_id
 
-    def check(self, message: discord.Message):
+    def check(self, message: discord.Message) -> bool:
         return message.author.id == self.user_id
 
 
-async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         try:
