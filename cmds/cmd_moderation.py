@@ -21,6 +21,7 @@ from lib_parsers import grab_files, generate_reply_field, parse_channel_message
 
 from typing import List
 
+
 # Catches error if the bot cannot message the user
 async def catch_dm_error(user: discord.User, contents: str, log_channel: discord.TextChannel):
     try:
@@ -527,7 +528,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("Invalid UserID")
         return 1
     except IndexError:
-        ucheck = None # type: ignore
+        ucheck = None  # type: ignore
     except (discord.errors.NotFound, discord.errors.HTTPException):
         await message.channel.send("User does not exist")
         return 1
