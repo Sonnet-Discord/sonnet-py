@@ -19,9 +19,10 @@ from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message
 
+from typing import List
 
 # Catches error if the bot cannot message the user
-async def catch_dm_error(user, contents, log_channel):
+async def catch_dm_error(user: discord.User, contents: str, log_channel: discord.TextChannel):
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
@@ -30,7 +31,7 @@ async def catch_dm_error(user, contents, log_channel):
 
 
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(message, client, user, moderator_id, infraction_reason, infraction_type, to_dm):
+async def log_infraction(message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool):
 
     if not user:
         return (None, None)
@@ -75,7 +76,7 @@ class InfractionGenerationError(Exception):
 
 
 # General processor for infractions
-async def process_infraction(message, args, client, infraction_type: str, infraction: bool = True):
+async def process_infraction(message: discord.Message, args: List[str], client: discord.Client, infraction_type: str, infraction: bool = True):
 
     # Check if automod
     automod: bool = False
@@ -121,7 +122,7 @@ async def process_infraction(message, args, client, infraction_type: str, infrac
     return (member, user, reason, infraction_id, dm_sent)
 
 
-async def warn_user(message, args, client, **kwargs):
+async def warn_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "warn")
@@ -135,7 +136,7 @@ async def warn_user(message, args, client, **kwargs):
         return 1
 
 
-async def note_user(message, args, client, **kwargs):
+async def note_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "note", infraction=False)
@@ -149,7 +150,7 @@ async def note_user(message, args, client, **kwargs):
         return 1
 
 
-async def kick_user(message, args, client, **kwargs):
+async def kick_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     try:
         member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick")
@@ -171,7 +172,7 @@ async def kick_user(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def ban_user(message, args, client, **kwargs):
+async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     try:
         member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban")
@@ -191,7 +192,7 @@ async def ban_user(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def unban_user(message, args, client, **kwargs):
+async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "unban", infraction=False)
@@ -215,7 +216,7 @@ class NoMuteRole(Exception):
     pass
 
 
-async def grab_mute_role(message):
+async def grab_mute_role(message: discord.Message):
 
     with db_hlapi(message.guild.id) as db:
         if (mute_role := db.grab_config("mute-role")):
@@ -229,7 +230,7 @@ async def grab_mute_role(message):
             raise NoMuteRole("No mute role")
 
 
-async def sleep_and_unmute(guild, member, infractionID: str, mute_role, mutetime: int):
+async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infractionID: str, mute_role: discord.Role, mutetime: int):
 
     await asyncio.sleep(mutetime)
 
@@ -244,7 +245,7 @@ async def sleep_and_unmute(guild, member, infractionID: str, mute_role, mutetime
                 pass
 
 
-async def mute_user(message, args, client, **kwargs):
+async def mute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     # Grab mute time
     if len(args) >= 2:
@@ -298,7 +299,7 @@ async def mute_user(message, args, client, **kwargs):
         asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime))
 
 
-async def unmute_user(message, args, client, **kwargs):
+async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     try:
         mute_role = await grab_mute_role(message)
@@ -324,7 +325,7 @@ async def unmute_user(message, args, client, **kwargs):
     if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def general_infraction_grabber(message, args, client):
+async def general_infraction_grabber(message: discord.Message, args: List[str], client: discord.Client):
 
     # Reparse args
     args = (" ".join(args)).replace("=", " ").split()
@@ -410,12 +411,12 @@ async def general_infraction_grabber(message, args, client):
     await message.channel.send(f"Page {selected_chunk%len(chunks)+1} / {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
 
 
-async def search_infractions_by_user(message, args, client, **kwargs):
+async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     return await general_infraction_grabber(message, args, client)
 
 
-async def get_detailed_infraction(message, args, client, **kwargs):
+async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -440,7 +441,7 @@ async def get_detailed_infraction(message, args, client, **kwargs):
     await message.channel.send(embed=infraction_embed)
 
 
-async def delete_infraction(message, args, client, **kwargs):
+async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -468,7 +469,7 @@ async def delete_infraction(message, args, client, **kwargs):
     await message.channel.send(embed=infraction_embed)
 
 
-async def grab_guild_message(message, args, client, **kwargs):
+async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     try:
         discord_message, _ = await parse_channel_message(message, args, client)
@@ -502,11 +503,11 @@ class purger:
     def __init__(self, user_id: int):
         self.user_id = user_id
 
-    def check(self, message):
+    def check(self, message: discord.Message):
         return message.author.id == self.user_id
 
 
-async def purge_cli(message, args, client, **kwargs):
+async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     if args:
         try:
@@ -526,7 +527,7 @@ async def purge_cli(message, args, client, **kwargs):
         await message.channel.send("Invalid UserID")
         return 1
     except IndexError:
-        ucheck = None
+        ucheck = None # type: ignore
     except (discord.errors.NotFound, discord.errors.HTTPException):
         await message.channel.send("User does not exist")
         return 1
@@ -646,4 +647,4 @@ commands = {
             }
     }
 
-version_info = "1.2.3-DEV"
+version_info: str = "1.2.3-DEV"
