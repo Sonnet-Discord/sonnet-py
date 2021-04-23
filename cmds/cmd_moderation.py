@@ -514,21 +514,25 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         try:
             limit = int(args[0])
         except ValueError:
-            await message.channel.send("ERROR: limit is not valid int")
+            await message.channel.send("ERROR: Limit is not valid int")
             return 1
     else:
-        await message.channel.send("ERROR: no limit specified")
+        await message.channel.send("ERROR: No limit specified")
+        return 1
+
+    if limit > 100:
+        await message.channel.send("ERROR: Cannot purge more than 100 messages")
         return 1
 
     try:
         if not (user := client.get_user(int(args[1].strip("<@!>")))):
             user = await client.fetch_user(int(args[1].strip("<@!>")))
-        ucheck = purger(user.id).check
+        ucheck: Any = purger(user.id).check
     except ValueError:
         await message.channel.send("Invalid UserID")
         return 1
     except IndexError:
-        ucheck = None  # type: ignore
+         ucheck = None
     except (discord.errors.NotFound, discord.errors.HTTPException):
         await message.channel.send("User does not exist")
         return 1
