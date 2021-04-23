@@ -8,10 +8,7 @@ from typing import Any, List
 
 async def joke_ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
-    if len(args) > 1:
-        reason = " ".join(args[1:])
-    else:
-        reason = "No Reason Specified"
+    reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
     try:
         user = client.get_user(int(args[0].strip("<@!>")))
