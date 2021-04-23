@@ -532,7 +532,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("Invalid UserID")
         return 1
     except IndexError:
-         ucheck = None
+        ucheck = None
     except (discord.errors.NotFound, discord.errors.HTTPException):
         await message.channel.send("User does not exist")
         return 1
@@ -645,7 +645,8 @@ commands = {
     'purge':
         {
             'pretty_name': 'purge <limit> [user]',
-            'description': 'purge messages from a given channel and optionally only from a specified user',
+            'description': 'Purge messages from a given channel and optionally only from a specified user',
+            'rich_description': 'Can only purge up to 100 messages at a time to prevent catastrophic errors',
             'permission': 'moderator',
             'cache': 'keep',
             'execute': purge_cli
