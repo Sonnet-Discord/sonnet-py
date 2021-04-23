@@ -537,7 +537,11 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("User does not exist")
         return 1
 
-    await message.channel.purge(limit=limit, check=ucheck)
+    try:
+        await message.channel.purge(limit=limit, check=ucheck)
+    except discord.errors.Forbidden:
+        await message.channel.send("ERROR: Bot lacks perms to purge")
+        return 1
 
 
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
