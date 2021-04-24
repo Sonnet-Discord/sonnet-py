@@ -26,8 +26,10 @@ from lib_loaders import load_message_config, directBinNumber, inc_statistics
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
+from typing import List, Any, Dict, Optional
 
-async def catch_logging_error(channel: discord.TextChannel, contents: str, files):
+
+async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
     try:
         await channel.send(embed=contents, files=files)
     except discord.errors.Forbidden:
@@ -40,7 +42,7 @@ async def catch_logging_error(channel: discord.TextChannel, contents: str, files
             pass
 
 
-async def on_message_delete(message: discord.Message, **kargs):
+async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
@@ -71,14 +73,14 @@ async def on_message_delete(message: discord.Message, **kargs):
                     i.fp.close()
 
 
-async def attempt_message_delete(message: discord.Message):
+async def attempt_message_delete(message: discord.Message) -> None:
     try:
         await message.delete()
     except (discord.errors.Forbidden, discord.errors.NotFound):
         pass
 
 
-async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf):
+async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict) -> None:
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 
@@ -97,7 +99,7 @@ async def grab_an_adult(discord_message: discord.Message, client: discord.Client
         await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
-async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs):
+async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs: Any) -> None:
 
     client: discord.Client = kargs["client"]
     ramfs = kargs["ramfs"]
@@ -145,12 +147,12 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
         asyncio.create_task(grab_an_adult(message, client, mconf))
 
 
-def antispam_check(indata):
+def antispam_check(indata: List) -> bool:
 
     guildid, userid, msend, ramfs, messagecount, timecount = indata
 
-    messagecount: int = int(float(messagecount))
-    timecount: int = int(float(timecount) * 1000)
+    messagecount = int(float(messagecount))
+    timecount = int(float(timecount) * 1000)
 
     try:
         messages = ramfs.read_f(f"{guildid}/asam")
@@ -187,7 +189,7 @@ def antispam_check(indata):
         return False
 
 
-async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
+async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: Any, mgid: List[int]) -> None:
 
     await nfile.save(compression, seek_begin=False)
     compression.close()
@@ -205,7 +207,7 @@ async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
         pass
 
 
-def download_single_file(discord_file, filename, key: bytes, iv: bytes, ramfs, mgid):
+def download_single_file(discord_file: discord.File, filename: str, key: bytes, iv: bytes, ramfs: Any, mgid: List[int]) -> None:
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -214,7 +216,7 @@ def download_single_file(discord_file, filename, key: bytes, iv: bytes, ramfs, m
     asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
 
 
-async def log_message_files(message: discord.Message, kernel_ramfs):
+async def log_message_files(message: discord.Message, kernel_ramfs: Any) -> None:
 
     for i in message.attachments:
 
@@ -232,7 +234,7 @@ async def log_message_files(message: discord.Message, kernel_ramfs):
         download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id])
 
 
-async def on_message(message: discord.Message, **kargs):
+async def on_message(message: discord.Message, **kargs) -> None:
 
     client = kargs["client"]
     ramfs = kargs["ramfs"]

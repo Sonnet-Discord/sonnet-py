@@ -18,16 +18,16 @@ from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import REGEX_VERSION
 from lib_parsers import parse_role
 
-re = importlib.import_module(REGEX_VERSION)
-
 from typing import Any, Dict, List
+
+re: Any = importlib.import_module(REGEX_VERSION)
 
 
 class blacklist_input_error(Exception):
     pass
 
 
-async def update_csv_blacklist(message, args, name, verbose=True):
+async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True) -> None:
 
     if not (args) or len(args) != 1:
         await message.channel.send(f"Malformed {name}")
@@ -63,7 +63,7 @@ async def ftb_change(message: discord.Message, args: List[str], client: discord.
         return 1
 
 
-async def add_regex_type(message, args, db_entry, verbose=True):
+async def add_regex_type(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> None:
 
     # Test if args supplied
     if not args:
@@ -97,7 +97,7 @@ async def add_regex_type(message, args, db_entry, verbose=True):
     if verbose: await message.channel.send("Sucessfully Updated RegEx")
 
 
-async def remove_regex_type(message, args, db_entry, verbose=True):
+async def remove_regex_type(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> None:
 
     # Test if args supplied
     if not args:

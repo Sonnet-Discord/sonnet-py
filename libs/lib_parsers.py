@@ -19,9 +19,9 @@ from sonnet_cfg import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
-from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional
+from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional, Any
 
-re = importlib.import_module(REGEX_VERSION)
+re: Any = importlib.import_module(REGEX_VERSION)
 
 
 class errors:
@@ -36,7 +36,7 @@ unicodeFilter = re.compile(r'[^a-z0-9 ]+')  # type: ignore
 
 
 # Run a blacklist pass over a messages content and files
-def parse_blacklist(indata):
+def parse_blacklist(indata: List[Any]) -> Tuple[bool, bool, List[str]]:
     message, blacklist, ramfs = indata
 
     # Preset values
@@ -68,7 +68,7 @@ def parse_blacklist(indata):
 
     # If in whitelist, skip parse to save resources
     if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
-        return [False, False, []]
+        return (False, False, [])
 
     text_to_blacklist = unicodeFilter.sub('', message.content.lower().replace(":", " ").replace("\n", " "))
 
@@ -92,7 +92,7 @@ def parse_blacklist(indata):
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if (broke := i.findall(message.content.lower())):
+            if (broke := i.findall(message.content.lower())):  # type: ignore
                 broke_blacklist = True
                 infraction_type.append(f"RegEx({', '.join(broke)})")
         except re.error:
@@ -101,7 +101,7 @@ def parse_blacklist(indata):
     # Check message against REGEXP notifier list
     regex_blacklist = blacklist["regex-notifier"]
     for i in regex_blacklist:
-        if i.findall(message.content.lower()):
+        if i.findall(message.content.lower()):  # type: ignore
             notifier = True
 
     # Check against filetype blacklist
@@ -109,7 +109,7 @@ def parse_blacklist(indata):
     if filetype_blacklist and message.attachments:
         for i in message.attachments:
             for a in filetype_blacklist:
-                if i.filename.lower().endswith(a):
+                if i.filename.lower().endswith(a):  # type: ignore
                     broke_blacklist = True
                     infraction_type.append(f"FileType({a})")
 

@@ -16,7 +16,7 @@ from lib_loaders import clib_exists, DotHeaders
 from typing import List, Any
 
 
-def prettyprint(inlist):
+def prettyprint(inlist: List[List[str]]) -> List[str]:
 
     maxln = 0
 
@@ -27,11 +27,11 @@ def prettyprint(inlist):
     return [(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}") for i in inlist]
 
 
-def zpad(innum):
+def zpad(innum: int) -> str:
     return (2 - len(str(innum))) * "0" + str(innum)
 
 
-def getdelta(past):
+def getdelta(past: int) -> str:
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(past))
 

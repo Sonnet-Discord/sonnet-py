@@ -517,7 +517,7 @@ class purger:
         self.user_id = user_id
 
     def check(self, message: discord.Message) -> bool:
-        return message.author.id == self.user_id
+        return bool(message.author.id == self.user_id)
 
 
 async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:

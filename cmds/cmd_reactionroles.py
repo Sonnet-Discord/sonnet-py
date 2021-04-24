@@ -23,7 +23,7 @@ class InvalidEmoji(Exception):
     pass
 
 
-async def valid_emoji(message, pEmoji, client):
+async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Client) -> str:
 
     if len(pEmoji) == 1:
         return pEmoji
@@ -48,7 +48,7 @@ class RindexFailure(Exception):
     pass
 
 
-async def rindex_check(message, role):
+async def rindex_check(message: discord.Message, role: discord.Role) -> None:
 
     rindex = message.guild.roles.index(role)
 
@@ -64,7 +64,7 @@ class NoRoleError(Exception):
     pass
 
 
-async def get_exact_role(message, role):
+async def get_exact_role(message: discord.Message, role: discord.Role) -> discord.Role:
 
     try:
         role = message.guild.get_role(int(role.strip("<@&>")))

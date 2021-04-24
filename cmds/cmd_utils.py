@@ -25,7 +25,7 @@ class UserParseError(RuntimeError):
     pass
 
 
-async def parse_userid(message, args):
+async def parse_userid(message: discord.Message, args: List[str]) -> discord.Member:
 
     # Get user ID from the message, otherwise use the author's ID.
     try:
@@ -46,11 +46,11 @@ async def parse_userid(message, args):
     return user_object
 
 
-def add_timestamp(embed, name: str, start: int, end: int):
+def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
     embed.add_field(name=name, value=f"{(end - start) / 100}ms", inline=False)
 
 
-def ctime(t):
+def ctime(t: float) -> int:
     return round(t * 100000)
 
 
@@ -74,7 +74,7 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
     await sent_message.edit(embed=ping_embed)
 
 
-def parsedate(indata):
+def parsedate(indata: datetime) -> str:
     return f"{time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(datetime.timestamp(indata)))} ({(datetime.utcnow() - indata).days} days ago)"
 
 

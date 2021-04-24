@@ -55,10 +55,10 @@ async def username_log_change(message: discord.Message, args: List[str], client:
 
 
 class gdpr_functions:
-    def __init__(self):
+    def __init__(self) -> None:
         self.commands = {"delete": self.delete, "download": self.download}
 
-    async def delete(self, message, guild_id, ramfs, kramfs):
+    async def delete(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
 
         with db_hlapi(message.guild.id) as database:
             database.delete_guild_db()
@@ -73,7 +73,7 @@ class gdpr_functions:
             f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"
             )
 
-    async def download(self, message, guild_id, ramfs, kramfs):
+    async def download(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
 
         timestart = time.time()
 
