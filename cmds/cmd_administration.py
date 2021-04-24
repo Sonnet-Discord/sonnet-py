@@ -131,7 +131,7 @@ async def set_view_infractions(message: discord.Message, args: List[str], client
     if args:
         gate = parse_boolean(args[0])
         with db_hlapi(message.guild.id) as database:
-            database.add_config("member-view-infractions", int(gate))
+            database.add_config("member-view-infractions", str(int(gate)))
     else:
         with db_hlapi(message.guild.id) as database:
             gate = bool(int(database.grab_config("member-view-infractions") or 0))
@@ -146,8 +146,7 @@ async def set_prefix(message: discord.Message, args: List[str], client: discord.
         with db_hlapi(message.guild.id) as database:
             database.add_config("prefix", prefix)
     else:
-        with db_hlapi(message.guild.id) as database:
-            prefix = database.grab_config("prefix")
+        prefix = kwargs["conf_cache"]["prefix"]
 
     if kwargs["verbose"]: await message.channel.send(f"Prefix set to `{prefix}`")
 

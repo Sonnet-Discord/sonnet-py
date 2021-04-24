@@ -2,7 +2,7 @@
 # Ultrabear 2020
 
 import mariadb
-from typing import List, Dict
+from typing import List, Dict, Any, Tuple, Union
 
 
 class db_error:  # DB error codes
@@ -12,7 +12,7 @@ class db_error:  # DB error codes
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
-    def __init__(self, login_info: Dict):
+    def __init__(self, login_info: Dict[str, Any]) -> None:
         # Connect to database with login info
         self.con = mariadb.connect(user=login_info["login"], password=login_info["password"], host=login_info["server"], database=login_info["db_name"], port=int(login_info["port"]))
 
@@ -27,7 +27,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __enter__(self):
         return self
 
-    def make_new_table(self, tablename: str, data: List[List]):
+    def make_new_table(self, tablename: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
         # Load hashmap of python datatypes to MariaDB datatypes
         datamap = {
@@ -69,7 +69,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Exectute table generation
         self.cur.execute(db_inputStr)
 
-    def add_to_table(self, table: str, data: List[List]):
+    def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
         # Add insert data and generate base tables
         db_inputStr = f"REPLACE INTO {table} ("
@@ -83,7 +83,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table: str, collumn_search: List):
+    def fetch_rows_from_table(self, table: str, collumn_search: List[Any]) -> Tuple[Any, ...]:
 
         # Add SELECT data
         db_inputStr = f"SELECT * FROM {table} WHERE {collumn_search[0]}=?"
@@ -96,7 +96,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
-    def delete_rows_from_table(self, table: str, collumn_search: List):
+    def delete_rows_from_table(self, table: str, collumn_search: List[Any]) -> None:
 
         # Do deletion setup
         db_inputStr = f"DELETE FROM {table} WHERE {collumn_search[0]}=?"
@@ -105,11 +105,11 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def delete_table(self, table: str):
+    def delete_table(self, table: str) -> None:
 
         self.cur.execute(f"DROP TABLE IF EXISTS {table};")
 
-    def fetch_table(self, table: str):
+    def fetch_table(self, table: str) -> Tuple[Any, ...]:
 
         self.cur.execute(f"SELECT * FROM {table};")
 
@@ -117,7 +117,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
-    def list_tables(self, searchterm: str):
+    def list_tables(self, searchterm: str) -> Tuple[Any, ...]:
 
         self.cur.execute(f"SHOW TABLES WHERE Tables_in_{self.db_name} LIKE ?", (searchterm, ))
 
@@ -125,19 +125,19 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
-    def commit(self):  # Commits data to db
+    def commit(self) -> None:  # Commits data to db
         self.con.commit()
 
-    def close(self):
+    def close(self) -> None:
         self.con.commit()
         self.con.close()
         self.closed = True
 
-    def __del__(self):
+    def __del__(self) -> None:
         if not self.closed:
             self.close()
 
-    def __exit__(self, err_type, err_value, err_traceback):
+    def __exit__(self, err_type: Any, err_value: Any, err_traceback: Any) -> None:
         self.con.commit()
         self.con.close()
         self.closed = True

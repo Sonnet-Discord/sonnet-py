@@ -74,9 +74,9 @@ async def add_regex_type(message: discord.Message, args: List[str], db_entry: st
     with db_hlapi(message.guild.id) as database:
 
         # Attempt to read blacklist if exists
-        try:
-            curlist = json.loads(database.grab_config(db_entry))
-        except (json.decoder.JSONDecodeError, TypeError):
+        if strjson := database.grab_config(db_entry):
+            curlist = json.loads(strjson)
+        else:
             curlist = {"blacklist": []}
 
         # Check if valid RegEx
@@ -108,9 +108,9 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
     with db_hlapi(message.guild.id) as database:
 
         # Attempt to read blacklist if exists
-        try:
-            curlist = json.loads(database.grab_config(db_entry))
-        except (json.decoder.JSONDecodeError, TypeError):
+        if strjson := database.grab_config(db_entry):
+            curlist = json.loads(strjson)
+        else:
             await message.channel.send("ERROR: There is no RegEx")
             raise blacklist_input_error("No RegEx")
 

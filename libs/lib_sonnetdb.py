@@ -5,7 +5,7 @@ import importlib
 
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Tuple, Optional, Any
 
 # Get db handling library
 if DB_TYPE == "mariadb":
@@ -34,7 +34,7 @@ except db_error.Error:
     raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
 
 
-def db_grab_connection():
+def db_grab_connection() -> db_handler:
     global db_connection
     try:
         db_connection.commit()
@@ -50,17 +50,17 @@ def db_grab_connection():
 
 # Because being lazy writes good code
 class db_hlapi:
-    def __init__(self, guild_id: int):
+    def __init__(self, guild_id: int) -> None:
         self.database = db_grab_connection()
         self.guild = guild_id
 
     def __enter__(self):
         return self
 
-    def grab_config(self, config: str):
+    def grab_config(self, config: str) -> Optional[str]:
 
         try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
+            data: Optional[Tuple[List[Any], ...]] = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
         except db_error.OperationalError:
             data = None
 
@@ -78,30 +78,30 @@ class db_hlapi:
             self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
     # Grab infractions of a user
-    def grab_user_infractions(self, userid: int):
+    def grab_user_infractions(self, userid: Union[int, str]):
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
         except db_error.OperationalError:
-            data = []
+            data = tuple()
 
         return data
 
     # grab infractions dealt by a mod
-    def grab_moderator_infractions(self, moderatorid: int):
+    def grab_moderator_infractions(self, moderatorid: Union[int, str]):
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
         except db_error.OperationalError:
-            data = []
+            data = tuple()
 
         return data
 
     # Check if a message is on the starboard already
-    def in_starboard(self, message_id: int):
+    def in_starboard(self, message_id: int) -> bool:
 
         try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
+            data: Any = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
         except db_error.OperationalError:
             data = False
 
@@ -123,7 +123,7 @@ class db_hlapi:
     def grab_infraction(self, infractionID: str):
 
         try:
-            infraction = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
+            infraction: Any = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
         except db_error.OperationalError:
             infraction = None
 
@@ -147,7 +147,7 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
 
-    def unmute_user(self, infractionid: int = None, userid: int = None):
+    def unmute_user(self, infractionid: str = None, userid: int = None):
 
         try:
             if infractionid:

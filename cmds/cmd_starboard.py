@@ -51,7 +51,7 @@ async def set_starboard_use(message: discord.Message, args: List[str], client: d
     if args:
         gate = parse_boolean(args[0])
         with db_hlapi(message.guild.id) as database:
-            database.add_config("starboard-enabled", int(gate))
+            database.add_config("starboard-enabled", str(int(gate)))
             if kwargs["verbose"]: await message.channel.send(f"Set starboard enabled to {bool(gate)}")
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
@@ -67,7 +67,7 @@ async def set_starboard_count(message: discord.Message, args: List[str], client:
             count = int(float(args[0]))
 
             with db_hlapi(message.guild.id) as database:
-                database.add_config("starboard-count", count)
+                database.add_config("starboard-count", str(count))
 
             if kwargs["verbose"]: await message.channel.send(f"Updated starboard count to {count}")
 

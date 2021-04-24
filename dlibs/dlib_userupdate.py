@@ -16,29 +16,16 @@ importlib.reload(lib_db_obfuscator)
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import inc_statistics
 
+from typing import Any
 
-async def catch_logging_error(channel, embed):
+async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed) -> None:
     try:
         await channel.send(embed=embed)
     except discord.errors.Forbidden:
         pass
 
 
-async def log_name(before, after, log, beforerepr, afterrepr, name):
-
-    if beforerepr == afterrepr:
-        return
-
-    message_embed = discord.Embed(title=f"{name} updated", color=0x008744)
-    message_embed.set_author(name=f"{before} ({before.id})", icon_url=before.avatar_url)
-    message_embed.add_field(name="Before", value=beforerepr)
-    message_embed.add_field(name="After", value=afterrepr)
-    message_embed.timestamp = datetime.utcnow()
-
-    await catch_logging_error(log, message_embed)
-
-
-async def on_member_update(before, after, **kargs):
+async def on_member_update(before: discord.Member, after: discord.Member, **kargs: Any) -> None:
 
     inc_statistics([before.guild.id, "on-member-update", kargs["kernel_ramfs"]])
 
@@ -46,14 +33,23 @@ async def on_member_update(before, after, **kargs):
         username_log = db.grab_config("username-log")
 
     if username_log and (channel := kargs["client"].get_channel(int(username_log))):
-        await log_name(before, after, channel, before.nick, after.nick, "Nickname")
+        if before.nick == after.nick:
+            return
+
+        message_embed = discord.Embed(title="Nickname updated", color=0x008744)
+        message_embed.set_author(name=f"{before} ({before.id})", icon_url=before.avatar_url)
+        message_embed.add_field(name="Before", value=before.nick)
+        message_embed.add_field(name="After", value=after.nick)
+        message_embed.timestamp = datetime.utcnow()
+    
+        await catch_logging_error(channel, message_embed)
 
 
-def parsedate(indata):
+def parsedate(indata: datetime) -> str:
     return f"{time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(datetime.timestamp(indata)))} ({(datetime.utcnow() - indata).days} days ago)"
 
 
-async def on_member_join(member, **kargs):
+async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
     inc_statistics([member.guild.id, "on-member-join", kargs["kernel_ramfs"]])
 
@@ -70,7 +66,7 @@ async def on_member_join(member, **kargs):
                 await catch_logging_error(logging_channel, embed)
 
 
-async def on_member_remove(member, **kargs):
+async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
 
     inc_statistics([member.guild.id, "on-member-remove", kargs["kernel_ramfs"]])
 
@@ -96,4 +92,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info = "1.2.2"
+version_info: str = "1.2.3-DEV"

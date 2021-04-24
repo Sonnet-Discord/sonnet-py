@@ -133,7 +133,7 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        reactionroles = db.grab_config("reaction-role-data")
+        reactionroles: Any = db.grab_config("reaction-role-data")
 
     if not reactionroles:
         await message.channel.send("ERROR: This guild has no reactionroles")
@@ -228,7 +228,7 @@ async def rr_purge(message: discord.Message, args: List[str], client: discord.Cl
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        reactionroles = db.grab_config("reaction-role-data")
+        reactionroles: Any = db.grab_config("reaction-role-data")
 
     if not reactionroles:
         await message.channel.send("ERROR: This guild has no reactionroles")

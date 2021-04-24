@@ -20,10 +20,12 @@ from lib_parsers import ifgate, generate_reply_field
 
 from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
-starboard_types = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
+from typing import Dict, Any, Union
+
+starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
 
 
-async def on_reaction_add(reaction, user, **kargs):
+async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **kargs: Any) -> None:
 
     # Skip if not a guild
     if not reaction.message.guild:
@@ -66,4 +68,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info = "1.1.6"
+version_info: str = "1.2.3-DEV"

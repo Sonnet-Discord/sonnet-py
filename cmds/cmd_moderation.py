@@ -306,7 +306,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
             db.unmute_user(userid=member.id)
-            db.mute_user(member.id, time.time() + mutetime, infractionID)
+            db.mute_user(member.id, int(time.time() + mutetime), infractionID)
 
         # Create in other thread to not block command execution
         asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime))
