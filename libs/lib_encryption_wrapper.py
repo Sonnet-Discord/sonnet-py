@@ -87,7 +87,7 @@ class encrypted_writer:
 
         return False
 
-    def read(self, size: int=-1) -> None:
+    def read(self, size: int = -1) -> None:
 
         raise TypeError(f"{self} object does not allow reading")
 
@@ -147,7 +147,7 @@ class encrypted_reader:
 
         return bytes(memoryview(self.cache)[self.pointer:amount_wanted + self.pointer])
 
-    def read(self, size: int=-1) -> bytes:
+    def read(self, size: int = -1) -> bytes:
 
         if size == -1:
             if self.pointer == 0:

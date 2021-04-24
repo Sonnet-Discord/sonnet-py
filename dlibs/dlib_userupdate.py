@@ -18,6 +18,7 @@ from lib_loaders import inc_statistics
 
 from typing import Any
 
+
 async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed) -> None:
     try:
         await channel.send(embed=embed)
@@ -41,7 +42,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
         message_embed.add_field(name="Before", value=before.nick)
         message_embed.add_field(name="After", value=after.nick)
         message_embed.timestamp = datetime.utcnow()
-    
+
         await catch_logging_error(channel, message_embed)
 
 
