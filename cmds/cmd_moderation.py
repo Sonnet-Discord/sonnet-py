@@ -19,7 +19,7 @@ from lib_loaders import generate_infractionid
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message
 
-from typing import List, Any
+from typing import List, Tuple, Any, Awaitable, Optional
 
 
 # Catches error if the bot cannot message the user
@@ -32,10 +32,10 @@ async def catch_dm_error(user: discord.User, contents: str, log_channel: discord
 
 
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool):
+async def log_infraction(message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool) -> Tuple[Optional[str], Optional[Awaitable]]:
 
     if not user:
-        return (None, None)
+        return None, None
 
     with db_hlapi(message.guild.id) as db:
         # Collision test
@@ -47,7 +47,7 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
         db.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, round(time.time()))
 
     if not to_dm:
-        return (None, None)
+        return None, None
 
     if log_channel:
 
@@ -77,7 +77,7 @@ class InfractionGenerationError(Exception):
 
 
 # General processor for infractions
-async def process_infraction(message: discord.Message, args: List[str], client: discord.Client, infraction_type: str, infraction: bool = True):
+async def process_infraction(message: discord.Message, args: List[str], client: discord.Client, infraction_type: str, infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable]]:
 
     # Check if automod
     automod: bool = False
@@ -161,7 +161,8 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     # Attempt to kick user
     if member:
         try:
-            await dm_sent  # Wait for dm to be sent before kicking
+            if dm_sent:
+                await dm_sent  # Wait for dm to be sent before kicking
             await message.guild.kick((member), reason=reason)
         except discord.errors.Forbidden:
             await message.channel.send("The bot does not have permission to kick this user.")
@@ -183,7 +184,8 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     # Attempt to ban user
     try:
         if member:
-            await dm_sent  # Wait for dm to be sent before banning
+            if dm_sent:
+                await dm_sent  # Wait for dm to be sent before banning
         await message.guild.ban(user, delete_message_days=0, reason=reason)
 
     except discord.errors.Forbidden:
@@ -231,7 +233,7 @@ async def grab_mute_role(message: discord.Message):
             raise NoMuteRole("No mute role")
 
 
-async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infractionID: str, mute_role: discord.Role, mutetime: int):
+async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infractionID: str, mute_role: discord.Role, mutetime: int) -> None:
 
     await asyncio.sleep(mutetime)
 
@@ -288,6 +290,11 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     if mutetime:
+ 
+        if not infractionID:
+            await message.channel.send("CAUGHT ERROR: There has been an error in grabbing the infractionID\n(User muted but no mute timer created)")
+            raise RuntimeError("Impossible code loop detected")
+
         if kwargs["verbose"]:
             asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}", allowed_mentions=discord.AllowedMentions.none()))
 
