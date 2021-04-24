@@ -32,7 +32,8 @@ async def catch_dm_error(user: discord.User, contents: str, log_channel: discord
 
 
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool) -> Tuple[Optional[str], Optional[Awaitable]]:
+async def log_infraction(message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str,
+                         to_dm: bool) -> Tuple[Optional[str], Optional[Awaitable]]:
 
     if not user:
         return None, None
@@ -77,7 +78,11 @@ class InfractionGenerationError(Exception):
 
 
 # General processor for infractions
-async def process_infraction(message: discord.Message, args: List[str], client: discord.Client, infraction_type: str, infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable]]:
+async def process_infraction(message: discord.Message,
+                             args: List[str],
+                             client: discord.Client,
+                             infraction_type: str,
+                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable]]:
 
     # Check if automod
     automod: bool = False
@@ -290,7 +295,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     if mutetime:
- 
+
         if not infractionID:
             await message.channel.send("CAUGHT ERROR: There has been an error in grabbing the infractionID\n(User muted but no mute timer created)")
             raise RuntimeError("Impossible code loop detected")
