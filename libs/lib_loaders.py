@@ -16,6 +16,8 @@ importlib.reload(sonnet_cfg)
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import CLIB_LOAD
 
+from typing import Dict, List, Union, Any
+
 
 class DotHeaders:
 
@@ -59,7 +61,7 @@ def directBinNumber(inData: int, length: int):
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 
 
-defaultcache = {
+defaultcache: Dict[Union[str, int], Any] = {
     "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["antispam", "3,2"]],
     "text":
         [
@@ -71,7 +73,7 @@ defaultcache = {
 
 
 # Load config from cache, or load from db if cache isint existant
-def load_message_config(guild_id, ramfs, datatypes=defaultcache):
+def load_message_config(guild_id, ramfs, datatypes: Dict[Union[str, int], Any] = defaultcache) -> Dict[str, str]:
     try:
 
         # Loads fileio object
@@ -186,7 +188,7 @@ def write_vnum(fileobj, number: int):
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
 
 
-def inc_statistics(indata):
+def inc_statistics(indata: List):
 
     guild, inctype, kernel_ramfs = indata
 

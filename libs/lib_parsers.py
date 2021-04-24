@@ -19,6 +19,8 @@ from sonnet_cfg import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
+from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional
+
 re = importlib.import_module(REGEX_VERSION)
 
 
@@ -115,7 +117,7 @@ def parse_blacklist(indata):
 
 
 # Parse if we skip a message due to X reasons
-def parse_skip_message(Client, message):
+def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool:
 
     # Make sure we don't start a feedback loop.
     if message.author == Client.user:
@@ -133,10 +135,10 @@ def parse_skip_message(Client, message):
 
 
 # Parse a boolean datatype from a string
-def parse_boolean(instr: str):
+def parse_boolean(instr: str) -> Union[bool, int]:
 
-    yeslist = ["yes", "true", "y", "t", "1"]
-    nolist = ["no", "false", "n", "f", "0"]
+    yeslist: List[str] = ["yes", "true", "y", "t", "1"]
+    nolist: List[str] = ["no", "false", "n", "f", "0"]
 
     if instr.lower() in yeslist:
         return True
@@ -179,12 +181,15 @@ async def update_log_channel(message, args, client, log_name: str, verbose: bool
     if verbose: await message.channel.send(f"Successfully updated {log_name}")
 
 
-def _parse_role_perms(message, permrole):
+def _parse_role_perms(message: discord.Message, permrole: discord.Role) -> bool:
     return permrole and bool([i.id for i in message.author.roles if int(permrole) == i.id])
 
 
+Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
+
+
 # Parse user permissions to run a command
-async def parse_permissions(message, mconf, perms, verbose: bool = True) -> bool:
+async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
 
     you_shall_pass = False
     if perms == "everyone":
@@ -201,7 +206,7 @@ async def parse_permissions(message, mconf, perms, verbose: bool = True) -> bool
     elif perms == "owner":
         you_shall_pass = message.author.id == message.channel.guild.owner.id
     elif (t := type(perms)) != str and (t == tuple or t == list):
-        you_shall_pass = perms[1](message)
+        you_shall_pass = perms[1](message)  # type: ignore
         perms = perms[0]
 
     if you_shall_pass:
@@ -213,15 +218,12 @@ async def parse_permissions(message, mconf, perms, verbose: bool = True) -> bool
 
 
 # Returns true if any of the items in the list return true, more of an orgate
-def ifgate(inlist) -> bool:
-    for i in inlist:
-        if i:
-            return True
-    return False
+def ifgate(inlist: Iterable) -> bool:
+    return any(inlist)
 
 
 # Grab files of a message from the internal cache or using webrequests
-def grab_files(guild_id: int, message_id: int, ramfs, delete: bool = False):
+def grab_files(guild_id: int, message_id: int, ramfs, delete: bool = False) -> Optional[List[discord.File]]:
 
     try:
 
@@ -262,7 +264,7 @@ def grab_files(guild_id: int, message_id: int, ramfs, delete: bool = False):
 
 
 # Generate a prettified reply field from a message for displaying in embeds
-def generate_reply_field(message):
+def generate_reply_field(message: discord.Message) -> str:
 
     # Generate replies
     jump = f"\n\n[(Link)]({message.jump_url})"
@@ -282,10 +284,10 @@ def generate_reply_field(message):
 
 
 # Parse a role name and put it into the specified db conf
-async def parse_role(message, args, db_entry, verbose: bool = True):
+async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True):
 
     if args:
-        role = args[0].strip("<@&>")
+        role: Union[str, discord.Role] = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
             await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
@@ -308,11 +310,11 @@ async def parse_role(message, args, db_entry, verbose: bool = True):
 
 
 # Grab a message object from a link or message mention
-async def parse_channel_message(message, args, client):
+async def parse_channel_message(message: discord.Message, args: List[str], client: discord.Client) -> Tuple[discord.Message, int]:
 
     try:
         message_link = args[0].replace("-", "/").split("/")
-        log_channel = message_link[-2]
+        log_channel: Union[str, int] = message_link[-2]
         message_id = message_link[-1]
         nargs = 1
     except IndexError:
@@ -325,7 +327,7 @@ async def parse_channel_message(message, args, client):
             raise errors.message_parse_failure
 
     try:
-        log_channel: int = int(log_channel)
+        log_channel = int(log_channel)
     except ValueError:
         await message.channel.send("ERROR: Channel is not a valid int")
         raise errors.message_parse_failure

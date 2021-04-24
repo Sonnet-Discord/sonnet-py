@@ -5,6 +5,8 @@ import importlib
 
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
+from typing import Union, Dict, List
+
 # Get db handling library
 if DB_TYPE == "mariadb":
     import lib_mdb_handler
@@ -179,7 +181,7 @@ class db_hlapi:
 
         return dbdict
 
-    def upload_guild_db(self, dbdict):
+    def upload_guild_db(self, dbdict: Dict[str, List]):
 
         reimport = {
             "config": [["property", "value"]],
@@ -211,7 +213,7 @@ class db_hlapi:
             except db_error.OperationalError:
                 pass
 
-    def add_infraction(self, *din):
+    def add_infraction(self, *din: Union[int, str]):
 
         quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), din))
 

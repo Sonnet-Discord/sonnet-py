@@ -21,9 +21,9 @@ from lib_db_obfuscator import db_hlapi
 
 from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 
-starboard_types = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
+starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
 
 
 async def starboard_channel_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -77,7 +77,7 @@ async def set_starboard_count(message: discord.Message, args: List[str], client:
 
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
-        count = mconf["starboard-count"]
+        count = int(mconf["starboard-count"])
         await message.channel.send(f"Starboard count is {count}")
 
 
