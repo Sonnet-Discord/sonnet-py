@@ -61,8 +61,8 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
     ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
 
     add_timestamp(ping_embed, "Total Process Time", stats["start"], stats["end"])
-    add_timestamp(ping_embed, "Load Configs", stats["start-load-blacklist"], stats["end-load-blacklist"])
-    add_timestamp(ping_embed, "Process Automod", stats["start-automod"], stats["end-automod"])
+    add_timestamp(ping_embed, "Config Load Time", stats["start-load-blacklist"], stats["end-load-blacklist"])
+    add_timestamp(ping_embed, "Automod Process Time", stats["start-automod"], stats["end-automod"])
     add_timestamp(ping_embed, "WS Latency", 0, ctime(client.latency))
 
     send_start = ctime(time.time())
