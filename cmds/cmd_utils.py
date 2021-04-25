@@ -132,7 +132,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         if (a := args[0].lower()) in modules:
 
             curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
-            cmd_embed = discord.Embed(title=f'Commands in Category "{a}"', color=0x00db87)
+            cmd_embed = discord.Embed(title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=0x00db87)
             cmd_embed.set_author(name="Sonent Help")
 
             for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
@@ -180,7 +180,8 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         cmd_embed.set_author(name="Sonnet Help")
 
         for modules in kwargs["cmds"]:
-            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)  # type: ignore
+            helptext = ', '.join([f"`{i}`" for i in modules.commands if 'alias' not in modules.commands[i]])
+            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=helptext, inline=False)  # type: ignore
 
         await message.channel.send(embed=cmd_embed)
 
