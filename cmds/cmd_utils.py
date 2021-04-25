@@ -146,7 +146,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
                 a = kwargs["cmds_dict"][a]["alias"]
 
             cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=0x00db87)
-            cmd_embed.set_author(name="Sonent Help")
+            cmd_embed.set_author(name="Sonnet Help")
 
             cmd_embed.add_field(name="Usage:", value=PREFIX + kwargs["cmds_dict"][a]["pretty_name"], inline=False)
 
