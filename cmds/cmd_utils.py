@@ -179,9 +179,9 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         cmd_embed = discord.Embed(title="Category Listing", color=0x00db87)
         cmd_embed.set_author(name="Sonnet Help")
 
-        for modules in kwargs["cmds"]:
-            helptext = ', '.join([f"`{i}`" for i in modules.commands if 'alias' not in modules.commands[i]])
-            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=helptext, inline=False)  # type: ignore
+        for module in kwargs["cmds"]:
+            helptext = ', '.join([f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]])
+            cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
 
         await message.channel.send(embed=cmd_embed)
 
