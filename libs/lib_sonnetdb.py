@@ -54,8 +54,84 @@ class db_hlapi:
         self.database = db_grab_connection()
         self.guild = guild_id
 
+        self.__enum_input: Dict[str, List[Tuple[str, Any]]] = {}
+        self.__enum_pool: Dict[str, List[Tuple[Any, ...]]] = {}
+
+
+        self.inject_enum("config", [("property", str), ("value", str)])
+        self.inject_enum("infractions", [("infractionID", str), ("userID", str), ("moderatorID", str), ("type", str), ("reason", str), ("timestamp", int)])
+        self.inject_enum("mutes", [("infractionID", str), ("userID", str), ("endMute", int)])
+
     def __enter__(self):
         return self
+
+    def _validate_enum(self, schema: List[Tuple[str, Any]]) -> bool:
+        for i in schema:
+            if type(i[0]) != str or i[1] not in [str, int]:
+                return False
+        return True
+
+    def inject_enum(self, enumname: str, schema: List[Tuple[str, Any]]) -> None:
+        if not self._validate_enum(schema):
+            raise TypeError("Invalid schema passed")
+
+        # Inject Primary key
+        PK, T = schema[0]
+        if T == str:
+            pks: Any = (PK, tuple, 1)
+        elif T == int:
+            pks = (PK, int(64), 1)
+
+        cols: List[Any] = [pks]
+        # Inject rest of table
+        for col in schema[1:]:
+            if col[1] == str:
+                cols.append(col)
+            elif col[1] == int:
+                cols.append((col[0], int(64),))
+
+        self.__enum_input[enumname] = schema
+        self.__enum_pool[enumname] = cols
+
+    def grab_enum(self, name: str, cname: Union[str, int]) -> Optional[List[Union[str, int]]]:
+        if name not in self.__enum_pool:
+            raise TypeError(f"Trying to grab from table that is not registered ({name} not registered)")
+
+        if type(cname) != self.__enum_input[name][0][1]:
+            raise TypeError("grab type does not match enum PK signature")
+
+        try:
+            data = self.database.fetch_rows_from_table(f"{self.guild}_{name}", [self.__enum_input[name][0][0], cname])
+        except db_error.OperationalError:
+            return None
+
+        if data:
+            return data[0]
+        else:
+            return None
+
+    def set_enum(self, name: str, cpush: List[Union[str, int]]) -> None:
+        if name not in self.__enum_pool:
+            raise TypeError(f"Trying to set to table that is not registered ({name})")
+
+        if len(cpush) != len(self.__enum_input[name]):
+            raise TypeError(f"Length of table does not match length of input ({len(cpush)} != {len(self.__enum_input[name])})")
+
+        for index, i in enumerate(cpush):
+            if type(i) != self.__enum_input[name][index][1]:
+                raise TypeError(f"Improper type passed based on enum registry (type '{type(i).__name__}' is not type '{self.__enum_input[name][index][1].__name__}')")
+
+        push = tuple(zip(map(lambda i: i[0], self.__enum_input[name]), cpush))
+
+        try:
+            self.database.add_to_table(f"{self.guild}_{name}", push)
+        except db_error.OperationalError:
+            self.create_guild_db()
+            self.database.add_to_table(f"{self.guild}_{name}", push)
+
+    def create_guild_db(self):
+        for i in self.__enum_pool:
+            self.database.make_new_table(f"{self.guild}_{i}", self.__enum_pool[i])
 
     def grab_config(self, config: str) -> Optional[str]:
 
@@ -99,25 +175,20 @@ class db_hlapi:
 
     # Check if a message is on the starboard already
     def in_starboard(self, message_id: int) -> bool:
+        """
+        Deprecated as starboard is now expected to use enums directly
+        """
 
-        try:
-            data: Any = self.database.fetch_rows_from_table(f"{self.guild}_starboard", ["messageID", message_id])
-        except db_error.OperationalError:
-            data = False
+        self.inject_enum("starboard", [("messageID", str),])
+        return bool(self.grab_enum("starboard", str(message_id)))
 
-        if data:
-            return True
-        else:
-            return False
+    def add_to_starboard(self, message_id: int) -> bool:
+        """
+        Deprecated as starboard is now expected to use enums directly
+        """
 
-    def add_to_starboard(self, message_id: int):
-
-        try:
-            self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-        except db_error.OperationalError:
-            self.create_guild_db()
-            self.database.add_to_table(f"{self.guild}_starboard", [["messageID", message_id]])
-
+        self.inject_enum("starboard", [("messageID", str),])
+        self.set_enum("starboard", [str(message_id)])
         return True
 
     def grab_infraction(self, infractionID: str):
@@ -156,13 +227,6 @@ class db_hlapi:
                 self.database.delete_rows_from_table(f"{self.guild}_mutes", ["userid", userid])
         except db_error.OperationalError:
             pass
-
-    def create_guild_db(self):
-
-        self.database.make_new_table(f"{self.guild}_config", [["property", tuple, 1], ["value", str]])
-        self.database.make_new_table(f"{self.guild}_infractions", [["infractionID", tuple, 1], ["userID", str], ["moderatorID", str], ["type", str], ["reason", str], ["timestamp", int(64)]])
-        self.database.make_new_table(f"{self.guild}_starboard", [["messageID", tuple, 1]])
-        self.database.make_new_table(f"{self.guild}_mutes", [["infractionID", tuple, 1], ["userID", str], ["endMute", int(64)]])
 
     def download_guild_db(self):
 
