@@ -44,32 +44,32 @@ class miniflip:
         self._width = 8
         self._passkey = [int.from_bytes(key[i:i + self._width], "little") for i in range(0, len(key), self._width)]
 
-    def _btod(self, data):
+    def _btod(self, data: bytes):
         return [int.from_bytes(data[i:i + self._width], "little") for i in range(0, len(data), self._width)]
 
-    def _dtob(self, data):
+    def _dtob(self, data) -> bytes:
         out = []
         for chunk in data:
             out.extend([(chunk >> (8 * i) & 0xff) for i in range(self._width)])
         return bytes(out)
 
-    def _encrypt(self, data: bytes):
-        data = self._btod(data)
+    def _encrypt(self, data: bytes) -> bytes:
+        ndata = self._btod(data)
         for i in self._passkey:
-            data = [chunk ^ i for chunk in data]
-        return self._dtob(data)
+            ndata = [chunk ^ i for chunk in ndata]
+        return self._dtob(ndata)
 
-    def _decrypt(self, data: bytes):
-        data = self._btod(data)
+    def _decrypt(self, data: bytes) -> bytes:
+        ndata = self._btod(data)
         for i in self._passkey[::-1]:
-            data = [i ^ chunk for chunk in data]
-        return self._dtob(data)
+            ndata = [i ^ chunk for chunk in ndata]
+        return self._dtob(ndata)
 
-    def encrypt(self, data: str):
+    def encrypt(self, indata: str):
 
-        if type(data) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(data).__name__}`")
+        if type(indata) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(data).__name__}`")
 
-        data = data.encode("utf8")
+        data: bytes = indata.encode("utf8")
 
         data = self._encrypt(data)[::-1]
         data = self._encrypt(data)
@@ -225,9 +225,9 @@ class KernelSyntaxError(SyntaxError):
 from LeXdPyK_conf import BOT_OWNER
 
 if (t := type(BOT_OWNER)) == str or t == int:
-    BOT_OWNER = [int(BOT_OWNER)] if BOT_OWNER else []
+    BOT_OWNER = [int(BOT_OWNER)] if BOT_OWNER else [] # type: ignore
 elif BOT_OWNER:
-    BOT_OWNER = [int(i) for i in BOT_OWNER]
+    BOT_OWNER = [int(i) for i in BOT_OWNER] # type: ignore
 
 
 def kernel_load_command_modules(*args):
@@ -504,7 +504,7 @@ async def safety_check(guild=None, guild_id=None, user=None, user_id=None):
             return False
 
         try:
-            await guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST")
+            await guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
         except discord.errors.Forbidden:
 
             blacklist["guild"].append(guild_id)
@@ -740,7 +740,7 @@ async def on_member_unban(guild, user):
 
 
 # Define version info and start time
-version_info = "LeXdPyK 1.3.1"
+version_info = "LeXdPyK 1.3.2"
 bot_start_time = time.time()
 
 # Start bot
