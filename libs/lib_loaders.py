@@ -191,6 +191,7 @@ def generate_infractionid() -> str:
 
         return generate_infractionid()
 
+
 def inc_statistics(indata: List):
 
     guild, inctype, kernel_ramfs = indata
