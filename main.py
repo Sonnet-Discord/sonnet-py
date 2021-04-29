@@ -67,7 +67,7 @@ class miniflip:
 
     def encrypt(self, indata: str):
 
-        if type(indata) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(data).__name__}`")
+        if type(indata) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(indata).__name__}`")
 
         data: bytes = indata.encode("utf8")
 
