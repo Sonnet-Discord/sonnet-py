@@ -225,9 +225,9 @@ class KernelSyntaxError(SyntaxError):
 from LeXdPyK_conf import BOT_OWNER
 
 if (t := type(BOT_OWNER)) == str or t == int:
-    BOT_OWNER = [int(BOT_OWNER)] if BOT_OWNER else [] # type: ignore
+    BOT_OWNER = [int(BOT_OWNER)] if BOT_OWNER else []  # type: ignore
 elif BOT_OWNER:
-    BOT_OWNER = [int(i) for i in BOT_OWNER] # type: ignore
+    BOT_OWNER = [int(i) for i in BOT_OWNER]  # type: ignore
 
 
 def kernel_load_command_modules(*args):

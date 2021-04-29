@@ -57,7 +57,6 @@ class db_hlapi:
         self.__enum_input: Dict[str, List[Tuple[str, Any]]] = {}
         self.__enum_pool: Dict[str, List[Tuple[Any, ...]]] = {}
 
-
         self.inject_enum("config", [("property", str), ("value", str)])
         self.inject_enum("infractions", [("infractionID", str), ("userID", str), ("moderatorID", str), ("type", str), ("reason", str), ("timestamp", int)])
         self.inject_enum("mutes", [("infractionID", str), ("userID", str), ("endMute", int)])
@@ -88,7 +87,10 @@ class db_hlapi:
             if col[1] == str:
                 cols.append(col)
             elif col[1] == int:
-                cols.append((col[0], int(64),))
+                cols.append((
+                    col[0],
+                    int(64),
+                    ))
 
         self.__enum_input[enumname] = schema
         self.__enum_pool[enumname] = cols
@@ -179,7 +181,9 @@ class db_hlapi:
         Deprecated as starboard is now expected to use enums directly
         """
 
-        self.inject_enum("starboard", [("messageID", str),])
+        self.inject_enum("starboard", [
+            ("messageID", str),
+            ])
         return bool(self.grab_enum("starboard", str(message_id)))
 
     def add_to_starboard(self, message_id: int) -> bool:
@@ -187,7 +191,9 @@ class db_hlapi:
         Deprecated as starboard is now expected to use enums directly
         """
 
-        self.inject_enum("starboard", [("messageID", str),])
+        self.inject_enum("starboard", [
+            ("messageID", str),
+            ])
         self.set_enum("starboard", [str(message_id)])
         return True
 
