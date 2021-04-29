@@ -16,7 +16,7 @@ importlib.reload(sonnet_cfg)
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import CLIB_LOAD
 
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Union, Any, Tuple
 
 
 class DotHeaders:
@@ -57,7 +57,7 @@ else:
 
 
 # LCIF system ported for blacklist loader, converted to little endian
-def directBinNumber(inData: int, length: int):
+def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 
 
@@ -72,18 +72,30 @@ defaultcache: Dict[Union[str, int], Any] = {
     }
 
 
+# Read a vnum from a file stream
+def read_vnum(fileobj) -> int:
+    return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
+
+
+# Write a vnum to a file stream
+def write_vnum(fileobj, number: int):
+    vnum_count = math.ceil((len(bin(number)) - 2) / 8)
+    fileobj.write(bytes([vnum_count]))
+    fileobj.write(bytes(directBinNumber(number, vnum_count)))
+
+
 # Load config from cache, or load from db if cache isint existant
-def load_message_config(guild_id, ramfs, datatypes: Dict[Union[str, int], Any] = defaultcache) -> Dict[str, str]:
+def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], Any] = defaultcache) -> Dict[str, Any]:
     try:
 
         # Loads fileio object
         blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
         blacklist_cache.seek(0)
-        message_config = {}
+        message_config: Dict[str, Any] = {}
 
         # Imports csv style data
         for i in datatypes["csv"]:
-            message_config[i[0]] = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little")).decode("utf8")
+            message_config[i[0]] = blacklist_cache.read(read_vnum(blacklist_cache)).decode("utf8")
             if message_config[i[0]]:
                 message_config[i[0]] = message_config[i[0]].split(",")
             else:
@@ -91,7 +103,7 @@ def load_message_config(guild_id, ramfs, datatypes: Dict[Union[str, int], Any] =
 
         # Imports text style data
         for i in datatypes["text"]:
-            preout = blacklist_cache.read(int.from_bytes(blacklist_cache.read(2), "little"))
+            preout = blacklist_cache.read(read_vnum(blacklist_cache))
             if preout:
                 message_config[i[0]] = preout.decode("utf8")
             else:
@@ -120,17 +132,19 @@ def load_message_config(guild_id, ramfs, datatypes: Dict[Union[str, int], Any] =
         for i in datatypes["csv"]:
             if message_config[i[0]]:
                 outdat = ",".join(message_config[i[0]]).encode("utf8")
-                blacklist_cache.write(bytes(directBinNumber(len(outdat), 2)) + outdat)
+                write_vnum(blacklist_cache, len(outdat))
+                blacklist_cache.write(outdat)
             else:
-                blacklist_cache.write(bytes(2))
+                write_vnum(blacklist_cache, 0)
 
         # Add text based configs
         for i in datatypes["text"]:
             if message_config[i[0]]:
                 outdat = message_config[i[0]].encode("utf8")
-                blacklist_cache.write(bytes(directBinNumber(len(outdat), 2)) + outdat)
+                write_vnum(blacklist_cache, len(outdat))
+                blacklist_cache.write(outdat)
             else:
-                blacklist_cache.write(bytes(2))
+                write_vnum(blacklist_cache, 0)
 
         return message_config
 
@@ -176,17 +190,6 @@ def generate_infractionid() -> str:
                 structured_data_file.write(byte + bytes(maxval - len(byte)))
 
         return generate_infractionid()
-
-
-def read_vnum(fileobj) -> int:
-    return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
-
-
-def write_vnum(fileobj, number: int):
-    vnum_count = math.ceil((len(bin(number)) - 2) / 8)
-    fileobj.write(bytes([vnum_count]))
-    fileobj.write(bytes(directBinNumber(number, vnum_count)))
-
 
 def inc_statistics(indata: List):
 
