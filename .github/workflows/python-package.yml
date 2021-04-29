@@ -42,7 +42,7 @@ jobs:
         python build_tools/testimport.py
     - name: run mypy type checking
       run: |
-        mypy */*.py --ignore-missing-imports
+        mypy *.py */*.py --ignore-missing-imports
     - name: yapf integrity check
       run: |
         yapf -d -r .
