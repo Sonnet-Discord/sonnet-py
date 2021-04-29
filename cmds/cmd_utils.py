@@ -123,6 +123,8 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
 
 async def help_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
+    helpname: str = "Sonnet Help"
+
     if args:
 
         modules = {mod.category_info["name"] for mod in kwargs["cmds"]}
@@ -133,7 +135,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
             curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
             cmd_embed = discord.Embed(title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=0x00db87)
-            cmd_embed.set_author(name="Sonent Help")
+            cmd_embed.set_author(name=helpname)
 
             for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
                 cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
@@ -146,7 +148,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
                 a = kwargs["cmds_dict"][a]["alias"]
 
             cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=0x00db87)
-            cmd_embed.set_author(name="Sonnet Help")
+            cmd_embed.set_author(name=helpname)
 
             cmd_embed.add_field(name="Usage:", value=PREFIX + kwargs["cmds_dict"][a]["pretty_name"], inline=False)
 
@@ -177,7 +179,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     else:
 
         cmd_embed = discord.Embed(title="Category Listing", color=0x00db87)
-        cmd_embed.set_author(name="Sonnet Help")
+        cmd_embed.set_author(name=helpname)
 
         for module in kwargs["cmds"]:
             helptext = ', '.join([f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]])
