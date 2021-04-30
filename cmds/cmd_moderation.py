@@ -47,20 +47,22 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
         # Send infraction to database
         db.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, round(time.time()))
 
-    if not to_dm:
-        return None, None
-
     if log_channel:
 
-        log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user.mention}:", color=0x758cff)
+        log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user}:", color=0x758cff)
         log_embed.set_thumbnail(url=user.avatar_url)
-        log_embed.add_field(name="Infraction ID", value=str(generated_id))
-        log_embed.add_field(name="Moderator", value=f"{client.get_user(int(moderator_id))}")
-        log_embed.add_field(name="User", value=f"{user}")
+        log_embed.add_field(name="Infraction ID", value=generated_id)
+        log_embed.add_field(name="Moderator", value=client.get_user(int(moderator_id)).mention)
+        log_embed.add_field(name="User", value=user.mention)
         log_embed.add_field(name="Type", value=infraction_type)
         log_embed.add_field(name="Reason", value=infraction_reason)
 
+        log_embed.set_footer(text=f"uid: {user.id}")
+
         asyncio.create_task(log_channel.send(embed=log_embed))
+
+    if not to_dm:
+        return generated_id, None
 
     dm_embed = discord.Embed(title="Sonnet", description=f"You received an infraction in {message.guild.name}:", color=0x758cff)
     dm_embed.set_thumbnail(url=user.avatar_url)
