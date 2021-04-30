@@ -186,6 +186,13 @@ def _parse_role_perms(message, permrole):
 # Parse user permissions to run a command
 async def parse_permissions(message, mconf, perms, verbose=True):
 
+    if not message.author.guild:
+        if verbose:
+            await message.channel.send(
+                "CAUGHT ERROR: Attempted permission check on a non member object\n(This can happen if a member that is using a command leaves the server before the permission check is completed)"
+                )
+        return False
+
     you_shall_pass = False
     if perms == "everyone":
         you_shall_pass = True
