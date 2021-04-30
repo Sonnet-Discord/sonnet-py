@@ -70,7 +70,7 @@ class gdpr_functions:
             os.remove(i)
 
         await message.channel.send(
-            f"Deleted database for guild {message.guild.id}\nPlease note that when the bot recieves a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"
+            f"Deleted database for guild {message.guild.id}\nPlease note that when the bot receives a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"
             )
 
     async def download(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
@@ -118,11 +118,11 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
         if confirmation and confirmation == str(message.guild.id):
             await gdprfunctions.commands[command](message, message.guild.id, ramfs, kwargs["kernel_ramfs"])
         else:
-            await message.channel.send(f"Please provide the guildid to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
+            await message.channel.send(f"Please provide the guild id to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
         message_embed = discord.Embed(title="GDPR COMMANDS", color=0xADD8E6)
-        message_embed.add_field(name=f"{PREFIX}gdpr download <guildid>", value="Download the databases of this guild", inline=False)
-        message_embed.add_field(name=f"{PREFIX}gdpr delete <guildid>", value="Delete the databases of this guild and clear cache", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr download <guildId>", value="Download the databases of this guild", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr delete <guildId>", value="Delete the databases of this guild and clear cache", inline=False)
         await message.channel.send(embed=message_embed)
 
 

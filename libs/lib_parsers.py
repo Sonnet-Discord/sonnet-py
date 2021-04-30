@@ -72,7 +72,7 @@ def parse_blacklist(indata: List[Any]) -> Tuple[bool, bool, List[str]]:
 
     text_to_blacklist = unicodeFilter.sub('', message.content.lower().replace(":", " ").replace("\n", " "))
 
-    # Check message agaist word blacklist
+    # Check message against word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
         for i in text_to_blacklist.split(" "):
@@ -80,7 +80,7 @@ def parse_blacklist(indata: List[Any]) -> Tuple[bool, bool, List[str]]:
                 broke_blacklist = True
                 infraction_type.append(f"Word({i})")
 
-    # Check message agaist word in word blacklist
+    # Check message against word in word blacklist
     word_blacklist = blacklist["word-in-word-blacklist"]
     if word_blacklist:
         for i in word_blacklist:

@@ -1,6 +1,6 @@
 # Scripting engine to use sonnet commands
 # Inspired by MantaroBots unix like commands
-# And alot of boredom :]
+# And a lot of boredom :]
 # Ultrabear 2021
 
 import importlib
@@ -83,7 +83,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
                 # Stop processing if error
                 if suc != 0:
-                    await message.channel.send(f"ERROR: {self_name}: command `{command}` exited with non sucess status")
+                    await message.channel.send(f"ERROR: {self_name}: command `{command}` exited with non success status")
                     message.content = keepref
                     return 1
 
@@ -166,7 +166,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
             ) or 0
 
         if suc != 0:
-            await message.channel.send(f"ERROR: command `{command}` exited with non sucess status")
+            await message.channel.send(f"ERROR: command `{command}` exited with non success status")
             message.content = keepref
             return 1
 

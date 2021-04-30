@@ -63,7 +63,7 @@ class db_handler:
         # Add parsed inputs to inputStr
         db_inputStr += ", ".join(inlist) + ")"
 
-        # Exectute table generation
+        # Execute table generation
         self.cur.execute(db_inputStr)
 
     def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
@@ -84,31 +84,31 @@ class db_handler:
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table: str, collumn_search: List[Any]) -> Tuple[Any, ...]:
+    def fetch_rows_from_table(self, table: str, column_search: List[Any]) -> Tuple[Any, ...]:
 
         # Test for attack
         if table.count("\\") or table.count("'"):
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add SELECT data
-        db_inputStr = f"SELECT * FROM '{table}' WHERE {collumn_search[0]} = ?"
-        db_inputList = [collumn_search[1]]
+        db_inputStr = f"SELECT * FROM '{table}' WHERE {column_search[0]} = ?"
+        db_inputList = [column_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
         return tuple(self.cur.fetchall())
 
-    # deletes rows from table where collumn i[0] has value i[1]
-    def delete_rows_from_table(self, table: str, collumn_search: List[Any]) -> None:
+    # deletes rows from table where column i[0] has value i[1]
+    def delete_rows_from_table(self, table: str, column_search: List[Any]) -> None:
 
         # Test for attack
         if table.count("\\") or table.count("'"):
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Do deletion setup
-        db_inputStr = f"DELETE FROM '{table}' WHERE {collumn_search[0]}=?"
-        db_inputList = [collumn_search[1]]
+        db_inputStr = f"DELETE FROM '{table}' WHERE {column_search[0]}=?"
+        db_inputList = [column_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))

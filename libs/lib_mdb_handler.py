@@ -66,7 +66,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Add parsed inputs to inputStr
         db_inputStr += ", ".join(inlist) + ")"
 
-        # Exectute table generation
+        # Execute table generation
         self.cur.execute(db_inputStr)
 
     def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
@@ -83,11 +83,11 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table: str, collumn_search: List[Any]) -> Tuple[Any, ...]:
+    def fetch_rows_from_table(self, table: str, column_search: List[Any]) -> Tuple[Any, ...]:
 
         # Add SELECT data
-        db_inputStr = f"SELECT * FROM {table} WHERE {collumn_search[0]}=?"
-        db_inputList = [collumn_search[1]]
+        db_inputStr = f"SELECT * FROM {table} WHERE {column_search[0]}=?"
+        db_inputList = [column_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
@@ -96,11 +96,11 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
-    def delete_rows_from_table(self, table: str, collumn_search: List[Any]) -> None:
+    def delete_rows_from_table(self, table: str, column_search: List[Any]) -> None:
 
         # Do deletion setup
-        db_inputStr = f"DELETE FROM {table} WHERE {collumn_search[0]}=?"
-        db_inputList = [collumn_search[1]]
+        db_inputStr = f"DELETE FROM {table} WHERE {column_search[0]}=?"
+        db_inputList = [column_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))

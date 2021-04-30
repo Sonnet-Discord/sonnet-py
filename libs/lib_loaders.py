@@ -84,7 +84,7 @@ def write_vnum(fileobj, number: int):
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
 
 
-# Load config from cache, or load from db if cache isint existant
+# Load config from cache, or load from db if cache isn't existant
 def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], Any] = defaultcache) -> Dict[str, Any]:
     try:
 
@@ -158,7 +158,7 @@ def generate_infractionid() -> str:
             if safe == 0:
                 return buf.rstrip(b"\x00").decode("utf8")
             else:
-                raise RuntimeError("Wordlist generator recieved fatal status")
+                raise RuntimeError("Wordlist generator received fatal status")
         else:
             with open("datastore/wordlist.cache.db", "rb") as words:
                 chunksize = words.read(1)[0]

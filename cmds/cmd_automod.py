@@ -36,7 +36,7 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
     with db_hlapi(message.guild.id) as db:
         db.add_config(name, args[0])
 
-    if verbose: await message.channel.send(f"Updated {name} sucessfully")
+    if verbose: await message.channel.send(f"Updated {name} successfully")
 
 
 async def wb_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -94,7 +94,7 @@ async def add_regex_type(message: discord.Message, args: List[str], db_entry: st
 
         database.add_config(db_entry, json.dumps(curlist))
 
-    if verbose: await message.channel.send("Sucessfully Updated RegEx")
+    if verbose: await message.channel.send("Successfully Updated RegEx")
 
 
 async def remove_regex_type(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> None:
@@ -125,7 +125,7 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
         # Update DB
         database.add_config(db_entry, json.dumps(curlist))
 
-    if verbose: await message.channel.send("Sucessfully Updated RegEx")
+    if verbose: await message.channel.send("Successfully Updated RegEx")
 
 
 async def regexblacklist_add(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
