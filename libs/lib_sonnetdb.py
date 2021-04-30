@@ -50,7 +50,7 @@ def db_grab_connection() -> db_handler:
 
 # Because being lazy writes good code
 class db_hlapi:
-    def __init__(self, guild_id: int) -> None:
+    def __init__(self, guild_id: Optional[int]) -> None:
         self.database = db_grab_connection()
         self.guild = guild_id
 
