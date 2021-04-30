@@ -6,8 +6,7 @@ name: Dev branch
 on:
   push:
     branches: [ dev-unstable ]
-  pull_request:
-    branches: [ dev-unstable ]
+
 
 
 jobs:
