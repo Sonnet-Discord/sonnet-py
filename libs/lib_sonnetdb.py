@@ -304,13 +304,13 @@ class db_hlapi:
 
         return mutetable
 
-    def is_muted(self, **kargs):
+    def is_muted(self, userid: int = None, infractionid: str = None):
 
         try:
-            if "userid" in kargs.keys():
-                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", kargs["userid"]]))
-            elif "infractionid" in kargs.keys():
-                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", kargs["infractionid"]]))
+            if userid:
+                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", userid]))
+            elif infractionid:
+                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid]))
         except db_error.OperationalError:
             muted = False
 
