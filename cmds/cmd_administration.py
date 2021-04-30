@@ -121,8 +121,8 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
             await message.channel.send(f"Please provide the guild id to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
         message_embed = discord.Embed(title="GDPR COMMANDS", color=0xADD8E6)
-        message_embed.add_field(name=f"{PREFIX}gdpr download <guildId>", value="Download the databases of this guild", inline=False)
-        message_embed.add_field(name=f"{PREFIX}gdpr delete <guildId>", value="Delete the databases of this guild and clear cache", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr download <guild id>", value="Download the databases of this guild", inline=False)
+        message_embed.add_field(name=f"{PREFIX}gdpr delete <guild id>", value="Delete the databases of this guild and clear cache", inline=False)
         await message.channel.send(embed=message_embed)
 
 
