@@ -39,9 +39,11 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 
         message_embed = discord.Embed(title="Nickname updated", color=0x008744)
         message_embed.set_author(name=f"{before} ({before.id})", icon_url=before.avatar_url)
-        message_embed.add_field(name="Before", value=before.nick)
-        message_embed.add_field(name="After", value=after.nick)
+        message_embed.add_field(name=f"Before | {bool(before.nick)}", value=before.nick)
+        message_embed.add_field(name=f"After | {bool(after.nick)}", value=after.nick)
+
         message_embed.timestamp = datetime.utcnow()
+        message_embed.set_footer(text=f"unix: {int(time.time())}")
 
         await catch_logging_error(channel, message_embed)
 
@@ -60,7 +62,9 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
                 embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=0x758cff)
                 embed.set_thumbnail(url=member.avatar_url)
-                embed.set_footer(text=f"id: {member.id}")
+
+                embed.timestamp = datetime.utcnow()
+                embed.set_footer(text=f"uid: {member.id}, unix: {int(time.time())}")
 
                 embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
 
@@ -77,7 +81,9 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
 
                 embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=0xffe875)
                 embed.set_thumbnail(url=member.avatar_url)
-                embed.set_footer(text=f"id: {member.id}")
+
+                embed.timestamp = datetime.utcnow()
+                embed.set_footer(text=f"uid: {member.id}, unix: {int(time.time())}")
 
                 embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
                 embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)

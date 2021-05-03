@@ -66,12 +66,6 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
             await catch_logging_error(message_log, message_embed, files)
 
-            # Cleanup files
-            if files:
-                for i in files:
-                    i.fp._fp.close()
-                    i.fp.close()
-
 
 async def attempt_message_delete(message: discord.Message) -> None:
     try:

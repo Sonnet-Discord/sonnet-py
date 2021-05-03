@@ -57,7 +57,7 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
         log_embed.add_field(name="Type", value=infraction_type)
         log_embed.add_field(name="Reason", value=infraction_reason)
 
-        log_embed.set_footer(text=f"uid: {user.id}")
+        log_embed.set_footer(text=f"uid: {user.id}, unix: {int(time.time())}")
 
         asyncio.create_task(log_channel.send(embed=log_embed))
 
@@ -69,6 +69,8 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
+
+    dm_embed.timestamp = datetime.datetime.utcnow()
 
     dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed, log_channel))
 
