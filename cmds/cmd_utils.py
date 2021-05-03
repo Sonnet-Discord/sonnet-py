@@ -58,7 +58,7 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
 
     stats = kwargs["stats"]
 
-    ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
+    ping_embed = discord.Embed(title="Pong!", color=0x00ff6e)
 
     add_timestamp(ping_embed, "Total Process Time", stats["start"], stats["end"])
     add_timestamp(ping_embed, "Config Load Time", stats["start-load-blacklist"], stats["end-load-blacklist"])
