@@ -39,8 +39,8 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 
         message_embed = discord.Embed(title="Nickname updated", color=0x008744)
         message_embed.set_author(name=f"{before} ({before.id})", icon_url=before.avatar_url)
-        message_embed.add_field(name=f"Before" + " | False" * (not bool(before.nick)), value=before.nick)
-        message_embed.add_field(name=f"After" + " | False" * (not bool(after.nick)), value=after.nick)
+        message_embed.add_field(name="Before" + " | False" * (not bool(before.nick)), value=before.nick)
+        message_embed.add_field(name="After" + " | False" * (not bool(after.nick)), value=after.nick)
 
         message_embed.timestamp = datetime.utcnow()
         message_embed.set_footer(text=f"unix: {int(time.time())}")
