@@ -4,7 +4,6 @@
 import importlib
 
 import discord
-import json
 
 import lib_loaders
 
@@ -14,7 +13,7 @@ from lib_loaders import load_message_config, inc_statistics
 
 from typing import Dict, Any, Union
 
-reactionrole_types: Dict[Union[int, str], Any] = {0: "sonnet_reactionroles", "csv": [], "text": [["reaction-role-data", ""], ]}
+reactionrole_types: Dict[Union[int, str], Any] = {0: "sonnet_reactionroles", "json": [["reaction-role-data", {}], ]}
 
 
 def emojifrompayload(payload: discord.RawReactionActionEvent) -> str:
@@ -34,10 +33,9 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent, **kargs: 
     inc_statistics([payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"]])
 
     client = kargs["client"]
-    rrconf: Any = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
+    rrconf: Dict = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
 
     if rrconf:
-        rrconf = json.loads(rrconf)
         emojiname = emojifrompayload(payload)
         if str(payload.message_id) in rrconf and emojiname in rrconf[str(payload.message_id)]:
             role_id = rrconf[str(payload.message_id)][emojiname]
@@ -58,7 +56,6 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent, **karg
     rrconf: Any = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
 
     if rrconf:
-        rrconf = json.loads(rrconf)
         emojiname = emojifrompayload(payload)
         if str(payload.message_id) in rrconf and emojiname in rrconf[str(payload.message_id)]:
             role_id = rrconf[str(payload.message_id)][emojiname]

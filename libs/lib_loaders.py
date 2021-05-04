@@ -3,7 +3,7 @@
 
 import importlib
 
-import random, os, math, ctypes, time, io
+import random, os, math, ctypes, time, io, json, pickle
 from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 
 import lib_db_obfuscator
@@ -85,7 +85,14 @@ def write_vnum(fileobj, number: int):
 
 
 # Load config from cache, or load from db if cache isn't existant
-def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], Any] = defaultcache) -> Dict[str, Any]:
+def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], Any] = None) -> Dict[str, Any]:
+
+    datatypes = defaultcache if datatypes is None else datatypes
+
+    for i in ["csv", "text", "json"]:
+        if i not in datatypes:
+            datatypes[i] = []
+
     try:
 
         # Loads fileio object
@@ -95,17 +102,25 @@ def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], A
 
         # Imports csv style data
         for i in datatypes["csv"]:
-            message_config[i[0]] = blacklist_cache.read(read_vnum(blacklist_cache)).decode("utf8")
-            if message_config[i[0]]:
-                message_config[i[0]] = message_config[i[0]].split(",")
+            csvpre = blacklist_cache.read(read_vnum(blacklist_cache))
+            if csvpre:
+                message_config[i[0]] = csvpre.decode("utf8").split(",")
             else:
-                message_config[i[0]] = i[1]
+                message_config[i[0]] = i[1].split(",")
 
         # Imports text style data
         for i in datatypes["text"]:
-            preout = blacklist_cache.read(read_vnum(blacklist_cache))
-            if preout:
-                message_config[i[0]] = preout.decode("utf8")
+            textpre = blacklist_cache.read(read_vnum(blacklist_cache))
+            if textpre:
+                message_config[i[0]] = textpre.decode("utf8")
+            else:
+                message_config[i[0]] = i[1]
+
+        # Imports JSON type data
+        for i in datatypes["json"]:
+            jsonpre = blacklist_cache.read(read_vnum(blacklist_cache))
+            if jsonpre:
+                message_config[i[0]] = pickle.loads(jsonpre)
             else:
                 message_config[i[0]] = i[1]
 
@@ -116,10 +131,15 @@ def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], A
 
         # Loads base db
         with db_hlapi(guild_id) as db:
-            for i in datatypes["csv"] + datatypes["text"]:
+            for i in datatypes["csv"] + datatypes["text"] + datatypes["json"]:
                 message_config[i[0]] = db.grab_config(i[0])
                 if not message_config[i[0]]:
-                    message_config[i[0]] = i[1]
+                    message_config[i[0]] = None
+
+        # Load json datatype
+        for i in datatypes["json"]:
+            if message_config[i[0]]:
+                message_config[i[0]] = json.loads(message_config[i[0]])
 
         # Load CSV datatype
         for i in datatypes["csv"]:
@@ -141,6 +161,15 @@ def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], A
         for i in datatypes["text"]:
             if message_config[i[0]]:
                 outdat = message_config[i[0]].encode("utf8")
+                write_vnum(blacklist_cache, len(outdat))
+                blacklist_cache.write(outdat)
+            else:
+                write_vnum(blacklist_cache, 0)
+
+        # Add json configs
+        for i in datatypes["json"]:
+            if message_config[i[0]]:
+                outdat = pickle.dumps(message_config[i[0]])
                 write_vnum(blacklist_cache, len(outdat))
                 blacklist_cache.write(outdat)
             else:
