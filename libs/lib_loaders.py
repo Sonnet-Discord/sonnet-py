@@ -106,7 +106,7 @@ def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], A
             if csvpre:
                 message_config[i[0]] = csvpre.decode("utf8").split(",")
             else:
-                message_config[i[0]] = i[1].split(",")
+                message_config[i[0]] = i[1].split(",") if i[1] else []
 
         # Imports text style data
         for i in datatypes["text"]:
@@ -175,7 +175,7 @@ def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], A
             else:
                 write_vnum(blacklist_cache, 0)
 
-        return message_config
+        return load_message_config(guild_id, ramfs, datatypes=datatypes)
 
 
 # Generate an infraction id from the wordlist cache format
