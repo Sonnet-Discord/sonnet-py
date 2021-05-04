@@ -25,7 +25,7 @@ class InvalidEmoji(Exception):
 
 async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Client) -> str:
 
-    if len(pEmoji) == 1:
+    if len(pEmoji) <= 2:
         return pEmoji
     else:
 
