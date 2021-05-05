@@ -22,7 +22,7 @@ from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
 from typing import Dict, Any, Union
 
-starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
+starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
 
 
 async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **kargs: Any) -> None:
