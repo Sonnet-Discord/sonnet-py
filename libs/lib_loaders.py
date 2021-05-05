@@ -3,7 +3,7 @@
 
 import importlib
 
-import random, os, math, ctypes, time, io, json, pickle
+import random, os, ctypes, time, io, json, pickle
 from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 
 import lib_db_obfuscator
@@ -58,7 +58,7 @@ else:
 
 # LCIF system ported for blacklist loader, converted to little endian
 def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
-    return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
+    return tuple(inData.to_bytes(length, byteorder="little"))
 
 
 defaultcache: Dict[Union[str, int], Any] = {
@@ -79,7 +79,7 @@ def read_vnum(fileobj) -> int:
 
 # Write a vnum to a file stream
 def write_vnum(fileobj, number: int):
-    vnum_count = math.ceil((len(bin(number)) - 2) / 8)
+    vnum_count = (number.bit_length() + 7) // 8
     fileobj.write(bytes([vnum_count]))
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
 
