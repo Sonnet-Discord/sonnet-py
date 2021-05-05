@@ -282,7 +282,10 @@ async def on_message(message: discord.Message, **kargs) -> None:
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
         if client.user.mentioned_in(message) and str(client.user.id) in message.content:
-            await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
+            try:
+                await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
+            except discord.errors.Forbidden:
+                pass  # Nothing we can do if we lack perms to speak
         return
 
     # Split into cmds and arguments.
@@ -324,8 +327,23 @@ async def on_message(message: discord.Message, **kargs) -> None:
                             ramfs.rmdir(f"{message.guild.id}/{i}")
                         except FileNotFoundError:
                             pass
-        except discord.errors.Forbidden:
-            pass  # Nothing we can do if we lack perms to speak
+        except discord.errors.Forbidden as e:
+
+            try:
+                await message.channel.send(f"ERROR: Encountered a uncaught permission error while processing {command}")
+                terr = True
+            except discord.errors.Forbidden:
+                terr = False  # Nothing we can do if we lack perms to speak
+
+            if terr:  # If the error was not caused by message send perms then raise
+                raise e
+
+        except Exception as e:
+            try:
+                await message.channel.send(f"FATAL ERROR: uncaught exception while processing {command}")
+            except discord.errors.Forbidden:
+                pass
+            raise e
 
 
 category_info = {'name': 'Messages'}
