@@ -22,7 +22,7 @@ import lib_encryption_wrapper
 importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, directBinNumber, inc_statistics
+from lib_loaders import load_message_config, inc_statistics, read_vnum, write_vnum
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
@@ -141,37 +141,36 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
         asyncio.create_task(grab_an_adult(message, client, mconf))
 
 
-def antispam_check(indata: List) -> bool:
+def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ramfs, messagecount: int, timecount: float) -> bool:
 
-    guildid, userid, msend, ramfs, messagecount, timecount = indata
-
-    messagecount = int(float(messagecount))
-    timecount = int(float(timecount) * 1000)
+    timecount = int(timecount * 1000)
 
     try:
         messages = ramfs.read_f(f"{guildid}/asam")
+        messages.seek(0, 2)
+        EOF = messages.tell()
         messages.seek(0)
         droptime = round(time.time() * 1000) - timecount
         userlist = []
         ismute = 1
 
         # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
-        while a := messages.read(16):
-            uid = int.from_bytes(a[:8], "little")
-            mtime = int.from_bytes(a[8:], "little")
+        while EOF > messages.tell():
+            uid, mtime, clen = [read_vnum(messages) for i in range(3)] 
             if mtime > droptime:
-                userlist.append([uid, mtime])
+                userlist.append([uid, mtime, clen])
                 if uid == userid:
                     ismute += 1
 
         # I barely write code comments but this unholy sin converts a datetime object to normal UTC
-        sent_at: int = (msend - datetime(1970, 1, 1)).total_seconds()
+        sent_at: float = (msend - datetime(1970, 1, 1)).total_seconds()
 
-        userlist.append([userid, round(sent_at * 1000)])
+        userlist.append([userid, round(sent_at * 1000), contlen])
         messages.seek(0)
         for i in userlist:
-            messages.write(bytes(directBinNumber(i[0], 8) + directBinNumber(i[1], 8)))
+            [write_vnum(messages, v) for v in i]
         messages.truncate()
+
         if ismute >= messagecount:
             return True
         else:
@@ -179,7 +178,9 @@ def antispam_check(indata: List) -> bool:
 
     except FileNotFoundError:
         messages = ramfs.create_f(f"{guildid}/asam")
-        messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time() * 1000), 8)))
+        write_vnum(messages, userid)
+        write_vnum(messages, round(time.time() * 1000))
+        write_vnum(messages, contlen)
         return False
 
 
@@ -252,7 +253,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
     # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
 
-    spammer = antispam_check([message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]])
+    spammer = antispam_check(message.channel.guild.id, message.author.id, message.created_at, len(message.content), ramfs, int(float(mconf["antispam"][0])), float(mconf["antispam"][1]))
 
     message_deleted: bool = False
 

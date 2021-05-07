@@ -92,7 +92,7 @@ class gdpr_functions:
 
         # Finalize discord file objs
         fileobj_db = discord.File(db, filename="database.gz")
-        fileobj_antispam = discord.File(antispam, filename="antispam.u8_u8.bin")
+        fileobj_antispam = discord.File(antispam, filename="antispam.vnum_x3.bin")
 
         # Send data
         await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam])
