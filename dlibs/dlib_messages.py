@@ -44,27 +44,28 @@ async def catch_logging_error(channel: discord.TextChannel, contents: str, files
 
 async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
-    files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
     client = kargs["client"]
     # Ignore bots
     if parse_skip_message(client, message):
         return
 
+    files: List[discord.File] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
+
     inc_statistics([message.guild.id, "on-message-delete", kargs["kernel_ramfs"]])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
         message_log = db.grab_config("message-log")
-    if message_log:
-        message_log = client.get_channel(int(message_log))
-        if message_log:
-            message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
-            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
-            message_embed.set_footer(text=f"Message ID: {message.id}")
-            message_embed.timestamp = datetime.utcnow()
 
-            await catch_logging_error(message_log, message_embed, files)
+    if message_log and (log_channel := client.get_channel(int(message_log))):
+
+        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
+        message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
+        message_embed.set_footer(text=f"Message ID: {message.id}")
+        message_embed.timestamp = datetime.utcnow()
+
+        await catch_logging_error(log_channel, message_embed, files)
 
 
 async def attempt_message_delete(message: discord.Message) -> None:
