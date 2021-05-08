@@ -4,7 +4,7 @@
 import importlib
 import os
 import sys
-from typing import Dict
+from typing import Dict, List
 
 sys.path.insert(1, os.getcwd() + '/cmds')
 sys.path.insert(1, os.getcwd() + '/common')
@@ -20,14 +20,14 @@ for f in os.listdir('./cmds'):
     for module in command_modules:
         command_modules_dict.update(module.commands)  # type: ignore
 
-outlist = []
-starter_padding = 3
+outlist: List[str] = []
+starter_padding: int = 0
 outlist.append("")
 
 # Make alias mappings
 aliashmap = {}
 [aliashmap.update(module.commands) for module in command_modules]  # type: ignore
-aliasmap: Dict[str, list] = {}
+aliasmap: Dict[str, List] = {}
 for i in aliashmap.keys():
     if 'alias' in aliashmap[i].keys():
         if aliashmap[i]['alias'] in aliasmap.keys():
