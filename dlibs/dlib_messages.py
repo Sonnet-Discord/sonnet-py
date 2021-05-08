@@ -356,4 +356,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.2.3-DEV"
+version_info = "1.2.3"

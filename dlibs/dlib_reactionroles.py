@@ -73,4 +73,4 @@ commands = {
     "on-raw-reaction-remove": on_raw_reaction_remove,
     }
 
-version_info = "1.2.3-DEV"
+version_info = "1.2.3"
