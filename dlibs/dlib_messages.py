@@ -50,7 +50,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     if parse_skip_message(client, message):
         return
 
-    files: List[discord.File] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
+    files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
     inc_statistics([message.guild.id, "on-message-delete", kargs["kernel_ramfs"]])
 
