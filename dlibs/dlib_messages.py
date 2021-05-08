@@ -44,7 +44,6 @@ async def catch_logging_error(channel: discord.TextChannel, contents: str, files
 
 async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
-
     client = kargs["client"]
     # Ignore bots
     if parse_skip_message(client, message):
@@ -157,7 +156,7 @@ def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ram
 
         # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
         while EOF > messages.tell():
-            uid, mtime, clen = [read_vnum(messages) for i in range(3)] 
+            uid, mtime, clen = [read_vnum(messages) for i in range(3)]
             if mtime > droptime:
                 userlist.append([uid, mtime, clen])
                 if uid == userid:
