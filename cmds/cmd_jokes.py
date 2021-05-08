@@ -1,13 +1,14 @@
 # Joke commands idk mck wanted this
 # Ultrabear 2020
 
+import discord
 
-async def joke_ban_user(message, args, client, **kwargs):
+from typing import Any, List
 
-    if len(args) > 1:
-        reason = " ".join(args[1:])
-    else:
-        reason = "No Reason Specified"
+
+async def joke_ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
     try:
         user = client.get_user(int(args[0].strip("<@!>")))
@@ -18,9 +19,9 @@ async def joke_ban_user(message, args, client, **kwargs):
         return 1
 
     if not user:
-        await message.channel.send(f"'Banned' {args[0]} for {reason}")
+        await message.channel.send(f"'Banned' {args[0]} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     else:
-        await message.channel.send(f"'Banned' {user.mention} with ID {user.id} for {reason}")
+        await message.channel.send(f"'Banned' {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 category_info = {'name': 'jokes', 'pretty_name': 'Jokes', 'description': 'Joke commands, because because'}
@@ -35,4 +36,4 @@ commands = {
         },
     }
 
-version_info = "1.2.2"
+version_info: str = "1.2.3"

@@ -6,13 +6,15 @@ from cryptography.hazmat.primitives import hashes, hmac
 
 import io
 
+from typing import Generator, Tuple, Any
 
-def directBinNumber(inData, length):
+
+def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 
 
 class encrypted_writer:
-    def __init__(self, filename, key, iv):
+    def __init__(self, filename: Any, key: bytes, iv: bytes) -> None:
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
@@ -22,17 +24,17 @@ class encrypted_writer:
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
 
         # Open rawfile and write headers
-        if isinstance(filename, io.IOBase):
+        if isinstance(filename, io.BytesIO):
             self.rawfile = filename
         else:
-            self.rawfile = open(filename, "wb+")
+            self.rawfile = open(filename, "wb+")  # type: ignore
         self.rawfile.write(b"SONNETAES\x01")
         self.rawfile.write(bytes(64))
 
         # Initialize writable buffer
         self.buf = bytes(2**16 + 256)
 
-    def _generate_chunks(self, data: bytes) -> bytes:
+    def _generate_chunks(self, data: bytes) -> Generator[bytes, None, None]:
 
         # Init mem map
         raw_data = memoryview(data)
@@ -41,7 +43,7 @@ class encrypted_writer:
         for i in range(0, len(data), ((2**16) - 1)):
             yield bytes(raw_data[i:i + ((2**16) - 1)])
 
-    def write(self, data: bytes):
+    def write(self, data: bytes) -> None:
 
         # Write a maximum of 2^16-1 blocksize
         if len(data) > ((2**16) - 1):
@@ -51,7 +53,7 @@ class encrypted_writer:
 
             self._write_data(data)
 
-    def _write_data(self, unencrypted: bytes):
+    def _write_data(self, unencrypted: bytes) -> None:
 
         # Write length of data to file
         dlen = len(unencrypted)
@@ -65,7 +67,7 @@ class encrypted_writer:
         # Update HMAC
         self.HMACencrypt.update(memptr[:dlen])
 
-    def finalize(self):
+    def finalize(self) -> None:
 
         # Finalize HMAC
         encrypted_HMAC = self.HMACencrypt.finalize()
@@ -77,27 +79,27 @@ class encrypted_writer:
         self.rawfile.close()
         self.encryptor_module.finalize()
 
-    def close(self):
+    def close(self) -> None:
 
         self.finalize()
 
-    def seekable(self):
+    def seekable(self) -> bool:
 
         return False
 
-    def read(self, *args):
+    def read(self, size: int = -1) -> None:
 
         raise TypeError(f"{self} object does not allow reading")
 
 
 class encrypted_reader:
-    def __init__(self, filename, key, iv):
+    def __init__(self, filename: Any, key: bytes, iv: bytes) -> None:
 
         # Open rawfile
-        if isinstance(filename, io.IOBase):
+        if isinstance(filename, io.BytesIO):
             self.rawfile = filename
         else:
-            self.rawfile = open(filename, "rb+")
+            self.rawfile = open(filename, "rb+")  # type: ignore
 
         # Make decryptor instance
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
@@ -145,7 +147,7 @@ class encrypted_reader:
 
         return bytes(memoryview(self.cache)[self.pointer:amount_wanted + self.pointer])
 
-    def read(self, size=-1) -> bytes:
+    def read(self, size: int = -1) -> bytes:
 
         if size == -1:
             if self.pointer == 0:
@@ -180,10 +182,10 @@ class encrypted_reader:
 
         return True
 
-    def close(self):
+    def close(self) -> None:
 
         self.rawfile.close()
         del self.cache
 
-    def write(self, data):
+    def write(self, data: bytes) -> None:
         raise TypeError(f"{self} object does not allow writing")

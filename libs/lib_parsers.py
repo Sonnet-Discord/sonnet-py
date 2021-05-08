@@ -19,7 +19,9 @@ from sonnet_cfg import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
-re = importlib.import_module(REGEX_VERSION)
+from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional, Any
+
+re: Any = importlib.import_module(REGEX_VERSION)
 
 
 class errors:
@@ -30,11 +32,11 @@ class errors:
         pass
 
 
-unicodeFilter = re.compile(r'[^a-z0-9 ]+')
+unicodeFilter = re.compile(r'[^a-z0-9 ]+')  # type: ignore
 
 
 # Run a blacklist pass over a messages content and files
-def parse_blacklist(indata):
+def parse_blacklist(indata: List[Any]) -> Tuple[bool, bool, List[str]]:
     message, blacklist, ramfs = indata
 
     # Preset values
@@ -66,11 +68,11 @@ def parse_blacklist(indata):
 
     # If in whitelist, skip parse to save resources
     if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
-        return [False, False, []]
+        return (False, False, [])
 
     text_to_blacklist = unicodeFilter.sub('', message.content.lower().replace(":", " ").replace("\n", " "))
 
-    # Check message agaist word blacklist
+    # Check message against word blacklist
     word_blacklist = blacklist["word-blacklist"]
     if word_blacklist:
         for i in text_to_blacklist.split(" "):
@@ -78,7 +80,7 @@ def parse_blacklist(indata):
                 broke_blacklist = True
                 infraction_type.append(f"Word({i})")
 
-    # Check message agaist word in word blacklist
+    # Check message against word in word blacklist
     word_blacklist = blacklist["word-in-word-blacklist"]
     if word_blacklist:
         for i in word_blacklist:
@@ -90,7 +92,7 @@ def parse_blacklist(indata):
     regex_blacklist = blacklist["regex-blacklist"]
     for i in regex_blacklist:
         try:
-            if (broke := i.findall(message.content.lower())):
+            if (broke := i.findall(message.content.lower())):  # type: ignore
                 broke_blacklist = True
                 infraction_type.append(f"RegEx({', '.join(broke)})")
         except re.error:
@@ -99,7 +101,7 @@ def parse_blacklist(indata):
     # Check message against REGEXP notifier list
     regex_blacklist = blacklist["regex-notifier"]
     for i in regex_blacklist:
-        if i.findall(message.content.lower()):
+        if i.findall(message.content.lower()):  # type: ignore
             notifier = True
 
     # Check against filetype blacklist
@@ -107,7 +109,7 @@ def parse_blacklist(indata):
     if filetype_blacklist and message.attachments:
         for i in message.attachments:
             for a in filetype_blacklist:
-                if i.filename.lower().endswith(a):
+                if i.filename.lower().endswith(a):  # type: ignore
                     broke_blacklist = True
                     infraction_type.append(f"FileType({a})")
 
@@ -115,7 +117,7 @@ def parse_blacklist(indata):
 
 
 # Parse if we skip a message due to X reasons
-def parse_skip_message(Client, message):
+def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool:
 
     # Make sure we don't start a feedback loop.
     if message.author == Client.user:
@@ -133,10 +135,10 @@ def parse_skip_message(Client, message):
 
 
 # Parse a boolean datatype from a string
-def parse_boolean(instr):
+def parse_boolean(instr: str) -> Union[bool, int]:
 
-    yeslist = ["yes", "true", "y", "t", "1"]
-    nolist = ["no", "false", "n", "f", "0"]
+    yeslist: List[str] = ["yes", "true", "y", "t", "1"]
+    nolist: List[str] = ["no", "false", "n", "f", "0"]
 
     if instr.lower() in yeslist:
         return True
@@ -147,7 +149,7 @@ def parse_boolean(instr):
 
 
 # Parse channel from message and put it into specified config
-async def update_log_channel(message, args, client, log_name, verbose=True):
+async def update_log_channel(message, args, client, log_name: str, verbose: bool = True):
 
     if args:
         log_channel = args[0].strip("<#!>")
@@ -179,12 +181,15 @@ async def update_log_channel(message, args, client, log_name, verbose=True):
     if verbose: await message.channel.send(f"Successfully updated {log_name}")
 
 
-def _parse_role_perms(message, permrole):
+def _parse_role_perms(message: discord.Message, permrole: discord.Role) -> bool:
     return permrole and bool([i.id for i in message.author.roles if int(permrole) == i.id])
 
 
+Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
+
+
 # Parse user permissions to run a command
-async def parse_permissions(message, mconf, perms, verbose=True):
+async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
 
     if not message.author.guild:
         if verbose:
@@ -208,7 +213,7 @@ async def parse_permissions(message, mconf, perms, verbose=True):
     elif perms == "owner":
         you_shall_pass = message.author.id == message.channel.guild.owner.id
     elif (t := type(perms)) != str and (t == tuple or t == list):
-        you_shall_pass = perms[1](message)
+        you_shall_pass = perms[1](message)  # type: ignore
         perms = perms[0]
 
     if you_shall_pass:
@@ -220,15 +225,12 @@ async def parse_permissions(message, mconf, perms, verbose=True):
 
 
 # Returns true if any of the items in the list return true, more of an orgate
-def ifgate(inlist):
-    for i in inlist:
-        if i:
-            return True
-    return False
+def ifgate(inlist: Iterable) -> bool:
+    return any(inlist)
 
 
 # Grab files of a message from the internal cache or using webrequests
-def grab_files(guild_id, message_id, ramfs, delete=False):
+def grab_files(guild_id: int, message_id: int, ramfs, delete: bool = False) -> Optional[List[discord.File]]:
 
     try:
 
@@ -269,7 +271,7 @@ def grab_files(guild_id, message_id, ramfs, delete=False):
 
 
 # Generate a prettified reply field from a message for displaying in embeds
-def generate_reply_field(message):
+def generate_reply_field(message: discord.Message) -> str:
 
     # Generate replies
     jump = f"\n\n[(Link)]({message.jump_url})"
@@ -289,10 +291,10 @@ def generate_reply_field(message):
 
 
 # Parse a role name and put it into the specified db conf
-async def parse_role(message, args, db_entry, verbose=True):
+async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True):
 
     if args:
-        role = args[0].strip("<@&>")
+        role: Union[str, discord.Role] = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
             await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
@@ -315,11 +317,11 @@ async def parse_role(message, args, db_entry, verbose=True):
 
 
 # Grab a message object from a link or message mention
-async def parse_channel_message(message, args, client):
+async def parse_channel_message(message: discord.Message, args: List[str], client: discord.Client) -> Tuple[discord.Message, int]:
 
     try:
         message_link = args[0].replace("-", "/").split("/")
-        log_channel = message_link[-2]
+        log_channel: Union[str, int] = message_link[-2]
         message_id = message_link[-1]
         nargs = 1
     except IndexError:

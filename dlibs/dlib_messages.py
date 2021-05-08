@@ -22,12 +22,14 @@ import lib_encryption_wrapper
 importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, directBinNumber, inc_statistics
+from lib_loaders import load_message_config, inc_statistics, read_vnum, write_vnum
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
+from typing import List, Any, Dict, Optional
 
-async def catch_logging_error(channel, contents, files):
+
+async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
     try:
         await channel.send(embed=contents, files=files)
     except discord.errors.Forbidden:
@@ -40,45 +42,39 @@ async def catch_logging_error(channel, contents, files):
             pass
 
 
-async def on_message_delete(message, **kargs):
-
-    files = grab_files(message.channel.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
+async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     client = kargs["client"]
     # Ignore bots
     if parse_skip_message(client, message):
         return
 
+    files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
+
     inc_statistics([message.guild.id, "on-message-delete", kargs["kernel_ramfs"]])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
         message_log = db.grab_config("message-log")
-    if message_log:
-        message_log = client.get_channel(int(message_log))
-        if message_log:
-            message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
-            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
-            message_embed.set_footer(text=f"Message ID: {message.id}")
-            message_embed.timestamp = datetime.utcnow()
 
-            await catch_logging_error(message_log, message_embed, files)
+    if message_log and (log_channel := client.get_channel(int(message_log))):
 
-            # Cleanup files
-            if files:
-                for i in files:
-                    i.fp._fp.close()
-                    i.fp.close()
+        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
+        message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
+        message_embed.set_footer(text=f"Message ID: {message.id}")
+        message_embed.timestamp = datetime.utcnow()
+
+        await catch_logging_error(log_channel, message_embed, files)
 
 
-async def attempt_message_delete(message):
+async def attempt_message_delete(message: discord.Message) -> None:
     try:
         await message.delete()
     except (discord.errors.Forbidden, discord.errors.NotFound):
         pass
 
 
-async def grab_an_adult(discord_message, client, mconf):
+async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict) -> None:
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 
@@ -97,9 +93,9 @@ async def grab_an_adult(discord_message, client, mconf):
         await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
-async def on_message_edit(old_message, message, **kargs):
+async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs: Any) -> None:
 
-    client = kargs["client"]
+    client: discord.Client = kargs["client"]
     ramfs = kargs["ramfs"]
 
     # Ignore bots
@@ -145,37 +141,36 @@ async def on_message_edit(old_message, message, **kargs):
         asyncio.create_task(grab_an_adult(message, client, mconf))
 
 
-def antispam_check(indata):
+def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ramfs, messagecount: int, timecount: float) -> bool:
 
-    guildid, userid, msend, ramfs, messagecount, timecount = indata
-
-    messagecount = int(float(messagecount))
-    timecount = int(float(timecount) * 1000)
+    timecount = int(timecount * 1000)
 
     try:
         messages = ramfs.read_f(f"{guildid}/asam")
+        messages.seek(0, 2)
+        EOF = messages.tell()
         messages.seek(0)
         droptime = round(time.time() * 1000) - timecount
         userlist = []
         ismute = 1
 
         # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
-        while a := messages.read(16):
-            uid = int.from_bytes(a[:8], "little")
-            mtime = int.from_bytes(a[8:], "little")
+        while EOF > messages.tell():
+            uid, mtime, clen = [read_vnum(messages) for i in range(3)]
             if mtime > droptime:
-                userlist.append([uid, mtime])
+                userlist.append([uid, mtime, clen])
                 if uid == userid:
                     ismute += 1
 
         # I barely write code comments but this unholy sin converts a datetime object to normal UTC
-        sent_at = (msend - datetime(1970, 1, 1)).total_seconds()
+        sent_at: float = (msend - datetime(1970, 1, 1)).total_seconds()
 
-        userlist.append([userid, round(sent_at * 1000)])
+        userlist.append([userid, round(sent_at * 1000), contlen])
         messages.seek(0)
         for i in userlist:
-            messages.write(bytes(directBinNumber(i[0], 8) + directBinNumber(i[1], 8)))
+            [write_vnum(messages, v) for v in i]
         messages.truncate()
+
         if ismute >= messagecount:
             return True
         else:
@@ -183,11 +178,13 @@ def antispam_check(indata):
 
     except FileNotFoundError:
         messages = ramfs.create_f(f"{guildid}/asam")
-        messages.write(bytes(directBinNumber(userid, 8) + directBinNumber(round(time.time() * 1000), 8)))
+        write_vnum(messages, userid)
+        write_vnum(messages, round(time.time() * 1000))
+        write_vnum(messages, contlen)
         return False
 
 
-async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
+async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: Any, mgid: List[int]) -> None:
 
     await nfile.save(compression, seek_begin=False)
     compression.close()
@@ -205,7 +202,7 @@ async def download_file(nfile, compression, encryption, filename, ramfs, mgid):
         pass
 
 
-def download_single_file(discord_file, filename, key, iv, ramfs, mgid):
+def download_single_file(discord_file: discord.File, filename: str, key: bytes, iv: bytes, ramfs: Any, mgid: List[int]) -> None:
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -214,7 +211,7 @@ def download_single_file(discord_file, filename, key, iv, ramfs, mgid):
     asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
 
 
-async def log_message_files(message, kernel_ramfs):
+async def log_message_files(message: discord.Message, kernel_ramfs: Any) -> None:
 
     for i in message.attachments:
 
@@ -232,7 +229,7 @@ async def log_message_files(message, kernel_ramfs):
         download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id])
 
 
-async def on_message(message, **kargs):
+async def on_message(message: discord.Message, **kargs) -> None:
 
     client = kargs["client"]
     ramfs = kargs["ramfs"]
@@ -256,9 +253,9 @@ async def on_message(message, **kargs):
     # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
 
-    spammer = antispam_check([message.channel.guild.id, message.author.id, message.created_at, ramfs, mconf["antispam"][0], mconf["antispam"][1]])
+    spammer = antispam_check(message.channel.guild.id, message.author.id, message.created_at, len(message.content), ramfs, int(float(mconf["antispam"][0])), float(mconf["antispam"][1]))
 
-    message_deleted = False
+    message_deleted: bool = False
 
     # If blacklist broken generate infraction
     broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
@@ -286,7 +283,10 @@ async def on_message(message, **kargs):
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
         if client.user.mentioned_in(message) and str(client.user.id) in message.content:
-            await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
+            try:
+                await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
+            except discord.errors.Forbidden:
+                pass  # Nothing we can do if we lack perms to speak
         return
 
     # Split into cmds and arguments.
@@ -328,8 +328,23 @@ async def on_message(message, **kargs):
                             ramfs.rmdir(f"{message.guild.id}/{i}")
                         except FileNotFoundError:
                             pass
-        except discord.errors.Forbidden:
-            pass  # Nothing we can do if we lack perms to speak
+        except discord.errors.Forbidden as e:
+
+            try:
+                await message.channel.send(f"ERROR: Encountered a uncaught permission error while processing {command}")
+                terr = True
+            except discord.errors.Forbidden:
+                terr = False  # Nothing we can do if we lack perms to speak
+
+            if terr:  # If the error was not caused by message send perms then raise
+                raise e
+
+        except Exception as e:
+            try:
+                await message.channel.send(f"FATAL ERROR: uncaught exception while processing {command}")
+            except discord.errors.Forbidden:
+                pass
+            raise e
 
 
 category_info = {'name': 'Messages'}
@@ -340,4 +355,4 @@ commands = {
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.2.2"
+version_info = "1.2.3"

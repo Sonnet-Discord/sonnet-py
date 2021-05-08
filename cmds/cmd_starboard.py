@@ -3,6 +3,8 @@
 
 import importlib
 
+import discord
+
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
@@ -19,17 +21,19 @@ from lib_db_obfuscator import db_hlapi
 
 from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
-starboard_types = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
+from typing import List, Dict, Any, Union
+
+starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
 
 
-async def starboard_channel_change(message, args, client, **kwargs):
+async def starboard_channel_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "starboard-channel", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def set_starboard_emoji(message, args, client, **kwargs):
+async def set_starboard_emoji(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         emoji = args[0]
@@ -42,12 +46,12 @@ async def set_starboard_emoji(message, args, client, **kwargs):
         await message.channel.send(f"Starboard emoji is {emoji}")
 
 
-async def set_starboard_use(message, args, client, **kwargs):
+async def set_starboard_use(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
         gate = parse_boolean(args[0])
         with db_hlapi(message.guild.id) as database:
-            database.add_config("starboard-enabled", int(gate))
+            database.add_config("starboard-enabled", str(int(gate)))
             if kwargs["verbose"]: await message.channel.send(f"Set starboard enabled to {bool(gate)}")
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
@@ -55,7 +59,7 @@ async def set_starboard_use(message, args, client, **kwargs):
         await message.channel.send(f"Starboard enabled is {bool(gate)}")
 
 
-async def set_starboard_count(message, args, client, **kwargs):
+async def set_starboard_count(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
 
@@ -63,7 +67,7 @@ async def set_starboard_count(message, args, client, **kwargs):
             count = int(float(args[0]))
 
             with db_hlapi(message.guild.id) as database:
-                database.add_config("starboard-count", count)
+                database.add_config("starboard-count", str(count))
 
             if kwargs["verbose"]: await message.channel.send(f"Updated starboard count to {count}")
 
@@ -73,13 +77,13 @@ async def set_starboard_count(message, args, client, **kwargs):
 
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
-        count = mconf["starboard-count"]
+        count = int(mconf["starboard-count"])
         await message.channel.send(f"Starboard count is {count}")
 
 
-category_info = {'name': 'starboard', 'pretty_name': 'Starboard', 'description': 'Starboard commands.'}
+category_info: Dict[str, str] = {'name': 'starboard', 'pretty_name': 'Starboard', 'description': 'Starboard commands.'}
 
-commands = {
+commands: Dict[str, Dict] = {
     'starboard-channel': {
         'pretty_name': 'starboard-channel <channel>',
         'description': 'Change Starboard channel',
@@ -111,4 +115,4 @@ commands = {
             }
     }
 
-version_info = "1.2.2"
+version_info: str = "1.2.3"

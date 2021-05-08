@@ -11,25 +11,25 @@ importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
 
+from typing import Dict, Callable, Any, List
 
-async def attempt_unmute(Client, mute_entry):
+
+async def attempt_unmute(Client: discord.Client, mute_entry: List[Any]):
 
     with db_hlapi(mute_entry[0]) as db:
         db.unmute_user(infractionid=mute_entry[1])
-        mute_role = db.grab_config("mute-role")
-    guild = Client.get_guild(int(mute_entry[0]))
-    if guild and mute_role:
-        user = guild.get_member(int(mute_entry[2]))
-        mute_role = guild.get_role(int(mute_role))
-        if user and mute_role:
+        mute_role_id = db.grab_config("mute-role")
+
+    if (guild := Client.get_guild(int(mute_entry[0]))) and mute_role_id:
+        if (user := guild.get_member(int(mute_entry[2]))) and (mute_role := guild.get_role(int(mute_role_id))):
             try:
                 await user.remove_roles(mute_role)
             except discord.errors.Forbidden:
                 pass
 
 
-async def on_ready(**kargs):
-    Client = kargs["client"]
+async def on_ready(**kargs: Any) -> None:
+    Client: discord.Client = kargs["client"]
     print(f'{Client.user} has connected to Discord!')
 
     # Warn if user is not bot
@@ -55,7 +55,9 @@ async def on_ready(**kargs):
 
                 for i in lost_mute_timers:
                     await asyncio.sleep(i[3] - time.time())
-                    await attempt_unmute(Client, i)
+                    with db_hlapi(i[0]) as db:
+                        if db.is_muted(infractionid=i[1]):
+                            await attempt_unmute(Client, i)
 
             print("Mutes recovered")
 
@@ -65,8 +67,8 @@ async def on_guild_join(guild, **kargs):
         db.create_guild_db()
 
 
-category_info = {'name': 'Initializers'}
+category_info: Dict[str, str] = {'name': 'Initializers'}
 
-commands = {"on-ready": on_ready, "on-guild-join": on_guild_join}
+commands: Dict[str, Callable] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info = "1.1.0"
+version_info: str = "1.2.3"
