@@ -48,6 +48,7 @@ jobs:
         yapf -d -r .
     - name: Install mariadb cause pylint actually wants to kill me
       run: |
+        sudo apt update
         sudo apt install libmariadb-dev-compat
         python -m pip install mariadb
     - name: linting pass
