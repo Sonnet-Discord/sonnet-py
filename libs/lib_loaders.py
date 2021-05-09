@@ -221,9 +221,7 @@ def generate_infractionid() -> str:
         return generate_infractionid()
 
 
-def inc_statistics(indata: List):
-
-    guild, inctype, kernel_ramfs = indata
+def inc_statistics_better(guild: int, inctype: str, kernel_ramfs) -> None:
 
     try:
         statistics = kernel_ramfs.read_f(f"{guild}/stats")
@@ -244,3 +242,10 @@ def inc_statistics(indata: List):
         global_statistics[inctype] += 1
     else:
         global_statistics[inctype] = 1
+
+
+def inc_statistics(indata: List) -> None:
+
+    guild, inctype, kernel_ramfs = indata
+
+    inc_statistics_better(guild, inctype, kernel_ramfs)
