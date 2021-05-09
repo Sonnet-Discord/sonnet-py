@@ -27,7 +27,7 @@ from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, 
 from lib_encryption_wrapper import encrypted_writer
 
 from typing import List, Any, Dict, Optional, Callable
-
+import lib_lexdpyk_h as lexdpyk
 
 async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
     try:
@@ -96,7 +96,7 @@ async def grab_an_adult(discord_message: discord.Message, client: discord.Client
 async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs: Any) -> None:
 
     client: discord.Client = kargs["client"]
-    ramfs = kargs["ramfs"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
 
     # Ignore bots
     if parse_skip_message(client, message):
@@ -141,7 +141,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
         asyncio.create_task(grab_an_adult(message, client, mconf))
 
 
-def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ramfs, messagecount: int, timecount: float) -> bool:
+def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ramfs: lexdpyk.ram_filesystem, messagecount: int, timecount: float) -> bool:
 
     timecount = int(timecount * 1000)
 
@@ -185,7 +185,7 @@ def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ram
         return False
 
 
-async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: Any, mgid: List[int]) -> None:
+async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
     await nfile.save(compression, seek_begin=False)
     compression.close()
@@ -203,7 +203,7 @@ async def download_file(nfile: discord.File, compression: Any, encryption: Any, 
         pass
 
 
-def download_single_file(discord_file: discord.File, filename: str, key: bytes, iv: bytes, ramfs: Any, mgid: List[int]) -> None:
+def download_single_file(discord_file: discord.File, filename: str, key: bytes, iv: bytes, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -212,7 +212,7 @@ def download_single_file(discord_file: discord.File, filename: str, key: bytes, 
     asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
 
 
-async def log_message_files(message: discord.Message, kernel_ramfs: Any) -> None:
+async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     for i in message.attachments:
 
@@ -233,7 +233,7 @@ async def log_message_files(message: discord.Message, kernel_ramfs: Any) -> None
 async def on_message(message: discord.Message, **kargs) -> None:
 
     client = kargs["client"]
-    ramfs = kargs["ramfs"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
     main_version_info = kargs["kernel_version"]
     bot_start_time = kargs["bot_start"]
     command_modules, command_modules_dict = kargs["command_modules"]
