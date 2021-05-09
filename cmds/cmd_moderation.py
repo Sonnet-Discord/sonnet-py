@@ -536,8 +536,8 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: No limit specified")
         return 1
 
-    if limit > 100:
-        await message.channel.send("ERROR: Cannot purge more than 100 messages")
+    if limit > 100 or limit <= 0:
+        await message.channel.send("ERROR: Cannot purge more than 100 messages or less than 1 message")
         return 1
 
     try:
