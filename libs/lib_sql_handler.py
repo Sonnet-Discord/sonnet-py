@@ -2,6 +2,7 @@
 # Ultrabear 2020
 
 import sqlite3
+from typing import List, Tuple, Any, Union
 
 
 class db_error:  # DB error codes
@@ -11,15 +12,15 @@ class db_error:  # DB error codes
 
 
 class db_handler:
-    def __init__(self, db_location):
+    def __init__(self, db_location: str) -> None:
         self.con = sqlite3.connect(db_location)
         self.cur = self.con.cursor()
-        self.closed = False
+        self.closed: bool = False
 
     def __enter__(self):
         return self
 
-    def make_new_table(self, tablename, data):
+    def make_new_table(self, tablename: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
         # Load hashmap of python datatypes to SQLite3 datatypes
         datamap = {
@@ -62,10 +63,10 @@ class db_handler:
         # Add parsed inputs to inputStr
         db_inputStr += ", ".join(inlist) + ")"
 
-        # Exectute table generation
+        # Execute table generation
         self.cur.execute(db_inputStr)
 
-    def add_to_table(self, table, data):
+    def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -83,36 +84,36 @@ class db_handler:
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table, collumn_search):
+    def fetch_rows_from_table(self, table: str, column_search: List[Any]) -> Tuple[Any, ...]:
 
         # Test for attack
         if table.count("\\") or table.count("'"):
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add SELECT data
-        db_inputStr = f"SELECT * FROM '{table}' WHERE {collumn_search[0]} = ?"
-        db_inputList = [collumn_search[1]]
+        db_inputStr = f"SELECT * FROM '{table}' WHERE {column_search[0]} = ?"
+        db_inputList = [column_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
         return tuple(self.cur.fetchall())
 
-    # deletes rows from table where collumn i[0] has value i[1]
-    def delete_rows_from_table(self, table, collumn_search):
+    # deletes rows from table where column i[0] has value i[1]
+    def delete_rows_from_table(self, table: str, column_search: List[Any]) -> None:
 
         # Test for attack
         if table.count("\\") or table.count("'"):
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Do deletion setup
-        db_inputStr = f"DELETE FROM '{table}' WHERE {collumn_search[0]}=?"
-        db_inputList = [collumn_search[1]]
+        db_inputStr = f"DELETE FROM '{table}' WHERE {column_search[0]}=?"
+        db_inputList = [column_search[1]]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def delete_table(self, table):  # drops the table specified
+    def delete_table(self, table: str) -> None:  # drops the table specified
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -120,7 +121,7 @@ class db_handler:
 
         self.cur.execute(f"DROP TABLE IF EXISTS '{table}';")
 
-    def fetch_table(self, table):  # Fetches a full table
+    def fetch_table(self, table: str) -> Tuple[Any, ...]:  # Fetches a full table
 
         # Test for attack
         if table.count("\\") or table.count("'"):
@@ -131,26 +132,26 @@ class db_handler:
         # Send data
         return tuple(self.cur.fetchall())
 
-    def list_tables(self, searchterm):
+    def list_tables(self, searchterm: str) -> Tuple[str, ...]:
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm, ))
 
         # Send data
         return tuple(self.cur.fetchall())
 
-    def commit(self):  # Commits data to db
+    def commit(self) -> None:  # Commits data to db
         self.con.commit()
 
-    def close(self):
+    def close(self) -> None:
         self.con.commit()
         self.con.close()
         self.closed = True
 
-    def __del__(self):
+    def __del__(self) -> None:
         if not self.closed:
             self.close()
 
-    def __exit__(self, err_type, err_value, err_traceback):
+    def __exit__(self, err_type: Any, err_value: Any, err_traceback: Any) -> None:
         self.con.commit()
         self.con.close()
         self.closed = True

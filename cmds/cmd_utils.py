@@ -18,12 +18,14 @@ importlib.reload(lib_parsers)
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean
 
+from typing import List, Any
+
 
 class UserParseError(RuntimeError):
     pass
 
 
-async def parse_userid(message, args):
+async def parse_userid(message: discord.Message, args: List[str]) -> discord.Member:
 
     # Get user ID from the message, otherwise use the author's ID.
     try:
@@ -44,23 +46,23 @@ async def parse_userid(message, args):
     return user_object
 
 
-def add_timestamp(embed, name, start, end):
+def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
     embed.add_field(name=name, value=f"{(end - start) / 100}ms", inline=False)
 
 
-def ctime(t):
+def ctime(t: float) -> int:
     return round(t * 100000)
 
 
-async def ping_function(message, args, client, **kwargs):
+async def ping_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     stats = kwargs["stats"]
 
-    ping_embed = discord.Embed(title="Pong!", description="Connection between Sonnet and Discord is OK", color=0x00ff6e)
+    ping_embed = discord.Embed(title="Pong!", color=0x00ff6e)
 
     add_timestamp(ping_embed, "Total Process Time", stats["start"], stats["end"])
-    add_timestamp(ping_embed, "Load Configs", stats["start-load-blacklist"], stats["end-load-blacklist"])
-    add_timestamp(ping_embed, "Process Automod", stats["start-automod"], stats["end-automod"])
+    add_timestamp(ping_embed, "Config Load Time", stats["start-load-blacklist"], stats["end-load-blacklist"])
+    add_timestamp(ping_embed, "Automod Process Time", stats["start-automod"], stats["end-automod"])
     add_timestamp(ping_embed, "WS Latency", 0, ctime(client.latency))
 
     send_start = ctime(time.time())
@@ -72,11 +74,11 @@ async def ping_function(message, args, client, **kwargs):
     await sent_message.edit(embed=ping_embed)
 
 
-def parsedate(indata):
+def parsedate(indata: datetime) -> str:
     return f"{time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(datetime.timestamp(indata)))} ({(datetime.utcnow() - indata).days} days ago)"
 
 
-async def profile_function(message, args, client, **kwargs):
+async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         user_object = await parse_userid(message, args)
@@ -106,7 +108,7 @@ async def profile_function(message, args, client, **kwargs):
     await message.channel.send(embed=embed)
 
 
-async def avatar_function(message, args, client, **kwargs):
+async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         user_object = await parse_userid(message, args)
@@ -119,7 +121,9 @@ async def avatar_function(message, args, client, **kwargs):
     await message.channel.send(embed=embed)
 
 
-async def help_function(message, args, client, **kwargs):
+async def help_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    helpname: str = "Sonnet Help"
 
     if args:
 
@@ -130,8 +134,8 @@ async def help_function(message, args, client, **kwargs):
         if (a := args[0].lower()) in modules:
 
             curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
-            cmd_embed = discord.Embed(title=f'Commands in Category "{a}"', color=0x00db87)
-            cmd_embed.set_author(name="Sonent Help")
+            cmd_embed = discord.Embed(title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=0x00db87)
+            cmd_embed.set_author(name=helpname)
 
             for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
                 cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
@@ -144,7 +148,7 @@ async def help_function(message, args, client, **kwargs):
                 a = kwargs["cmds_dict"][a]["alias"]
 
             cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=0x00db87)
-            cmd_embed.set_author(name="Sonent Help")
+            cmd_embed.set_author(name=helpname)
 
             cmd_embed.add_field(name="Usage:", value=PREFIX + kwargs["cmds_dict"][a]["pretty_name"], inline=False)
 
@@ -175,15 +179,16 @@ async def help_function(message, args, client, **kwargs):
     else:
 
         cmd_embed = discord.Embed(title="Category Listing", color=0x00db87)
-        cmd_embed.set_author(name="Sonnet Help")
+        cmd_embed.set_author(name=helpname)
 
-        for modules in kwargs["cmds"]:
-            cmd_embed.add_field(name=f"{modules.category_info['pretty_name']} ({modules.category_info['name']})", value=modules.category_info['description'], inline=False)
+        for module in kwargs["cmds"]:
+            helptext = ', '.join([f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]])
+            cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
 
         await message.channel.send(embed=cmd_embed)
 
 
-async def grab_guild_info(message, args, client, **kwargs):
+async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     guild = message.channel.guild
 
@@ -198,17 +203,20 @@ async def grab_guild_info(message, args, client, **kwargs):
     await message.channel.send(embed=guild_embed)
 
 
-async def initialise_poll(message, args, client, **kwargs):
+async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
         await message.add_reaction("👍")
         await message.add_reaction("👎")
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permissions to add a reaction here")
+        await message.channel.send("ERROR: The bot does not have permissions to add a reaction here")
+        return 1
+    except discord.errors.NotFound:
+        await message.channel.send("ERROR: Could not find the message [404]")
         return 1
 
 
-async def coinflip(message, args, client, **kwargs):
+async def coinflip(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     mobj = await message.channel.send("Flipping a coin...")
     await asyncio.sleep(random.randint(500, 1000) / 1000)
@@ -247,6 +255,9 @@ commands = {
             'cache': 'keep',
             'execute': help_function
             },
+    'pfp': {
+        'alias': 'avatar'
+        },
     'avatar': {
         'pretty_name': 'avatar [user]',
         'description': 'Get avatar of a user',
@@ -280,4 +291,4 @@ commands = {
         }
     }
 
-version_info = "1.2.2"
+version_info: str = "1.2.3"

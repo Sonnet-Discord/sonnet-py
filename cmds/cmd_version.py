@@ -13,8 +13,10 @@ importlib.reload(lib_loaders)
 
 from lib_loaders import clib_exists, DotHeaders
 
+from typing import List, Any
 
-def prettyprint(inlist):
+
+def prettyprint(inlist: List[List[str]]) -> List[str]:
 
     maxln = 0
 
@@ -25,11 +27,11 @@ def prettyprint(inlist):
     return [(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}") for i in inlist]
 
 
-def zpad(innum):
+def zpad(innum: int) -> str:
     return (2 - len(str(innum))) * "0" + str(innum)
 
 
-def getdelta(past):
+def getdelta(past: int) -> str:
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(past))
 
@@ -40,7 +42,7 @@ def getdelta(past):
     return f"{trunning.days} Day{'s'*(trunning.days != 1)}, {zpad(hours)}:{zpad(minutes)}:{zpad(seconds)}"
 
 
-async def print_version_info(message, args, client, **kwargs):
+async def print_version_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     bot_start_time = kwargs["bot_start"]
     dlib_modules = kwargs["dlibs"]
@@ -69,12 +71,12 @@ async def print_version_info(message, args, client, **kwargs):
     await message.channel.send(fmt)
 
 
-async def uptime(message, args, client, **kwargs):
+async def uptime(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     await message.channel.send(getdelta(kwargs["bot_start"]))
 
 
-async def print_stats(message, args, client, **kwargs):
+async def print_stats(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     kernel_ramfs = kwargs["kernel_ramfs"]
 
@@ -93,12 +95,14 @@ async def print_stats(message, args, client, **kwargs):
     outputmap = []
 
     outputmap.append(["This Guild:", "Count:"])
-    [outputmap.append([i, statistics_file[i]]) for i in statistics_file]
+    for i in statistics_file:
+        outputmap.append([i, statistics_file[i]])
 
     outputmap.append(["", ""])
 
     outputmap.append(["Globally:", "Count:"])
-    [outputmap.append([i, global_statistics_file[i]]) for i in global_statistics_file]
+    for i in global_statistics_file:
+        outputmap.append([i, global_statistics_file[i]])
 
     newline = "\n"
 
@@ -144,4 +148,4 @@ commands = {
         }
     }
 
-version_info = "1.2.2"
+version_info: str = "1.2.3"

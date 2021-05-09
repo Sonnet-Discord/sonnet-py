@@ -4,7 +4,6 @@
 import importlib
 
 import discord
-import json
 
 import lib_loaders
 
@@ -12,30 +11,31 @@ importlib.reload(lib_loaders)
 
 from lib_loaders import load_message_config, inc_statistics
 
-reactionrole_types = {0: "sonnet_reactionroles", "csv": [], "text": [["reaction-role-data", ""], ]}
+from typing import Dict, Any, Union, Optional
+
+reactionrole_types: Dict[Union[int, str], Any] = {0: "sonnet_reactionroles", "json": [["reaction-role-data", {}], ]}
 
 
-def emojifrompayload(payload):
+def emojifrompayload(payload: discord.RawReactionActionEvent) -> str:
     emoji = payload.emoji
     if emoji.is_unicode_emoji():
-        return emoji.name
+        return str(emoji.name)
     elif emoji.is_custom_emoji():
         return f"<:{emoji.name}:{emoji.id}>"
     else:
         return ""
 
 
-async def on_raw_reaction_add(payload, **kargs):
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent, **kargs: Any) -> None:
 
     if not payload.guild_id: return
 
     inc_statistics([payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"]])
 
     client = kargs["client"]
-    rrconf = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
+    rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
 
     if rrconf:
-        rrconf = json.loads(rrconf)
         emojiname = emojifrompayload(payload)
         if str(payload.message_id) in rrconf and emojiname in rrconf[str(payload.message_id)]:
             role_id = rrconf[str(payload.message_id)][emojiname]
@@ -46,17 +46,16 @@ async def on_raw_reaction_add(payload, **kargs):
                     pass
 
 
-async def on_raw_reaction_remove(payload, **kargs):
+async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent, **kargs: Any) -> None:
 
     if not payload.guild_id: return
 
     inc_statistics([payload.guild_id, "on-raw-reaction-remove", kargs["kernel_ramfs"]])
 
     client = kargs["client"]
-    rrconf = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
+    rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
 
     if rrconf:
-        rrconf = json.loads(rrconf)
         emojiname = emojifrompayload(payload)
         if str(payload.message_id) in rrconf and emojiname in rrconf[str(payload.message_id)]:
             role_id = rrconf[str(payload.message_id)][emojiname]
@@ -74,4 +73,4 @@ commands = {
     "on-raw-reaction-remove": on_raw_reaction_remove,
     }
 
-version_info = "1.1.5"
+version_info = "1.2.3"
