@@ -31,12 +31,12 @@ class DotHeaders:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
         restype = ctypes.c_int
 
-    def __init__(self, lib):
+    def __init__(self, lib: ctypes.CDLL):
         self.lib = lib
         for i in filter(lambda i: i.startswith("cdef_"), dir(self)):
             self._wrap(i)
 
-    def _wrap(self, funcname: str):
+    def _wrap(self, funcname: str) -> None:
         self.lib.__getitem__(funcname[5:]).argtypes = self.__getattribute__(funcname).argtypes
         self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
@@ -78,7 +78,7 @@ def read_vnum(fileobj) -> int:
 
 
 # Write a vnum to a file stream
-def write_vnum(fileobj, number: int):
+def write_vnum(fileobj, number: int) -> None:
     vnum_count = (number.bit_length() + 7) // 8
     fileobj.write(bytes([vnum_count]))
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
@@ -244,7 +244,7 @@ def inc_statistics_better(guild: int, inctype: str, kernel_ramfs) -> None:
         global_statistics[inctype] = 1
 
 
-def inc_statistics(indata: List) -> None:
+def inc_statistics(indata: List[Any]) -> None:
 
     guild, inctype, kernel_ramfs = indata
 

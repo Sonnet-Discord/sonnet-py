@@ -168,7 +168,8 @@ def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ram
         userlist.append([userid, round(sent_at * 1000), contlen])
         messages.seek(0)
         for i in userlist:
-            [write_vnum(messages, v) for v in i]
+            for v in i:
+                write_vnum(messages, v)
         messages.truncate()
 
         if ismute >= messagecount:
