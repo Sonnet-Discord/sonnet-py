@@ -149,7 +149,7 @@ def parse_boolean(instr: str) -> Union[bool, int]:
 
 
 # Parse channel from message and put it into specified config
-async def update_log_channel(message, args, client, log_name: str, verbose: bool = True):
+async def update_log_channel(message, args, client, log_name: str, verbose: bool = True) -> None:
 
     if args:
         log_channel = args[0].strip("<#!>")
@@ -291,14 +291,14 @@ def generate_reply_field(message: discord.Message) -> str:
 
 
 # Parse a role name and put it into the specified db conf
-async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True):
+async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> Optional[int]:
 
     if args:
         role: Union[str, discord.Role] = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
             await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
-        return
+        return 0
 
     try:
         role = message.guild.get_role(int(role))
@@ -314,6 +314,8 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
         db.add_config(db_entry, role.id)
 
     if verbose: await message.channel.send(f"Updated {db_entry} to {role}")
+
+    return 0
 
 
 # Grab a message object from a link or message mention

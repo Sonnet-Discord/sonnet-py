@@ -16,7 +16,7 @@ importlib.reload(sonnet_cfg)
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import CLIB_LOAD
 
-from typing import Dict, List, Union, Any, Tuple
+from typing import Dict, List, Union, Any, Tuple, Optional
 
 
 class DotHeaders:
@@ -36,7 +36,7 @@ class DotHeaders:
         for i in filter(lambda i: i.startswith("cdef_"), dir(self)):
             self._wrap(i)
 
-    def _wrap(self, funcname):
+    def _wrap(self, funcname: str):
         self.lib.__getitem__(funcname[5:]).argtypes = self.__getattribute__(funcname).argtypes
         self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
@@ -85,7 +85,7 @@ def write_vnum(fileobj, number: int):
 
 
 # Load config from cache, or load from db if cache isn't existant
-def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], Any] = None) -> Dict[str, Any]:
+def load_message_config(guild_id: int, ramfs, datatypes: Optional[Dict[Union[str, int], Any]] = None) -> Dict[str, Any]:
 
     datatypes = defaultcache if datatypes is None else datatypes
 
