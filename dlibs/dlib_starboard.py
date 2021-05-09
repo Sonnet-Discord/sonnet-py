@@ -15,7 +15,7 @@ import lib_loaders
 importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics
+from lib_loaders import load_message_config, inc_statistics_better
 from lib_parsers import generate_reply_field
 
 from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
@@ -33,7 +33,7 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
 
     message = reaction.message
 
-    inc_statistics([message.guild.id, "on-reaction-add", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-reaction-add", kargs["kernel_ramfs"])
     mconf = load_message_config(message.guild.id, kargs["ramfs"], datatypes=starboard_types)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):

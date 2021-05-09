@@ -22,11 +22,11 @@ import lib_encryption_wrapper
 importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics, read_vnum, write_vnum
+from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Callable
 
 
 async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
@@ -51,7 +51,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
-    inc_statistics([message.guild.id, "on-message-delete", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-message-delete", kargs["kernel_ramfs"])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -102,7 +102,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     if parse_skip_message(client, message):
         return
 
-    inc_statistics([message.guild.id, "on-message-edit", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-message-edit", kargs["kernel_ramfs"])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -243,7 +243,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
     if parse_skip_message(client, message):
         return
 
-    inc_statistics([message.guild.id, "on-message", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-message", kargs["kernel_ramfs"])
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
@@ -347,12 +347,12 @@ async def on_message(message: discord.Message, **kargs) -> None:
             raise e
 
 
-category_info = {'name': 'Messages'}
+category_info: Dict[str, str] = {'name': 'Messages'}
 
-commands = {
+commands: Dict[str, Callable] = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.2.3"
+version_info: str = "1.2.4-DEV"
