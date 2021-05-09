@@ -29,6 +29,7 @@ from lib_encryption_wrapper import encrypted_writer
 from typing import List, Any, Dict, Optional, Callable
 import lib_lexdpyk_h as lexdpyk
 
+
 async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
     try:
         await channel.send(embed=contents, files=files)
