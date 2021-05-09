@@ -20,6 +20,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 
 from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional, Any
+import lib_lexdpyk_h as lexdpyk
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
@@ -32,7 +33,7 @@ class errors:
         pass
 
 
-unicodeFilter = re.compile(r'[^a-z0-9 ]+')  # type: ignore
+unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
 
 # Run a blacklist pass over a messages content and files
@@ -149,10 +150,10 @@ def parse_boolean(instr: str) -> Union[bool, int]:
 
 
 # Parse channel from message and put it into specified config
-async def update_log_channel(message, args, client, log_name: str, verbose: bool = True) -> None:
+async def update_log_channel(message: discord.Message, args: List[str], client: discord.Client, log_name: str, verbose: bool = True) -> None:
 
     if args:
-        log_channel = args[0].strip("<#!>")
+        log_channel_str = args[0].strip("<#!>")
     else:
         with db_hlapi(message.guild.id) as db:
             lchannel = f"<#{lchannel}>" if (lchannel := db.grab_config(log_name)) else "nothing"
@@ -160,7 +161,7 @@ async def update_log_channel(message, args, client, log_name: str, verbose: bool
         raise errors.log_channel_update_error("ERROR: No Channel supplied")
 
     try:
-        log_channel = int(log_channel)
+        log_channel = int(log_channel_str)
     except ValueError:
         await message.channel.send("ERROR: Channel is not a valid int")
         raise errors.log_channel_update_error("Channel is not a valid channel")
@@ -230,7 +231,7 @@ def ifgate(inlist: Iterable) -> bool:
 
 
 # Grab files of a message from the internal cache or using webrequests
-def grab_files(guild_id: int, message_id: int, ramfs, delete: bool = False) -> Optional[List[discord.File]]:
+def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, delete: bool = False) -> Optional[List[discord.File]]:
 
     try:
 

@@ -17,6 +17,7 @@ from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import CLIB_LOAD
 
 from typing import Dict, List, Union, Any, Tuple, Optional
+import lib_lexdpyk_h as lexdpyk
 
 
 class DotHeaders:
@@ -85,7 +86,7 @@ def write_vnum(fileobj, number: int) -> None:
 
 
 # Load config from cache, or load from db if cache isn't existant
-def load_message_config(guild_id: int, ramfs, datatypes: Optional[Dict[Union[str, int], Any]] = None) -> Dict[str, Any]:
+def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[Dict[Union[str, int], Any]] = None) -> Dict[str, Any]:
 
     datatypes = defaultcache if datatypes is None else datatypes
 
@@ -221,7 +222,7 @@ def generate_infractionid() -> str:
         return generate_infractionid()
 
 
-def inc_statistics_better(guild: int, inctype: str, kernel_ramfs) -> None:
+def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
         statistics = kernel_ramfs.read_f(f"{guild}/stats")
