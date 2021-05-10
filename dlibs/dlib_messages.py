@@ -149,31 +149,35 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
         asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
 
 
-def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ramfs: lexdpyk.ram_filesystem, messagecount: int, timecount: float) -> bool:
+def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> bool:
 
-    timecount = int(timecount * 1000)
+    userid = message.author.id
 
+    # Base antispam
     try:
-        messages = ramfs.read_f(f"{guildid}/asam")
+
+        messagecount = int(antispam[0])
+        timecount = int(float(antispam[1]) * 1000)
+
+        messages = ramfs.read_f(f"{message.guild.id}/asam")
         messages.seek(0, 2)
         EOF = messages.tell()
         messages.seek(0)
-        droptime = round(time.time() * 1000) - timecount
+        droptime = round(datetime.utcnow().timestamp() * 1000) - timecount
         userlist = []
         ismute = 1
 
         # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
         while EOF > messages.tell():
-            uid, mtime, clen = [read_vnum(messages) for i in range(3)]
+            uid, mtime = [read_vnum(messages) for i in range(2)]
             if mtime > droptime:
-                userlist.append([uid, mtime, clen])
+                userlist.append([uid, mtime])
                 if uid == userid:
                     ismute += 1
 
-        # I barely write code comments but this unholy sin converts a datetime object to normal UTC
-        sent_at: float = (msend - datetime(1970, 1, 1)).total_seconds()
+        sent_at: float = message.created_at.timestamp()
 
-        userlist.append([userid, round(sent_at * 1000), contlen])
+        userlist.append([userid, round(sent_at * 1000)])
         messages.seek(0)
         for i in userlist:
             for v in i:
@@ -182,16 +186,56 @@ def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ram
 
         if ismute >= messagecount:
             return True
-        else:
-            return False
 
     except FileNotFoundError:
-        messages = ramfs.create_f(f"{guildid}/asam")
-        write_vnum(messages, userid)
-        write_vnum(messages, round(time.time() * 1000))
-        write_vnum(messages, contlen)
-        return False
+        messages = ramfs.create_f(f"{message.guild.id}/asam")
+        write_vnum(messages, message.author.id)
+        write_vnum(messages, round(1000 * message.created_at.timestamp()))
 
+    # Char antispam
+    try:
+
+        messagecount = int(charantispam[0])
+        timecount = int(float(charantispam[1]) * 1000)
+        charcount = int(charantispam[2])
+
+        messages = ramfs.read_f(f"{message.guild.id}/casam")
+        messages.seek(0, 2)
+        EOF = messages.tell()
+        messages.seek(0)
+        droptime = round(datetime.utcnow().timestamp() * 1000) - timecount
+        userlist = []
+        ismute = 1
+        charc = 0
+
+        # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
+        while EOF > messages.tell():
+            uid, mtime, clen = [read_vnum(messages) for i in range(3)]
+            if mtime > droptime:
+                userlist.append([uid, mtime, clen])
+                if uid == userid:
+                    charc += clen
+                    ismute += 1
+
+        sent_at = message.created_at.timestamp()
+
+        userlist.append([userid, round(sent_at * 1000), len(message.content)])
+        messages.seek(0)
+        for i in userlist:
+            for v in i:
+                write_vnum(messages, v)
+        messages.truncate()
+
+        if ismute >= messagecount and charc >= charcount:
+            return True
+
+    except FileNotFoundError:
+        messages = ramfs.create_f(f"{message.guild.id}/casam")
+        write_vnum(messages, message.author.id)
+        write_vnum(messages, round(1000 * message.created_at.timestamp()))
+        write_vnum(messages, len(message.content))
+
+    return False
 
 async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
@@ -262,7 +306,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
     # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
 
-    spammer = antispam_check(message.channel.guild.id, message.author.id, message.created_at, len(message.content), ramfs, int(float(mconf["antispam"][0])), float(mconf["antispam"][1]))
+    spammer = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
 
     message_deleted: bool = False
 
