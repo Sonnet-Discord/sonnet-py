@@ -20,6 +20,11 @@ from typing import Any, List
 import lib_lexdpyk_h as lexdpyk
 
 
+def zpadhex(indata: int) -> str:
+    col = hex(indata)[2:]
+    return (6 - len(col)) * "0" + col
+
+
 async def set_embed_typec(message: discord.Message, args: List[str], typec: str, verbose: bool, ramfs: lexdpyk.ram_filesystem) -> int:
 
     if args:
@@ -41,8 +46,8 @@ async def set_embed_typec(message: discord.Message, args: List[str], typec: str,
     else:
         with db_hlapi(message.guild.id) as db:
             colhex = db.grab_config(f"embed-color-{typec}")
-        if colhex: await message.channel.send(f"{typec}-color is set to {hex(int(colhex, 16))[2:]}")
-        else: await message.channel.send(f"{typec}-color is not set (default: {hex(load_embed_color(message.guild, typec, ramfs))[2:]})")
+        if colhex: await message.channel.send(f"{typec}-color is set to {zpadhex(int(colhex, 16))}")
+        else: await message.channel.send(f"{typec}-color is not set (default: {zpadhex(load_embed_color(message.guild, typec, ramfs))})")
 
         return 0
 
@@ -53,7 +58,7 @@ async def set_embed_typec(message: discord.Message, args: List[str], typec: str,
     with db_hlapi(message.guild.id) as db:
         db.add_config(f"embed-color-{typec}", hex(colint))
 
-    if verbose: await message.channel.send(f"Updated {typec}-color to {hex(colint)[2:]}")
+    if verbose: await message.channel.send(f"Updated {typec}-color to {zpadhex(colint)}")
 
     return 0
 
