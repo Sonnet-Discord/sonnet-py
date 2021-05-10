@@ -239,20 +239,60 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
             return 1
 
     # Prevent bullshit
-    if messages < 2:
-        await message.channel.send("ERROR: Cannot go below 2 messages")
+    outside_range = "ERROR: Cannot go outside range"
+    if messages < 2 or messages > 64:
+        await message.channel.send(f"{outside_range} 2-64 messages")
         return 1
-    elif seconds > 10:
-        await message.channel.send("ERROR: Cannot go above 10 seconds")
-        return 1
-    elif seconds < 0:
-        await message.channel.send("ERROR: Cannot go below 0 seconds")
+    elif seconds > 10 or seconds < 0:
+        await message.channel.send(f"{outside_range} 0-10 seconds")
         return 1
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{int(messages)},{seconds}")
 
     if kwargs["verbose"]: await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
+
+
+async def char_antispam_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    if not args:
+        antispam = kwargs["conf_cache"]["char-antispam"]
+        await message.channel.send(f"CharAntispam timings are M:{antispam[0]},S:{antispam[1]},C:{antispam[2]}")
+        return
+
+    if len(args) == 1:
+        try:
+            messages, seconds, chars = [float(i) for i in args[0].split(",")]
+        except ValueError:
+            await message.channel.send("ERROR: Incorrect args supplied")
+            return 1
+
+    elif len(args) > 1:
+        try:
+            messages = float(args[0])
+            seconds = float(args[1])
+            chars = float(args[2])
+        except ValueError:
+            await message.channel.send("ERROR: Incorrect args supplied")
+            return 1
+
+    # Prevent bullshit
+    outside_range = "ERROR: Cannot go outside range"
+    if messages < 2 or messages > 64:
+        await message.channel.send(f"{outside_range} 2-64 messages")
+        return 1
+    elif seconds > 10 or seconds < 0:
+        await message.channel.send(f"{outside_range} 0-10 seconds")
+        return 1
+    elif chars < 128 or chars >  2 ** 16:
+        await message.channel.send(f"{outside_range} 128-{2**16} chars")
+        return 1
+
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("char-antispam", f"{int(messages)},{seconds},{int(chars)}")
+
+    if kwargs["verbose"]: await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
+
 
 
 async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -356,6 +396,14 @@ commands = {
     'antispam-set': {
         'alias': 'set-antispam'
         },
+    'set-charantispam':
+        {
+            'pretty_name': 'set-charantispam <messages> <seconds> <chars>',
+            'description': 'Set how many messages in seconds exeeding total chars to trigger antispam automute',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': char_antispam_set
+            },
     'set-antispam':
         {
             'pretty_name': 'set-antispam <messages> <seconds>',
