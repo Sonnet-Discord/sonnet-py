@@ -22,7 +22,7 @@ import lib_encryption_wrapper
 importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum
+from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum, load_embed_color, embed_colors
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
@@ -60,7 +60,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     if message_log and (log_channel := client.get_channel(int(message_log))):
 
-        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
+        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"]))
         message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
         message_embed.set_footer(text=f"Message ID: {message.id}")
         message_embed.timestamp = datetime.utcnow()
@@ -82,7 +82,7 @@ async def grab_an_adult(discord_message: discord.Message, client: discord.Client
         message_content = generate_reply_field(discord_message)
 
         # Message has been grabbed, start generating embed
-        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=0x758cff)
+        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, kargs["ramfs"]))
 
         message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
         message_embed.timestamp = discord_message.created_at
@@ -113,7 +113,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     if message_log and not (old_message.content == message.content):
         message_log = client.get_channel(int(message_log))
         if message_log:
-            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
+            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, kargs["ramfs"]))
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
 
             old_msg = (old_message.content or "NULL")
@@ -136,7 +136,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
-        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False)
+        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=kargs["ramfs"])
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf))
@@ -264,14 +264,14 @@ async def on_message(message: discord.Message, **kargs) -> None:
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False))
+        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=ramfs))
 
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", "Antispam"], client, verbose=False))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", "Antispam"], client, verbose=False, ramfs=ramfs))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf))
