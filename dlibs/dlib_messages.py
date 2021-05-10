@@ -62,6 +62,10 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
         message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"]))
         message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
+
+        if (r := message.reference) and (rr := r.resolved):
+            message_embed.add_field(name="Replying to:", value=f"{rr.author.mention} [(Link)]({rr.jump_url})")
+
         message_embed.set_footer(text=f"Message ID: {message.id}")
         message_embed.timestamp = datetime.utcnow()
 
