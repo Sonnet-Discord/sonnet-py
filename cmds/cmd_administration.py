@@ -12,8 +12,13 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_loaders
+
+importlib.reload(lib_loaders)
+
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
+from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 
 from typing import Any, List
@@ -120,7 +125,7 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
         else:
             await message.channel.send(f"Please provide the guild id to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
-        message_embed = discord.Embed(title="GDPR COMMANDS", color=0xADD8E6)
+        message_embed = discord.Embed(title="GDPR COMMANDS", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
         message_embed.add_field(name=f"{PREFIX}gdpr download <guild id>", value="Download the databases of this guild", inline=False)
         message_embed.add_field(name=f"{PREFIX}gdpr delete <guild id>", value="Delete the databases of this guild and clear cache", inline=False)
         await message.channel.send(embed=message_embed)
@@ -257,4 +262,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.4-DEV"
