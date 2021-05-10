@@ -456,6 +456,8 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
     infraction_embed.add_field(name="Type", value=infraction_type)
     infraction_embed.add_field(name="Reason", value=reason)
+
+    infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
     infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
 
     await message.channel.send(embed=infraction_embed)
@@ -484,6 +486,9 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
     infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
     infraction_embed.add_field(name="Type", value=infraction_type)
     infraction_embed.add_field(name="Reason", value=reason)
+
+    infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
+
     infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
 
     await message.channel.send(embed=infraction_embed)
