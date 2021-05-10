@@ -75,14 +75,16 @@ async def attempt_message_delete(message: discord.Message) -> None:
         pass
 
 
-async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict) -> None:
+async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict, ramfs: lexdpyk.ram_filesystem) -> None:
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 
         message_content = generate_reply_field(discord_message)
 
         # Message has been grabbed, start generating embed
-        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, kargs["ramfs"]))
+        message_embed = discord.Embed(
+            title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(discord_message.guild, embed_colors.primary, ramfs)
+            )
 
         message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
         message_embed.timestamp = discord_message.created_at
@@ -136,10 +138,11 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
-        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=kargs["ramfs"])
+        await kargs["command_modules"][1][mconf["blacklist-action"]
+                                          ]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=kargs["ramfs"])
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, client, mconf))
+        asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
 
 
 def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ramfs: lexdpyk.ram_filesystem, messagecount: int, timecount: float) -> bool:
@@ -264,7 +267,9 @@ async def on_message(message: discord.Message, **kargs) -> None:
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=ramfs))
+        asyncio.create_task(
+            command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=ramfs)
+            )
 
     if spammer:
         message_deleted = True
@@ -274,7 +279,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
                 asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", "Antispam"], client, verbose=False, ramfs=ramfs))
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, client, mconf))
+        asyncio.create_task(grab_an_adult(message, client, mconf, ramfs))
 
     stats["end-automod"] = round(time.time() * 100000)
 

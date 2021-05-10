@@ -3,6 +3,8 @@
 
 import importlib
 
+import discord
+
 import random, os, ctypes, time, io, json, pickle
 from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 
@@ -252,12 +254,10 @@ def inc_statistics(indata: List[Any]) -> None:
     inc_statistics_better(guild, inctype, kernel_ramfs)
 
 
-_colortypes_cache: Dict[str, Any] = {
+_colortypes_cache: Dict[Any, Any] = {
     0: "sonnet_colortypes",
-    "text": [
-        ["embed-color-primary", "0x0057e7"],["embed-color-creation", "0x008744"],["embed-color-edit", "0xffa700"],["embed-color-deletion", "0xd62d20"]
-    ]
-}
+    "text": [["embed-color-primary", "0x0057e7"], ["embed-color-creation", "0x008744"], ["embed-color-edit", "0xffa700"], ["embed-color-deletion", "0xd62d20"]]
+    }
 
 
 # Why? why would I do this?

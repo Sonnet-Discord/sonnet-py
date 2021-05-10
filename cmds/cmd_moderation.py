@@ -33,8 +33,9 @@ async def catch_dm_error(user: discord.User, contents: str, log_channel: discord
 
 
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str,
-        to_dm: bool, ramfs: lexdpyk.ram_filesystem) -> Tuple[Optional[str], Optional[Awaitable]]:
+async def log_infraction(
+    message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
+    ) -> Tuple[Optional[str], Optional[Awaitable]]:
 
     if not user:
         return None, None
