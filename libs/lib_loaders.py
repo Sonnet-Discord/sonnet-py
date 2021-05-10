@@ -250,3 +250,25 @@ def inc_statistics(indata: List[Any]) -> None:
     guild, inctype, kernel_ramfs = indata
 
     inc_statistics_better(guild, inctype, kernel_ramfs)
+
+
+_colortypes_cache: Dict[str, Any] = {
+    0: "sonnet_colortypes",
+    "text": [
+        ["embed-color-primary", "0x0057e7"],["embed-color-creation", "0x008744"],["embed-color-edit", "0xffa700"],["embed-color-deletion", "0xd62d20"]
+    ]
+}
+
+
+# Why? why would I do this?
+# Because variable names can be statically type checked
+# I hate bugs more than I hate slow python
+class embed_colors:
+    primary: str = "primary"
+    creation: str = "creation"
+    edit: str = "edit"
+    deletion: str = "deletion"
+
+
+def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
+    return int(load_message_config(guild.id, ramfs, datatypes=_colortypes_cache)[f"embed-color-{colortype}"], 16)
