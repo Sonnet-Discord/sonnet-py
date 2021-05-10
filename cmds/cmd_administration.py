@@ -92,15 +92,18 @@ class gdpr_functions:
         db.seek(0)
 
         # Add cache files
-        antispam = ramfs.read_f(f"{guild_id}/asam")
+        antispam: io.BytesIO = ramfs.read_f(f"{guild_id}/asam")
         antispam.seek(0)
+        charantispam: io.BytesIO = ramfs.read_f(f"{guild_id}/casam")
+        charantispam.seek(0)
 
         # Finalize discord file objs
         fileobj_db = discord.File(db, filename="database.gz")
-        fileobj_antispam = discord.File(antispam, filename="antispam.vnum_x3.bin")
+        fileobj_antispam = discord.File(antispam, filename="antispam.vnum_x2.bin")
+        fileobj_cantispam = discord.File(antispam, filename="charantispam.vnum_x3.bin")
 
         # Send data
-        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam])
+        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
 
 
 async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
