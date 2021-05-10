@@ -14,9 +14,14 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_loaders
+
+importlib.reload(lib_loaders)
+
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean
+from lib_loaders import load_embed_color, embed_colors
 
 from typing import List, Any
 
@@ -58,7 +63,7 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
 
     stats = kwargs["stats"]
 
-    ping_embed = discord.Embed(title="Pong!", color=0x00ff6e)
+    ping_embed = discord.Embed(title="Pong!", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
 
     add_timestamp(ping_embed, "Total Process Time", stats["start"], stats["end"])
     add_timestamp(ping_embed, "Config Load Time", stats["start-load-blacklist"], stats["end-load-blacklist"])
@@ -88,7 +93,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     # Status hashmap
     status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
 
-    embed = discord.Embed(title="User Information", description=f"User information for {user_object.mention}:", color=0x758cff)
+    embed = discord.Embed(title="User Information", description=f"User information for {user_object.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_thumbnail(url=user_object.avatar_url)
     embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
     embed.add_field(name="User ID", value=user_object.id, inline=True)
@@ -115,7 +120,7 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
     except UserParseError:
         return 1
 
-    embed = discord.Embed(description=f"{user_object.mention}'s Avatar", color=0x758cff)
+    embed = discord.Embed(description=f"{user_object.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_image(url=user_object.avatar_url)
     embed.timestamp = datetime.utcnow()
     await message.channel.send(embed=embed)
@@ -134,7 +139,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         if (a := args[0].lower()) in modules:
 
             curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
-            cmd_embed = discord.Embed(title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=0x00db87)
+            cmd_embed = discord.Embed(title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
             cmd_embed.set_author(name=helpname)
 
             for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
@@ -147,7 +152,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             if "alias" in kwargs["cmds_dict"][a]:
                 a = kwargs["cmds_dict"][a]["alias"]
 
-            cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=0x00db87)
+            cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
             cmd_embed.set_author(name=helpname)
 
             cmd_embed.add_field(name="Usage:", value=PREFIX + kwargs["cmds_dict"][a]["pretty_name"], inline=False)
@@ -178,7 +183,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     # Total help
     else:
 
-        cmd_embed = discord.Embed(title="Category Listing", color=0x00db87)
+        cmd_embed = discord.Embed(title="Category Listing", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
         cmd_embed.set_author(name=helpname)
 
         for module in kwargs["cmds"]:
@@ -192,7 +197,7 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
 
     guild = message.channel.guild
 
-    guild_embed = discord.Embed(title=f"Information on {guild}", color=0x00ff6e)
+    guild_embed = discord.Embed(title=f"Information on {guild}", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
     guild_embed.add_field(name="# of Roles:", value=f"{len(guild.roles)} Roles")
     guild_embed.add_field(name="Top Role:", value=str(guild.roles[-1]))
@@ -291,4 +296,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.4-DEV"
