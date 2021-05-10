@@ -18,7 +18,6 @@ import lib_loaders
 
 importlib.reload(lib_loaders)
 
-
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean
 from lib_loaders import load_embed_color, embed_colors
@@ -139,7 +138,9 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         if (a := args[0].lower()) in modules:
 
             curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
-            cmd_embed = discord.Embed(title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+            cmd_embed = discord.Embed(
+                title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
+                )
             cmd_embed.set_author(name=helpname)
 
             for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
