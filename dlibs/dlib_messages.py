@@ -149,7 +149,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
         asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
 
 
-def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> bool:
+def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, str]:
 
     userid = message.author.id
 
@@ -185,7 +185,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
         messages.truncate()
 
         if ismute >= messagecount:
-            return True
+            return (True, "Antispam")
 
     except FileNotFoundError:
         messages = ramfs.create_f(f"{message.guild.id}/asam")
@@ -227,7 +227,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
         messages.truncate()
 
         if ismute >= messagecount and charc >= charcount:
-            return True
+            return (True, "CharAntispam")
 
     except FileNotFoundError:
         messages = ramfs.create_f(f"{message.guild.id}/casam")
@@ -235,7 +235,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
         write_vnum(messages, round(1000 * message.created_at.timestamp()))
         write_vnum(messages, len(message.content))
 
-    return False
+    return (False, "")
 
 async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
@@ -306,7 +306,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
     # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
 
-    spammer = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
+    spammer, spamstr = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
 
     message_deleted: bool = False
 
@@ -324,7 +324,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", "Antispam"], client, verbose=False, ramfs=ramfs))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr], client, verbose=False, ramfs=ramfs))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf, ramfs))
