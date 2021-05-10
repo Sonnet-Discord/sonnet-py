@@ -1,5 +1,5 @@
-# Joke commands idk mck wanted this
-# Ultrabear 2020
+# Set colors of embeds dynamically 
+# Ultrabear 2021
 
 import importlib
 
