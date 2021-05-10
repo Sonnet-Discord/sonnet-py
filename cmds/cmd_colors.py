@@ -82,12 +82,18 @@ async def set_embed_deletion(message: discord.Message, args: List[str], client: 
 category_info = {'name': 'colors', 'pretty_name': 'Colors', 'description': 'Configuration tool for sonnet embed colors'}
 
 commands = {
+    'set-colour-primary': {
+        'alias': 'set-color-primary'
+        },
     'set-color-primary': {
         'pretty_name': 'set-color-primary <hexcolor|"reset">',
         'description': 'Set primary embed color',
         'permission': 'administrator',
         'cache': 'regenerate',
         'execute': set_embed_primary
+        },
+    'set-colour-creation': {
+        'alias': 'set-color-creation'
         },
     'set-color-creation':
         {
@@ -97,12 +103,18 @@ commands = {
             'cache': 'regenerate',
             'execute': set_embed_creation
             },
+    'set-colour-edit': {
+        'alias': 'set-color-edit'
+        },
     'set-color-edit': {
         'pretty_name': 'set-color-edit <hexcolor|"reset">',
         'description': 'Set edit embed color',
         'permission': 'administrator',
         'cache': 'regenerate',
         'execute': set_embed_edit
+        },
+    'set-colour-deletion': {
+        'alias': 'set-color-deletion'
         },
     'set-color-deletion':
         {
