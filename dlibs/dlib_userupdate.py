@@ -14,7 +14,7 @@ import lib_db_obfuscator
 importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import inc_statistics
+from lib_loaders import inc_statistics, load_embed_color, embed_colors
 
 from typing import Any
 
@@ -37,7 +37,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
         if before.nick == after.nick:
             return
 
-        message_embed = discord.Embed(title="Nickname updated", color=0x008744)
+        message_embed = discord.Embed(title="Nickname updated", color=load_embed_color(before.guild, embed_colors.edit, kargs["ramfs"]))
         message_embed.set_author(name=f"{before} ({before.id})", icon_url=before.avatar_url)
         message_embed.add_field(name="Before" + " | False" * (not bool(before.nick)), value=before.nick)
         message_embed.add_field(name="After" + " | False" * (not bool(after.nick)), value=after.nick)
@@ -60,7 +60,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
         if joinlog := db.grab_config("join-log"):
             if logging_channel := kargs["client"].get_channel(int(joinlog)):
 
-                embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=0x758cff)
+                embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=load_embed_color(member.guild, embed_colors.creation, kargs["ramfs"]))
                 embed.set_thumbnail(url=member.avatar_url)
 
                 embed.timestamp = datetime.utcnow()
@@ -79,7 +79,7 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
         if joinlog := db.grab_config("join-log"):
             if logging_channel := kargs["client"].get_channel(int(joinlog)):
 
-                embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=0xffe875)
+                embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=load_embed_color(member.guild, embed_colors.deletion, kargs["ramfs"]))
                 embed.set_thumbnail(url=member.avatar_url)
 
                 embed.timestamp = datetime.utcnow()
@@ -99,4 +99,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.4"

@@ -15,8 +15,8 @@ import lib_loaders
 importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics
-from lib_parsers import ifgate, generate_reply_field
+from lib_loaders import load_message_config, inc_statistics_better
+from lib_parsers import generate_reply_field
 
 from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
@@ -33,14 +33,16 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
 
     message = reaction.message
 
-    inc_statistics([message.guild.id, "on-reaction-add", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-reaction-add", kargs["kernel_ramfs"])
     mconf = load_message_config(message.guild.id, kargs["ramfs"], datatypes=starboard_types)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         with db_hlapi(message.guild.id) as db:
-            if channel_id := db.grab_config("starboard-channel"):
-                if bool(channel := kargs["client"].get_channel(int(channel_id))
-                        ) and not (db.in_starboard(message.id)) and not (int(channel_id) == message.channel.id) and db.add_to_starboard(message.id):
+            if (channel_id := db.grab_config("starboard-channel")) and (channel := kargs["client"].get_channel(int(channel_id))):
+                if not (db.in_starboard(message.id)) and not (int(channel_id) == message.channel.id):
+
+                    # Add to starboard
+                    db.add_to_starboard(message.id)
 
                     # Generate replies
                     message_content = generate_reply_field(message)
@@ -49,7 +51,7 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
                     starboard_embed = discord.Embed(title="Starred message", description=message_content, color=0xffa700)
 
                     for i in message.attachments:
-                        if ifgate([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
+                        if any([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
                             starboard_embed.set_image(url=i.url)
 
                     starboard_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
@@ -68,4 +70,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.4"

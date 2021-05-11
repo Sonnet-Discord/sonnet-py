@@ -3,6 +3,8 @@
 
 import importlib
 
+import discord
+
 import random, os, ctypes, time, io, json, pickle
 from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 
@@ -16,7 +18,8 @@ importlib.reload(sonnet_cfg)
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import CLIB_LOAD
 
-from typing import Dict, List, Union, Any, Tuple
+from typing import Dict, List, Union, Any, Tuple, Optional
+import lib_lexdpyk_h as lexdpyk
 
 
 class DotHeaders:
@@ -31,12 +34,12 @@ class DotHeaders:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
         restype = ctypes.c_int
 
-    def __init__(self, lib):
+    def __init__(self, lib: ctypes.CDLL):
         self.lib = lib
         for i in filter(lambda i: i.startswith("cdef_"), dir(self)):
             self._wrap(i)
 
-    def _wrap(self, funcname):
+    def _wrap(self, funcname: str) -> None:
         self.lib.__getitem__(funcname[5:]).argtypes = self.__getattribute__(funcname).argtypes
         self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
@@ -62,7 +65,7 @@ def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
 
 
 defaultcache: Dict[Union[str, int], Any] = {
-    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["antispam", "3,2"]],
+    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["antispam", "3,2"], ["char-antispam", "2,2,1000"]],
     "text":
         [
             ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""],
@@ -78,14 +81,14 @@ def read_vnum(fileobj) -> int:
 
 
 # Write a vnum to a file stream
-def write_vnum(fileobj, number: int):
+def write_vnum(fileobj, number: int) -> None:
     vnum_count = (number.bit_length() + 7) // 8
     fileobj.write(bytes([vnum_count]))
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
 
 
 # Load config from cache, or load from db if cache isn't existant
-def load_message_config(guild_id: int, ramfs, datatypes: Dict[Union[str, int], Any] = None) -> Dict[str, Any]:
+def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[Dict[Union[str, int], Any]] = None) -> Dict[str, Any]:
 
     datatypes = defaultcache if datatypes is None else datatypes
 
@@ -221,9 +224,7 @@ def generate_infractionid() -> str:
         return generate_infractionid()
 
 
-def inc_statistics(indata: List):
-
-    guild, inctype, kernel_ramfs = indata
+def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
         statistics = kernel_ramfs.read_f(f"{guild}/stats")
@@ -244,3 +245,30 @@ def inc_statistics(indata: List):
         global_statistics[inctype] += 1
     else:
         global_statistics[inctype] = 1
+
+
+def inc_statistics(indata: List[Any]) -> None:
+
+    guild, inctype, kernel_ramfs = indata
+
+    inc_statistics_better(guild, inctype, kernel_ramfs)
+
+
+_colortypes_cache: Dict[Any, Any] = {
+    0: "sonnet_colortypes",
+    "text": [["embed-color-primary", "0x0057e7"], ["embed-color-creation", "0x008744"], ["embed-color-edit", "0xffa700"], ["embed-color-deletion", "0xd62d20"]]
+    }
+
+
+# Why? why would I do this?
+# Because variable names can be statically type checked
+# I hate bugs more than I hate slow python
+class embed_colors:
+    primary: str = "primary"
+    creation: str = "creation"
+    edit: str = "edit"
+    deletion: str = "deletion"
+
+
+def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
+    return int(load_message_config(guild.id, ramfs, datatypes=_colortypes_cache)[f"embed-color-{colortype}"], 16)

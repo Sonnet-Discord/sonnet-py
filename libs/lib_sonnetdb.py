@@ -107,10 +107,7 @@ class db_hlapi:
         except db_error.OperationalError:
             return None
 
-        if data:
-            return data[0]
-        else:
-            return None
+        return data[0] if data else None
 
     def set_enum(self, name: str, cpush: List[Union[str, int]]) -> None:
         if name not in self.__enum_pool:
@@ -131,7 +128,7 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_{name}", push)
 
-    def create_guild_db(self):
+    def create_guild_db(self) -> None:
         for i in self.__enum_pool:
             self.database.make_new_table(f"{self.guild}_{i}", self.__enum_pool[i])
 
@@ -142,12 +139,9 @@ class db_hlapi:
         except db_error.OperationalError:
             data = None
 
-        if data:
-            return data[0][1]
-        else:
-            return None
+        return data[0][1] if data else None
 
-    def add_config(self, config: str, value: str):
+    def add_config(self, config: str, value: str) -> None:
 
         try:
             self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
@@ -156,7 +150,7 @@ class db_hlapi:
             self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
     # Grab infractions of a user
-    def grab_user_infractions(self, userid: Union[int, str]):
+    def grab_user_infractions(self, userid: Union[int, str]) -> Tuple[List[Union[str, int]], ...]:
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
@@ -166,7 +160,7 @@ class db_hlapi:
         return data
 
     # grab infractions dealt by a mod
-    def grab_moderator_infractions(self, moderatorid: Union[int, str]):
+    def grab_moderator_infractions(self, moderatorid: Union[int, str]) -> Tuple[Any, ...]:
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
@@ -197,26 +191,23 @@ class db_hlapi:
         self.set_enum("starboard", [str(message_id)])
         return True
 
-    def grab_infraction(self, infractionID: str):
+    def grab_infraction(self, infractionID: str) -> Optional[List[Union[str, int]]]:
 
         try:
             infraction: Any = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
         except db_error.OperationalError:
             infraction = None
 
-        if infraction:
-            return infraction[0]
-        else:
-            return False
+        return infraction[0] if infraction else None
 
-    def delete_infraction(self, infraction_id: str):
+    def delete_infraction(self, infraction_id: str) -> None:
 
         try:
             self.database.delete_rows_from_table(f"{self.guild}_infractions", ["infractionID", infraction_id])
         except db_error.OperationalError:
             pass
 
-    def mute_user(self, user: int, endtime: int, infractionID: str):
+    def mute_user(self, user: int, endtime: int, infractionID: str) -> None:
 
         try:
             self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
@@ -224,7 +215,7 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
 
-    def unmute_user(self, infractionid: str = None, userid: int = None):
+    def unmute_user(self, infractionid: Optional[str] = None, userid: Optional[int] = None) -> None:
 
         try:
             if infractionid:
@@ -234,7 +225,7 @@ class db_hlapi:
         except db_error.OperationalError:
             pass
 
-    def download_guild_db(self):
+    def download_guild_db(self) -> Dict[str, List[List[str]]]:
 
         dbdict = {
             "config": [["property", "value"]],
@@ -251,7 +242,7 @@ class db_hlapi:
 
         return dbdict
 
-    def upload_guild_db(self, dbdict: Dict[str, List]):
+    def upload_guild_db(self, dbdict: Dict[str, List[List[Any]]]) -> bool:
 
         reimport = {
             "config": [["property", "value"]],
@@ -275,7 +266,7 @@ class db_hlapi:
 
         return True
 
-    def delete_guild_db(self):
+    def delete_guild_db(self) -> None:
 
         for i in ["config", "infractions", "starboard", "mutes"]:
             try:
@@ -283,7 +274,7 @@ class db_hlapi:
             except db_error.OperationalError:
                 pass
 
-    def add_infraction(self, *din: Union[int, str]):
+    def add_infraction(self, *din: Union[int, str]) -> None:
 
         quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), din))
 
@@ -293,7 +284,7 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_infractions", quer)
 
-    def fetch_all_mutes(self):
+    def fetch_all_mutes(self) -> List[List[Union[int, str]]]:
 
         # Grab list of tables
         tablelist = self.database.list_tables("%_mutes")
@@ -304,7 +295,7 @@ class db_hlapi:
 
         return mutetable
 
-    def is_muted(self, userid: int = None, infractionid: str = None):
+    def is_muted(self, userid: Optional[int] = None, infractionid: Optional[str] = None) -> bool:
 
         try:
             if userid:
@@ -316,7 +307,7 @@ class db_hlapi:
 
         return muted
 
-    def close(self):
+    def close(self) -> None:
         self.database.commit()
 
     def __exit__(self, err_type, err_value, err_traceback):

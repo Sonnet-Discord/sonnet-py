@@ -12,9 +12,13 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_loaders
+
+importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_channel_message
+from lib_loaders import load_embed_color, embed_colors
 
 from typing import List, Any
 
@@ -162,7 +166,7 @@ async def list_reactionroles(message: discord.Message, args: List[str], client: 
     with db_hlapi(message.guild.id) as db:
         data = json.loads(db.grab_config("reaction-role-data") or "{}")
 
-    reactionrole_embed = discord.Embed(title=f"ReactionRoles in {message.guild}")
+    reactionrole_embed = discord.Embed(title=f"ReactionRoles in {message.guild}", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
 
     if data:
 
@@ -301,4 +305,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.4"

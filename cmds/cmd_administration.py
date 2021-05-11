@@ -12,8 +12,12 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_loaders
+
+importlib.reload(lib_loaders)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
+from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 
 from typing import Any, List
@@ -87,15 +91,18 @@ class gdpr_functions:
         db.seek(0)
 
         # Add cache files
-        antispam = ramfs.read_f(f"{guild_id}/asam")
+        antispam: io.BytesIO = ramfs.read_f(f"{guild_id}/asam")
         antispam.seek(0)
+        charantispam: io.BytesIO = ramfs.read_f(f"{guild_id}/casam")
+        charantispam.seek(0)
 
         # Finalize discord file objs
         fileobj_db = discord.File(db, filename="database.gz")
-        fileobj_antispam = discord.File(antispam, filename="antispam.vnum_x3.bin")
+        fileobj_antispam = discord.File(antispam, filename="antispam.vnum_x2.bin")
+        fileobj_cantispam = discord.File(charantispam, filename="charantispam.vnum_x3.bin")
 
         # Send data
-        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam])
+        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
 
 
 async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -120,7 +127,7 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
         else:
             await message.channel.send(f"Please provide the guild id to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
-        message_embed = discord.Embed(title="GDPR COMMANDS", color=0xADD8E6)
+        message_embed = discord.Embed(title="GDPR COMMANDS", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
         message_embed.add_field(name=f"{PREFIX}gdpr download <guild id>", value="Download the databases of this guild", inline=False)
         message_embed.add_field(name=f"{PREFIX}gdpr delete <guild id>", value="Delete the databases of this guild and clear cache", inline=False)
         await message.channel.send(embed=message_embed)
@@ -257,4 +264,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.4"

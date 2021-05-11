@@ -22,11 +22,12 @@ import lib_encryption_wrapper
 importlib.reload(lib_encryption_wrapper)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics, read_vnum, write_vnum
+from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum, load_embed_color, embed_colors
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Callable, Tuple
+import lib_lexdpyk_h as lexdpyk
 
 
 async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
@@ -51,7 +52,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
 
-    inc_statistics([message.guild.id, "on-message-delete", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-message-delete", kargs["kernel_ramfs"])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -59,8 +60,12 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     if message_log and (log_channel := client.get_channel(int(message_log))):
 
-        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=0xd62d20)
+        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"]))
         message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
+
+        if (r := message.reference) and (rr := r.resolved):
+            message_embed.add_field(name="Replying to:", value=f"{rr.author.mention} [(Link)]({rr.jump_url})")
+
         message_embed.set_footer(text=f"Message ID: {message.id}")
         message_embed.timestamp = datetime.utcnow()
 
@@ -74,14 +79,16 @@ async def attempt_message_delete(message: discord.Message) -> None:
         pass
 
 
-async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict) -> None:
+async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict, ramfs: lexdpyk.ram_filesystem) -> None:
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 
         message_content = generate_reply_field(discord_message)
 
         # Message has been grabbed, start generating embed
-        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=0x758cff)
+        message_embed = discord.Embed(
+            title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(discord_message.guild, embed_colors.primary, ramfs)
+            )
 
         message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
         message_embed.timestamp = discord_message.created_at
@@ -96,13 +103,13 @@ async def grab_an_adult(discord_message: discord.Message, client: discord.Client
 async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs: Any) -> None:
 
     client: discord.Client = kargs["client"]
-    ramfs = kargs["ramfs"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
 
     # Ignore bots
     if parse_skip_message(client, message):
         return
 
-    inc_statistics([message.guild.id, "on-message-edit", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-message-edit", kargs["kernel_ramfs"])
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -112,7 +119,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     if message_log and not (old_message.content == message.content):
         message_log = client.get_channel(int(message_log))
         if message_log:
-            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=0xffa700)
+            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, kargs["ramfs"]))
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
 
             old_msg = (old_message.content or "NULL")
@@ -135,24 +142,71 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
-        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False)
+        await kargs["command_modules"][1][mconf["blacklist-action"]
+                                          ]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=kargs["ramfs"])
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, client, mconf))
+        asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
 
 
-def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ramfs, messagecount: int, timecount: float) -> bool:
+def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, str]:
 
-    timecount = int(timecount * 1000)
+    userid = message.author.id
 
+    # Base antispam
     try:
-        messages = ramfs.read_f(f"{guildid}/asam")
+
+        messagecount = int(antispam[0])
+        timecount = int(float(antispam[1]) * 1000)
+
+        messages = ramfs.read_f(f"{message.guild.id}/asam")
         messages.seek(0, 2)
         EOF = messages.tell()
         messages.seek(0)
-        droptime = round(time.time() * 1000) - timecount
+        droptime = round(datetime.utcnow().timestamp() * 1000) - timecount
         userlist = []
         ismute = 1
+
+        # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
+        while EOF > messages.tell():
+            uid, mtime = [read_vnum(messages) for i in range(2)]
+            if mtime > droptime:
+                userlist.append([uid, mtime])
+                if uid == userid:
+                    ismute += 1
+
+        sent_at: float = message.created_at.timestamp()
+
+        userlist.append([userid, round(sent_at * 1000)])
+        messages.seek(0)
+        for i in userlist:
+            for v in i:
+                write_vnum(messages, v)
+        messages.truncate()
+
+        if ismute >= messagecount:
+            return (True, "Antispam")
+
+    except FileNotFoundError:
+        messages = ramfs.create_f(f"{message.guild.id}/asam")
+        write_vnum(messages, message.author.id)
+        write_vnum(messages, round(1000 * message.created_at.timestamp()))
+
+    # Char antispam
+    try:
+
+        messagecount = int(charantispam[0])
+        timecount = int(float(charantispam[1]) * 1000)
+        charcount = int(charantispam[2])
+
+        messages = ramfs.read_f(f"{message.guild.id}/casam")
+        messages.seek(0, 2)
+        EOF = messages.tell()
+        messages.seek(0)
+        droptime = round(datetime.utcnow().timestamp() * 1000) - timecount
+        userlist = []
+        ismute = 1
+        charc = 0
 
         # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
         while EOF > messages.tell():
@@ -160,31 +214,31 @@ def antispam_check(guildid: int, userid: int, msend: datetime, contlen: int, ram
             if mtime > droptime:
                 userlist.append([uid, mtime, clen])
                 if uid == userid:
+                    charc += clen
                     ismute += 1
 
-        # I barely write code comments but this unholy sin converts a datetime object to normal UTC
-        sent_at: float = (msend - datetime(1970, 1, 1)).total_seconds()
+        sent_at = message.created_at.timestamp()
 
-        userlist.append([userid, round(sent_at * 1000), contlen])
+        userlist.append([userid, round(sent_at * 1000), len(message.content)])
         messages.seek(0)
         for i in userlist:
-            [write_vnum(messages, v) for v in i]
+            for v in i:
+                write_vnum(messages, v)
         messages.truncate()
 
-        if ismute >= messagecount:
-            return True
-        else:
-            return False
+        if ismute >= messagecount and charc >= charcount:
+            return (True, "CharAntispam")
 
     except FileNotFoundError:
-        messages = ramfs.create_f(f"{guildid}/asam")
-        write_vnum(messages, userid)
-        write_vnum(messages, round(time.time() * 1000))
-        write_vnum(messages, contlen)
-        return False
+        messages = ramfs.create_f(f"{message.guild.id}/casam")
+        write_vnum(messages, message.author.id)
+        write_vnum(messages, round(1000 * message.created_at.timestamp()))
+        write_vnum(messages, len(message.content))
+
+    return (False, "")
 
 
-async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: Any, mgid: List[int]) -> None:
+async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
     await nfile.save(compression, seek_begin=False)
     compression.close()
@@ -202,7 +256,7 @@ async def download_file(nfile: discord.File, compression: Any, encryption: Any, 
         pass
 
 
-def download_single_file(discord_file: discord.File, filename: str, key: bytes, iv: bytes, ramfs: Any, mgid: List[int]) -> None:
+def download_single_file(discord_file: discord.File, filename: str, key: bytes, iv: bytes, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -211,7 +265,7 @@ def download_single_file(discord_file: discord.File, filename: str, key: bytes, 
     asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
 
 
-async def log_message_files(message: discord.Message, kernel_ramfs: Any) -> None:
+async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     for i in message.attachments:
 
@@ -232,7 +286,7 @@ async def log_message_files(message: discord.Message, kernel_ramfs: Any) -> None
 async def on_message(message: discord.Message, **kargs) -> None:
 
     client = kargs["client"]
-    ramfs = kargs["ramfs"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
     main_version_info = kargs["kernel_version"]
     bot_start_time = kargs["bot_start"]
     command_modules, command_modules_dict = kargs["command_modules"]
@@ -243,7 +297,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
     if parse_skip_message(client, message):
         return
 
-    inc_statistics([message.guild.id, "on-message", kargs["kernel_ramfs"]])
+    inc_statistics_better(message.guild.id, "on-message", kargs["kernel_ramfs"])
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
@@ -253,7 +307,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
     # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
 
-    spammer = antispam_check(message.channel.guild.id, message.author.id, message.created_at, len(message.content), ramfs, int(float(mconf["antispam"][0])), float(mconf["antispam"][1]))
+    spammer, spamstr = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
 
     message_deleted: bool = False
 
@@ -262,17 +316,19 @@ async def on_message(message: discord.Message, **kargs) -> None:
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False))
+        asyncio.create_task(
+            command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=ramfs)
+            )
 
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", "Antispam"], client, verbose=False))
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr], client, verbose=False, ramfs=ramfs))
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, client, mconf))
+        asyncio.create_task(grab_an_adult(message, client, mconf, ramfs))
 
     stats["end-automod"] = round(time.time() * 100000)
 
@@ -347,12 +403,12 @@ async def on_message(message: discord.Message, **kargs) -> None:
             raise e
 
 
-category_info = {'name': 'Messages'}
+category_info: Dict[str, str] = {'name': 'Messages'}
 
-commands = {
+commands: Dict[str, Callable] = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
     }
 
-version_info = "1.2.3"
+version_info: str = "1.2.4"
