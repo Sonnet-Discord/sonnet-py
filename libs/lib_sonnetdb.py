@@ -191,12 +191,12 @@ class db_hlapi:
         self.set_enum("starboard", [str(message_id)])
         return True
 
-    def grab_infraction(self, infractionID: str) -> Optional[Tuple[Union[str, int], ...]]:
+    def grab_infraction(self, infractionID: str) -> Optional[List[Union[str, int]]]:
 
         try:
             infraction: Any = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
         except db_error.OperationalError:
-            return None
+            infraction = None
 
         return infraction[0] if infraction else None
 

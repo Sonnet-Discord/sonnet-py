@@ -449,6 +449,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
         return 1
 
     # Unpack this nightmare lmao
+    # pylint: disable=E0633
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
     infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
@@ -471,6 +472,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
             if not infraction:
                 await message.channel.send("ERROR: Infraction ID does not exist")
                 return 1
+            # pylint: disable=E1136
             db.delete_infraction(infraction[0])
     else:
         await message.channel.send("ERROR: No argument supplied")
@@ -479,6 +481,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
     if not kwargs["verbose"]:
         return
 
+    # pylint: disable=E0633
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
     infraction_embed = discord.Embed(title="Infraction Deleted", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.deletion, kwargs["ramfs"]))
