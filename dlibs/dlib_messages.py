@@ -237,6 +237,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
 
     return (False, "")
 
+
 async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
     await nfile.save(compression, seek_begin=False)

@@ -284,7 +284,7 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
     elif seconds > 10 or seconds < 0:
         await message.channel.send(f"{outside_range} 0-10 seconds")
         return 1
-    elif chars < 128 or chars >  2 ** 16:
+    elif chars < 128 or chars > 2**16:
         await message.channel.send(f"{outside_range} 128-{2**16} chars")
         return 1
 
@@ -292,7 +292,6 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
         database.add_config("char-antispam", f"{int(messages)},{seconds},{int(chars)}")
 
     if kwargs["verbose"]: await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
-
 
 
 async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:

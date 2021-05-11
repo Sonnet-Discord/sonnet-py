@@ -1,4 +1,4 @@
-# Set colors of embeds dynamically 
+# Set colors of embeds dynamically
 # Ultrabear 2021
 
 import importlib
@@ -11,7 +11,6 @@ importlib.reload(lib_db_obfuscator)
 import lib_loaders
 
 importlib.reload(lib_loaders)
-
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_embed_color, embed_colors
@@ -85,13 +84,14 @@ commands = {
     'set-colour-primary': {
         'alias': 'set-color-primary'
         },
-    'set-color-primary': {
-        'pretty_name': 'set-color-primary <hexcolor|"reset">',
-        'description': 'Set primary embed color',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': set_embed_primary
-        },
+    'set-color-primary':
+        {
+            'pretty_name': 'set-color-primary <hexcolor|"reset">',
+            'description': 'Set primary embed color',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_embed_primary
+            },
     'set-colour-creation': {
         'alias': 'set-color-creation'
         },
