@@ -21,6 +21,7 @@ from lib_encryption_wrapper import encrypted_reader
 
 from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional, Any
 import lib_lexdpyk_h as lexdpyk
+import lib_constants as constants
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
@@ -274,18 +275,21 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
 # Generate a prettified reply field from a message for displaying in embeds
 def generate_reply_field(message: discord.Message) -> str:
 
+    embed_lim: int = constants.embed.description
+    mini_lim: int = embed_lim // 4
+
     # Generate replies
     jump = f"\n\n[(Link)]({message.jump_url})"
     if (r := message.reference) and (rr := r.resolved):
         reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " ")) + "\n"
-        if len(reply_contents) >= 512:
-            reply_contents = reply_contents[:512 - 4] + "...\n"
+        if len(reply_contents) >= mini_lim:
+            reply_contents = reply_contents[:mini_lim - 4] + "...\n"
     else:
         reply_contents = ""
 
     message_content = reply_contents + message.content
-    if len(message_content) >= (2048 - len(jump)):
-        message_content = message_content[:2048 - len(jump) - 3] + "..."
+    if len(message_content) >= (embed_lim - len(jump)):
+        message_content = message_content[:embed_lim - len(jump) - 3] + "..."
     message_content = message_content + jump
 
     return message_content
