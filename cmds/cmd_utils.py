@@ -196,14 +196,18 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
 async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
-    guild = message.channel.guild
+    guild = message.guild
 
-    guild_embed = discord.Embed(title=f"Information on {guild}", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    embed_col = load_embed_color(guild, embed_colors.primary, kwargs["ramfs"])
+
+    guild_embed = discord.Embed(title=f"Information on {guild}", color=embed_col)
     guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
     guild_embed.add_field(name="# of Roles:", value=f"{len(guild.roles)} Roles")
-    guild_embed.add_field(name="Top Role:", value=str(guild.roles[-1]))
+    guild_embed.add_field(name="Top Role:", value=guild.roles[-1].mention)
     guild_embed.add_field(name="Member Count:", value=str(guild.member_count))
     guild_embed.add_field(name="Creation Date:", value=parsedate(guild.created_at))
+
+    guild_embed.set_footer(value=f"gid: {guild.id}")
     guild_embed.set_thumbnail(url=guild.icon_url)
 
     await message.channel.send(embed=guild_embed)
@@ -297,4 +301,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.5-DEV"
