@@ -207,7 +207,7 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
     guild_embed.add_field(name="Member Count:", value=str(guild.member_count))
     guild_embed.add_field(name="Creation Date:", value=parsedate(guild.created_at))
 
-    guild_embed.set_footer(value=f"gid: {guild.id}")
+    guild_embed.set_footer(text=f"gid: {guild.id}")
     guild_embed.set_thumbnail(url=guild.icon_url)
 
     await message.channel.send(embed=guild_embed)
