@@ -67,7 +67,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
             message_embed.add_field(name="Replying to:", value=f"{rr.author.mention} [(Link)]({rr.jump_url})")
 
         message_embed.set_footer(text=f"Message ID: {message.id}")
-        message_embed.timestamp = datetime.utcnow()
+        message_embed.timestamp: datetime = message.created_at
 
         await catch_logging_error(log_channel, message_embed, files)
 
@@ -135,7 +135,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
                 message_embed.add_field(name="(Continued)", value=(msg)[lim:lim*2], inline=False)
 
             message_embed.set_footer(text=f"Message ID: {message.id}")
-            message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
+            message_embed.timestamp = datetime.utcnow()
             asyncio.create_task(catch_logging_error(message_log, message_embed, None))
 
     # Check against blacklist

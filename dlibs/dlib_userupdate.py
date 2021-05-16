@@ -43,13 +43,13 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
         message_embed.add_field(name="After" + " | False" * (not bool(after.nick)), value=after.nick)
 
         message_embed.timestamp = datetime.utcnow()
-        message_embed.set_footer(text=f"unix: {int(time.time())}")
+        message_embed.set_footer(text=f"unix: {int(datetime.unixnow().timestamp())}")
 
         await catch_logging_error(channel, message_embed)
 
 
 def parsedate(indata: datetime) -> str:
-    return f"{time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(datetime.timestamp(indata)))} ({(datetime.utcnow() - indata).days} days ago)"
+    return f"{time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())} ({(datetime.utcnow() - indata).days} days ago)"
 
 
 async def on_member_join(member: discord.Member, **kargs: Any) -> None:
@@ -64,7 +64,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
                 embed.set_thumbnail(url=member.avatar_url)
 
                 embed.timestamp = datetime.utcnow()
-                embed.set_footer(text=f"uid: {member.id}, unix: {int(time.time())}")
+                embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime.unixnow().timestamp())}")
 
                 embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
 
@@ -83,7 +83,7 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
                 embed.set_thumbnail(url=member.avatar_url)
 
                 embed.timestamp = datetime.utcnow()
-                embed.set_footer(text=f"uid: {member.id}, unix: {int(time.time())}")
+                embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime.unixnow().timestamp())}")
 
                 embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
                 embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
@@ -99,4 +99,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.5-DEV"
