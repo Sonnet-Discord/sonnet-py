@@ -11,7 +11,7 @@ class embed:
     title: int = 256
     description: int = 2048
     author: int = 256
-    
+
     class field:
         name: int = 256
         value: int = 1024

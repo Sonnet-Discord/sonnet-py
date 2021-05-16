@@ -186,7 +186,7 @@ class db_hlapi:
             schm.append(["type", itype])
         if not automod:
             schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
- 
+
         try:
             data = self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm)
         except db_error.OperationalError:

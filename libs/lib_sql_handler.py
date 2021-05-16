@@ -116,8 +116,6 @@ class db_handler:
 
         return tuple(self.cur.fetchall())
 
-
-
     # deletes rows from table where column i[0] has value i[1]
     def delete_rows_from_table(self, table: str, column_search: List[Any]) -> None:
 

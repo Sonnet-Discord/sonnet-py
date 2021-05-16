@@ -397,7 +397,7 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
         return 0
 
     per_page = infractions_perpage
-    
+
     # Test if valid page
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
@@ -405,17 +405,17 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
     elif selected_chunk < -1:
         selected_chunk += 1
 
-    cpagecount = math.ceil(len(infractions)/per_page)
+    cpagecount = math.ceil(len(infractions) / per_page)
 
     if selected_chunk > cpagecount or selected_chunk < -cpagecount:
         await message.channel.send(f"ERROR: No such page {selected_chunk+(1 * (selected_chunk > 0))}")
         return 1
 
     chunk = ""
-    for i in infractions[selected_chunk*per_page:selected_chunk*per_page+per_page]:
+    for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
         chunk += f"{', '.join([i[0], i[3], i[4]])[:math.floor(1900/per_page)]}\n"
 
-    tprint = round((time.time() - tstart)*10000)/10
+    tprint = round((time.time() - tstart) * 10000) / 10
 
     await message.channel.send(f"Page {selected_chunk%cpagecount+1} / {cpagecount} ({len(infractions)} infractions) ({round(tprint)}ms)\n```css\nID, Type, Reason\n{chunk}```")
 

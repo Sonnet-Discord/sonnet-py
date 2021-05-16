@@ -30,6 +30,7 @@ from typing import List, Any, Dict, Optional, Callable, Tuple
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
+
 async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
     try:
         await channel.send(embed=contents, files=files)
@@ -60,7 +61,9 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     if message_log and (log_channel := client.get_channel(int(message_log))):
 
-        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"]))
+        message_embed = discord.Embed(
+            title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"])
+            )
         message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
 
         if (r := message.reference) and (rr := r.resolved):
@@ -127,12 +130,12 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             old_msg = (old_message.content or "NULL")
             message_embed.add_field(name="Old Message", value=(old_msg)[:lim], inline=False)
             if len(old_msg) > lim:
-                message_embed.add_field(name="(Continued)", value=(old_msg)[lim:lim*2], inline=False)
+                message_embed.add_field(name="(Continued)", value=(old_msg)[lim:lim * 2], inline=False)
 
             msg = (message.content or "NULL")
             message_embed.add_field(name="New Message", value=(msg)[:lim], inline=False)
             if len(msg) > lim:
-                message_embed.add_field(name="(Continued)", value=(msg)[lim:lim*2], inline=False)
+                message_embed.add_field(name="(Continued)", value=(msg)[lim:lim * 2], inline=False)
 
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime.utcnow()
