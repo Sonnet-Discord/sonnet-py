@@ -151,6 +151,9 @@ class db_hlapi:
 
     # Grab infractions of a user
     def grab_user_infractions(self, userid: Union[int, str]) -> Tuple[List[Union[str, int]], ...]:
+        """
+        Deprecated, replaced by grab_filter_infractions
+        """
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
@@ -161,9 +164,31 @@ class db_hlapi:
 
     # grab infractions dealt by a mod
     def grab_moderator_infractions(self, moderatorid: Union[int, str]) -> Tuple[Any, ...]:
+        """
+        Deprecated, replaced by grab_filter_infractions
+        """
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
+        except db_error.OperationalError:
+            data = tuple()
+
+        return data
+
+    def grab_filter_infractions(self, user: Optional[int] = None, moderator: Optional[int] = None, itype: Optional[str] = None, automod: bool = True) -> Tuple[Any, ...]:
+
+        schm: List[List[str]] = []
+        if user:
+            schm.append(["userID", str(user)])
+        if moderator:
+            schm.append(["moderatorID", str(moderator)])
+        if itype:
+            schm.append(["type", itype])
+        if not automod:
+            schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
+ 
+        try:
+            data = self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm)
         except db_error.OperationalError:
             data = tuple()
 

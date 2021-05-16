@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, datetime, time, asyncio
+import discord, datetime, time, asyncio, math
 
 import lib_db_obfuscator
 
@@ -59,7 +59,7 @@ async def log_infraction(
         log_embed.add_field(name="Type", value=infraction_type)
         log_embed.add_field(name="Reason", value=infraction_reason)
 
-        log_embed.set_footer(text=f"uid: {user.id}, unix: {int(time.time())}")
+        log_embed.set_footer(text=f"uid: {user.id}, unix: {int(datetime.datetime.utcnow().timestamp())}")
 
         asyncio.create_task(log_channel.send(embed=log_embed))
 
@@ -347,23 +347,28 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
 async def general_infraction_grabber(message: discord.Message, args: List[str], client: discord.Client):
 
+    tstart = time.time()
+
     # Reparse args
     args = (" ".join(args)).replace("=", " ").split()
 
     # Parse flags
-    selected_chunk = 0
-    responsible_mod = None
-    infraction_type = None
-    user_affected = None
-    automod = True
+    selected_chunk: int = 0
+    responsible_mod: Optional[int] = None
+    infraction_type: Optional[str] = None
+    infractions_perpage: int = 20
+    user_affected: Optional[int] = None
+    automod: bool = True
     for index, item in enumerate(args):
         try:
             if item in ["-p", "--page"]:
                 selected_chunk = int(float(args[index + 1])) - 1
             elif item in ["-m", "--mod"]:
-                responsible_mod = (args[index + 1].strip("<@!>"))
+                responsible_mod = int(args[index + 1].strip("<@!>"))
             elif item in ["-u", "--user"]:
-                user_affected = (args[index + 1].strip("<@!>"))
+                user_affected = int(args[index + 1].strip("<@!>"))
+            elif item in ["-i", "--infractioncount"]:
+                infractions_perpage = int(args[index + 1])
             elif item in ["-t", "--type"]:
                 infraction_type = (args[index + 1])
             elif item == "--no-automod":
@@ -372,27 +377,16 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
             await message.channel.send("Invalid flags supplied")
             return 1
 
+    if infractions_perpage > 40 or infractions_perpage < 5:
+        await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
+        return 1
+
     with db_hlapi(message.guild.id) as db:
-        if user_affected:
-            infractions = db.grab_user_infractions(user_affected)
-            sortmeth = "user"
-        elif responsible_mod:
-            infractions = db.grab_moderator_infractions(responsible_mod)
-            sortmeth = "mod"
+        if user_affected or responsible_mod:
+            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
         else:
             await message.channel.send("Please specify a user or moderator")
             return 1
-
-    # Generate sorts
-    if not automod:
-        automod_id = str(client.user.id)
-        infractions = filter(lambda i: not (i[2] == automod_id or "[AUTOMOD]" in i[4]), infractions)
-    if responsible_mod and sortmeth != "mod":
-        infractions = filter(lambda i: i[2] == responsible_mod, infractions)
-    if user_affected and sortmeth != "user":
-        infractions = filter(lambda i: i[1] == user_affected, infractions)
-    if infraction_type:
-        infractions = filter(lambda i: i[3] == infraction_type, infractions)
 
     # Sort newest first
     infractions = sorted(infractions, reverse=True, key=lambda a: a[5])
@@ -402,19 +396,8 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
         await message.channel.send("No infractions found")
         return 0
 
-    # Generate chunks from infractions
-    do_not_exceed = 1900  # Discord message length limits
-    chunks = [""]
-    curchunk = 0
-    for i in infractions:
-        infraction_data = f"{', '.join([i[0], i[3], i[4]])}\n"
-        # Make a new page if it overflows
-        if (len(chunks[curchunk]) + len(infraction_data)) > do_not_exceed:
-            curchunk += 1
-            chunks.append("")
-        # Add to the current chunk
-        chunks[curchunk] = chunks[curchunk] + infraction_data
-
+    per_page = infractions_perpage
+    
     # Test if valid page
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
@@ -422,13 +405,19 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
     elif selected_chunk < -1:
         selected_chunk += 1
 
-    try:
-        outdata = chunks[selected_chunk]
-    except IndexError:
-        await message.channel.send(f"ERROR: No such page {selected_chunk}")
+    cpagecount = math.ceil(len(infractions)/per_page)
+
+    if selected_chunk > cpagecount or selected_chunk < -cpagecount:
+        await message.channel.send(f"ERROR: No such page {selected_chunk+(1 * (selected_chunk > 0))}")
         return 1
 
-    await message.channel.send(f"Page {selected_chunk%len(chunks)+1} / {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
+    chunk = ""
+    for i in infractions[selected_chunk*per_page:selected_chunk*per_page+per_page]:
+        chunk += f"{', '.join([i[0], i[3], i[4]])[:math.floor(1900/per_page)]}\n"
+
+    tprint = round((time.time() - tstart)*10000)/10
+
+    await message.channel.send(f"Page {selected_chunk%cpagecount+1} / {cpagecount} ({len(infractions)} infractions) ({round(tprint)}ms)\n```css\nID, Type, Reason\n{chunk}```")
 
 
 async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -631,7 +620,7 @@ commands = {
         },
     'search-infractions':
         {
-            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [--no-automod]',
+            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--no-automod]',
             'description': 'Grab infractions of a user',
             'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
@@ -684,4 +673,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.5-DEV"
