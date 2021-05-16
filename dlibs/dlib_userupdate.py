@@ -42,8 +42,8 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
         message_embed.add_field(name="Before" + " | False" * (not bool(before.nick)), value=before.nick)
         message_embed.add_field(name="After" + " | False" * (not bool(after.nick)), value=after.nick)
 
-        message_embed.timestamp = datetime.utcnow()
-        message_embed.set_footer(text=f"unix: {int(datetime.unixnow().timestamp())}")
+        message_embed.timestamp = datetime.unixnow()
+        message_embed.set_footer(text=f"unix: {int(datetime.utcnow().timestamp())}")
 
         await catch_logging_error(channel, message_embed)
 

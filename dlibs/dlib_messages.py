@@ -67,7 +67,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
             message_embed.add_field(name="Replying to:", value=f"{rr.author.mention} [(Link)]({rr.jump_url})")
 
         message_embed.set_footer(text=f"Message ID: {message.id}")
-        message_embed.timestamp: datetime = message.created_at
+        message_embed.timestamp = message.created_at
 
         await catch_logging_error(log_channel, message_embed, files)
 
