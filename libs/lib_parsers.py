@@ -3,7 +3,7 @@
 
 import importlib
 
-import lz4.frame, discord, os, json, hashlib
+import lz4.frame, discord, os, json, hashlib, io
 
 import lib_db_obfuscator
 
@@ -251,8 +251,14 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
 
             encrypted_file = encrypted_reader(pointer, key, iv)
             rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
-            discord_files.append(discord.File(rawfile, filename=i))
+            
+            dfile = io.BytesIO(rawfile.read())
+
             rawfile.close()
+            encrypted_file.close()
+
+            discord_files.append(discord.File(dfile, filename=i))
+
             if delete:
                 try:
                     os.remove(pointer)
