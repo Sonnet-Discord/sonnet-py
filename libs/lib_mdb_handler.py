@@ -27,6 +27,12 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
     def __enter__(self):
         return self
 
+    def make_new_index(self, tablename: str, indexname: str, columns: List[str]) -> None:
+
+        db_inputStr = f"CREATE INDEX IF NOT EXISTS {indexname} ON {tablename} ({', '.join(columns)})"
+
+        self.cur.execute(db_inputStr)
+
     def make_new_table(self, tablename: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
         # Load hashmap of python datatypes to MariaDB datatypes

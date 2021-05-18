@@ -356,7 +356,7 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
     selected_chunk: int = 0
     responsible_mod: Optional[int] = None
     infraction_type: Optional[str] = None
-    infractions_perpage: int = 20
+    per_page: int = 20
     user_affected: Optional[int] = None
     automod: bool = True
     for index, item in enumerate(args):
@@ -368,7 +368,7 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
             elif item in ["-u", "--user"]:
                 user_affected = int(args[index + 1].strip("<@!>"))
             elif item in ["-i", "--infractioncount"]:
-                infractions_perpage = int(args[index + 1])
+                per_page = int(args[index + 1])
             elif item in ["-t", "--type"]:
                 infraction_type = (args[index + 1])
             elif item == "--no-automod":
@@ -377,7 +377,7 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
             await message.channel.send("Invalid flags supplied")
             return 1
 
-    if infractions_perpage > 40 or infractions_perpage < 5:
+    if per_page > 40 or per_page < 5:
         await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
         return 1
 
@@ -396,19 +396,18 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
         await message.channel.send("No infractions found")
         return 0
 
-    per_page = infractions_perpage
+    cpagecount = len(infractions) // per_page
 
     # Test if valid page
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
         return 1
     elif selected_chunk < -1:
+        selected_chunk %= cpagecount
         selected_chunk += 1
 
-    cpagecount = math.ceil(len(infractions) / per_page)
-
-    if selected_chunk > cpagecount or selected_chunk < -cpagecount:
-        await message.channel.send(f"ERROR: No such page {selected_chunk+(1 * (selected_chunk > 0))}")
+    if selected_chunk > cpagecount or selected_chunk < 0:
+        await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
         return 1
 
     chunk = ""

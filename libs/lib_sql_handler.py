@@ -20,6 +20,20 @@ class db_handler:
     def __enter__(self):
         return self
 
+    def make_new_index(self, tablename: str, indexname: str, columns: List[str]) -> None:
+
+        # Test for attack
+        if "\\" in tablename or "'" in tablename:
+            raise db_error.OperationalError("Detected SQL injection attack")
+
+        if "\\" in indexname or "'" in indexname:
+            raise db_error.OperationalError("Detected SQL injection attack")
+
+        cols = "', '".join(columns)
+        db_inputStr = f"CREATE INDEX IF NOT EXISTS '{indexname}' ON '{tablename}' ('{cols}')"
+
+        self.cur.execute(db_inputStr)
+
     def make_new_table(self, tablename: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
         # Load hashmap of python datatypes to SQLite3 datatypes
@@ -46,7 +60,7 @@ class db_handler:
             }
 
         # Test for attack
-        if tablename.count("\\") or tablename.count("'"):
+        if "\\" in tablename or "'" in tablename:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add table addition

@@ -188,6 +188,8 @@ class db_hlapi:
             schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
 
         try:
+            self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
+            self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
             data = self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm)
         except db_error.OperationalError:
             data = tuple()
