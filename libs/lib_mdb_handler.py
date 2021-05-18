@@ -148,6 +148,9 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
+    def ping(self) -> None:
+        self.con.ping()
+
     def commit(self) -> None:  # Commits data to db
         self.con.commit()
 

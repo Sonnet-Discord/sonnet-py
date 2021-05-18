@@ -37,7 +37,7 @@ except db_error.Error:
 def db_grab_connection() -> db_handler:
     global db_connection
     try:
-        db_connection.commit()
+        db_connection.ping()
         return db_connection
     except (db_error.Error, db_error.InterfaceError):
         try:
