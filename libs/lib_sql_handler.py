@@ -174,7 +174,7 @@ class db_handler:
         return tuple(self.cur.fetchall())
     
     def ping(self) -> None:
-        self.con.ping()
+        self.con.commit()
 
     def commit(self) -> None:  # Commits data to db
         self.con.commit()
