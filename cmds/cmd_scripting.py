@@ -102,6 +102,8 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                 except FileNotFoundError:
                     pass
 
+        if kwargs["verbose"]: await message.channel.send("Completed execution of {len(commandsparse)} commands")
+
     finally:
         message.content = keepref
 
@@ -138,8 +140,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
     if "alias" in kwargs["cmds_dict"][command]:
         command = kwargs["cmds_dict"][command]["alias"]
 
-    permission = await parse_permissions(message, kwargs["conf_cache"], kwargs["cmds_dict"][command]['permission'])
-    if not permission:
+    if not await parse_permissions(message, kwargs["conf_cache"], kwargs["cmds_dict"][command]['permission']):
         return 1
 
     # Keep original message content
@@ -178,6 +179,8 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                     kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
                 except FileNotFoundError:
                     pass
+
+        if kwargs["verbose"]: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command}")
 
     finally:
         message.content = keepref
