@@ -4,6 +4,7 @@
 import mariadb
 from typing import List, Dict, Any, Tuple, Union
 
+mdb_version = tuple([int(i) for i in mariadb.mariadbapi_version.split(".")])
 
 class db_error:  # DB error codes
     OperationalError = mariadb.Error
@@ -12,6 +13,9 @@ class db_error:  # DB error codes
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
+
+    TEXT_KEY = mdb_version >= (10, 4)
+
     def __init__(self, login_info: Dict[str, Any]) -> None:
         # Connect to database with login info
         self.con = mariadb.connect(user=login_info["login"], password=login_info["password"], host=login_info["server"], database=login_info["db_name"], port=int(login_info["port"]))

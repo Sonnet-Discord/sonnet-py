@@ -12,6 +12,9 @@ class db_error:  # DB error codes
 
 
 class db_handler:
+
+    TEXT_KEY = True
+
     def __init__(self, db_location: str) -> None:
         self.con = sqlite3.connect(db_location)
         self.cur = self.con.cursor()
