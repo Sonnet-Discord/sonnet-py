@@ -29,7 +29,7 @@ async def catch_dm_error(user: discord.User, contents: str, log_channel: discord
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
         if log_channel:
-            await log_channel.send("ERROR: Could not DM user")
+            await log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none())
 
 
 # Sends an infraction to database and log channels if user exists
