@@ -187,9 +187,15 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         cmd_embed = discord.Embed(title="Category Listing", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
         cmd_embed.set_author(name=helpname)
 
+        total = 0
+
         for module in kwargs["cmds"]:
-            helptext = ', '.join([f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]])
+            mnames = [f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]]
+            helptext = ', '.join(mnames)
+            total += len(mnames)
             cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
+
+        cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(kwargs['cmds_dict'])}")
 
         await message.channel.send(embed=cmd_embed)
 
