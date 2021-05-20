@@ -396,7 +396,7 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
         await message.channel.send("No infractions found")
         return 0
 
-    cpagecount = len(infractions) // per_page
+    cpagecount = math.ceil(len(infractions) / per_page)
 
     # Test if valid page
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
@@ -416,7 +416,7 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
 
     tprint = round((time.time() - tstart) * 10000) / 10
 
-    await message.channel.send(f"Page {selected_chunk} / {cpagecount} ({len(infractions)} infractions) ({round(tprint)}ms)\n```css\nID, Type, Reason\n{chunk}```")
+    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infractions) ({round(tprint)}ms)\n```css\nID, Type, Reason\n{chunk}```")
 
 
 async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
