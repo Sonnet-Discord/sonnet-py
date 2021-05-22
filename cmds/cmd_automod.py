@@ -18,7 +18,7 @@ from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import REGEX_VERSION
 from lib_parsers import parse_role
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Callable
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
@@ -320,9 +320,45 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {mutetime} seconds")
 
 
+class joinrules:
+    def __init__(self, message: discord.Message):
+        self.m = message
+
+    def adduser(self, args: List[str]):
+        pass # TODO HOW THE FUCK DO I STORE THIS AAA
+
+    def addtimestamp(self, args: List[str]):
+        pass # TODO IMPLEMENT DATABASE STRUCTURE?????
+
+
+async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    await message.channel.send("NOT IMPLEMENTED (YET)")
+    return 1
+
+    if args:
+
+        rules = joinrules(message)
+
+        ops: Dict[str, Callable[[List[str]], None]] = {
+            "user": rules.adduser,
+            "timestamp": rules.addtimestamp,
+        }
+
+        if args[0] in ops:
+            ops[args[0]](args[1:])
+
+
 category_info = {'name': 'automod', 'pretty_name': 'Automod', 'description': 'Automod management commands.'}
 
 commands = {
+    'add-joinrule': {
+        'pretty_name': 'add-joinrule <type> <parameter>',
+        'description': 'Add a joinrule to notify for',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': add_joinrule
+        },
     'wb-change': {
         'pretty_name': 'wb-change <csv list>',
         'description': 'Change word blacklist',
@@ -440,4 +476,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.5-DEV"
