@@ -24,6 +24,9 @@ from lib_loaders import load_embed_color, embed_colors
 
 from typing import List, Any
 
+class utils_const:
+    err_embed = "ERROR: The bot does not have permissions to send embeds here"
+
 
 class UserParseError(RuntimeError):
     pass
@@ -109,7 +112,11 @@ async def profile_function(message: discord.Message, args: List[str], client: di
             embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
 
     embed.timestamp = datetime.utcnow()
-    await message.channel.send(embed=embed)
+    try:
+        await message.channel.send(embed=embed)
+    except discord.errors.Forbidden:
+        await message.channel.send(utils_const.err_embed)
+        return 1
 
 
 async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -122,7 +129,11 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
     embed = discord.Embed(description=f"{user_object.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_image(url=user_object.avatar_url)
     embed.timestamp = datetime.utcnow()
-    await message.channel.send(embed=embed)
+    try:
+        await message.channel.send(embed=embed)
+    except discord.errors.Forbidden:
+        await message.channel.send(utils_const.err_embed)
+        return 1
 
 
 async def help_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -146,7 +157,11 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
                 cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
 
-            await message.channel.send(embed=cmd_embed)
+            try:
+                await message.channel.send(embed=cmd_embed)
+            except discord.errors.Forbidden:
+                await message.channel.send(utils_const.err_embed)
+                return 1
 
         # Per command help
         elif a in kwargs["cmds_dict"]:
@@ -174,7 +189,11 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             if aliases:
                 cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
 
-            await message.channel.send(embed=cmd_embed)
+            try:
+                await message.channel.send(embed=cmd_embed)
+            except discord.errors.Forbidden:
+                await message.channel.send(utils_const.err_embed)
+                return 1
 
         # Do not echo user input
         else:
@@ -197,7 +216,11 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
         cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(kwargs['cmds_dict'])}")
 
-        await message.channel.send(embed=cmd_embed)
+        try:
+            await message.channel.send(embed=cmd_embed)
+        except discord.errors.Forbidden:
+            await message.channel.send(utils_const.err_embed)
+            return 1
 
 
 async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -216,8 +239,11 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
     guild_embed.set_footer(text=f"gid: {guild.id}")
     guild_embed.set_thumbnail(url=guild.icon_url)
 
-    await message.channel.send(embed=guild_embed)
-
+    try:
+        await message.channel.send(embed=guild_embed)
+    except discord.errors.Forbidden:
+        await message.channel.send(utils_const.err_embed)
+        return 1
 
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
