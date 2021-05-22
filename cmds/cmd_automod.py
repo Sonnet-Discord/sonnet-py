@@ -325,10 +325,10 @@ class joinrules:
         self.m = message
 
     def adduser(self, args: List[str]):
-        pass # TODO HOW THE FUCK DO I STORE THIS AAA
+        pass  # TODO HOW THE FUCK DO I STORE THIS AAA
 
     def addtimestamp(self, args: List[str]):
-        pass # TODO IMPLEMENT DATABASE STRUCTURE?????
+        pass  # TODO IMPLEMENT DATABASE STRUCTURE?????
 
 
 async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -343,7 +343,7 @@ async def add_joinrule(message: discord.Message, args: List[str], client: discor
         ops: Dict[str, Callable[[List[str]], None]] = {
             "user": rules.adduser,
             "timestamp": rules.addtimestamp,
-        }
+            }
 
         if args[0] in ops:
             ops[args[0]](args[1:])

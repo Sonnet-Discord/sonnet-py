@@ -77,7 +77,8 @@ class gdpr_functions:
             f"""Deleted database for guild {message.guild.id}
 Please note that when the bot receives a message from this guild it will generate a cache and statistics file again
 As we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server
-To fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot""")
+To fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"""
+            )
 
     async def download(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
 
@@ -107,9 +108,11 @@ To fully ensure sonnet does not store any data on this server, delete the db and
         try:
             await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
         except discord.errors.HTTPException:
-            await message.channel.send("""ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords filesize limitation
+            await message.channel.send(
+                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords filesize limitation
 Please contact the bot owner directly to download your guilds database
-Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted""")
+Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"""
+                )
 
 
 async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:

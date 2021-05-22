@@ -38,6 +38,7 @@ async def catch_dm_error(user: discord.User, contents: str, log_channel: discord
             except discord.errors.Forbidden:
                 pass
 
+
 async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextChannel) -> None:
     try:
         await log_channel.send(embed=embed)

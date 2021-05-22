@@ -172,7 +172,7 @@ class db_handler:
 
         # Send data
         return tuple(self.cur.fetchall())
-    
+
     def ping(self) -> None:
         self.con.commit()
 

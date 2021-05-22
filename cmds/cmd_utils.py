@@ -246,6 +246,7 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
         await message.channel.send(constants.sonnet.error_embed)
         return 1
 
+
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:

@@ -3,6 +3,7 @@
 
 from typing import Final
 
+
 class message:
     content: Final[int] = 2000
 
@@ -38,4 +39,3 @@ class sonnet:
 
     class error_message:
         invalid: Final[str] = "ERROR: Message does not exist"
-

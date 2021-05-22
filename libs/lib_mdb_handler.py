@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Tuple, Union
 
 mdb_version = tuple([int(i) for i in mariadb.mariadbapi_version.split(".")])
 
+
 class db_error:  # DB error codes
     OperationalError = mariadb.Error
     InterfaceError = mariadb.InterfaceError
