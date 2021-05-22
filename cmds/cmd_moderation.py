@@ -14,10 +14,14 @@ importlib.reload(lib_loaders)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_constants
+
+importlib.reload(lib_constants)
 
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message
+import lib_constants as const
 
 from typing import List, Tuple, Any, Awaitable, Optional
 import lib_lexdpyk_h as lexdpyk
@@ -29,7 +33,19 @@ async def catch_dm_error(user: discord.User, contents: str, log_channel: discord
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
         if log_channel:
-            await log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none())
+            try:
+                await log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none())
+            except discord.errors.Forbidden:
+                pass
+
+async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextChannel) -> None:
+    try:
+        await log_channel.send(embed=embed)
+    except discord.errors.Forbidden:
+        try:
+            await log_channel.send(const.sonnet.error_embed)
+        except discord.errors.Forbidden:
+            pass
 
 
 # Sends an infraction to database and log channels if user exists
@@ -61,7 +77,7 @@ async def log_infraction(
 
         log_embed.set_footer(text=f"uid: {user.id}, unix: {int(datetime.datetime.utcnow().timestamp())}")
 
-        asyncio.create_task(log_channel.send(embed=log_embed))
+        asyncio.create_task(catch_logging_error(log_embed, log_channel))
 
     if not to_dm:
         return generated_id, None
@@ -449,7 +465,11 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
     infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
 
-    await message.channel.send(embed=infraction_embed)
+    try:
+        await message.channel.send(embed=infraction_embed)
+    except discord.errors.Forbidden:
+        await message.channel.send(const.sonnet.error_embed)
+        return 1
 
 
 async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -482,7 +502,11 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
     infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
 
-    await message.channel.send(embed=infraction_embed)
+    try:
+        await message.channel.send(embed=infraction_embed)
+    except discord.errors.Forbidden:
+        await message.channel.send(const.sonnet.error_embed)
+        return 1
 
 
 async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -512,7 +536,11 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)
     except discord.errors.HTTPException:
-        await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
+        try:
+            await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
+        except discord.errors.Forbidden:
+            await message.channel.send(const.sonnet.error_embed)
+            return 1
 
 
 class purger:
