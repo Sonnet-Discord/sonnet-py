@@ -14,14 +14,17 @@ importlib.reload(lib_encryption_wrapper)
 import sonnet_cfg
 
 importlib.reload(sonnet_cfg)
+import lib_constants
+
+importlib.reload(lib_constants)
 
 from sonnet_cfg import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
+import lib_constants as constants
 
 from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional, Any
 import lib_lexdpyk_h as lexdpyk
-import lib_constants as constants
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
@@ -159,21 +162,21 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
         with db_hlapi(message.guild.id) as db:
             lchannel = f"<#{lchannel}>" if (lchannel := db.grab_config(log_name)) else "nothing"
         await message.channel.send(f"{log_name} is set to {lchannel}")
-        raise errors.log_channel_update_error("ERROR: No Channel supplied")
+        raise errors.log_channel_update_error(constants.sonnet.error_channel.none)
 
     try:
         log_channel = int(log_channel_str)
     except ValueError:
-        await message.channel.send("ERROR: Channel is not a valid int")
+        await message.channel.send(constants.sonnet.error_channel.invalid)
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
-        await message.channel.send("ERROR: Channel is not a valid channel")
+        await message.channel.send(constants.sonnet.error_channel.invalid)
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
     if discord_channel.guild.id != message.channel.guild.id:
-        await message.channel.send("ERROR: Channel is not in guild")
+        await message.channel.send(constants.sonnet.error_channel.scope)
         raise errors.log_channel_update_error("Channel is not in guild")
 
     # Nothing failed so send to db
@@ -314,11 +317,11 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
     try:
         role = message.guild.get_role(int(role))
     except ValueError:
-        await message.channel.send("ERROR: Role is not valid int")
+        await message.channel.send(constants.sonnet.error_role.invalid)
         return 1
 
     if not role:
-        await message.channel.send("ERROR: Role does not exist")
+        await message.channel.send(constants.sonnet.error_role.invalid)
         return 1
 
     with db_hlapi(message.guild.id) as db:
@@ -343,32 +346,32 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
             message_id = args[1]
             nargs = 2
         except IndexError:
-            await message.channel.send("ERROR: Not enough args supplied")
+            await message.channel.send(constants.sonnet.error_args.not_enough)
             raise errors.message_parse_failure
 
     try:
         log_channel = int(log_channel)
     except ValueError:
-        await message.channel.send("ERROR: Channel is not a valid int")
+        await message.channel.send(constants.sonnet.error_channel.invalid)
         raise errors.message_parse_failure
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
-        await message.channel.send("ERROR: Channel is not a valid channel")
+        await message.channel.send(constants.sonnet.error_channel.invalid)
         raise errors.message_parse_failure
 
     if discord_channel.guild.id != message.channel.guild.id:
-        await message.channel.send("ERROR: Channel is not in guild")
+        await message.channel.send(constants.sonnet.error_channel.scope)
         raise errors.message_parse_failure
 
     try:
         discord_message = await discord_channel.fetch_message(int(message_id))
     except (ValueError, discord.errors.HTTPException):
-        await message.channel.send("ERROR: Invalid MessageID")
+        await message.channel.send(constants.sonnet.error_message.invalid)
         raise errors.message_parse_failure
 
     if not discord_message:
-        await message.channel.send("ERROR: Invalid MessageID")
+        await message.channel.send(constants.sonnet.error_message.invalid)
         raise errors.message_parse_failure
 
     return (discord_message, nargs)
