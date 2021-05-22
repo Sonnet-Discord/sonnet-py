@@ -24,7 +24,7 @@ importlib.reload(lib_constants)
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean
 from lib_loaders import load_embed_color, embed_colors
-import lib_constants as const
+import lib_constants as constants
 
 from typing import List, Any
 
@@ -116,7 +116,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
-        await message.channel.send(const.sonnet.error_embed)
+        await message.channel.send(constants.sonnet.error_embed)
         return 1
 
 
@@ -133,7 +133,7 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
-        await message.channel.send(const.sonnet.error_embed)
+        await message.channel.send(constants.sonnet.error_embed)
         return 1
 
 
@@ -161,7 +161,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             try:
                 await message.channel.send(embed=cmd_embed)
             except discord.errors.Forbidden:
-                await message.channel.send(const.sonnet.error_embed)
+                await message.channel.send(constants.sonnet.error_embed)
                 return 1
 
         # Per command help
@@ -193,7 +193,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             try:
                 await message.channel.send(embed=cmd_embed)
             except discord.errors.Forbidden:
-                await message.channel.send(const.sonnet.error_embed)
+                await message.channel.send(constants.sonnet.error_embed)
                 return 1
 
         # Do not echo user input
@@ -220,7 +220,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         try:
             await message.channel.send(embed=cmd_embed)
         except discord.errors.Forbidden:
-            await message.channel.send(const.sonnet.error_embed)
+            await message.channel.send(constants.sonnet.error_embed)
             return 1
 
 
@@ -243,7 +243,7 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
     try:
         await message.channel.send(embed=guild_embed)
     except discord.errors.Forbidden:
-        await message.channel.send(const.sonnet.error_embed)
+        await message.channel.send(constants.sonnet.error_embed)
         return 1
 
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:

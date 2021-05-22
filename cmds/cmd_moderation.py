@@ -21,7 +21,7 @@ importlib.reload(lib_constants)
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message
-import lib_constants as const
+import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional
 import lib_lexdpyk_h as lexdpyk
@@ -43,7 +43,7 @@ async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextCha
         await log_channel.send(embed=embed)
     except discord.errors.Forbidden:
         try:
-            await log_channel.send(const.sonnet.error_embed)
+            await log_channel.send(constants.sonnet.error_embed)
         except discord.errors.Forbidden:
             pass
 
@@ -468,7 +468,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     try:
         await message.channel.send(embed=infraction_embed)
     except discord.errors.Forbidden:
-        await message.channel.send(const.sonnet.error_embed)
+        await message.channel.send(constants.sonnet.error_embed)
         return 1
 
 
@@ -505,7 +505,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
     try:
         await message.channel.send(embed=infraction_embed)
     except discord.errors.Forbidden:
-        await message.channel.send(const.sonnet.error_embed)
+        await message.channel.send(constants.sonnet.error_embed)
         return 1
 
 
@@ -539,7 +539,7 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
         try:
             await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
         except discord.errors.Forbidden:
-            await message.channel.send(const.sonnet.error_embed)
+            await message.channel.send(constants.sonnet.error_embed)
             return 1
 
 
