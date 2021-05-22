@@ -17,3 +17,7 @@ class embed:
         value: int = 1024
 
     footer: int = 2048
+
+
+class sonnet:
+    error_embed = "ERROR: The bot does not have permissions to send embeds here"
