@@ -167,7 +167,7 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
     if log_channel_str in ["remove", "rm", "delete"]:
         with db_hlapi(message.guild.id) as db:
             db.delete_config(log_name)
-        await message.channel.send("Deleted {log_name} channel config")
+        await message.channel.send(f"Deleted {log_name} channel config")
         return
 
     try:
@@ -323,7 +323,7 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
     if role_str in ["remove", "rm", "delete"]:
         with db_hlapi(message.guild.id) as db:
             db.delete_config(db_entry)
-        await message.channel.send("Deleted {db_entry} role config")
+        await message.channel.send(f"Deleted {db_entry} role config")
         return 0
 
     try:
