@@ -76,7 +76,7 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
     inc_statistics([member.guild.id, "on-member-remove", kargs["kernel_ramfs"]])
 
     with db_hlapi(member.guild.id) as db:
-        if joinlog := db.grab_config("join-log"):
+        if (joinlog := (db.grab_config("leave-log") or db.grab_config("join-log"))):
             if logging_channel := kargs["client"].get_channel(int(joinlog)):
 
                 embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=load_embed_color(member.guild, embed_colors.deletion, kargs["ramfs"]))

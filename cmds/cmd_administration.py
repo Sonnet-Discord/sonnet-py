@@ -30,6 +30,13 @@ async def joinlog_change(message: discord.Message, args: List[str], client: disc
         return 1
 
 
+async def leave_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    try:
+        await update_log_channel(message, args, client, "leave-log", verbose=kwargs["verbose"])
+    except lib_parsers.errors.log_channel_update_error:
+        return 1
+
+
 async def inflog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
@@ -40,6 +47,13 @@ async def inflog_change(message: discord.Message, args: List[str], client: disco
 async def msglog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "message-log", verbose=kwargs["verbose"])
+    except lib_parsers.errors.log_channel_update_error:
+        return 1
+
+
+async def message_edit_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    try:
+        await update_log_channel(message, args, client, "message-edit-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
@@ -186,6 +200,14 @@ async def set_moderator_role(message: discord.Message, args: List[str], client: 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
+    'message-edit-log':
+        {
+            'pretty_name': 'message-edit-log <channel>',
+            'description': 'Change message edit log, overloads message-log',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': message_edit_log_change
+            },
     'message-log': {
         'pretty_name': 'message-log <channel>',
         'description': 'Change message log',
@@ -193,9 +215,15 @@ commands = {
         'cache': 'keep',
         'execute': msglog_change
         },
-    'leave-log': {
-        'alias': 'join-log'
-        },
+    'leave-log':
+        {
+            'pretty_name': 'leave-log <channel>',
+            'description': 'Change leave log, overloads join-log',
+            'rich_description': 'Set the leave log, diverts leave logs from join log to leave log',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': leave_log_change
+            },
     'join-log':
         {
             'pretty_name': 'join-log <channel>',

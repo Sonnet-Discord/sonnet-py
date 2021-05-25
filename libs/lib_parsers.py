@@ -164,6 +164,12 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
         await message.channel.send(f"{log_name} is set to {lchannel}")
         raise errors.log_channel_update_error(constants.sonnet.error_channel.none)
 
+    if log_channel_str in ["remove", "rm", "delete"]:
+        with db_hlapi(message.guild.id) as db:
+            db.delete_config(log_name)
+        await message.channel.send("Deleted {log_name} channel config")
+        return
+
     try:
         log_channel = int(log_channel_str)
     except ValueError:
@@ -308,14 +314,20 @@ def generate_reply_field(message: discord.Message) -> str:
 async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> Optional[int]:
 
     if args:
-        role: Union[str, discord.Role] = args[0].strip("<@&>")
+        role_str: str = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
             await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
         return 0
 
+    if role_str in ["remove", "rm", "delete"]:
+        with db_hlapi(message.guild.id) as db:
+            db.delete_config(db_entry)
+        await message.channel.send("Deleted {db_entry} role config")
+        return 0
+
     try:
-        role = message.guild.get_role(int(role))
+        role = message.guild.get_role(int(role_str))
     except ValueError:
         await message.channel.send(constants.sonnet.error_role.invalid)
         return 1

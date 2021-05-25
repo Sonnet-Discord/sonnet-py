@@ -116,7 +116,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
-        message_log = db.grab_config("message-log")
+        message_log = db.grab_config("message-edit-log") or db.grab_config("message-log")
 
     # Skip logging if message is the same or mlog doesnt exist
     if message_log and not (old_message.content == message.content):

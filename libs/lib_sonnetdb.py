@@ -149,6 +149,13 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
+    def delete_config(self, config: str) -> None:
+
+        try:
+            self.database.delete_rows_from_table(f"{self.guild}_config", ["property", config])
+        except db_error.OperationalError:
+            pass
+
     # Grab infractions of a user
     def grab_user_infractions(self, userid: Union[int, str]) -> Tuple[List[Union[str, int]], ...]:
         """
