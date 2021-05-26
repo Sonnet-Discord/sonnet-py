@@ -65,7 +65,8 @@ class db_hlapi:
         self.inject_enum("mutes", [("infractionID", str), ("userID", str), ("endMute", int)])
 
     def __enter__(self):
-        if self._lock: self._lock.lock()
+        if self._lock:
+            self._lock.aquire()
         return self
 
     def _validate_enum(self, schema: List[Tuple[str, type]]) -> bool:
@@ -350,7 +351,8 @@ class db_hlapi:
         self.database.commit()
 
     def __exit__(self, err_type, err_value, err_traceback):
-        if self._lock: self._lock.release()
+        if self._lock:
+            self._lock.release()
         self.database.commit()
         if err_type:
             raise err_type(err_value)
