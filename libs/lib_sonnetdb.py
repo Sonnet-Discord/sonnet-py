@@ -66,7 +66,7 @@ class db_hlapi:
 
     def __enter__(self):
         if self._lock:
-            self._lock.aquire()
+            self._lock.acquire()
         return self
 
     def _validate_enum(self, schema: List[Tuple[str, type]]) -> bool:
