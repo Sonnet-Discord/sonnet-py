@@ -5,7 +5,7 @@ import importlib
 
 import discord
 
-import random, os, ctypes, time, io, json, pickle
+import random, os, ctypes, time, io, json, pickle, threading
 from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
 
 import lib_db_obfuscator
@@ -272,3 +272,15 @@ class embed_colors:
 
 def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
     return int(load_message_config(guild.id, ramfs, datatypes=_colortypes_cache)[f"embed-color-{colortype}"], 16)
+
+
+def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> threading.Lock:
+
+    l: threading.Lock
+
+    try:
+        l = ramfs.read_f(f"{guild.id}/db_lock")
+    except FileNotFoundError:
+        l = ramfs.create_f(f"{guild.id}/db_lock", f_type=threading.Lock, f_args=[])
+
+    return l

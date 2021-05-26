@@ -18,7 +18,7 @@ import lib_constants
 
 importlib.reload(lib_constants)
 
-from lib_loaders import generate_infractionid, load_embed_color, embed_colors
+from lib_loaders import generate_infractionid, load_embed_color, embed_colors, get_guild_lock
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message
 import lib_constants as constants
@@ -57,7 +57,7 @@ async def log_infraction(
     if not user:
         return None, None
 
-    with db_hlapi(message.guild.id) as db:
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         # Collision test
         while db.grab_infraction(generated_id := generate_infractionid()):
             pass
@@ -248,9 +248,9 @@ class NoMuteRole(Exception):
     pass
 
 
-async def grab_mute_role(message: discord.Message):
+async def grab_mute_role(message: discord.Message, ramfs: lexdpyk.ram_filesystem) -> discord.Role:
 
-    with db_hlapi(message.guild.id) as db:
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         if (mute_role := db.grab_config("mute-role")):
             if (mute_role := message.guild.get_role(int(mute_role))):
                 return mute_role
@@ -262,12 +262,12 @@ async def grab_mute_role(message: discord.Message):
             raise NoMuteRole("No mute role")
 
 
-async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infractionID: str, mute_role: discord.Role, mutetime: int) -> None:
+async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infractionID: str, mute_role: discord.Role, mutetime: int, ramfs: lexdpyk.ram_filesystem) -> None:
 
     await asyncio.sleep(mutetime)
 
     # unmute in db
-    with db_hlapi(guild.id) as db:
+    with db_hlapi(guild.id, lock=get_guild_lock(guild, ramfs)) as db:
         if db.is_muted(infractionid=infractionID):
             db.unmute_user(infractionid=infractionID)
 
@@ -298,7 +298,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         mutetime = 0
 
     try:
-        mute_role = await grab_mute_role(message)
+        mute_role = await grab_mute_role(message, kwargs["ramfs"])
         member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", kwargs["ramfs"])
     except (NoMuteRole, InfractionGenerationError):
         return 1
@@ -328,18 +328,18 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
             asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}", allowed_mentions=discord.AllowedMentions.none()))
 
         # Stop other mute timers and add to mutedb
-        with db_hlapi(message.guild.id) as db:
+        with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
             db.unmute_user(userid=member.id)
             db.mute_user(member.id, int(time.time() + mutetime), infractionID)
 
         # Create in other thread to not block command execution
-        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime))
+        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime, kwargs["ramfs"]))
 
 
 async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        mute_role = await grab_mute_role(message)
+        mute_role = await grab_mute_role(message, kwargs["ramfs"])
         member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", kwargs["ramfs"], infraction=False)
     except (InfractionGenerationError, NoMuteRole):
         return 1
@@ -356,15 +356,17 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
         return 1
 
     # Unmute in DB
-    with db_hlapi(message.guild.id) as db:
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
         db.unmute_user(userid=member.id)
 
     if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def general_infraction_grabber(message: discord.Message, args: List[str], client: discord.Client):
+async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
 
     tstart = time.monotonic()
+
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
     # Reparse args
     args = (" ".join(args)).replace("=", " ").split()
@@ -398,7 +400,7 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
         await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
         return 1
 
-    with db_hlapi(message.guild.id) as db:
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         if user_affected or responsible_mod:
             infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
         else:
@@ -436,15 +438,10 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
     await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infractions) ({tprint}ms)\n```css\nID, Type, Reason\n{chunk}```")
 
 
-async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-
-    return await general_infraction_grabber(message, args, client)
-
-
 async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
-        with db_hlapi(message.guild.id) as db:
+        with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
             infraction = db.grab_infraction(args[0])
         if not infraction:
             await message.channel.send("ERROR: Infraction ID does not exist")
@@ -476,7 +473,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
 async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
-        with db_hlapi(message.guild.id) as db:
+        with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
             infraction = db.grab_infraction(args[0])
             if not infraction:
                 await message.channel.send("ERROR: Infraction ID does not exist")

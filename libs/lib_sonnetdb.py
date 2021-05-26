@@ -3,6 +3,8 @@
 
 import importlib
 
+import threading
+
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
 from typing import Union, Dict, List, Tuple, Optional, Any
@@ -50,11 +52,12 @@ def db_grab_connection() -> db_handler:
 
 # Because being lazy writes good code
 class db_hlapi:
-    def __init__(self, guild_id: Optional[int]) -> None:
+    def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
         self.database = db_grab_connection()
-        self.guild = guild_id
+        self.guild: Optional[int] = guild_id
+        self._lock: Optional[threading.Lock] = lock
 
-        self.__enum_input: Dict[str, List[Tuple[str, Any]]] = {}
+        self.__enum_input: Dict[str, List[Tuple[str, type]]] = {}
         self.__enum_pool: Dict[str, List[Tuple[Any, ...]]] = {}
 
         self.inject_enum("config", [("property", str), ("value", str)])
@@ -62,15 +65,16 @@ class db_hlapi:
         self.inject_enum("mutes", [("infractionID", str), ("userID", str), ("endMute", int)])
 
     def __enter__(self):
+        if self._lock: self._lock.lock()
         return self
 
-    def _validate_enum(self, schema: List[Tuple[str, Any]]) -> bool:
+    def _validate_enum(self, schema: List[Tuple[str, type]]) -> bool:
         for i in schema:
             if type(i[0]) != str or i[1] not in [str, int]:
                 return False
         return True
 
-    def inject_enum(self, enumname: str, schema: List[Tuple[str, Any]]) -> None:
+    def inject_enum(self, enumname: str, schema: List[Tuple[str, type]]) -> None:
         if not self._validate_enum(schema):
             raise TypeError("Invalid schema passed")
 
@@ -346,6 +350,7 @@ class db_hlapi:
         self.database.commit()
 
     def __exit__(self, err_type, err_value, err_traceback):
+        if self._lock: self._lock.release()
         self.database.commit()
         if err_type:
             raise err_type(err_value)
