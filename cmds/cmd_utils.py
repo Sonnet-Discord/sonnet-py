@@ -26,32 +26,31 @@ from lib_parsers import parse_permissions, parse_boolean
 from lib_loaders import load_embed_color, embed_colors
 import lib_constants as constants
 
-from typing import List, Any
+from typing import List, Any, Tuple, Optional
 
 
 class UserParseError(RuntimeError):
     pass
 
 
-async def parse_userid(message: discord.Message, args: List[str]) -> discord.Member:
+async def parse_userid(message: discord.Message, args: List[str], client: discord.Client) -> Tuple[Optional[discord.Member], discord.User]:
 
     # Get user ID from the message, otherwise use the author's ID.
     try:
-        id_to_probe = int(args[0].strip("<@!>"))
-    except IndexError:
-        id_to_probe = message.author.id
+        member = message.guild.get_member(int(args[0].strip("<@!>")))
+        if not (user := client.get_user(int(args[0].strip("<@!>")))):
+            user = await client.fetch_user(int(args[0].strip("<@!>")))
     except ValueError:
-        await message.channel.send("Invalid userid")
-        raise UserParseError
+        await message.channel.send("Invalid UserID")
+        raise UserParseError("Invalid User")
+    except IndexError:
+        user = message.author
+        member = message.author
+    except (discord.errors.NotFound, discord.errors.HTTPException):
+        await message.channel.send("User does not exist")
+        raise UserParseError("User does not exist")
 
-    # Get the Member object by user ID, otherwise fail.
-    user_object = message.guild.get_member(id_to_probe)
-
-    if not user_object:
-        await message.channel.send("Invalid userid")
-        raise UserParseError
-
-    return user_object
+    return member, user
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -85,32 +84,33 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
 def parsedate(indata: datetime) -> str:
     return f"{time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())} ({(datetime.utcnow() - indata).days} days ago)"
 
-
 async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        user_object = await parse_userid(message, args)
+        member, user = await parse_userid(message, args, client)
     except UserParseError:
         return 1
 
     # Status hashmap
     status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
 
-    embed = discord.Embed(title="User Information", description=f"User information for {user_object.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-    embed.set_thumbnail(url=user_object.avatar_url)
-    embed.add_field(name="Username", value=user_object.name + "#" + user_object.discriminator, inline=True)
-    embed.add_field(name="User ID", value=user_object.id, inline=True)
-    embed.add_field(name="Status", value=status_map[user_object.raw_status], inline=True)
-    embed.add_field(name="Highest Rank", value=f"{user_object.top_role.mention}", inline=True)
-    embed.add_field(name="Created", value=parsedate(user_object.created_at), inline=True)
-    embed.add_field(name="Joined", value=parsedate(user_object.joined_at), inline=True)
+    embed = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    embed.set_thumbnail(url=user.avatar_url)
+    embed.add_field(name="Username", value=str(user), inline=True)
+    embed.add_field(name="User ID", value=user.id, inline=True)
+    if member:
+        embed.add_field(name="Status", value=status_map[member.raw_status], inline=True)
+        embed.add_field(name="Highest Rank", value=f"{member.top_role.mention}", inline=True)
+    embed.add_field(name="Created", value=parsedate(user.created_at), inline=True)
+    if member:
+        embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
         viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
         moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
-        if moderator or (viewinfs and user_object.id == message.author.id):
-            embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user_object.id, count=True)}")
+        if moderator or (viewinfs and user.id == message.author.id):
+            embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
 
     embed.timestamp = datetime.utcnow()
     try:
@@ -123,12 +123,12 @@ async def profile_function(message: discord.Message, args: List[str], client: di
 async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        user_object = await parse_userid(message, args)
+        _, user = await parse_userid(message, args, client)
     except UserParseError:
         return 1
 
-    embed = discord.Embed(description=f"{user_object.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-    embed.set_image(url=user_object.avatar_url)
+    embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    embed.set_image(url=user.avatar_url)
     embed.timestamp = datetime.utcnow()
     try:
         await message.channel.send(embed=embed)
