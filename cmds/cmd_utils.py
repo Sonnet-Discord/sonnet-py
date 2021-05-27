@@ -110,7 +110,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
         viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
         moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
         if moderator or (viewinfs and user_object.id == message.author.id):
-            embed.add_field(name="Infractions", value=f"{len(db.grab_user_infractions(user_object.id))}")
+            embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user_object.id, count=True)}")
 
     embed.timestamp = datetime.utcnow()
     try:
