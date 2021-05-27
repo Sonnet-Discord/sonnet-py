@@ -94,6 +94,19 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
+    def multicount_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> int:
+
+        # Add SELECT data
+        db_inputStr = f"SELECT COUNT(*) FROM {table} WHERE "
+
+        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        db_inputList = [i[1] for i in searchparms]
+
+        # Execute
+        self.cur.execute(db_inputStr, tuple(db_inputList))
+
+        return tuple(self.cur)[0][0]
+
     def fetch_rows_from_table(self, table: str, search: List[Any]) -> Tuple[Any, ...]:
 
         # Add SELECT data

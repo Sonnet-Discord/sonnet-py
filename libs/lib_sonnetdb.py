@@ -187,7 +187,7 @@ class db_hlapi:
 
         return data
 
-    def grab_filter_infractions(self, user: Optional[int] = None, moderator: Optional[int] = None, itype: Optional[str] = None, automod: bool = True) -> Tuple[Any, ...]:
+    def grab_filter_infractions(self, user: Optional[int] = None, moderator: Optional[int] = None, itype: Optional[str] = None, automod: bool = True, count: bool = False) -> Union[Tuple[Any, ...], int]:
 
         schm: List[List[str]] = []
         if user:
@@ -203,9 +203,12 @@ class db_hlapi:
             if self.database.TEXT_KEY:
                 self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
                 self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
-            data = self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm)
+            if count:
+                data: Union[Tuple[Any, ...], int] = self.database.multicount_rows_from_table(f"{self.guild}_infractions", schm)
+            else:
+                data = self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm)
         except db_error.OperationalError:
-            data = tuple()
+            data = tuple() if not count else 0
 
         return data
 

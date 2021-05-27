@@ -101,6 +101,23 @@ class db_handler:
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
+    def multicount_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> int:
+
+        # Test for attack
+        if table.count("\\") or table.count("'"):
+            raise db_error.OperationalError("Detected SQL injection attack")
+
+        # Add SELECT data
+        db_inputStr = f"SELECT COUNT(*) FROM '{table}' WHERE "
+
+        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        db_inputList = [i[1] for i in searchparms]
+
+        # Execute
+        self.cur.execute(db_inputStr, tuple(db_inputList))
+
+        return tuple(self.cur.fetchall())[0][0]
+
     def fetch_rows_from_table(self, table: str, search: List[Any]) -> Tuple[Any, ...]:
 
         # Test for attack
