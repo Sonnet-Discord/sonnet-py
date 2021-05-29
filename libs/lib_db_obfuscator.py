@@ -3,10 +3,10 @@
 
 import importlib
 
-import lib_sonnetdb
+import libs.lib_sonnetdb
 
-importlib.reload(lib_sonnetdb)
-from lib_sonnetdb import db_hlapi
+importlib.reload(libs.lib_sonnetdb)
+from libs.lib_sonnetdb import db_hlapi
 
 
 # make pyflakes shut up
