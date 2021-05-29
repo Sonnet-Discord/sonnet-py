@@ -39,9 +39,16 @@ class errors:
 
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
+_parse_blacklist_inputs = Tuple[discord.Message, Dict[str, Any], lexdpyk.ram_filesystem]
+
 
 # Run a blacklist pass over a messages content and files
-def parse_blacklist(indata: List[Any]) -> Tuple[bool, bool, List[str]]:
+def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[str]]:
+    """
+    Parse the blacklist over a message object
+
+    :returns: Tuple[bool, bool, List[str]] -- broke blacklist, broke notifer list, list of strings of infraction messages
+    """
     message, blacklist, ramfs = indata
 
     # Preset values
@@ -123,6 +130,11 @@ def parse_blacklist(indata: List[Any]) -> Tuple[bool, bool, List[str]]:
 
 # Parse if we skip a message due to X reasons
 def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool:
+    """
+    Parse to skip a message based on the author being a bot, itself, or not in a guild
+
+    :returns: bool -- Whether or not to skip the message, True being to skip
+    """
 
     # Make sure we don't start a feedback loop.
     if message.author == Client.user:
@@ -141,6 +153,10 @@ def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool
 
 # Parse a boolean datatype from a string
 def parse_boolean(instr: str) -> Union[bool, int]:
+    """
+    Parse a boolean from preset true|false values
+    Returns 0 (a falsey) if data could not be parsed
+    """
 
     yeslist: List[str] = ["yes", "true", "y", "t", "1"]
     nolist: List[str] = ["no", "false", "n", "f", "0"]
@@ -155,6 +171,12 @@ def parse_boolean(instr: str) -> Union[bool, int]:
 
 # Parse channel from message and put it into specified config
 async def update_log_channel(message: discord.Message, args: List[str], client: discord.Client, log_name: str, verbose: bool = True) -> None:
+    """
+    Update logging channel db config with name log_name
+    Handles exceptions into one exception
+
+    :raises: errors.log_channel_update_error
+    """
 
     if args:
         log_channel_str = args[0].strip("<#!>")
@@ -201,6 +223,12 @@ Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 # Parse user permissions to run a command
 async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
+    """
+    Parse the permissions of the given member object to check if they meet the required permtype
+    Verbosity can be set to not print if the perm check failed
+
+    :returns: bool
+    """
 
     if not message.author.guild:
         if verbose:
@@ -237,11 +265,21 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
 
 # Returns true if any of the items in the list return true, more of an orgate
 def ifgate(inlist: Iterable) -> bool:
+    """
+    Deprecated function to run any() over an iterable, use any() instead
+
+    :returns: bool
+    """
     return any(inlist)
 
 
 # Grab files of a message from the internal cache or using webrequests
 def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, delete: bool = False) -> Optional[List[discord.File]]:
+    """
+    Grab all files from a message from the internal encryption cache
+
+    :returns: Optional[List[discord.File]]
+    """
 
     try:
 
@@ -289,6 +327,11 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
 
 # Generate a prettified reply field from a message for displaying in embeds
 def generate_reply_field(message: discord.Message) -> str:
+    """
+    Generate a <=2048 length field containing message contents, a jump to the message, and a reply if the message was replying to another
+
+    :returns: str -- The "message context field"
+    """
 
     embed_lim: int = constants.embed.description
     mini_lim: int = embed_lim // 4
@@ -311,7 +354,12 @@ def generate_reply_field(message: discord.Message) -> str:
 
 
 # Parse a role name and put it into the specified db conf
-async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> Optional[int]:
+async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> int:
+    """
+    Parse a role from a command and put it into the db under the db_entry name
+
+    :returns: int -- The success state of adding the role to the db, 0 being no error
+    """
 
     if args:
         role_str: str = args[0].strip("<@&>")
@@ -346,6 +394,12 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
 
 # Grab a message object from a link or message mention
 async def parse_channel_message(message: discord.Message, args: List[str], client: discord.Client) -> Tuple[discord.Message, int]:
+    """
+    Parse a channel message from a url, #channel messageid, or channelid-messageid field
+
+    :returns: Tuple[discord.Message, int] -- The message and the amount of args the message grabbing took
+    :raises: errors.message_parse_failure -- The message did not exist or the function had invalid inputs
+    """
 
     try:
         message_link = args[0].replace("-", "/").split("/")

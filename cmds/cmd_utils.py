@@ -84,6 +84,7 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
 def parsedate(indata: datetime) -> str:
     return f"{time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())} ({(datetime.utcnow() - indata).days} days ago)"
 
+
 async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:

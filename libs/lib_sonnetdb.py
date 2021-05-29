@@ -187,7 +187,12 @@ class db_hlapi:
 
         return data
 
-    def grab_filter_infractions(self, user: Optional[int] = None, moderator: Optional[int] = None, itype: Optional[str] = None, automod: bool = True, count: bool = False) -> Union[Tuple[Any, ...], int]:
+    def grab_filter_infractions(self,
+                                user: Optional[int] = None,
+                                moderator: Optional[int] = None,
+                                itype: Optional[str] = None,
+                                automod: bool = True,
+                                count: bool = False) -> Union[Tuple[Any, ...], int]:
 
         schm: List[List[str]] = []
         if user:

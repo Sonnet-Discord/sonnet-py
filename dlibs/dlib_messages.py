@@ -143,7 +143,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
+    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
@@ -317,7 +317,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
     message_deleted: bool = False
 
     # If blacklist broken generate infraction
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
+    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
