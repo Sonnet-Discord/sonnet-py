@@ -7,18 +7,18 @@ import discord
 
 import random, os, ctypes, time, io, json, pickle, threading
 
-import libs.lib_db_obfuscator
+import lib_db_obfuscator
 
-importlib.reload(libs.lib_db_obfuscator)
-import common.sonnet_cfg
+importlib.reload(lib_db_obfuscator)
+import sonnet_cfg
 
-importlib.reload(common.sonnet_cfg)
+importlib.reload(sonnet_cfg)
 
-from libs.lib_db_obfuscator import db_hlapi
-from common.sonnet_cfg import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
+from lib_db_obfuscator import db_hlapi
+from sonnet_cfg import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
 from typing import Dict, List, Union, Any, Tuple, Optional
-import libs.lib_lexdpyk_h as lexdpyk
+import lib_lexdpyk_h as lexdpyk
 
 
 class DotHeaders:

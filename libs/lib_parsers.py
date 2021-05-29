@@ -5,26 +5,26 @@ import importlib
 
 import lz4.frame, discord, os, json, hashlib, io
 
-import libs.lib_db_obfuscator
+import lib_db_obfuscator
 
-importlib.reload(libs.lib_db_obfuscator)
-import libs.lib_encryption_wrapper
+importlib.reload(lib_db_obfuscator)
+import lib_encryption_wrapper
 
-importlib.reload(libs.lib_encryption_wrapper)
-import common.sonnet_cfg
+importlib.reload(lib_encryption_wrapper)
+import sonnet_cfg
 
-importlib.reload(common.sonnet_cfg)
-import libs.lib_constants
+importlib.reload(sonnet_cfg)
+import lib_constants
 
-importlib.reload(libs.lib_constants)
+importlib.reload(lib_constants)
 
-from common.sonnet_cfg import REGEX_VERSION
-from libs.lib_db_obfuscator import db_hlapi
-from libs.lib_encryption_wrapper import encrypted_reader
-import libs.lib_constants as constants
+from sonnet_cfg import REGEX_VERSION
+from lib_db_obfuscator import db_hlapi
+from lib_encryption_wrapper import encrypted_reader
+import lib_constants as constants
 
 from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional, Any
-import libs.lib_lexdpyk_h as lexdpyk
+import lib_lexdpyk_h as lexdpyk
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
