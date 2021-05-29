@@ -1,15 +1,22 @@
 import threading
 import tempfile
 import os
+import sys
 
 from typing import Dict, Any
 
 tests = {
     "pyflakes": "pyflakes .",
     "mypy": "mypy *.py */*.py --ignore-missing-imports",
-    #   "pylint": "pylint */ -E",
+    "pylint": "pylint */ -E",
     "yapf": "yapf -d -r .",
     }
+
+notttest = set(sys.argv[1:])
+
+for i in list(tests.keys()):
+    if i in notttest:
+        del tests[i]
 
 testout: Dict[str, Any] = {}
 for i in tests:
