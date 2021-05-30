@@ -52,7 +52,7 @@ async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextCha
 # Sends an infraction to database and log channels if user exists
 async def log_infraction(
     message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
-    ) -> Tuple[Optional[str], Optional[Awaitable]]:
+    ) -> Tuple[Optional[str], Optional[Awaitable[None]]]:
 
     if not user:
         return None, None
@@ -106,12 +106,12 @@ async def process_infraction(message: discord.Message,
                              client: discord.Client,
                              infraction_type: str,
                              ramfs: lexdpyk.ram_filesystem,
-                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable]]:
+                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable[None]]]:
 
     # Check if automod
     automod: bool = False
     try:
-        if (type(args[0]) == int):
+        if isinstance(args[0], int):
             args[0] = str(args[0])
             automod = True
     except IndexError:
@@ -362,7 +362,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
     if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs):
+async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     tstart = time.monotonic()
 
@@ -402,7 +402,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         if user_affected or responsible_mod:
-            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
+            infractions: List[Tuple[str, str, str, str, str, int]] = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
         else:
             await message.channel.send("Please specify a user or moderator")
             return 1

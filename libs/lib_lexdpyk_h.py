@@ -30,6 +30,7 @@ class ram_filesystem:
 
 
 class cmd_module:
+    __name__: str
     category_info: Dict[str, str]
     commands: Dict[str, Dict[str, Any]]
     version_info: str
@@ -39,6 +40,7 @@ cmd_modules_dict = Dict[str, Dict[str, Any]]
 
 
 class dlib_module:
+    __name__: str
     category_info: Dict[str, str]
     commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]]
     version_info: str

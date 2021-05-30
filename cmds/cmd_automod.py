@@ -324,10 +324,10 @@ class joinrules:
     def __init__(self, message: discord.Message):
         self.m = message
 
-    def adduser(self, args: List[str]):
+    def adduser(self, args: List[str]) -> None:
         pass  # TODO HOW THE FUCK DO I STORE THIS AAA
 
-    def addtimestamp(self, args: List[str]):
+    def addtimestamp(self, args: List[str]) -> None:
         pass  # TODO IMPLEMENT DATABASE STRUCTURE?????
 
 
