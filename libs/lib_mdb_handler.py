@@ -105,7 +105,8 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-        return tuple(self.cur)[0][0]
+        retval: int = tuple(self.cur)[0][0]
+        return retval
 
     def fetch_rows_from_table(self, table: str, search: List[Any]) -> Tuple[Any, ...]:
 

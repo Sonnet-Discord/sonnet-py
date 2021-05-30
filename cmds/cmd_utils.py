@@ -20,6 +20,9 @@ importlib.reload(lib_loaders)
 import lib_constants
 
 importlib.reload(lib_constants)
+import lib_lexdpyk_h
+
+importlib.reload(lib_lexdpyk_h)
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean
@@ -27,6 +30,7 @@ from lib_loaders import load_embed_color, embed_colors
 import lib_constants as constants
 
 from typing import List, Any, Tuple, Optional
+import lib_lexdpyk_h as lexdpyk
 
 
 class UserParseError(RuntimeError):
@@ -142,15 +146,18 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
     helpname: str = "Sonnet Help"
 
+    cmds: List[lexdpyk.cmd_module] = kwargs["cmds"]
+    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+
     if args:
 
-        modules = {mod.category_info["name"] for mod in kwargs["cmds"]}
+        modules = {mod.category_info["name"] for mod in cmds}
         PREFIX = kwargs["conf_cache"]["prefix"]
 
         # Per module help
         if (a := args[0].lower()) in modules:
 
-            curmod = [mod for mod in kwargs["cmds"] if mod.category_info["name"] == a][0]
+            curmod = [mod for mod in cmds if mod.category_info["name"] == a][0]
             cmd_embed = discord.Embed(
                 title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
                 )
@@ -166,28 +173,28 @@ async def help_function(message: discord.Message, args: List[str], client: disco
                 return 1
 
         # Per command help
-        elif a in kwargs["cmds_dict"]:
-            if "alias" in kwargs["cmds_dict"][a]:
-                a = kwargs["cmds_dict"][a]["alias"]
+        elif a in cmds_dict:
+            if "alias" in cmds_dict[a]:
+                a = cmds_dict[a]["alias"]
 
-            cmd_embed = discord.Embed(title=f'Command "{a}"', description=kwargs["cmds_dict"][a]['description'], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+            cmd_embed = discord.Embed(title=f'Command "{a}"', description=cmds_dict[a]['description'], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
             cmd_embed.set_author(name=helpname)
 
-            cmd_embed.add_field(name="Usage:", value=PREFIX + kwargs["cmds_dict"][a]["pretty_name"], inline=False)
+            cmd_embed.add_field(name="Usage:", value=PREFIX + cmds_dict[a]["pretty_name"], inline=False)
 
-            if "rich_description" in kwargs["cmds_dict"][a]:
-                cmd_embed.add_field(name="Detailed information:", value=kwargs["cmds_dict"][a]["rich_description"], inline=False)
+            if "rich_description" in cmds_dict[a]:
+                cmd_embed.add_field(name="Detailed information:", value=cmds_dict[a]["rich_description"], inline=False)
 
-            if (t := type(kwargs["cmds_dict"][a]["permission"])) == str:
-                perms = kwargs["cmds_dict"][a]["permission"]
+            if (t := type(cmds_dict[a]["permission"])) == str:
+                perms = cmds_dict[a]["permission"]
             elif t == tuple or t == list:
-                perms = kwargs["cmds_dict"][a]["permission"][0]
+                perms = cmds_dict[a]["permission"][0]
             else:
                 perms = "NULL"
 
             cmd_embed.add_field(name="Permission level:", value=perms)
 
-            aliases = ", ".join(filter(lambda c: "alias" in kwargs["cmds_dict"][c] and kwargs["cmds_dict"][c]["alias"] == a, kwargs["cmds_dict"]))
+            aliases = ", ".join(filter(lambda c: "alias" in cmds_dict[c] and cmds_dict[c]["alias"] == a, cmds_dict))
             if aliases:
                 cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
 
@@ -210,13 +217,13 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
         total = 0
 
-        for module in kwargs["cmds"]:
+        for module in cmds:
             mnames = [f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]]
             helptext = ', '.join(mnames)
             total += len(mnames)
             cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
 
-        cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(kwargs['cmds_dict'])}")
+        cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)}")
 
         try:
             await message.channel.send(embed=cmd_embed)

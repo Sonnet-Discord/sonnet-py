@@ -116,7 +116,8 @@ class db_handler:
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-        return tuple(self.cur.fetchall())[0][0]
+        retval: int = tuple(self.cur.fetchall())[0][0]
+        return retval
 
     def fetch_rows_from_table(self, table: str, search: List[Any]) -> Tuple[Any, ...]:
 

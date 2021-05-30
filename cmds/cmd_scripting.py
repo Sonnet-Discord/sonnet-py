@@ -10,10 +10,14 @@ import shlex, discord, time
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_lexdpyk_h
+
+importlib.reload(lib_lexdpyk_h)
 
 from lib_parsers import parse_permissions
 
-from typing import List, Any, Tuple, Dict
+from typing import List, Any, Tuple
+import lib_lexdpyk_h as lexdpyk
 
 
 async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -22,7 +26,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
     arguments: List[str] = message.content.split("\n")
 
     verbose: bool = kwargs["verbose"]
-    cmds_dict: Dict[str, Dict[str, Any]] = kwargs["cmds_dict"]
+    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
 
     try:
         rawargs = shlex.split(arguments[0])
@@ -44,7 +48,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
             argout: List[str] = total[1:]
             for index, i in enumerate(rawargs):
                 argout = [arg.replace("${%d}" % index, i) for arg in argout]
-            commandsparse.append((total[0], argout),)
+            commandsparse.append((total[0], argout), )
         else:
             await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatability\nAnd {self_name} is not runnable inside itself")
             return 1
@@ -108,7 +112,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
         tend: int = time.monotonic_ns()
 
-        fmttime: int = (tend - tstart)//1000//1000
+        fmttime: int = (tend - tstart) // 1000 // 1000
 
         if verbose: await message.channel.send(f"Completed execution of {len(commandsparse)} commands in {fmttime}ms")
 
@@ -119,7 +123,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     tstart: int = time.monotonic_ns()
-    cmds_dict: Dict[str, Dict[str, Any]] = kwargs["cmds_dict"]
+    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
 
     try:
         targs: List[str] = shlex.split(" ".join(args))
@@ -193,7 +197,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
         tend: int = time.monotonic_ns()
 
-        fmttime: int = (tend - tstart)//1000//1000
+        fmttime: int = (tend - tstart) // 1000 // 1000
 
         if kwargs["verbose"]: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
 

@@ -2,7 +2,7 @@
 
 import io
 
-from typing import Optional, List, Any, Tuple, Dict
+from typing import Optional, List, Any, Tuple, Dict, Callable, Coroutine
 
 
 # Define ramfs headers
@@ -27,3 +27,21 @@ class ram_filesystem:
 
     def tree(self, *folderpath: str) -> Tuple[List[str], Dict[str, Tuple[Any]]]:
         pass
+
+
+class cmd_module:
+    category_info: Dict[str, str]
+    commands: Dict[str, Dict[str, Any]]
+    version_info: str
+
+
+cmd_modules_dict = Dict[str, Dict[str, Any]]
+
+
+class dlib_module:
+    category_info: Dict[str, str]
+    commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]]
+    version_info: str
+
+
+dlib_modules_dict = Dict[str, Callable[..., Coroutine[Any, Any, None]]]
