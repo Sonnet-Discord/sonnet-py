@@ -7,7 +7,7 @@ import threading
 
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
-from typing import Union, Dict, List, Tuple, Optional, Any
+from typing import Union, Dict, List, Tuple, Optional, Any, Type
 
 # Get db handling library
 if DB_TYPE == "mariadb":
@@ -332,14 +332,14 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_infractions", quer)
 
-    def fetch_all_mutes(self) -> List[List[Union[int, str]]]:
+    def fetch_all_mutes(self) -> List[Tuple[str, str, str, int]]:
 
         # Grab list of tables
         tablelist = self.database.list_tables("%_mutes")
 
-        mutetable = []
+        mutetable: List[Tuple[str, str, str, int]] = []
         for i in tablelist:
-            mutetable.extend([[i[0][:-6]] + list(a) for a in self.database.fetch_table(i[0])])
+            mutetable.extend([(i[0][:-6],) + tuple(a) for a in self.database.fetch_table(i[0])]) # type: ignore
 
         return mutetable
 
@@ -358,7 +358,7 @@ class db_hlapi:
     def close(self) -> None:
         self.database.commit()
 
-    def __exit__(self, err_type, err_value, err_traceback):
+    def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
         if self._lock:
             self._lock.release()
         self.database.commit()

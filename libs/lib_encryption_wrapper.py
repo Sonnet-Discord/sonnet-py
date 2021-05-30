@@ -129,7 +129,8 @@ class encrypted_reader:
 
     def _grab_amount(self, amount: int) -> bytes:
 
-        return self.decryptor_module.update(self.rawfile.read(amount))
+        out: bytes = self.decryptor_module.update(self.rawfile.read(amount))
+        return out
 
     def _read_exact(self, amount_wanted: int) -> bytes:
 

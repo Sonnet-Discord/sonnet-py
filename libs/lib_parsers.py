@@ -251,8 +251,8 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
         you_shall_pass = default or _parse_role_perms(*adminperm)
     elif perms == "owner":
         you_shall_pass = message.author.id == message.channel.guild.owner.id
-    elif (t := type(perms)) != str and (t == tuple or t == list):
-        you_shall_pass = perms[1](message)  # type: ignore
+    elif isinstance(perms, (tuple, list)):
+        you_shall_pass = perms[1](message)
         perms = perms[0]
 
     if you_shall_pass:
@@ -264,7 +264,7 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
 
 
 # Returns true if any of the items in the list return true, more of an orgate
-def ifgate(inlist: Iterable) -> bool:
+def ifgate(inlist: Iterable[Any]) -> bool:
     """
     Deprecated function to run any() over an iterable, use any() instead
 
@@ -345,7 +345,7 @@ def generate_reply_field(message: discord.Message) -> str:
     else:
         reply_contents = ""
 
-    message_content = reply_contents + message.content
+    message_content: str = reply_contents + message.content
     if len(message_content) >= (embed_lim - len(jump)):
         message_content = message_content[:embed_lim - len(jump) - 3] + "..."
     message_content = message_content + jump

@@ -10,5 +10,5 @@ from lib_sonnetdb import db_hlapi
 
 
 # make pyflakes shut up
-def getdb():
+def getdb() -> type:
     return db_hlapi

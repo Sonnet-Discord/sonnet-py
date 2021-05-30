@@ -88,7 +88,7 @@ async def attempt_message_delete(message: discord.Message) -> None:
         pass
 
 
-async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict, ramfs: lexdpyk.ram_filesystem) -> None:
+async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict[str, Any], ramfs: lexdpyk.ram_filesystem) -> None:
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 

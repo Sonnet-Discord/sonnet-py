@@ -75,12 +75,12 @@ defaultcache: Dict[Union[str, int], Any] = {
 
 
 # Read a vnum from a file stream
-def read_vnum(fileobj) -> int:
+def read_vnum(fileobj: io.BufferedReader) -> int:
     return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
 
 
 # Write a vnum to a file stream
-def write_vnum(fileobj, number: int) -> None:
+def write_vnum(fileobj: io.BufferedWriter, number: int) -> None:
     vnum_count = (number.bit_length() + 7) // 8
     fileobj.write(bytes([vnum_count]))
     fileobj.write(bytes(directBinNumber(number, vnum_count)))

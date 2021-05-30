@@ -11,12 +11,12 @@ importlib.reload(lib_db_obfuscator)
 
 from lib_db_obfuscator import db_hlapi
 
-from typing import Dict, Callable, Any, List
+from typing import Dict, Callable, Any, List, Tuple, Coroutine
 
 
-async def attempt_unmute(Client: discord.Client, mute_entry: List[Any]):
+async def attempt_unmute(Client: discord.Client, mute_entry: Tuple[str, str, str, int]) -> None:
 
-    with db_hlapi(mute_entry[0]) as db:
+    with db_hlapi(int(mute_entry[0])) as db:
         db.unmute_user(infractionid=mute_entry[1])
         mute_role_id = db.grab_config("mute-role")
 
@@ -40,7 +40,8 @@ async def on_ready(**kargs: Any) -> None:
     if kargs["bot_start"] > (time.time() - 10):
 
         with db_hlapi(None) as db:
-            lost_mutes = sorted(db.fetch_all_mutes(), key=lambda a: a[3])
+            mutes: List[Tuple[str, str, str, int]] = db.fetch_all_mutes()
+            lost_mutes = sorted(mutes, key=lambda a: a[3])
 
         if lost_mutes:
 
@@ -55,20 +56,20 @@ async def on_ready(**kargs: Any) -> None:
 
                 for i in lost_mute_timers:
                     await asyncio.sleep(i[3] - time.time())
-                    with db_hlapi(i[0]) as db:
+                    with db_hlapi(int(i[0])) as db:
                         if db.is_muted(infractionid=i[1]):
                             await attempt_unmute(Client, i)
 
             print("Mutes recovered")
 
 
-async def on_guild_join(guild, **kargs):
+async def on_guild_join(guild: discord.Guild, **kargs: Any) -> None:
     with db_hlapi(guild.id) as db:
         db.create_guild_db()
 
 
 category_info: Dict[str, str] = {'name': 'Initializers'}
 
-commands: Dict[str, Callable] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
+commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.5-DEV"
