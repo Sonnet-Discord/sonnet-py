@@ -57,9 +57,9 @@ def parsedate(indata: datetime) -> str:
 
 
 join_notifier: Dict[Union[str, int], Union[str, List[List[Any]]]] = {
-        0: 'sonnet_join_notifier',
-        "json": [["notifier-log-users", []],],
-        "text": [["notifier-log-timestamp", "0"], ["notifier-log-defaultpfp", "0"], ["regex-notifier-log", ""]],
+    0: 'sonnet_join_notifier',
+    "json": [["notifier-log-users", []], ],
+    "text": [["notifier-log-timestamp", "0"], ["notifier-log-defaultpfp", "0"], ["regex-notifier-log", ""]],
     }
 
 
@@ -90,10 +90,6 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
         issues.append("Timestamp")
     if int(notifier_cache["notifier-log-defaultpfp"]) and member.avatar_url == member.default_avatar_url:
         issues.append("Default pfp")
-
-    print(issues)
-    print(member.id)
-    print(notifier_cache)
 
     if issues:
         asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], kargs["client"], kargs["ramfs"]))
