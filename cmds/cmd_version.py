@@ -16,7 +16,7 @@ importlib.reload(lib_lexdpyk_h)
 
 from lib_loaders import clib_exists, DotHeaders
 
-from typing import List, Any
+from typing import List, Any, Union
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -35,7 +35,7 @@ def zpad(innum: int) -> str:
     return (2 - len(str(innum))) * "0" + str(innum)
 
 
-def getdelta(past: int) -> str:
+def getdelta(past: Union[int, float]) -> str:
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(past))
 
