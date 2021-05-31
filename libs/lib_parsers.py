@@ -3,7 +3,7 @@
 
 import importlib
 
-import lz4.frame, discord, os, json, hashlib, io
+import lz4.frame, discord, os, json, hashlib, io, warnings
 
 import lib_db_obfuscator
 
@@ -36,6 +36,9 @@ class errors:
     class message_parse_failure(Exception):
         pass
 
+    class user_parse_error(Exception):
+        pass
+
 
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
@@ -45,6 +48,7 @@ _parse_blacklist_inputs = Tuple[discord.Message, Dict[str, Any], lexdpyk.ram_fil
 # Run a blacklist pass over a messages content and files
 def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[str]]:
     """
+    Deprecated, this should be in dlib_messages.py
     Parse the blacklist over a message object
 
     :returns: Tuple[bool, bool, List[str]] -- broke blacklist, broke notifer list, list of strings of infraction messages
@@ -270,6 +274,7 @@ def ifgate(inlist: Iterable[Any]) -> bool:
 
     :returns: bool
     """
+    warnings.warn("This function will be removed in the event of sonnet V2.0.0, use any() instead", DeprecationWarning)
     return any(inlist)
 
 
@@ -441,3 +446,37 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
         raise errors.message_parse_failure
 
     return (discord_message, nargs)
+
+
+async def parse_user_member(message: discord.Message, args: List[str], client: discord.Client, argindex: int = 0, default_self: bool = False) -> Tuple[discord.User, Optional[discord.Member]]:
+    """
+    Parse a user and member object from a potential user string
+    Always returns a user, only returns member if the user is in the guild
+    User returned might be a member, do not rely on this.
+
+    :returns: Tuple[discord.User, Optional[discord.Member]] -- A discord user and optional member
+    :raises: errors.user_parse_error -- Could not find the user or input invalid
+    """
+
+    member: discord.Member
+    user: discord.User
+
+    try:
+        member = message.guild.get_member(int(args[argindex].strip("<@!>")))
+        if not (user := client.get_user(int(args[argindex].strip("<@!>")))):
+            user = await client.fetch_user(int(args[argindex].strip("<@!>")))
+    except ValueError:
+        await message.channel.send("Invalid UserID")
+        raise errors.user_parse_error("Invalid User")
+    except IndexError:
+        if default_self:
+            member = message.author
+            user = message.author
+        else:
+            await message.channel.send("No user specified")
+            raise errors.user_parse_error("No user specified")
+    except (discord.errors.NotFound, discord.errors.HTTPException):
+        await message.channel.send("User does not exist")
+        raise errors.user_parse_error("User does not exist")
+
+    return user, member
