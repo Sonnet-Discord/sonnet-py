@@ -9,6 +9,21 @@ import io
 from typing import Generator, Tuple, Any
 
 
+class crypto_typing:
+    class encryptor_decryptor:
+        def __init__(self) -> None:
+            pass
+
+        def update(self, buf: bytes) -> bytes:
+            pass
+
+        def update_into(self, bufin: bytes, bufout: bytes) -> None:
+            pass
+
+        def finalize(self) -> bytes:
+            pass
+
+
 def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
     return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
 
@@ -18,7 +33,7 @@ class encrypted_writer:
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.encryptor_module = self.cipher.encryptor()
+        self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()
 
         # Initalize HMAC generator
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
@@ -103,7 +118,7 @@ class encrypted_reader:
 
         # Make decryptor instance
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.decryptor_module = self.cipher.decryptor()
+        self.decryptor_module: crypto_typing.encryptor_decryptor = self.cipher.decryptor()
 
         # Generate HMAC
         HMACobj = hmac.HMAC(key, hashes.SHA512())
@@ -129,8 +144,7 @@ class encrypted_reader:
 
     def _grab_amount(self, amount: int) -> bytes:
 
-        out: bytes = self.decryptor_module.update(self.rawfile.read(amount))
-        return out
+        return self.decryptor_module.update(self.rawfile.read(amount))
 
     def _read_exact(self, amount_wanted: int) -> bytes:
 
