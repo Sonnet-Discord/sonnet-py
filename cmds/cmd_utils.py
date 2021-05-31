@@ -29,7 +29,7 @@ from lib_parsers import parse_permissions, parse_boolean, parse_user_member
 from lib_loaders import load_embed_color, embed_colors
 import lib_constants as constants
 
-from typing import List, Any, Tuple, Optional
+from typing import List, Any
 import lib_lexdpyk_h as lexdpyk
 
 

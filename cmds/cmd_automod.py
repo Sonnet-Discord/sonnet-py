@@ -18,7 +18,7 @@ from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import REGEX_VERSION
 from lib_parsers import parse_role, parse_boolean
 
-from typing import Any, Dict, List, Callable, Coroutine
+from typing import Any, Dict, List, Callable, Coroutine, Final, Tuple
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
@@ -331,7 +331,6 @@ class joinrules:
             "help": (self.printhelp, "'Print this help message'")
             }
 
-
     async def printhelp(self, args: List[str]) -> None:
 
         nsv: List[str] = [f"{i} {self.ops[i][1]}\n" for i in self.ops]
@@ -354,7 +353,7 @@ class joinrules:
                     else:
                         jointime = int(args[0])
                 except (ValueError, TypeError):
-                    await message.channel.send("ERROR: Invalid time format")
+                    await self.m.channel.send("ERROR: Invalid time format")
                     return
 
                 with db_hlapi(self.m.guild.id) as db:
@@ -373,7 +372,7 @@ class joinrules:
         else:  # Show current timestamp
             with db_hlapi(self.m.guild.id) as db:
                 jointime = db.grab_config(cnf_name)
-            await message.channel.send(f"new user notify is set to {jointime} seconds")
+            await self.m.channel.send(f"new user notify is set to {jointime} seconds")
 
     async def defaultpfpedit(self, args: List[str]) -> None:
         # notifier-log-defaultpfp

@@ -339,7 +339,7 @@ class db_hlapi:
 
         mutetable: List[Tuple[str, str, str, int]] = []
         for i in tablelist:
-            mutetable.extend([(i[0][:-6],) + tuple(a) for a in self.database.fetch_table(i[0])]) # type: ignore
+            mutetable.extend([(i[0][:-6], ) + tuple(a) for a in self.database.fetch_table(i[0])])  # type: ignore
 
         return mutetable
 

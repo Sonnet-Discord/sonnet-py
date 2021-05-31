@@ -123,7 +123,7 @@ async def process_infraction(message: discord.Message,
 
     # Test if user is valid
     try:
-        user, member = parse_user_member(message, args, client)
+        user, member = await parse_user_member(message, args, client)
     except lib_parsers.errors.user_parse_error:
         raise InfractionGenerationError("Could not parse user")
 
