@@ -16,9 +16,9 @@ importlib.reload(sonnet_cfg)
 
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import REGEX_VERSION
-from lib_parsers import parse_role
+from lib_parsers import parse_role, parse_boolean
 
-from typing import Any, Dict, List, Callable
+from typing import Any, Dict, List, Callable, Coroutine
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
@@ -308,7 +308,7 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     else:
         mutetime = int(kwargs["conf_cache"]["antispam-time"])
         await message.channel.send(f"Antispam mute time is {mutetime} seconds")
-        return
+        return 0
 
     if mutetime < 0:
         await message.channel.send("ERROR: Mutetime cannot be negative")
@@ -324,37 +324,93 @@ class joinrules:
     def __init__(self, message: discord.Message):
         self.m = message
 
-    def adduser(self, args: List[str]) -> None:
-        pass  # TODO HOW THE FUCK DO I STORE THIS AAA
+        self.ops: Dict[str, Tuple[Callable[[List[str]], Coroutine[Any, Any, None]], str]] = {
+            "user": (self.useredit, "add|remove <id> 'Add or remove a userid from the watchlist'"),
+            "timestamp": (self.timestampedit, "add|remove [offset(time[h|m|S])] 'Add or remove the account creation offset to warn for'"),
+            "defaultpfp": (self.defaultpfpedit, "true|false 'Set whether or not to warn on a default pfp'"),
+            "help": (self.printhelp, "'Print this help message'")
+            }
 
-    def addtimestamp(self, args: List[str]) -> None:
-        pass  # TODO IMPLEMENT DATABASE STRUCTURE?????
+
+    async def printhelp(self, args: List[str]) -> None:
+
+        nsv: List[str] = [f"{i} {self.ops[i][1]}\n" for i in self.ops]
+        await self.m.channel.send(f"JoinRule Help```py\n{''.join(nsv)}```")
+
+    async def useredit(self, args: List[str]) -> None:
+        # notifier-log-users
+        await self.m.channel.send("NOT IMPLEMENTED (yet)")
+        pass
+
+    async def timestampedit(self, args: List[str]) -> None:
+        # notifier-log-timestamp
+        cnf_name: Final[str] = "notifier-log-timestamp"
+
+        if args:
+            if args[0] == "add" and len(args) >= 2:  # Add timestamp
+                try:
+                    if args[0][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
+                        jointime = int(args[0][:-1]) * multi[args[0][-1]]
+                    else:
+                        jointime = int(args[0])
+                except (ValueError, TypeError):
+                    await message.channel.send("ERROR: Invalid time format")
+                    return
+
+                with db_hlapi(self.m.guild.id) as db:
+                    db.add_config(cnf_name, str(jointime))
+
+                await self.m.channel.send(f"Updated new user notify time to <{jointime} seconds since creation")
+
+            elif args[0] == "remove":  # Remove timestamp
+                with db_hlapi(self.m.guild.id) as db:
+                    db.delete_config(cnf_name)
+                await self.m.channel.send("Deleted new user notify time")
+
+            else:  # Error
+                await self.m.channel.send("Invalid args passed")
+
+        else:  # Show current timestamp
+            with db_hlapi(self.m.guild.id) as db:
+                jointime = db.grab_config(cnf_name)
+            await message.channel.send(f"new user notify is set to {jointime} seconds")
+
+    async def defaultpfpedit(self, args: List[str]) -> None:
+        # notifier-log-defaultpfp
+        cnf_name: Final[str] = "notifier-log-defaultpfp"
+
+        if args:
+            with db_hlapi(self.m.guild.id) as db:
+                db.add_config(cnf_name, str(true := int(parse_boolean(args[0]))))
+            await self.m.channel.send(f"Updated defaultpfp checking to {bool(true)}")
+        else:
+            with db_hlapi(self.m.guild.id) as db:
+                await self.m.channel.send(f"Defaultpfp checking is set to {bool(int(db.grab_config(cnf_name)))}")
 
 
 async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
-    await message.channel.send("NOT IMPLEMENTED (YET)")
-    return 1
+    rules = joinrules(message)
 
     if args:
 
-        rules = joinrules(message)
+        if args[0] in rules.ops:
+            await rules.ops[args[0]][0](args[1:])
+        else:
+            await message.channel.send("ERROR: Command not recognized")
+            return 1
 
-        ops: Dict[str, Callable[[List[str]], None]] = {
-            "user": rules.adduser,
-            "timestamp": rules.addtimestamp,
-            }
-
-        if args[0] in ops:
-            ops[args[0]](args[1:])
+    else:
+        await message.channel.send("No command specified, try help if you are stuck")
+        return 1
 
 
 category_info = {'name': 'automod', 'pretty_name': 'Automod', 'description': 'Automod management commands.'}
 
 commands = {
-    'add-joinrule': {
-        'pretty_name': 'add-joinrule <type> <parameter>',
-        'description': 'Add a joinrule to notify for',
+    'set-joinrule': {
+        'pretty_name': 'set-joinrule <type> <parameter>',
+        'description': 'set joinrules to notify for',
         'permission': 'administrator',
         'cache': 'regenerate',
         'execute': add_joinrule
