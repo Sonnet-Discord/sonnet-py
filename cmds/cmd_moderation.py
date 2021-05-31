@@ -20,7 +20,7 @@ importlib.reload(lib_constants)
 
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, get_guild_lock
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field, parse_channel_message
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional
@@ -123,18 +123,9 @@ async def process_infraction(message: discord.Message,
 
     # Test if user is valid
     try:
-        member = message.guild.get_member(int(args[0].strip("<@!>")))
-        if not (user := client.get_user(int(args[0].strip("<@!>")))):
-            user = await client.fetch_user(int(args[0].strip("<@!>")))
-    except ValueError:
-        await message.channel.send("Invalid UserID")
-        raise InfractionGenerationError("Invalid User")
-    except IndexError:
-        await message.channel.send("No user specified")
-        raise InfractionGenerationError("No user specified")
-    except (discord.errors.NotFound, discord.errors.HTTPException):
-        await message.channel.send("User does not exist")
-        raise InfractionGenerationError("User does not exist")
+        user, member = parse_user_member(message, args, client)
+    except lib_parsers.errors.user_parse_error:
+        raise InfractionGenerationError("Could not parse user")
 
     # Test if user is self
     if member and moderator_id == member.id:

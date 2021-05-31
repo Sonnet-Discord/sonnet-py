@@ -25,36 +25,12 @@ import lib_lexdpyk_h
 importlib.reload(lib_lexdpyk_h)
 
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_permissions, parse_boolean
+from lib_parsers import parse_permissions, parse_boolean, parse_user_member
 from lib_loaders import load_embed_color, embed_colors
 import lib_constants as constants
 
 from typing import List, Any, Tuple, Optional
 import lib_lexdpyk_h as lexdpyk
-
-
-class UserParseError(RuntimeError):
-    pass
-
-
-async def parse_userid(message: discord.Message, args: List[str], client: discord.Client) -> Tuple[Optional[discord.Member], discord.User]:
-
-    # Get user ID from the message, otherwise use the author's ID.
-    try:
-        member = message.guild.get_member(int(args[0].strip("<@!>")))
-        if not (user := client.get_user(int(args[0].strip("<@!>")))):
-            user = await client.fetch_user(int(args[0].strip("<@!>")))
-    except ValueError:
-        await message.channel.send("Invalid UserID")
-        raise UserParseError("Invalid User")
-    except IndexError:
-        user = message.author
-        member = message.author
-    except (discord.errors.NotFound, discord.errors.HTTPException):
-        await message.channel.send("User does not exist")
-        raise UserParseError("User does not exist")
-
-    return member, user
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -92,8 +68,8 @@ def parsedate(indata: datetime) -> str:
 async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        member, user = await parse_userid(message, args, client)
-    except UserParseError:
+        user, member = await parse_user_member(message, args, client, default_self=True)
+    except lib_parsers.errors.user_parse_error:
         return 1
 
     # Status hashmap
@@ -128,8 +104,8 @@ async def profile_function(message: discord.Message, args: List[str], client: di
 async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        _, user = await parse_userid(message, args, client)
-    except UserParseError:
+        user, _ = await parse_user_member(message, args, client, default_self=True)
+    except lib_parsers.errors.user_parse_error:
         return 1
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
