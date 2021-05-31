@@ -409,6 +409,10 @@ class joinrules:
                     await self.m.channel.send("ERROR: Invalid time format")
                     return 1
 
+                if jointime < 0 or jointime > 60 * 60 * 24 * 30:  # Only allow JT up to a month, ive learned to never trust input the hard way
+                    await self.m.channel.send(f"ERROR: Time range entered is larger than one month (~30 days)")
+                    return 1
+
                 with db_hlapi(self.m.guild.id) as db:  # Add to db
                     db.add_config(cnf_name, str(jointime))
 
