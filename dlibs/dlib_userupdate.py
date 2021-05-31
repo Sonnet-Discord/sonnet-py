@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, time
+import discord, time, asyncio
 from datetime import datetime
 
 import lib_loaders
@@ -12,11 +12,15 @@ importlib.reload(lib_loaders)
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
+import lib_lexdpyk_h
+
+importlib.reload(lib_lexdpyk_h)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import inc_statistics, load_embed_color, embed_colors
+from lib_loaders import inc_statistics, load_embed_color, embed_colors, load_message_config
 
-from typing import Any
+from typing import Any, Dict, Union, List
+import lib_lexdpyk_h as lexdpyk
 
 
 async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed) -> None:
@@ -52,9 +56,47 @@ def parsedate(indata: datetime) -> str:
     return f"{time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())} ({(datetime.utcnow() - indata).days} days ago)"
 
 
+join_notifier: Dict[Union[str, int], Union[str, List[List[Any]]]] = {
+        0: 'sonnet_join_notifier',
+        "json": [["notifier-log-users", []],],
+        "text": [["notifier-log-timestamp", "0"], ["notifier-log-defaultpfp", "0"], ["regex-notifier-log", ""]],
+    }
+
+
+async def notify_problem(member: discord.Member, ptype: List[str], log: str, client: discord.Client, ramfs: lexdpyk.ram_filesystem) -> None:
+
+    if log and (channel := client.get_channel(int(log))):
+
+        notify_embed = discord.Embed(title=f"Notify on member join: {member}", description=f"Notifying for: {', '.join(ptype)}", color=load_embed_color(member.guild, embed_colors.primary, ramfs))
+        notify_embed.set_footer(text=f"uid: {member.id}")
+
+        try:
+            await channel.send(embed=notify_embed)
+        except discord.errors.Forbidden:
+            pass
+
+
 async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
     inc_statistics([member.guild.id, "on-member-join", kargs["kernel_ramfs"]])
+
+    notifier_cache = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_notifier)
+
+    issues: List[str] = []
+
+    if member.id in notifier_cache["notifier-log-users"]:
+        issues.append("User")
+    if abs(datetime.utcnow().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
+        issues.append("Timestamp")
+    if int(notifier_cache["notifier-log-defaultpfp"]) and member.avatar_url == member.default_avatar_url:
+        issues.append("Default pfp")
+
+    print(issues)
+    print(member.id)
+    print(notifier_cache)
+
+    if issues:
+        asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], kargs["client"], kargs["ramfs"]))
 
     with db_hlapi(member.guild.id) as db:
         if joinlog := db.grab_config("join-log"):
