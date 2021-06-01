@@ -89,7 +89,7 @@ commands = {
             'pretty_name': 'set-color-primary <hexcolor|"reset">',
             'description': 'Set primary embed color',
             'permission': 'administrator',
-            'cache': 'regenerate',
+            'cache': 'direct:(f)caches/sonnet_colortypes',
             'execute': set_embed_primary
             },
     'set-colour-creation': {
@@ -100,7 +100,7 @@ commands = {
             'pretty_name': 'set-color-creation <hexcolor|"reset">',
             'description': 'Set creation embed color',
             'permission': 'administrator',
-            'cache': 'regenerate',
+            'cache': 'direct:(f)caches/sonnet_colortypes',
             'execute': set_embed_creation
             },
     'set-colour-edit': {
@@ -110,7 +110,7 @@ commands = {
         'pretty_name': 'set-color-edit <hexcolor|"reset">',
         'description': 'Set edit embed color',
         'permission': 'administrator',
-        'cache': 'regenerate',
+        'cache': 'direct:(f)caches/sonnet_colortypes',
         'execute': set_embed_edit
         },
     'set-colour-deletion': {
@@ -121,9 +121,9 @@ commands = {
             'pretty_name': 'set-color-deletion <hexcolor|"reset">',
             'description': 'Set deletion embed color',
             'permission': 'administrator',
-            'cache': 'regenerate',
+            'cache': 'direct:(f)caches/sonnet_colortypes',
             'execute': set_embed_deletion
             },
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"
