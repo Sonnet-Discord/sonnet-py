@@ -401,6 +401,19 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
                             ramfs.rmdir(f"{message.guild.id}/{i}")
                         except FileNotFoundError:
                             pass
+
+                elif command_modules_dict[command]['cache'].startswith("direct:"):
+                    for i in command_modules_dict[command]['cache'][len('direct:'):].split(";"):
+                        try:
+                            if i.startswith("(d)"):
+                                ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
+                            elif i.startswith("(f)"):
+                                ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
+                            else:
+                                raise RuntimeError("Cache directive is invalid")
+                        except FileNotFoundError:
+                            pass
+
         except discord.errors.Forbidden as e:
 
             try:
@@ -428,4 +441,4 @@ commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"

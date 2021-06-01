@@ -57,7 +57,8 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
     keepref: str = message.content
     try:
 
-        cache_purge = False
+        cache_purge: bool = False
+        cache_directives: List[str] = []
 
         for totalcommand in commandsparse:
 
@@ -99,16 +100,30 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                     # Regenerate cache
                     if cmds_dict[command]['cache'] in ["purge", "regenerate"]:
                         cache_purge = True
+                    elif cmds_dict[command]['cache'].startswith("direct:"):
+                        cache_directives.extend(cmds_dict[command]['cache'][len('direct:'):].split(";"))
                 else:
-                    # dont forget to re reference message content even if exec stops
                     return 1
+
+        ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
         if cache_purge:
             for i in ["caches", "regex"]:
                 try:
-                    kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
+                    ramfs.rmdir(f"{message.guild.id}/{i}")
                 except FileNotFoundError:
                     pass
+
+        for i in cache_directives:
+            try:
+                if i.startswith("(d)"):
+                    ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
+                elif i.startswith("(f)"):
+                    ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
+                else:
+                    raise RuntimeError("Cache directive is invalid")
+            except FileNotFoundError:
+                pass
 
         tend: int = time.monotonic_ns()
 
@@ -188,10 +203,23 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 await message.channel.send(f"ERROR: command `{command}` exited with non success status")
                 return 1
 
+
         if cmds_dict[command]['cache'] in ["purge", "regenerate"]:
             for i in ["caches", "regex"]:
                 try:
                     kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
+                except FileNotFoundError:
+                    pass
+
+        elif cmds_dict[command]['cache'].startswith("direct:"):
+            for i in cmds_dict[command]['cache'][len('direct:'):].split(";"):
+                try:
+                    if i.startswith("(d)"):
+                        ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
+                    elif i.startswith("(f)"):
+                        ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
+                    else:
+                        raise RuntimeError("Cache directive is invalid")
                 except FileNotFoundError:
                     pass
 
@@ -235,4 +263,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             },
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"
