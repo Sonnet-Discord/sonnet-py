@@ -26,16 +26,34 @@ outlist: List[str] = []
 starter_padding: int = 0
 outlist.append("")
 
+
+for command in command_modules_dict:
+    if "alias" in command_modules_dict[command]:
+        continue
+
+    cache = command_modules_dict[command]["cache"]
+    if cache in ["purge", "regenerate", "keep"]:
+        continue
+
+    elif cache.startswith("direct:"):
+        for i in cache[len('direct:'):].split(";"):
+            if i.startswith("(d)") or i.startswith("(f)"):
+                pass
+            else:
+                raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
+        continue
+
+    raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
+
+
 # Make alias mappings
-aliashmap = {}
-[aliashmap.update(module.commands) for module in command_modules]
 aliasmap: Dict[str, List[str]] = {}
-for i in aliashmap.keys():
-    if 'alias' in aliashmap[i].keys():
-        if aliashmap[i]['alias'] in aliasmap.keys():
-            aliasmap[aliashmap[i]['alias']].append(i)
+for i in command_modules_dict:
+    if 'alias' in command_modules_dict[i]:
+        if command_modules_dict[i]['alias'] in aliasmap:
+            aliasmap[command_modules_dict[i]['alias']].append(i)
         else:
-            aliasmap[aliashmap[i]['alias']] = [i]
+            aliasmap[command_modules_dict[i]['alias']] = [i]
 
 for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
