@@ -22,7 +22,10 @@ from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
 from typing import Dict, Any, Union
 
-starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]}
+starboard_types: Dict[Union[str, int], Any] = {
+    0: "sonnet_starboard",
+    "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]
+    }
 
 
 async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **kargs: Any) -> None:
@@ -40,7 +43,9 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
         if (channel_id := mconf["starboard-channel"]) and (channel := kargs["client"].get_channel(int(channel_id))):
             db: db_hlapi
             with db_hlapi(message.guild.id) as db:
-                db.inject_enum("starboard", [("messageID", str),])
+                db.inject_enum("starboard", [
+                    ("messageID", str),
+                    ])
                 if not (db.grab_enum("starboard", str(message.id))) and not (int(channel_id) == message.channel.id):
 
                     # Add to starboard

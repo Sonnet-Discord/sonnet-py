@@ -26,7 +26,6 @@ outlist: List[str] = []
 starter_padding: int = 0
 outlist.append("")
 
-
 for command in command_modules_dict:
     if "alias" in command_modules_dict[command]:
         continue
@@ -44,7 +43,6 @@ for command in command_modules_dict:
         continue
 
     raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
-
 
 # Make alias mappings
 aliasmap: Dict[str, List[str]] = {}

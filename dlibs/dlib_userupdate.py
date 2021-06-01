@@ -34,6 +34,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 
     inc_statistics([before.guild.id, "on-member-update", kargs["kernel_ramfs"]])
 
+    db: db_hlapi
     with db_hlapi(before.guild.id) as db:
         username_log = db.grab_config("username-log")
 
@@ -94,6 +95,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
     if issues:
         asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], kargs["client"], kargs["ramfs"]))
 
+    db: db_hlapi
     with db_hlapi(member.guild.id) as db:
         if joinlog := db.grab_config("join-log"):
             if logging_channel := kargs["client"].get_channel(int(joinlog)):
@@ -113,6 +115,7 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
 
     inc_statistics([member.guild.id, "on-member-remove", kargs["kernel_ramfs"]])
 
+    db: db_hlapi
     with db_hlapi(member.guild.id) as db:
         if (joinlog := (db.grab_config("leave-log") or db.grab_config("join-log"))):
             if logging_channel := kargs["client"].get_channel(int(joinlog)):
@@ -137,4 +140,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"

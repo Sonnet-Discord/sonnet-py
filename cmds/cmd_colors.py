@@ -106,13 +106,14 @@ commands = {
     'set-colour-edit': {
         'alias': 'set-color-edit'
         },
-    'set-color-edit': {
-        'pretty_name': 'set-color-edit <hexcolor|"reset">',
-        'description': 'Set edit embed color',
-        'permission': 'administrator',
-        'cache': 'direct:(f)caches/sonnet_colortypes',
-        'execute': set_embed_edit
-        },
+    'set-color-edit':
+        {
+            'pretty_name': 'set-color-edit <hexcolor|"reset">',
+            'description': 'Set edit embed color',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_colortypes',
+            'execute': set_embed_edit
+            },
     'set-colour-deletion': {
         'alias': 'set-color-deletion'
         },

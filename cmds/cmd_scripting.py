@@ -203,7 +203,6 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 await message.channel.send(f"ERROR: command `{command}` exited with non success status")
                 return 1
 
-
         ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
         if cmds_dict[command]['cache'] in ["purge", "regenerate"]:

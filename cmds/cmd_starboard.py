@@ -23,7 +23,10 @@ from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
 from typing import List, Dict, Any, Union
 
-starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]}
+starboard_types: Dict[Union[str, int], Any] = {
+    0: "sonnet_starboard",
+    "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]
+    }
 
 
 async def starboard_channel_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -84,27 +87,30 @@ async def set_starboard_count(message: discord.Message, args: List[str], client:
 category_info: Dict[str, str] = {'name': 'starboard', 'pretty_name': 'Starboard', 'description': 'Starboard commands.'}
 
 commands: Dict[str, Dict[str, Any]] = {
-    'starboard-channel': {
-        'pretty_name': 'starboard-channel <channel>',
-        'description': 'Change Starboard channel',
-        'permission': 'administrator',
-        'cache': 'direct:(f)caches/sonnet_starboard',
-        'execute': starboard_channel_change
-        },
-    'starboard-emoji': {
-        'pretty_name': 'starboard-emoji <emoji>',
-        'description': 'Set the starboard emoji',
-        'permission': 'administrator',
-        'cache': 'direct:(f)caches/sonnet_starboard',
-        'execute': set_starboard_emoji
-        },
-    'starboard-enabled': {
-        'pretty_name': 'starboard-enabled <bool>',
-        'description': 'Toggle starboard on or off',
-        'permission': 'administrator',
-        'cache': 'direct:(f)caches/sonnet_starboard',
-        'execute': set_starboard_use
-        },
+    'starboard-channel':
+        {
+            'pretty_name': 'starboard-channel <channel>',
+            'description': 'Change Starboard channel',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_starboard',
+            'execute': starboard_channel_change
+            },
+    'starboard-emoji':
+        {
+            'pretty_name': 'starboard-emoji <emoji>',
+            'description': 'Set the starboard emoji',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_starboard',
+            'execute': set_starboard_emoji
+            },
+    'starboard-enabled':
+        {
+            'pretty_name': 'starboard-enabled <bool>',
+            'description': 'Toggle starboard on or off',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_starboard',
+            'execute': set_starboard_use
+            },
     'starboard-count':
         {
             'pretty_name': 'starboard-count <number>',

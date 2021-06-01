@@ -16,6 +16,7 @@ from typing import Dict, Callable, Any, List, Tuple, Coroutine
 
 async def attempt_unmute(Client: discord.Client, mute_entry: Tuple[str, str, str, int]) -> None:
 
+    db: db_hlapi
     with db_hlapi(int(mute_entry[0])) as db:
         db.unmute_user(infractionid=mute_entry[1])
         mute_role_id = db.grab_config("mute-role")
@@ -39,6 +40,7 @@ async def on_ready(**kargs: Any) -> None:
     # bot start time check to not reparse timers on network disconnect
     if kargs["bot_start"] > (time.time() - 10):
 
+        db: db_hlapi
         with db_hlapi(None) as db:
             mutes: List[Tuple[str, str, str, int]] = db.fetch_all_mutes()
             lost_mutes = sorted(mutes, key=lambda a: a[3])
@@ -64,6 +66,7 @@ async def on_ready(**kargs: Any) -> None:
 
 
 async def on_guild_join(guild: discord.Guild, **kargs: Any) -> None:
+    db: db_hlapi
     with db_hlapi(guild.id) as db:
         db.create_guild_db()
 
@@ -72,4 +75,4 @@ category_info: Dict[str, str] = {'name': 'Initializers'}
 
 commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"
