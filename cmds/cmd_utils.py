@@ -161,9 +161,9 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             if "rich_description" in cmds_dict[a]:
                 cmd_embed.add_field(name="Detailed information:", value=cmds_dict[a]["rich_description"], inline=False)
 
-            if (t := type(cmds_dict[a]["permission"])) == str:
+            if isinstance(cmds_dict[a]["permission"], str):
                 perms = cmds_dict[a]["permission"]
-            elif t == tuple or t == list:
+            elif isinstance(cmds_dict[a]["permission"], (tuple, list)):
                 perms = cmds_dict[a]["permission"][0]
             else:
                 perms = "NULL"
@@ -319,4 +319,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"
