@@ -29,7 +29,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
         self.closed = False
 
-    def __enter__(self):
+    def __enter__(self) -> "db_handler":
         return self
 
     def make_new_index(self, tablename: str, indexname: str, columns: List[str]) -> None:

@@ -62,7 +62,6 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     inc_statistics_better(message.guild.id, "on-message-delete", kargs["kernel_ramfs"])
 
     # Add to log
-    db: db_hlapi
     with db_hlapi(message.guild.id) as db:
         message_log = db.grab_config("message-log")
 
@@ -123,7 +122,6 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     inc_statistics_better(message.guild.id, "on-message-edit", kernel_ramfs)
 
     # Add to log
-    db: db_hlapi
     with db_hlapi(message.guild.id) as db:
         message_log = db.grab_config("message-edit-log") or db.grab_config("message-log")
 
@@ -341,7 +339,6 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        db: db_hlapi
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 execargs = [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]

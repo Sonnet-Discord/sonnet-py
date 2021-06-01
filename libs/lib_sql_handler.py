@@ -20,7 +20,7 @@ class db_handler:
         self.cur = self.con.cursor()
         self.closed: bool = False
 
-    def __enter__(self):
+    def __enter__(self) -> "db_handler":
         return self
 
     def make_new_index(self, tablename: str, indexname: str, columns: List[str]) -> None:

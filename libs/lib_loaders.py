@@ -132,7 +132,6 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         message_config = {}
 
         # Loads base db
-        db: db_hlapi
         with db_hlapi(guild_id) as db:
             for i in datatypes["csv"] + datatypes["text"] + datatypes["json"]:
                 message_config[i[0]] = db.grab_config(i[0])

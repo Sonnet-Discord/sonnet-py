@@ -7,7 +7,7 @@ import threading
 
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
-from typing import Union, Dict, List, Tuple, Optional, Any, Type
+from typing import Union, Dict, List, Tuple, Optional, Any, Type, cast
 
 # Get db handling library
 if DB_TYPE == "mariadb":
@@ -64,7 +64,7 @@ class db_hlapi:
         self.inject_enum("infractions", [("infractionID", str), ("userID", str), ("moderatorID", str), ("type", str), ("reason", str), ("timestamp", int)])
         self.inject_enum("mutes", [("infractionID", str), ("userID", str), ("endMute", int)])
 
-    def __enter__(self):
+    def __enter__(self) -> "db_hlapi":
         if self._lock:
             self._lock.acquire()
         return self
@@ -192,7 +192,7 @@ class db_hlapi:
                                 moderator: Optional[int] = None,
                                 itype: Optional[str] = None,
                                 automod: bool = True,
-                                count: bool = False) -> Union[Tuple[Any, ...], int]:
+                                count: bool = False) -> Union[Tuple[str, str, str, str, str, int], int]:
 
         schm: List[List[str]] = []
         if user:
@@ -204,16 +204,18 @@ class db_hlapi:
         if not automod:
             schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
 
+        db_type = Union[Tuple[str, str, str, str, str, int], int]
+
         try:
             if self.database.TEXT_KEY:
                 self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
                 self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
             if count:
-                data: Union[Tuple[Any, ...], int] = self.database.multicount_rows_from_table(f"{self.guild}_infractions", schm)
+                data = cast(db_type, self.database.multicount_rows_from_table(f"{self.guild}_infractions", schm))
             else:
-                data = self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm)
+                data = cast(db_type, self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm))
         except db_error.OperationalError:
-            data = tuple() if not count else 0
+            data = cast(db_type, tuple()) if not count else 0
 
         return data
 
@@ -239,7 +241,7 @@ class db_hlapi:
         self.set_enum("starboard", [str(message_id)])
         return True
 
-    def grab_infraction(self, infractionID: str) -> Optional[List[Union[str, int]]]:
+    def grab_infraction(self, infractionID: str) -> Optional[Tuple[str, str, str, str, str, int]]:
 
         try:
             infraction: Any = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])

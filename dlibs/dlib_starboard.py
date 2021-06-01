@@ -41,7 +41,6 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
         if (channel_id := mconf["starboard-channel"]) and (channel := kargs["client"].get_channel(int(channel_id))):
-            db: db_hlapi
             with db_hlapi(message.guild.id) as db:
                 db.inject_enum("starboard", [
                     ("messageID", str),

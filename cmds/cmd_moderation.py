@@ -23,7 +23,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
 import lib_constants as constants
 
-from typing import List, Tuple, Any, Awaitable, Optional
+from typing import List, Tuple, Any, Awaitable, Optional, cast
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -393,7 +393,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         if user_affected or responsible_mod:
-            infractions: List[Tuple[str, str, str, str, str, int]] = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
+            infractions = cast(List[Tuple[str, str, str, str, str, int]], db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod))
         else:
             await message.channel.send("Please specify a user or moderator")
             return 1
@@ -689,4 +689,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"

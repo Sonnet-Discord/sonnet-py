@@ -65,7 +65,6 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
         ramfs.ls(f"{message.guild.id}/regex")
     except FileNotFoundError:
 
-        db: db_hlapi
         with db_hlapi(message.guild.id) as db:
             reglist = {}
             for regex_type in ["regex-blacklist", "regex-notifier"]:
@@ -183,7 +182,6 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
     :raises: errors.log_channel_update_error
     """
 
-    db: db_hlapi
 
     if args:
         log_channel_str = args[0].strip("<#!>")
@@ -369,7 +367,6 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
     :returns: int -- The success state of adding the role to the db, 0 being no error
     """
 
-    db: db_hlapi
 
     if args:
         role_str: str = args[0].strip("<@&>")
