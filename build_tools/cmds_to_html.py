@@ -10,15 +10,17 @@ sys.path.insert(1, os.getcwd() + '/cmds')
 sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
 
-command_modules = []
-command_modules_dict = {}
+import lib_lexdpyk_h as lexdpyx
+
+command_modules: List[lexdpyx.cmd_module] = []
+command_modules_dict: lexdpyx.cmd_modules_dict = {}
 # Init imports
 for f in os.listdir('./cmds'):
     if f.startswith("cmd_") and f.endswith(".py"):
-        command_modules.append(importlib.import_module(f[:-3]))
+        command_modules.append(importlib.import_module(f[:-3]))  # type: ignore
     # Update hashmaps
     for module in command_modules:
-        command_modules_dict.update(module.commands)  # type: ignore
+        command_modules_dict.update(module.commands)
 
 outlist: List[str] = []
 starter_padding: int = 0
@@ -26,8 +28,8 @@ outlist.append("")
 
 # Make alias mappings
 aliashmap = {}
-[aliashmap.update(module.commands) for module in command_modules]  # type: ignore
-aliasmap: Dict[str, List] = {}
+[aliashmap.update(module.commands) for module in command_modules]
+aliasmap: Dict[str, List[str]] = {}
 for i in aliashmap.keys():
     if 'alias' in aliashmap[i].keys():
         if aliashmap[i]['alias'] in aliasmap.keys():
@@ -35,11 +37,11 @@ for i in aliashmap.keys():
         else:
             aliasmap[aliashmap[i]['alias']] = [i]
 
-for module in sorted(command_modules, key=lambda a: a.category_info['name']):  # type: ignore
+for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
     # Append header
-    outlist.append(f"<h2 id=\"{module.category_info['name']}\">")  # type: ignore
-    outlist.append(f"\t<a href=\"#{module.category_info['name']}\">{module.category_info['pretty_name']}</a>")  # type: ignore
+    outlist.append(f"<h2 id=\"{module.category_info['name']}\">")
+    outlist.append(f"\t<a href=\"#{module.category_info['name']}\">{module.category_info['pretty_name']}</a>")
     outlist.append("</h2>")
 
     # Create table
@@ -52,12 +54,12 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):  #
     outlist.append("\t\t<th>Permission Level</th>")
     outlist.append("\t</tr>")
 
-    for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]:  # type: ignore
+    for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]:
 
-        command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;")  # type: ignore
+        command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;")
 
-        command_perms = module.commands[i]['permission'][0].upper()  # type: ignore
-        command_perms += module.commands[i]['permission'][1:].lower()  # type: ignore
+        command_perms = module.commands[i]['permission'][0].upper()
+        command_perms += module.commands[i]['permission'][1:].lower()
 
         if i in aliasmap.keys():
             aliases = ", ".join(aliasmap[i])
@@ -66,7 +68,7 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):  #
 
         outlist.append("\t<tr>")
         outlist.append(f"\t\t<td>{command_name}</td>")
-        outlist.append(f"\t\t<td>{module.commands[i]['description']}</td>")  # type: ignore
+        outlist.append(f"\t\t<td>{module.commands[i]['description']}</td>")
         outlist.append(f"\t\t<td>{aliases}</td>")
         outlist.append(f"\t\t<td>{command_perms}</td>")
         outlist.append("\t</tr>")

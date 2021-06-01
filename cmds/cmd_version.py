@@ -10,10 +10,14 @@ import sys
 import lib_loaders
 
 importlib.reload(lib_loaders)
+import lib_lexdpyk_h
+
+importlib.reload(lib_lexdpyk_h)
 
 from lib_loaders import clib_exists, DotHeaders
 
-from typing import List, Any
+from typing import List, Any, Union
+import lib_lexdpyk_h as lexdpyk
 
 
 def prettyprint(inlist: List[List[str]]) -> List[str]:
@@ -31,7 +35,7 @@ def zpad(innum: int) -> str:
     return (2 - len(str(innum))) * "0" + str(innum)
 
 
-def getdelta(past: int) -> str:
+def getdelta(past: Union[int, float]) -> str:
 
     trunning = (datetime.utcnow() - datetime.utcfromtimestamp(past))
 
@@ -44,9 +48,9 @@ def getdelta(past: int) -> str:
 
 async def print_version_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
-    bot_start_time = kwargs["bot_start"]
-    dlib_modules = kwargs["dlibs"]
-    modules = kwargs["cmds"]
+    bot_start_time: float = kwargs["bot_start"]
+    dlib_modules: List[lexdpyk.dlib_module] = kwargs["dlibs"]
+    modules: List[lexdpyk.cmd_module] = kwargs["cmds"]
 
     base_versions = []
     base_versions.append(["Python", sys.version.split(" ")[0]])
@@ -148,4 +152,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.5"

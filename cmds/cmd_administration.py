@@ -30,6 +30,13 @@ async def joinlog_change(message: discord.Message, args: List[str], client: disc
         return 1
 
 
+async def leave_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    try:
+        await update_log_channel(message, args, client, "leave-log", verbose=kwargs["verbose"])
+    except lib_parsers.errors.log_channel_update_error:
+        return 1
+
+
 async def inflog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
@@ -40,6 +47,13 @@ async def inflog_change(message: discord.Message, args: List[str], client: disco
 async def msglog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     try:
         await update_log_channel(message, args, client, "message-log", verbose=kwargs["verbose"])
+    except lib_parsers.errors.log_channel_update_error:
+        return 1
+
+
+async def message_edit_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    try:
+        await update_log_channel(message, args, client, "message-edit-log", verbose=kwargs["verbose"])
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
@@ -74,7 +88,10 @@ class gdpr_functions:
             os.remove(i)
 
         await message.channel.send(
-            f"Deleted database for guild {message.guild.id}\nPlease note that when the bot receives a message from this guild it will generate a cache and statistics file again\nAs we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server\nTo fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"
+            f"""Deleted database for guild {message.guild.id}
+Please note that when the bot receives a message from this guild it will generate a cache and statistics file again
+As we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server
+To fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"""
             )
 
     async def download(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
@@ -98,11 +115,18 @@ class gdpr_functions:
 
         # Finalize discord file objs
         fileobj_db = discord.File(db, filename="database.gz")
-        fileobj_antispam = discord.File(antispam, filename="antispam.vnum_x2.bin")
-        fileobj_cantispam = discord.File(charantispam, filename="charantispam.vnum_x3.bin")
+        fileobj_antispam = discord.File(io.BytesIO(antispam.read()), filename="antispam.vnum_x2.bin")
+        fileobj_cantispam = discord.File(io.BytesIO(charantispam.read()), filename="charantispam.vnum_x3.bin")
 
         # Send data
-        await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
+        try:
+            await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
+        except discord.errors.HTTPException:
+            await message.channel.send(
+                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords filesize limitation
+Please contact the bot owner directly to download your guilds database
+Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"""
+                )
 
 
 async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -176,6 +200,14 @@ async def set_moderator_role(message: discord.Message, args: List[str], client: 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
+    'message-edit-log':
+        {
+            'pretty_name': 'message-edit-log <channel>',
+            'description': 'Change message edit log, overloads message-log',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': message_edit_log_change
+            },
     'message-log': {
         'pretty_name': 'message-log <channel>',
         'description': 'Change message log',
@@ -183,9 +215,15 @@ commands = {
         'cache': 'keep',
         'execute': msglog_change
         },
-    'leave-log': {
-        'alias': 'join-log'
-        },
+    'leave-log':
+        {
+            'pretty_name': 'leave-log <channel>',
+            'description': 'Change leave log, overloads join-log',
+            'rich_description': 'Set the leave log, diverts leave logs from join log to leave log',
+            'permission': 'administrator',
+            'cache': 'keep',
+            'execute': leave_log_change
+            },
     'join-log':
         {
             'pretty_name': 'join-log <channel>',
@@ -264,4 +302,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.5"

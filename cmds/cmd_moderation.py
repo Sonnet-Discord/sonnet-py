@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, datetime, time, asyncio
+import discord, datetime, time, asyncio, math
 
 import lib_db_obfuscator
 
@@ -14,10 +14,14 @@ importlib.reload(lib_loaders)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_constants
 
-from lib_loaders import generate_infractionid, load_embed_color, embed_colors
+importlib.reload(lib_constants)
+
+from lib_loaders import generate_infractionid, load_embed_color, embed_colors, get_guild_lock
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field, parse_channel_message
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
+import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional
 import lib_lexdpyk_h as lexdpyk
@@ -29,18 +33,31 @@ async def catch_dm_error(user: discord.User, contents: str, log_channel: discord
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
         if log_channel:
-            await log_channel.send("ERROR: Could not DM user")
+            try:
+                await log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none())
+            except discord.errors.Forbidden:
+                pass
+
+
+async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextChannel) -> None:
+    try:
+        await log_channel.send(embed=embed)
+    except discord.errors.Forbidden:
+        try:
+            await log_channel.send(constants.sonnet.error_embed)
+        except discord.errors.Forbidden:
+            pass
 
 
 # Sends an infraction to database and log channels if user exists
 async def log_infraction(
     message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
-    ) -> Tuple[Optional[str], Optional[Awaitable]]:
+    ) -> Tuple[Optional[str], Optional[Awaitable[None]]]:
 
     if not user:
         return None, None
 
-    with db_hlapi(message.guild.id) as db:
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         # Collision test
         while db.grab_infraction(generated_id := generate_infractionid()):
             pass
@@ -59,9 +76,9 @@ async def log_infraction(
         log_embed.add_field(name="Type", value=infraction_type)
         log_embed.add_field(name="Reason", value=infraction_reason)
 
-        log_embed.set_footer(text=f"uid: {user.id}, unix: {int(time.time())}")
+        log_embed.set_footer(text=f"uid: {user.id}, unix: {int(datetime.datetime.utcnow().timestamp())}")
 
-        asyncio.create_task(log_channel.send(embed=log_embed))
+        asyncio.create_task(catch_logging_error(log_embed, log_channel))
 
     if not to_dm:
         return generated_id, None
@@ -89,12 +106,12 @@ async def process_infraction(message: discord.Message,
                              client: discord.Client,
                              infraction_type: str,
                              ramfs: lexdpyk.ram_filesystem,
-                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable]]:
+                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable[None]]]:
 
     # Check if automod
     automod: bool = False
     try:
-        if (type(args[0]) == int):
+        if isinstance(args[0], int):
             args[0] = str(args[0])
             automod = True
     except IndexError:
@@ -106,18 +123,9 @@ async def process_infraction(message: discord.Message,
 
     # Test if user is valid
     try:
-        member = message.guild.get_member(int(args[0].strip("<@!>")))
-        if not (user := client.get_user(int(args[0].strip("<@!>")))):
-            user = await client.fetch_user(int(args[0].strip("<@!>")))
-    except ValueError:
-        await message.channel.send("Invalid UserID")
-        raise InfractionGenerationError("Invalid User")
-    except IndexError:
-        await message.channel.send("No user specified")
-        raise InfractionGenerationError("No user specified")
-    except (discord.errors.NotFound, discord.errors.HTTPException):
-        await message.channel.send("User does not exist")
-        raise InfractionGenerationError("User does not exist")
+        user, member = await parse_user_member(message, args, client)
+    except lib_parsers.errors.user_parse_error:
+        raise InfractionGenerationError("Could not parse user")
 
     # Test if user is self
     if member and moderator_id == member.id:
@@ -231,9 +239,9 @@ class NoMuteRole(Exception):
     pass
 
 
-async def grab_mute_role(message: discord.Message):
+async def grab_mute_role(message: discord.Message, ramfs: lexdpyk.ram_filesystem) -> discord.Role:
 
-    with db_hlapi(message.guild.id) as db:
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         if (mute_role := db.grab_config("mute-role")):
             if (mute_role := message.guild.get_role(int(mute_role))):
                 return mute_role
@@ -245,12 +253,12 @@ async def grab_mute_role(message: discord.Message):
             raise NoMuteRole("No mute role")
 
 
-async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infractionID: str, mute_role: discord.Role, mutetime: int) -> None:
+async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infractionID: str, mute_role: discord.Role, mutetime: int, ramfs: lexdpyk.ram_filesystem) -> None:
 
     await asyncio.sleep(mutetime)
 
     # unmute in db
-    with db_hlapi(guild.id) as db:
+    with db_hlapi(guild.id, lock=get_guild_lock(guild, ramfs)) as db:
         if db.is_muted(infractionid=infractionID):
             db.unmute_user(infractionid=infractionID)
 
@@ -281,7 +289,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         mutetime = 0
 
     try:
-        mute_role = await grab_mute_role(message)
+        mute_role = await grab_mute_role(message, kwargs["ramfs"])
         member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", kwargs["ramfs"])
     except (NoMuteRole, InfractionGenerationError):
         return 1
@@ -311,18 +319,18 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
             asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}", allowed_mentions=discord.AllowedMentions.none()))
 
         # Stop other mute timers and add to mutedb
-        with db_hlapi(message.guild.id) as db:
+        with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
             db.unmute_user(userid=member.id)
             db.mute_user(member.id, int(time.time() + mutetime), infractionID)
 
         # Create in other thread to not block command execution
-        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime))
+        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime, kwargs["ramfs"]))
 
 
 async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        mute_role = await grab_mute_role(message)
+        mute_role = await grab_mute_role(message, kwargs["ramfs"])
         member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", kwargs["ramfs"], infraction=False)
     except (InfractionGenerationError, NoMuteRole):
         return 1
@@ -339,31 +347,38 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
         return 1
 
     # Unmute in DB
-    with db_hlapi(message.guild.id) as db:
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
         db.unmute_user(userid=member.id)
 
     if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def general_infraction_grabber(message: discord.Message, args: List[str], client: discord.Client):
+async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    tstart = time.monotonic()
+
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
     # Reparse args
     args = (" ".join(args)).replace("=", " ").split()
 
     # Parse flags
-    selected_chunk = 0
-    responsible_mod = None
-    infraction_type = None
-    user_affected = None
-    automod = True
+    selected_chunk: int = 0
+    responsible_mod: Optional[int] = None
+    infraction_type: Optional[str] = None
+    per_page: int = 20
+    user_affected: Optional[int] = None
+    automod: bool = True
     for index, item in enumerate(args):
         try:
             if item in ["-p", "--page"]:
                 selected_chunk = int(float(args[index + 1])) - 1
             elif item in ["-m", "--mod"]:
-                responsible_mod = (args[index + 1].strip("<@!>"))
+                responsible_mod = int(args[index + 1].strip("<@!>"))
             elif item in ["-u", "--user"]:
-                user_affected = (args[index + 1].strip("<@!>"))
+                user_affected = int(args[index + 1].strip("<@!>"))
+            elif item in ["-i", "--infractioncount"]:
+                per_page = int(args[index + 1])
             elif item in ["-t", "--type"]:
                 infraction_type = (args[index + 1])
             elif item == "--no-automod":
@@ -372,27 +387,16 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
             await message.channel.send("Invalid flags supplied")
             return 1
 
-    with db_hlapi(message.guild.id) as db:
-        if user_affected:
-            infractions = db.grab_user_infractions(user_affected)
-            sortmeth = "user"
-        elif responsible_mod:
-            infractions = db.grab_moderator_infractions(responsible_mod)
-            sortmeth = "mod"
+    if per_page > 40 or per_page < 5:
+        await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
+        return 1
+
+    with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
+        if user_affected or responsible_mod:
+            infractions: List[Tuple[str, str, str, str, str, int]] = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
         else:
             await message.channel.send("Please specify a user or moderator")
             return 1
-
-    # Generate sorts
-    if not automod:
-        automod_id = str(client.user.id)
-        infractions = filter(lambda i: not (i[2] == automod_id or "[AUTOMOD]" in i[4]), infractions)
-    if responsible_mod and sortmeth != "mod":
-        infractions = filter(lambda i: i[2] == responsible_mod, infractions)
-    if user_affected and sortmeth != "user":
-        infractions = filter(lambda i: i[1] == user_affected, infractions)
-    if infraction_type:
-        infractions = filter(lambda i: i[3] == infraction_type, infractions)
 
     # Sort newest first
     infractions = sorted(infractions, reverse=True, key=lambda a: a[5])
@@ -402,44 +406,33 @@ async def general_infraction_grabber(message: discord.Message, args: List[str], 
         await message.channel.send("No infractions found")
         return 0
 
-    # Generate chunks from infractions
-    do_not_exceed = 1900  # Discord message length limits
-    chunks = [""]
-    curchunk = 0
-    for i in infractions:
-        infraction_data = f"{', '.join([i[0], i[3], i[4]])}\n"
-        # Make a new page if it overflows
-        if (len(chunks[curchunk]) + len(infraction_data)) > do_not_exceed:
-            curchunk += 1
-            chunks.append("")
-        # Add to the current chunk
-        chunks[curchunk] = chunks[curchunk] + infraction_data
+    cpagecount = math.ceil(len(infractions) / per_page)
 
     # Test if valid page
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
         return 1
     elif selected_chunk < -1:
+        selected_chunk %= cpagecount
         selected_chunk += 1
 
-    try:
-        outdata = chunks[selected_chunk]
-    except IndexError:
-        await message.channel.send(f"ERROR: No such page {selected_chunk}")
+    if selected_chunk > cpagecount or selected_chunk < 0:
+        await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
         return 1
 
-    await message.channel.send(f"Page {selected_chunk%len(chunks)+1} / {len(chunks)} ({len(infractions)} infractions)\n```css\nID, Type, Reason\n{outdata}```")
+    chunk = ""
+    for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
+        chunk += f"{', '.join([i[0], i[3], i[4]])[:math.floor(1900/per_page)]}\n"
 
+    tprint = round((time.monotonic() - tstart) * 10000) / 10
 
-async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-
-    return await general_infraction_grabber(message, args, client)
+    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infractions) ({tprint}ms)\n```css\nID, Type, Reason\n{chunk}```")
 
 
 async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
-        with db_hlapi(message.guild.id) as db:
+        with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
             infraction = db.grab_infraction(args[0])
         if not infraction:
             await message.channel.send("ERROR: Infraction ID does not exist")
@@ -461,13 +454,17 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
     infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
 
-    await message.channel.send(embed=infraction_embed)
+    try:
+        await message.channel.send(embed=infraction_embed)
+    except discord.errors.Forbidden:
+        await message.channel.send(constants.sonnet.error_embed)
+        return 1
 
 
 async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     if args:
-        with db_hlapi(message.guild.id) as db:
+        with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, kwargs["ramfs"])) as db:
             infraction = db.grab_infraction(args[0])
             if not infraction:
                 await message.channel.send("ERROR: Infraction ID does not exist")
@@ -494,7 +491,11 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
     infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
 
-    await message.channel.send(embed=infraction_embed)
+    try:
+        await message.channel.send(embed=infraction_embed)
+    except discord.errors.Forbidden:
+        await message.channel.send(constants.sonnet.error_embed)
+        return 1
 
 
 async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -524,7 +525,11 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)
     except discord.errors.HTTPException:
-        await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
+        try:
+            await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
+        except discord.errors.Forbidden:
+            await message.channel.send(constants.sonnet.error_embed)
+            return 1
 
 
 class purger:
@@ -631,7 +636,7 @@ commands = {
         },
     'search-infractions':
         {
-            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [--no-automod]',
+            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--no-automod]',
             'description': 'Grab infractions of a user',
             'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
@@ -684,4 +689,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.5"

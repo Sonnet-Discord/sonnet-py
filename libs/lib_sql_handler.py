@@ -12,6 +12,9 @@ class db_error:  # DB error codes
 
 
 class db_handler:
+
+    TEXT_KEY = True
+
     def __init__(self, db_location: str) -> None:
         self.con = sqlite3.connect(db_location)
         self.cur = self.con.cursor()
@@ -19,6 +22,20 @@ class db_handler:
 
     def __enter__(self):
         return self
+
+    def make_new_index(self, tablename: str, indexname: str, columns: List[str]) -> None:
+
+        # Test for attack
+        if "\\" in tablename or "'" in tablename:
+            raise db_error.OperationalError("Detected SQL injection attack")
+
+        if "\\" in indexname or "'" in indexname:
+            raise db_error.OperationalError("Detected SQL injection attack")
+
+        cols = "', '".join(columns)
+        db_inputStr = f"CREATE INDEX IF NOT EXISTS '{indexname}' ON '{tablename}' ('{cols}')"
+
+        self.cur.execute(db_inputStr)
 
     def make_new_table(self, tablename: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
@@ -46,7 +63,7 @@ class db_handler:
             }
 
         # Test for attack
-        if tablename.count("\\") or tablename.count("'"):
+        if "\\" in tablename or "'" in tablename:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add table addition
@@ -84,15 +101,50 @@ class db_handler:
 
         self.cur.execute(db_inputStr, tuple(db_inputList))
 
-    def fetch_rows_from_table(self, table: str, column_search: List[Any]) -> Tuple[Any, ...]:
+    def multicount_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> int:
 
         # Test for attack
         if table.count("\\") or table.count("'"):
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add SELECT data
-        db_inputStr = f"SELECT * FROM '{table}' WHERE {column_search[0]} = ?"
-        db_inputList = [column_search[1]]
+        db_inputStr = f"SELECT COUNT(*) FROM '{table}' WHERE "
+
+        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        db_inputList = [i[1] for i in searchparms]
+
+        # Execute
+        self.cur.execute(db_inputStr, tuple(db_inputList))
+
+        retval: int = tuple(self.cur.fetchall())[0][0]
+        return retval
+
+    def fetch_rows_from_table(self, table: str, search: List[Any]) -> Tuple[Any, ...]:
+
+        # Test for attack
+        if table.count("\\") or table.count("'"):
+            raise db_error.OperationalError("Detected SQL injection attack")
+
+        # Add SELECT data
+        db_inputStr = f"SELECT * FROM '{table}' WHERE {search[0]} {search[2] if len(search) > 2 else '='} ?"
+        db_inputList = [search[1]]
+
+        # Execute
+        self.cur.execute(db_inputStr, tuple(db_inputList))
+
+        return tuple(self.cur.fetchall())
+
+    def multifetch_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> Tuple[Any, ...]:
+
+        # Test for attack
+        if table.count("\\") or table.count("'"):
+            raise db_error.OperationalError("Detected SQL injection attack")
+
+        # Add SELECT data
+        db_inputStr = f"SELECT * FROM '{table}' WHERE "
+
+        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        db_inputList = [i[1] for i in searchparms]
 
         # Execute
         self.cur.execute(db_inputStr, tuple(db_inputList))
@@ -138,6 +190,9 @@ class db_handler:
 
         # Send data
         return tuple(self.cur.fetchall())
+
+    def ping(self) -> None:
+        self.con.commit()
 
     def commit(self) -> None:  # Commits data to db
         self.con.commit()

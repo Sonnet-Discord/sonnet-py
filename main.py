@@ -2,10 +2,13 @@
 print("Booting LeXdPyK")
 
 # Import core systems
-import os, importlib, sys, io, time
+import os, importlib, sys, io, time, traceback
 
 # Import sub dependencies
-import glob, json, hashlib, logging, getpass
+import glob, json, hashlib, logging, getpass, datetime
+
+# Import typing support
+from typing import List, Optional, Any, Tuple, Dict
 
 # Start Discord.py
 import discord, asyncio
@@ -18,7 +21,7 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 
 # Get token from environment variables.
-TOKEN = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
+TOKEN: Optional[str] = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
 
 # Initialize kernel workspace
 sys.path.insert(1, os.getcwd() + '/cmds')
@@ -34,20 +37,20 @@ intents.members = True
 intents.reactions = True
 
 # Initialise Discord Client.
-Client = discord.Client(case_insensitive=True, status=discord.Status.online, intents=intents)
+Client = discord.Client(status=discord.Status.online, intents=intents)
 
 
 # Define token encryption system "miniflip"
 class miniflip:
-    def __init__(self, password):
+    def __init__(self, password: str):
         key = hashlib.sha512(password.encode("utf8")).digest()
         self._width = 8
         self._passkey = [int.from_bytes(key[i:i + self._width], "little") for i in range(0, len(key), self._width)]
 
-    def _btod(self, data: bytes):
+    def _btod(self, data: bytes) -> List[int]:
         return [int.from_bytes(data[i:i + self._width], "little") for i in range(0, len(data), self._width)]
 
-    def _dtob(self, data) -> bytes:
+    def _dtob(self, data: List[int]) -> bytes:
         out = []
         for chunk in data:
             out.extend([(chunk >> (8 * i) & 0xff) for i in range(self._width)])
@@ -65,7 +68,7 @@ class miniflip:
             ndata = [i ^ chunk for chunk in ndata]
         return self._dtob(ndata)
 
-    def encrypt(self, indata: str):
+    def encrypt(self, indata: str) -> bytes:
 
         if type(indata) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(indata).__name__}`")
 
@@ -77,7 +80,7 @@ class miniflip:
 
         return data
 
-    def decrypt(self, data: bytes):
+    def decrypt(self, data: bytes) -> Optional[str]:
 
         if type(data) != bytes: raise TypeError(f"decrypt only accepts type 'bytes', not type `{type(data).__name__}`")
 
@@ -94,16 +97,16 @@ class miniflip:
 # Define ramfs
 class ram_filesystem:
     def __init__(self):
-        self.directory_table = {}
-        self.data_table = {}
+        self.directory_table: Dict[str, Any] = {}
+        self.data_table: Dict[str, Any] = {}
 
     def __enter__(self):
         return self
 
-    def mkdir(self, make_dir):
+    def mkdir(self, make_dir_str: str) -> Any:
 
         # Make fs list
-        make_dir = make_dir.split("/")
+        make_dir: List[str] = make_dir_str.split("/")
 
         # If the current dir doesnt exist then create it
         if not (make_dir[0] in self.directory_table.keys()):
@@ -115,9 +118,9 @@ class ram_filesystem:
         else:
             return self
 
-    def remove_f(self, remove_item):
+    def remove_f(self, remove_item_str: str) -> Any:
 
-        remove_item = remove_item.split("/")
+        remove_item: List[str] = remove_item_str.split("/")
         if len(remove_item) > 1:
             return self.directory_table[remove_item[0]].remove_f("/".join(remove_item[1:]))
         else:
@@ -127,9 +130,9 @@ class ram_filesystem:
             except KeyError:
                 raise FileNotFoundError("File does not exist")
 
-    def read_f(self, file_to_open):
+    def read_f(self, file_to_open_str: str) -> Any:
 
-        file_to_open = file_to_open.split("/")
+        file_to_open: List[str] = file_to_open_str.split("/")
         try:
             if len(file_to_open) > 1:
                 return self.directory_table[file_to_open[0]].read_f("/".join(file_to_open[1:]))
@@ -138,9 +141,12 @@ class ram_filesystem:
         except KeyError:
             raise FileNotFoundError("File does not exist")
 
-    def create_f(self, file_to_write, f_type=io.BytesIO, f_args=[]):
+    def create_f(self, file_to_write_str: str, f_type: Optional[type] = None, f_args: Optional[List[Any]] = None) -> Any:
 
-        file_to_write = file_to_write.split("/")
+        f_type = io.BytesIO if f_type is None else f_type
+        f_args = [] if f_args is None else f_args
+
+        file_to_write: List[str] = file_to_write_str.split("/")
         if len(file_to_write) > 1:
             try:
                 return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]), f_type=f_type, f_args=f_args)
@@ -152,9 +158,9 @@ class ram_filesystem:
 
         return self.data_table[file_to_write[0]]
 
-    def rmdir(self, directory_to_delete):
+    def rmdir(self, directory_to_delete_str: str) -> None:
 
-        directory_to_delete = directory_to_delete.split("/")
+        directory_to_delete: List[str] = directory_to_delete_str.split("/")
         try:
             if len(directory_to_delete) > 1:
                 self.directory_table[directory_to_delete[0]].rmdir("/".join(directory_to_delete[1:]))
@@ -163,30 +169,30 @@ class ram_filesystem:
         except KeyError:
             raise FileNotFoundError("Folder does not exist")
 
-    def ls(self, *folderpath):
+    def ls(self, *folderpath_str: str) -> Tuple[List[str], List[str]]:
 
         try:
-            if folderpath:
-                folderpath = folderpath[0].split("/")
+            if folderpath_str:
+                folderpath: List[str] = folderpath_str[0].split("/")
                 if len(folderpath) > 1:
                     return self.directory_table[folderpath[0]].ls("/".join(folderpath[1:]))
                 else:
                     return self.directory_table[folderpath[0]].ls()
             else:
-                return [list(self.data_table.keys()), list(self.directory_table.keys())]
+                return (list(self.data_table.keys()), list(self.directory_table.keys()))
         except KeyError:
             raise FileNotFoundError("Filepath does not exist")
 
-    def tree(self, *folderpath):
+    def tree(self, *folderpath_str: str):
         try:
-            if folderpath:
-                folderpath = folderpath[0].split("/")
+            if folderpath_str:
+                folderpath: List[str] = folderpath_str[0].split("/")
                 if len(folderpath) > 1:
                     return self.directory_table[folderpath[0]].tree("/".join(folderpath[1:]))
                 else:
                     return self.directory_table[folderpath[0]].tree()
             else:
-                datamap = [list(self.data_table.keys()), {}]
+                datamap: Tuple[List[str], Dict[str, Any]] = (list(self.data_table.keys()), {})
                 for folder in self.directory_table.keys():
                     datamap[1][folder] = self.directory_table[folder].tree()
                 return datamap
@@ -206,10 +212,10 @@ except FileNotFoundError:
 
 # Define debug commands
 
-command_modules = []
-command_modules_dict = {}
-dynamiclib_modules = []
-dynamiclib_modules_dict = {}
+command_modules: List[Any] = []
+command_modules_dict: Dict[str, Any] = {}
+dynamiclib_modules: List[Any] = []
+dynamiclib_modules_dict: Dict[str, Any] = {}
 
 # Initalize ramfs, kernel ramfs
 ramfs = ram_filesystem()
@@ -222,15 +228,19 @@ class KernelSyntaxError(SyntaxError):
 
 
 # Import configs
-from LeXdPyK_conf import BOT_OWNER
+from LeXdPyK_conf import BOT_OWNER as UNKNOWN_OWNER
 
-if (t := type(BOT_OWNER)) == str or t == int:
-    BOT_OWNER = [int(BOT_OWNER)] if BOT_OWNER else []  # type: ignore
-elif BOT_OWNER:
-    BOT_OWNER = [int(i) for i in BOT_OWNER]  # type: ignore
+BOT_OWNER: List[int]
+
+if isinstance(UNKNOWN_OWNER, (str, int)):
+    BOT_OWNER = [int(UNKNOWN_OWNER)] if UNKNOWN_OWNER else []
+elif isinstance(UNKNOWN_OWNER, (list, tuple)):
+    BOT_OWNER = [int(i) for i in UNKNOWN_OWNER]
+else:
+    BOT_OWNER = []
 
 
-def kernel_load_command_modules(*args):
+def kernel_load_command_modules(*args: str):
     print("Loading Kernel Modules")
     # Globalize variables
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -272,17 +282,17 @@ def kernel_load_command_modules(*args):
     if err: return ("\n".join([f"Error importing {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
 
 
-def regenerate_ramfs(*args):
+def regenerate_ramfs(*args: str):
     global ramfs
     ramfs = ram_filesystem()
 
 
-def regenerate_kernel_ramfs(*args):
+def regenerate_kernel_ramfs(*args: str):
     global kernel_ramfs
     kernel_ramfs = ram_filesystem()
 
 
-def kernel_reload_command_modules(*args):
+def kernel_reload_command_modules(*args: str):
     print("Reloading Kernel Modules")
     # Init vars
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -322,7 +332,7 @@ def kernel_reload_command_modules(*args):
     if err: return ("\n".join([f"Error reimporting {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
 
 
-def kernel_blacklist_guild(*args):
+def kernel_blacklist_guild(*args: str):
 
     try:
         blacklist["guild"].append(int(args[0][0]))
@@ -333,7 +343,7 @@ def kernel_blacklist_guild(*args):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_blacklist_user(*args):
+def kernel_blacklist_user(*args: str):
 
     try:
         blacklist["user"].append(int(args[0][0]))
@@ -344,7 +354,7 @@ def kernel_blacklist_user(*args):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_unblacklist_guild(*args):
+def kernel_unblacklist_guild(*args: str):
 
     try:
         if int(args[0][0]) in blacklist["guild"]:
@@ -358,7 +368,7 @@ def kernel_unblacklist_guild(*args):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_unblacklist_user(*args):
+def kernel_unblacklist_user(*args: str):
 
     try:
         if int(args[0][0]) in blacklist["user"]:
@@ -372,23 +382,23 @@ def kernel_unblacklist_user(*args):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_logout(*args):
+def kernel_logout(*args: str):
     asyncio.create_task(Client.close())
 
 
-def kernel_drop_dlibs(*args):
+def kernel_drop_dlibs(*args: str):
     global dynamiclib_modules, dynamiclib_modules_dict
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
 
 
-def kernel_drop_cmds(*args):
+def kernel_drop_cmds(*args: str):
     global command_modules, command_modules_dict
     command_modules = []
     command_modules_dict = {}
 
 
-def logging_toggle(*args):
+def logging_toggle(*args: str):
     if logger.isEnabledFor(10):
         logger.setLevel(20)
         return ["Logging at L20", []]
@@ -436,19 +446,26 @@ if e := kernel_load_command_modules():
 
 # A object used to pass error messages from the kernel callers to the event handlers
 class errtype:
-    def __init__(self, err, argtype):
+    def __init__(self, err: Exception, argtype: str):
+
         self.err = err
-        owner = f"<@!{BOT_OWNER[0]}>" if BOT_OWNER else "BOT OWNER"
+        owner: str = f"<@!{BOT_OWNER[0]}>" if BOT_OWNER else "BOT OWNER"
         self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nErr: `{type(err).__name__}: {err}`"
 
+        traceback.print_exception(type(self.err), self.err, self.err.__traceback__)
 
-# Catch errors.
+        with open("err.log", "a+") as logfile:
+            logfile.write(f"AT {time.strftime('%a, %d %b %Y %H:%M:%S', datetime.datetime.utcnow().utctimetuple())}:\n")
+            logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
+
+
+# Catch errors
 @Client.event
 async def on_error(event, *args, **kwargs):
     raise
 
 
-async def do_event(event, args):
+async def do_event(event: str, args: Any):
     await dynamiclib_modules_dict[event](
         *args,
         client=Client,
@@ -461,7 +478,7 @@ async def do_event(event, args):
         )
 
 
-async def event_call(argtype, *args):
+async def event_call(argtype: str, *args: Any):
 
     etypes = []
 
@@ -486,7 +503,7 @@ async def event_call(argtype, *args):
         return None
 
 
-async def safety_check(guild=None, guild_id=None, user=None, user_id=None):
+async def safety_check(guild: discord.Guild = None, guild_id: int = None, user: discord.User = None, user_id: int = None) -> bool:
 
     if guild: guild_id = guild.id
     if user: user_id = user.id
@@ -539,26 +556,22 @@ async def safety_check(guild=None, guild_id=None, user=None, user_id=None):
 
 @Client.event
 async def on_connect():
-    if e := await event_call("on-connect"):
-        raise e.err
+    await event_call("on-connect")
 
 
 @Client.event
 async def on_disconnect():
-    if e := await event_call("on-disconnect"):
-        raise e.err
+    await event_call("on-disconnect")
 
 
 @Client.event
 async def on_ready():
-    if e := await event_call("on-ready"):
-        raise e.err
+    await event_call("on-ready")
 
 
 @Client.event
 async def on_resumed():
-    if e := await event_call("on-resumed"):
-        raise e.err
+    await event_call("on-resumed")
 
 
 @Client.event
@@ -570,178 +583,209 @@ async def on_message(message):
     if len(args) >= 2 and args[0] in debug_commands.keys() and message.author.id in BOT_OWNER and args[1] == str(Client.user.id):
         if e := debug_commands[args[0]](args[2:]):
             await message.channel.send(e[0])
-            if e[1]: raise e[1][0]
+            for i in e[1]:
+                errtype(i, "")
         else:
             await message.channel.send("Debug command returned no error status")
             return
 
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-message", message):
-            await message.channel.send(e.errmsg)
-            raise e.err
+            try:
+                await message.channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_message_delete(message):
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-message-delete", message):
-            await message.channel.send(e.errmsg)
-            raise e.err
+            try:
+                await message.channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_bulk_message_delete(messages):
     if await safety_check(guild=messages[0].guild, user=messages[0].author):
         if e := await event_call("on-bulk-message-delete", messages):
-            await messages[0].channel.send(e.errmsg)
-            raise e.err
+            try:
+                await messages[0].channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_raw_message_delete(payload):
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-message-delete", payload):
-            await Client.get_channel(payload.channel_id).send(e.errmsg)
-            raise e.err
+            try:
+                await Client.get_channel(payload.channel_id).send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_raw_bulk_message_delete(payload):
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-bulk-message-delete", payload):
-            await Client.get_channel(payload.channel_id).send(e.errmsg)
-            raise e.err
+            try:
+                await Client.get_channel(payload.channel_id).send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_message_edit(old_message, message):
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-message-edit", old_message, message):
-            await message.channel.send(e.errmsg)
-            raise e.err
+            try:
+                await message.channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_raw_message_edit(payload):
     if e := await event_call("on-raw-message-edit", payload):
-        await Client.get_channel(payload.channel_id).send(e.errmsg)
-        raise e.err
+        try:
+            await Client.get_channel(payload.channel_id).send(e.errmsg)
+        except discord.errors.Forbidden:
+            pass
 
 
 @Client.event
 async def on_reaction_add(reaction, user):
     if await safety_check(guild=reaction.message.guild, user=user):
         if e := await event_call("on-reaction-add", reaction, user):
-            await reaction.message.channel.send(e.errmsg)
-            raise e.err
+            try:
+                await reaction.message.channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_raw_reaction_add(payload):
     if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
         if e := await event_call("on-raw-reaction-add", payload):
-            await Client.get_channel(payload.channel_id).send(e.errmsg)
-            raise e.err
+            try:
+                await Client.get_channel(payload.channel_id).send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_reaction_remove(reaction, user):
     if await safety_check(guild=reaction.message.guild, user=user):
         if e := await event_call("on-reaction-remove", reaction, user):
-            await reaction.message.channel.send(e.errmsg)
-            raise e.err
+            try:
+                await reaction.message.channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_raw_reaction_remove(payload):
     if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
         if e := await event_call("on-raw-reaction-remove", payload):
-            await Client.get_channel(payload.channel_id).send(e.errmsg)
-            raise e.err
+            try:
+                await Client.get_channel(payload.channel_id).send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_reaction_clear(message, reactions):
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-reaction-clear", message, reactions):
-            await message.channel.send(e.errmsg)
-            raise e.err
+            try:
+                await message.channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_raw_reaction_clear(payload):
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-reaction-clear", payload):
-            await Client.get_channel(payload.channel_id).send(e.errmsg)
-            raise e.err
+            try:
+                await Client.get_channel(payload.channel_id).send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_reaction_clear_emoji(reaction):
     if await safety_check(guild=reaction.message.guild):
         if e := await event_call("on-reaction-clear-emoji", reaction):
-            await reaction.message.channel.send(e.errmsg)
-            raise e.err
+            try:
+                await reaction.message.channel.send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_raw_reaction_clear_emoji(payload):
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-reaction-clear-emoji", payload):
-            await Client.get_channel(payload.channel_id).send(e.errmsg)
-            raise e.err
+            try:
+                await Client.get_channel(payload.channel_id).send(e.errmsg)
+            except discord.errors.Forbidden:
+                pass
 
 
 @Client.event
 async def on_member_join(member):
     if await safety_check(user=member, guild=member.guild):
-        if e := await event_call("on-member-join", member): raise e.err
+        await event_call("on-member-join", member)
 
 
 @Client.event
 async def on_member_remove(member):
     if await safety_check(guild=member.guild):
-        if e := await event_call("on-member-remove", member): raise e.err
+        await event_call("on-member-remove", member)
 
 
 @Client.event
 async def on_member_update(before, after):
     if await safety_check(user=before, guild=before.guild):
-        if e := await event_call("on-member-update", before, after): raise e.err
+        await event_call("on-member-update", before, after)
 
 
 @Client.event
 async def on_guild_join(guild):
     if await safety_check(guild=guild):
-        if e := await event_call("on-guild-join", guild): raise e.err
+        await event_call("on-guild-join", guild)
 
 
 @Client.event
 async def on_guild_remove(guild):
-    if e := await event_call("on-guild-remove", guild): raise e.err
+    await event_call("on-guild-remove", guild)
 
 
 @Client.event
 async def on_guild_update(before, after):
     if await safety_check(guild=before):
-        if e := await event_call("on-guild-update", before, after): raise e.err
+        await event_call("on-guild-update", before, after)
 
 
 @Client.event
 async def on_member_ban(guild, user):
     if await safety_check(guild=guild):
-        if e := await event_call("on-member-ban", guild, user): raise e.err
+        await event_call("on-member-ban", guild, user)
 
 
 @Client.event
 async def on_member_unban(guild, user):
     if await safety_check(guild=guild, user=user):
-        if e := await event_call("on-member-unban", guild, user): raise e.err
+        await event_call("on-member-unban", guild, user)
 
 
 # Define version info and start time
-version_info = "LeXdPyK 1.3.2"
-bot_start_time = time.time()
+version_info: str = "LeXdPyK 1.3.3"
+bot_start_time: float = time.time()
 
 # Start bot
 if TOKEN:

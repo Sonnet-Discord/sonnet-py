@@ -83,7 +83,7 @@ async def set_starboard_count(message: discord.Message, args: List[str], client:
 
 category_info: Dict[str, str] = {'name': 'starboard', 'pretty_name': 'Starboard', 'description': 'Starboard commands.'}
 
-commands: Dict[str, Dict] = {
+commands: Dict[str, Dict[str, Any]] = {
     'starboard-channel': {
         'pretty_name': 'starboard-channel <channel>',
         'description': 'Change Starboard channel',
@@ -115,4 +115,4 @@ commands: Dict[str, Dict] = {
             }
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.5"

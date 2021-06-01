@@ -20,14 +20,21 @@ importlib.reload(lib_loaders)
 import lib_encryption_wrapper
 
 importlib.reload(lib_encryption_wrapper)
+import lib_lexdpyk_h
+
+importlib.reload(lib_lexdpyk_h)
+import lib_constants
+
+importlib.reload(lib_constants)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum, load_embed_color, embed_colors
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
-from typing import List, Any, Dict, Optional, Callable, Tuple
+from typing import List, Any, Dict, Optional, Callable, Tuple, Coroutine
 import lib_lexdpyk_h as lexdpyk
+import lib_constants as constants
 
 
 async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
@@ -45,7 +52,7 @@ async def catch_logging_error(channel: discord.TextChannel, contents: str, files
 
 async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
-    client = kargs["client"]
+    client: discord.Client = kargs["client"]
     # Ignore bots
     if parse_skip_message(client, message):
         return
@@ -60,14 +67,16 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     if message_log and (log_channel := client.get_channel(int(message_log))):
 
-        message_embed = discord.Embed(title=f"Message deleted in #{message.channel}", description=message.content, color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"]))
+        message_embed = discord.Embed(
+            title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"])
+            )
         message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
 
         if (r := message.reference) and (rr := r.resolved):
             message_embed.add_field(name="Replying to:", value=f"{rr.author.mention} [(Link)]({rr.jump_url})")
 
         message_embed.set_footer(text=f"Message ID: {message.id}")
-        message_embed.timestamp = datetime.utcnow()
+        message_embed.timestamp = message.created_at
 
         await catch_logging_error(log_channel, message_embed, files)
 
@@ -79,7 +88,7 @@ async def attempt_message_delete(message: discord.Message) -> None:
         pass
 
 
-async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict, ramfs: lexdpyk.ram_filesystem) -> None:
+async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict[str, Any], ramfs: lexdpyk.ram_filesystem) -> None:
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
 
@@ -104,46 +113,49 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     client: discord.Client = kargs["client"]
     ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
+    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
 
     # Ignore bots
     if parse_skip_message(client, message):
         return
 
-    inc_statistics_better(message.guild.id, "on-message-edit", kargs["kernel_ramfs"])
+    inc_statistics_better(message.guild.id, "on-message-edit", kernel_ramfs)
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
-        message_log = db.grab_config("message-log")
+        message_log = db.grab_config("message-edit-log") or db.grab_config("message-log")
 
     # Skip logging if message is the same or mlog doesnt exist
     if message_log and not (old_message.content == message.content):
-        message_log = client.get_channel(int(message_log))
-        if message_log:
-            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, kargs["ramfs"]))
+        if message_log := client.get_channel(int(message_log)):
+
+            lim: int = constants.embed.field.value
+
+            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, ramfs))
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
 
             old_msg = (old_message.content or "NULL")
-            message_embed.add_field(name="Old Message", value=(old_msg)[:1024], inline=False)
-            if len(old_msg) > 1024:
-                message_embed.add_field(name="(Continued)", value=(old_msg)[1024:], inline=False)
+            message_embed.add_field(name="Old Message", value=(old_msg)[:lim], inline=False)
+            if len(old_msg) > lim:
+                message_embed.add_field(name="(Continued)", value=(old_msg)[lim:lim * 2], inline=False)
 
             msg = (message.content or "NULL")
-            message_embed.add_field(name="New Message", value=(msg)[:1024], inline=False)
-            if len(msg) > 1024:
-                message_embed.add_field(name="(Continued)", value=(msg)[1024:], inline=False)
+            message_embed.add_field(name="New Message", value=(msg)[:lim], inline=False)
+            if len(msg) > lim:
+                message_embed.add_field(name="(Continued)", value=(msg)[lim:lim * 2], inline=False)
 
             message_embed.set_footer(text=f"Message ID: {message.id}")
-            message_embed.timestamp = datetime.utcfromtimestamp(int(time.time()))
+            message_embed.timestamp = datetime.utcnow()
             asyncio.create_task(catch_logging_error(message_log, message_embed, None))
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
+    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
-        await kargs["command_modules"][1][mconf["blacklist-action"]
-                                          ]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=kargs["ramfs"])
+        execargs = [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs)
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
@@ -283,21 +295,26 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
         download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id])
 
 
-async def on_message(message: discord.Message, **kargs) -> None:
+async def on_message(message: discord.Message, **kargs: Any) -> None:
 
-    client = kargs["client"]
+    client: discord.Client = kargs["client"]
     ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
-    main_version_info = kargs["kernel_version"]
-    bot_start_time = kargs["bot_start"]
+    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
+    main_version_info: str = kargs["kernel_version"]
+    bot_start_time: float = kargs["bot_start"]
+
+    command_modules: List[lexdpyk.cmd_module]
+    command_modules_dict: lexdpyk.cmd_modules_dict
+
     command_modules, command_modules_dict = kargs["command_modules"]
 
     # Statistics.
-    stats = {"start": round(time.time() * 100000)}
+    stats: Dict[str, int] = {"start": round(time.time() * 100000)}
 
     if parse_skip_message(client, message):
         return
 
-    inc_statistics_better(message.guild.id, "on-message", kargs["kernel_ramfs"])
+    inc_statistics_better(message.guild.id, "on-message", kernel_ramfs)
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
@@ -312,20 +329,20 @@ async def on_message(message: discord.Message, **kargs) -> None:
     message_deleted: bool = False
 
     # If blacklist broken generate infraction
-    broke_blacklist, notify, infraction_type = parse_blacklist([message, mconf, ramfs])
+    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        asyncio.create_task(
-            command_modules_dict[mconf["blacklist-action"]]['execute'](message, [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"], client, verbose=False, ramfs=ramfs)
-            )
+        execargs = [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs))
 
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr], client, verbose=False, ramfs=ramfs))
+                execargs = [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, execargs, client, verbose=False, ramfs=ramfs))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf, ramfs))
@@ -334,7 +351,7 @@ async def on_message(message: discord.Message, **kargs) -> None:
 
     # Log files if not deleted
     if not message_deleted:
-        asyncio.create_task(log_message_files(message, kargs["kernel_ramfs"]))
+        asyncio.create_task(log_message_files(message, kernel_ramfs))
 
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
@@ -405,10 +422,10 @@ async def on_message(message: discord.Message, **kargs) -> None:
 
 category_info: Dict[str, str] = {'name': 'Messages'}
 
-commands: Dict[str, Callable] = {
+commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.5"

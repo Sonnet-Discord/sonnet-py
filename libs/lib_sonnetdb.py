@@ -3,9 +3,11 @@
 
 import importlib
 
+import threading
+
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
-from typing import Union, Dict, List, Tuple, Optional, Any
+from typing import Union, Dict, List, Tuple, Optional, Any, Type
 
 # Get db handling library
 if DB_TYPE == "mariadb":
@@ -37,7 +39,7 @@ except db_error.Error:
 def db_grab_connection() -> db_handler:
     global db_connection
     try:
-        db_connection.commit()
+        db_connection.ping()
         return db_connection
     except (db_error.Error, db_error.InterfaceError):
         try:
@@ -50,11 +52,12 @@ def db_grab_connection() -> db_handler:
 
 # Because being lazy writes good code
 class db_hlapi:
-    def __init__(self, guild_id: Optional[int]) -> None:
+    def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
         self.database = db_grab_connection()
-        self.guild = guild_id
+        self.guild: Optional[int] = guild_id
+        self._lock: Optional[threading.Lock] = lock
 
-        self.__enum_input: Dict[str, List[Tuple[str, Any]]] = {}
+        self.__enum_input: Dict[str, List[Tuple[str, type]]] = {}
         self.__enum_pool: Dict[str, List[Tuple[Any, ...]]] = {}
 
         self.inject_enum("config", [("property", str), ("value", str)])
@@ -62,15 +65,17 @@ class db_hlapi:
         self.inject_enum("mutes", [("infractionID", str), ("userID", str), ("endMute", int)])
 
     def __enter__(self):
+        if self._lock:
+            self._lock.acquire()
         return self
 
-    def _validate_enum(self, schema: List[Tuple[str, Any]]) -> bool:
+    def _validate_enum(self, schema: List[Tuple[str, type]]) -> bool:
         for i in schema:
             if type(i[0]) != str or i[1] not in [str, int]:
                 return False
         return True
 
-    def inject_enum(self, enumname: str, schema: List[Tuple[str, Any]]) -> None:
+    def inject_enum(self, enumname: str, schema: List[Tuple[str, type]]) -> None:
         if not self._validate_enum(schema):
             raise TypeError("Invalid schema passed")
 
@@ -149,8 +154,18 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
+    def delete_config(self, config: str) -> None:
+
+        try:
+            self.database.delete_rows_from_table(f"{self.guild}_config", ["property", config])
+        except db_error.OperationalError:
+            pass
+
     # Grab infractions of a user
     def grab_user_infractions(self, userid: Union[int, str]) -> Tuple[List[Union[str, int]], ...]:
+        """
+        Deprecated, replaced by grab_filter_infractions
+        """
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
@@ -161,11 +176,44 @@ class db_hlapi:
 
     # grab infractions dealt by a mod
     def grab_moderator_infractions(self, moderatorid: Union[int, str]) -> Tuple[Any, ...]:
+        """
+        Deprecated, replaced by grab_filter_infractions
+        """
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
         except db_error.OperationalError:
             data = tuple()
+
+        return data
+
+    def grab_filter_infractions(self,
+                                user: Optional[int] = None,
+                                moderator: Optional[int] = None,
+                                itype: Optional[str] = None,
+                                automod: bool = True,
+                                count: bool = False) -> Union[Tuple[Any, ...], int]:
+
+        schm: List[List[str]] = []
+        if user:
+            schm.append(["userID", str(user)])
+        if moderator:
+            schm.append(["moderatorID", str(moderator)])
+        if itype:
+            schm.append(["type", itype])
+        if not automod:
+            schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
+
+        try:
+            if self.database.TEXT_KEY:
+                self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
+                self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
+            if count:
+                data: Union[Tuple[Any, ...], int] = self.database.multicount_rows_from_table(f"{self.guild}_infractions", schm)
+            else:
+                data = self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm)
+        except db_error.OperationalError:
+            data = tuple() if not count else 0
 
         return data
 
@@ -284,14 +332,14 @@ class db_hlapi:
             self.create_guild_db()
             self.database.add_to_table(f"{self.guild}_infractions", quer)
 
-    def fetch_all_mutes(self) -> List[List[Union[int, str]]]:
+    def fetch_all_mutes(self) -> List[Tuple[str, str, str, int]]:
 
         # Grab list of tables
         tablelist = self.database.list_tables("%_mutes")
 
-        mutetable = []
+        mutetable: List[Tuple[str, str, str, int]] = []
         for i in tablelist:
-            mutetable.extend([[i[0][:-6]] + list(a) for a in self.database.fetch_table(i[0])])
+            mutetable.extend([(i[0][:-6], ) + tuple(a) for a in self.database.fetch_table(i[0])])  # type: ignore
 
         return mutetable
 
@@ -310,7 +358,9 @@ class db_hlapi:
     def close(self) -> None:
         self.database.commit()
 
-    def __exit__(self, err_type, err_value, err_traceback):
+    def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
+        if self._lock:
+            self._lock.release()
         self.database.commit()
         if err_type:
             raise err_type(err_value)

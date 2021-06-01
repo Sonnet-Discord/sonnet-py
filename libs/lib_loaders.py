@@ -5,8 +5,7 @@ import importlib
 
 import discord
 
-import random, os, ctypes, time, io, json, pickle
-from sonnet_cfg import GLOBAL_PREFIX, BLACKLIST_ACTION
+import random, os, ctypes, time, io, json, pickle, threading
 
 import lib_db_obfuscator
 
@@ -16,7 +15,7 @@ import sonnet_cfg
 importlib.reload(sonnet_cfg)
 
 from lib_db_obfuscator import db_hlapi
-from sonnet_cfg import CLIB_LOAD
+from sonnet_cfg import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
 from typing import Dict, List, Union, Any, Tuple, Optional
 import lib_lexdpyk_h as lexdpyk
@@ -76,12 +75,12 @@ defaultcache: Dict[Union[str, int], Any] = {
 
 
 # Read a vnum from a file stream
-def read_vnum(fileobj) -> int:
+def read_vnum(fileobj: io.BufferedReader) -> int:
     return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
 
 
 # Write a vnum to a file stream
-def write_vnum(fileobj, number: int) -> None:
+def write_vnum(fileobj: io.BufferedWriter, number: int) -> None:
     vnum_count = (number.bit_length() + 7) // 8
     fileobj.write(bytes([vnum_count]))
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
@@ -272,3 +271,15 @@ class embed_colors:
 
 def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
     return int(load_message_config(guild.id, ramfs, datatypes=_colortypes_cache)[f"embed-color-{colortype}"], 16)
+
+
+def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> threading.Lock:
+
+    l: threading.Lock
+
+    try:
+        l = ramfs.read_f(f"{guild.id}/db_lock")
+    except FileNotFoundError:
+        l = ramfs.create_f(f"{guild.id}/db_lock", f_type=threading.Lock, f_args=[])
+
+    return l

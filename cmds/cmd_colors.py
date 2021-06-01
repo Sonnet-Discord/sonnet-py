@@ -31,7 +31,7 @@ async def set_embed_typec(message: discord.Message, args: List[str], typec: str,
         if args[0] == "reset":
 
             with db_hlapi(message.guild.id) as db:
-                db.add_config(f"embed-color-{typec}", "")
+                db.delete_config(f"embed-color-{typec}")
 
             if verbose: await message.channel.send(f"Reset {typec}-color to its default value")
 
@@ -126,4 +126,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.5"

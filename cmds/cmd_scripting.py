@@ -5,20 +5,28 @@
 
 import importlib
 
-import shlex, discord
+import shlex, discord, time
 
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_lexdpyk_h
+
+importlib.reload(lib_lexdpyk_h)
 
 from lib_parsers import parse_permissions
 
-from typing import List, Any
+from typing import List, Any, Tuple
+import lib_lexdpyk_h as lexdpyk
 
 
 async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
-    arguments = message.content.split("\n")
+    tstart: int = time.monotonic_ns()
+    arguments: List[str] = message.content.split("\n")
+
+    verbose: bool = kwargs["verbose"]
+    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
 
     try:
         rawargs = shlex.split(arguments[0])
@@ -26,89 +34,99 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
 
-    self_name = rawargs[0][len(kwargs["conf_cache"]["prefix"]):]
+    self_name: str = rawargs[0][len(kwargs["conf_cache"]["prefix"]):]
 
-    if kwargs["verbose"] == False:
+    if verbose == False:
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
         return 1
 
-    commandsparse = []
+    commandsparse: List[Tuple[str, List[str]]] = []
 
     for hlindex, single_cmd in enumerate(arguments[1:]):
-        total = single_cmd.split()
-        if total[0] in kwargs["cmds_dict"] and total[0] != self_name:
-            argout = total[1:]
+        total: List[str] = single_cmd.split()
+        if total[0] in cmds_dict and total[0] != self_name:
+            argout: List[str] = total[1:]
             for index, i in enumerate(rawargs):
                 argout = [arg.replace("${%d}" % index, i) for arg in argout]
-            commandsparse.append([total[0], argout])
+            commandsparse.append((total[0], argout), )
         else:
             await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatability\nAnd {self_name} is not runnable inside itself")
             return 1
 
-    cache_purge = False
     # Keep reference to original message content
-    keepref = message.content
+    keepref: str = message.content
+    try:
 
-    for totalcommand in commandsparse:
+        cache_purge = False
 
-        command = totalcommand[0]
-        arguments = totalcommand[1]
-        message.content = f'{kwargs["conf_cache"]["prefix"]}{totalcommand[0]} ' + " ".join(totalcommand[1])
+        for totalcommand in commandsparse:
 
-        if command in kwargs["cmds_dict"]:
-            if "alias" in kwargs["cmds_dict"][command]:
-                command = kwargs["cmds_dict"][command]["alias"]
+            command = totalcommand[0]
+            arguments = totalcommand[1]
+            message.content = f'{kwargs["conf_cache"]["prefix"]}{totalcommand[0]} ' + " ".join(totalcommand[1])
 
-            permission = await parse_permissions(message, kwargs["conf_cache"], kwargs["cmds_dict"][command]['permission'])
+            if command in cmds_dict:
+                if "alias" in cmds_dict[command]:
+                    command = cmds_dict[command]["alias"]
 
-            if permission:
+                permission = await parse_permissions(message, kwargs["conf_cache"], cmds_dict[command]['permission'])
 
-                suc = (
-                    await kwargs["cmds_dict"][command]['execute'](
-                        message,
-                        arguments,
-                        client,
-                        stats=kwargs["stats"],
-                        cmds=kwargs["cmds"],
-                        ramfs=kwargs["ramfs"],
-                        bot_start=kwargs["bot_start"],
-                        dlibs=kwargs["dlibs"],
-                        main_version=kwargs["main_version"],
-                        kernel_ramfs=kwargs["kernel_ramfs"],
-                        conf_cache=kwargs["conf_cache"],
-                        cmds_dict=kwargs["cmds_dict"],
-                        verbose=False,
-                        )
-                    ) or 0
+                if permission:
 
-                # Stop processing if error
-                if suc != 0:
-                    await message.channel.send(f"ERROR: {self_name}: command `{command}` exited with non success status")
-                    message.content = keepref
+                    suc = (
+                        await cmds_dict[command]['execute'](
+                            message,
+                            arguments,
+                            client,
+                            stats=kwargs["stats"],
+                            cmds=kwargs["cmds"],
+                            ramfs=kwargs["ramfs"],
+                            bot_start=kwargs["bot_start"],
+                            dlibs=kwargs["dlibs"],
+                            main_version=kwargs["main_version"],
+                            kernel_ramfs=kwargs["kernel_ramfs"],
+                            conf_cache=kwargs["conf_cache"],
+                            cmds_dict=cmds_dict,
+                            verbose=False,
+                            )
+                        ) or 0
+
+                    # Stop processing if error
+                    if suc != 0:
+                        await message.channel.send(f"ERROR: {self_name}: command `{command}` exited with non success status")
+                        return 1
+
+                    # Regenerate cache
+                    if cmds_dict[command]['cache'] in ["purge", "regenerate"]:
+                        cache_purge = True
+                else:
+                    # dont forget to re reference message content even if exec stops
                     return 1
 
-                # Regenerate cache
-                if kwargs["cmds_dict"][command]['cache'] in ["purge", "regenerate"]:
-                    cache_purge = True
-            else:
-                # dont forget to re reference message content even if exec stops
-                message.content = keepref
-                return 1
+        if cache_purge:
+            for i in ["caches", "regex"]:
+                try:
+                    kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
+                except FileNotFoundError:
+                    pass
 
-    message.content = keepref
+        tend: int = time.monotonic_ns()
 
-    if cache_purge:
-        for i in ["caches", "regex"]:
-            try:
-                kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
-            except FileNotFoundError:
-                pass
+        fmttime: int = (tend - tstart) // 1000 // 1000
+
+        if verbose: await message.channel.send(f"Completed execution of {len(commandsparse)} commands in {fmttime}ms")
+
+    finally:
+        message.content = keepref
 
 
 async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
+    tstart: int = time.monotonic_ns()
+    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+
     try:
-        targs = shlex.split(" ".join(args))
+        targs: List[str] = shlex.split(" ".join(args))
     except ValueError:
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
@@ -130,54 +148,61 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
         await message.channel.send("No command specified")
         return 1
 
-    if command not in kwargs["cmds_dict"]:
+    if command not in cmds_dict:
         await message.channel.send("Invalid command")
         return 1
 
-    if "alias" in kwargs["cmds_dict"][command]:
-        command = kwargs["cmds_dict"][command]["alias"]
+    if "alias" in cmds_dict[command]:
+        command = cmds_dict[command]["alias"]
 
-    permission = await parse_permissions(message, kwargs["conf_cache"], kwargs["cmds_dict"][command]['permission'])
-    if not permission:
+    if not await parse_permissions(message, kwargs["conf_cache"], cmds_dict[command]['permission']):
         return 1
 
+    # Keep original message content
     keepref = message.content
+    try:
 
-    for i in targs[targlen:]:
+        for i in targs[targlen:]:
 
-        message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
+            message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
 
-        suc = (
-            await kwargs["cmds_dict"][command]['execute'](
-                message,
-                i.split() + endlargs,
-                client,
-                stats=kwargs["stats"],
-                cmds=kwargs["cmds"],
-                ramfs=kwargs["ramfs"],
-                bot_start=kwargs["bot_start"],
-                dlibs=kwargs["dlibs"],
-                main_version=kwargs["main_version"],
-                kernel_ramfs=kwargs["kernel_ramfs"],
-                conf_cache=kwargs["conf_cache"],
-                cmds_dict=kwargs["cmds_dict"],
-                verbose=False,
-                )
-            ) or 0
+            suc = (
+                await cmds_dict[command]['execute'](
+                    message,
+                    i.split() + endlargs,
+                    client,
+                    stats=kwargs["stats"],
+                    cmds=kwargs["cmds"],
+                    ramfs=kwargs["ramfs"],
+                    bot_start=kwargs["bot_start"],
+                    dlibs=kwargs["dlibs"],
+                    main_version=kwargs["main_version"],
+                    kernel_ramfs=kwargs["kernel_ramfs"],
+                    conf_cache=kwargs["conf_cache"],
+                    cmds_dict=cmds_dict,
+                    verbose=False,
+                    )
+                ) or 0
 
-        if suc != 0:
-            await message.channel.send(f"ERROR: command `{command}` exited with non success status")
-            message.content = keepref
-            return 1
+            if suc != 0:
+                await message.channel.send(f"ERROR: command `{command}` exited with non success status")
+                return 1
 
-    message.content = keepref
+        if cmds_dict[command]['cache'] in ["purge", "regenerate"]:
+            for i in ["caches", "regex"]:
+                try:
+                    kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
+                except FileNotFoundError:
+                    pass
 
-    if kwargs["cmds_dict"][command]['cache'] in ["purge", "regenerate"]:
-        for i in ["caches", "regex"]:
-            try:
-                kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
-            except FileNotFoundError:
-                pass
+        tend: int = time.monotonic_ns()
+
+        fmttime: int = (tend - tstart) // 1000 // 1000
+
+        if kwargs["verbose"]: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
+
+    finally:
+        message.content = keepref
 
 
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
@@ -210,4 +235,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             },
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.5"

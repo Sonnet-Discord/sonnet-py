@@ -13,12 +13,16 @@ importlib.reload(lib_parsers)
 import sonnet_cfg
 
 importlib.reload(sonnet_cfg)
+import lib_constants
+
+importlib.reload(lib_constants)
 
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import REGEX_VERSION
-from lib_parsers import parse_role
+from lib_parsers import parse_role, parse_boolean, parse_user_member
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Callable, Coroutine, Final, Tuple
+import lib_constants as constants
 
 re: Any = importlib.import_module(REGEX_VERSION)
 
@@ -308,7 +312,7 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     else:
         mutetime = int(kwargs["conf_cache"]["antispam-time"])
         await message.channel.send(f"Antispam mute time is {mutetime} seconds")
-        return
+        return 0
 
     if mutetime < 0:
         await message.channel.send("ERROR: Mutetime cannot be negative")
@@ -320,9 +324,161 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {mutetime} seconds")
 
 
+class joinrules:
+    def __init__(self, message: discord.Message):
+        self.m: Final[discord.Message] = message
+
+        self.ops: Dict[str, Tuple[Callable[[List[str], discord.Client], Coroutine[Any, Any, int]], str]] = {
+            "user": (self.useredit, "add|remove <id> 'Add or remove a userid from the watchlist'"),
+            "timestamp": (self.timestampedit, "add|remove [offset(time[h|m|S])] 'Add or remove the account creation offset to warn for'"),
+            "defaultpfp": (self.defaultpfpedit, "true|false 'Set whether or not to notify on a default pfp'"),
+            "help": (self.printhelp, "'Print this help message'")
+            }
+
+    async def printhelp(self, args: List[str], client: discord.Client) -> int:
+
+        nsv: List[str] = [f"{i} {self.ops[i][1]}\n" for i in self.ops]
+        await self.m.channel.send(f"JoinRule Help```py\n{''.join(nsv)}```")
+        return 0
+
+    async def useredit(self, args: List[str], client: discord.Client) -> int:
+        # notifier-log-users
+        cnf_name: Final[str] = "notifier-log-users"
+
+        if len(args) >= 2:
+            if args[0] == "add":
+                try:
+                    user, _ = await parse_user_member(self.m, args, client, argindex=1)
+                except lib_parsers.errors.user_parse_error:
+                    return 1
+
+                with db_hlapi(self.m.guild.id) as db:
+                    blusers: List[int] = json.loads(db.grab_config(cnf_name) or "[]")
+
+                if user.id in blusers:
+                    await self.m.channel.send("ERROR: This user is already in the notifier")
+                    return 1
+
+                blusers.append(user.id)
+
+                with db_hlapi(self.m.guild.id) as db:
+                    db.add_config(cnf_name, json.dumps(blusers))
+
+                await self.m.channel.send(f"Added {user.mention} with ID {user.id} joining to the notifier log", allowed_mentions=discord.AllowedMentions.none())
+
+            elif args[0] == "remove":
+                try:
+                    user, _ = await parse_user_member(self.m, args, client, argindex=1)
+                except lib_parsers.errors.user_parse_error:
+                    return 1
+
+                with db_hlapi(self.m.guild.id) as db:
+                    blusers = json.loads(db.grab_config(cnf_name) or "[]")
+
+                if user.id not in blusers:
+                    await self.m.channel.send("ERROR: This user is not in the notifier")
+                    return 1
+
+                del blusers[blusers.index(user.id)]
+
+                with db_hlapi(self.m.guild.id) as db:
+                    db.add_config(cnf_name, json.dumps(blusers))
+
+                await self.m.channel.send(f"Removed {user.mention} with ID {user.id} joining from the notifier log", allowed_mentions=discord.AllowedMentions.none())
+
+        else:
+            await self.m.channel.send(constants.sonnet.error_args.not_enough)
+            return 1
+
+        return 0
+
+    async def timestampedit(self, args: List[str], client: discord.Client) -> int:
+        # notifier-log-timestamp
+        cnf_name: Final[str] = "notifier-log-timestamp"
+
+        if args:  # I hate this code holy shit its so unreadable
+            if args[0] == "add" and len(args) >= 2:  # Add timestamp
+
+                try:  # Parse time
+                    if args[1][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
+                        jointime = int(args[1][:-1]) * multi[args[1][-1]]
+                    else:
+                        jointime = int(args[1])
+
+                except (ValueError, TypeError):
+                    await self.m.channel.send("ERROR: Invalid time format")
+                    return 1
+
+                if jointime < 0 or jointime > 60 * 60 * 24 * 30:  # Only allow JT up to a month, ive learned to never trust input the hard way
+                    await self.m.channel.send("ERROR: Time range entered is larger than one month (~30 days)")
+                    return 1
+
+                with db_hlapi(self.m.guild.id) as db:  # Add to db
+                    db.add_config(cnf_name, str(jointime))
+
+                await self.m.channel.send(f"Updated new user notify time to <{jointime} seconds since creation")
+                return 0
+
+            elif args[0] == "remove":  # Remove timestamp
+
+                with db_hlapi(self.m.guild.id) as db:
+                    db.delete_config(cnf_name)
+                await self.m.channel.send("Deleted new user notify time")
+                return 0
+
+            else:  # Error
+                await self.m.channel.send("Invalid args passed")
+                return 1
+
+        else:  # Show current timestamp
+
+            with db_hlapi(self.m.guild.id) as db:
+                jointime = db.grab_config(cnf_name)
+            await self.m.channel.send(f"new user notify is set to {jointime} seconds")
+            return 0
+
+    async def defaultpfpedit(self, args: List[str], client: discord.Client) -> int:
+        # notifier-log-defaultpfp
+        cnf_name: Final[str] = "notifier-log-defaultpfp"
+
+        if args:
+            with db_hlapi(self.m.guild.id) as db:
+                db.add_config(cnf_name, str(true := int(parse_boolean(args[0]))))
+            await self.m.channel.send(f"Updated defaultpfp checking to {bool(true)}")
+        else:
+            with db_hlapi(self.m.guild.id) as db:
+                await self.m.channel.send(f"Defaultpfp checking is set to {bool(int(db.grab_config(cnf_name)))}")
+
+        return 0
+
+
+async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    rules = joinrules(message)
+
+    if args:
+
+        if args[0] in rules.ops:
+            return await rules.ops[args[0]][0](args[1:], client)
+        else:
+            await message.channel.send("ERROR: Command not recognized")
+            return 1
+
+    else:
+        await message.channel.send("No command specified, try help if you are stuck")
+        return 1
+
+
 category_info = {'name': 'automod', 'pretty_name': 'Automod', 'description': 'Automod management commands.'}
 
 commands = {
+    'set-joinrule': {
+        'pretty_name': 'set-joinrule <type> <parameter>',
+        'description': 'set joinrules to notify for',
+        'permission': 'administrator',
+        'cache': 'regenerate',
+        'execute': add_joinrule
+        },
     'wb-change': {
         'pretty_name': 'wb-change <csv list>',
         'description': 'Change word blacklist',
@@ -440,4 +596,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.3"
+version_info: str = "1.2.5"
