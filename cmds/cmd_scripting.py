@@ -204,10 +204,12 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 return 1
 
 
+        ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+
         if cmds_dict[command]['cache'] in ["purge", "regenerate"]:
             for i in ["caches", "regex"]:
                 try:
-                    kwargs["ramfs"].rmdir(f"{message.guild.id}/{i}")
+                    ramfs.rmdir(f"{message.guild.id}/{i}")
                 except FileNotFoundError:
                     pass
 
