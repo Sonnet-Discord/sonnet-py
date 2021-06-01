@@ -23,7 +23,7 @@ from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
 from typing import List, Dict, Any, Union
 
-starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "csv": [], "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
+starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]}
 
 
 async def starboard_channel_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -88,21 +88,21 @@ commands: Dict[str, Dict[str, Any]] = {
         'pretty_name': 'starboard-channel <channel>',
         'description': 'Change Starboard channel',
         'permission': 'administrator',
-        'cache': 'keep',
+        'cache': 'direct:(f)caches/sonnet_starboard',
         'execute': starboard_channel_change
         },
     'starboard-emoji': {
         'pretty_name': 'starboard-emoji <emoji>',
         'description': 'Set the starboard emoji',
         'permission': 'administrator',
-        'cache': 'regenerate',
+        'cache': 'direct:(f)caches/sonnet_starboard',
         'execute': set_starboard_emoji
         },
     'starboard-enabled': {
         'pretty_name': 'starboard-enabled <bool>',
         'description': 'Toggle starboard on or off',
         'permission': 'administrator',
-        'cache': 'regenerate',
+        'cache': 'direct:(f)caches/sonnet_starboard',
         'execute': set_starboard_use
         },
     'starboard-count':
@@ -110,9 +110,9 @@ commands: Dict[str, Dict[str, Any]] = {
             'pretty_name': 'starboard-count <number>',
             'description': 'Set starboard reaction count threshold',
             'permission': 'administrator',
-            'cache': 'regenerate',
+            'cache': 'direct:(f)caches/sonnet_starboard',
             'execute': set_starboard_count
             }
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6-DEV"
