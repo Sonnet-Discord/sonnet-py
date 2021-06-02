@@ -182,7 +182,6 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
     :raises: errors.log_channel_update_error
     """
 
-
     if args:
         log_channel_str = args[0].strip("<#!>")
     else:
@@ -366,7 +365,6 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
 
     :returns: int -- The success state of adding the role to the db, 0 being no error
     """
-
 
     if args:
         role_str: str = args[0].strip("<@&>")
