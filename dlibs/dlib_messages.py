@@ -281,14 +281,19 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
 
     for i in message.attachments:
 
-        ramfs_path = f"{message.channel.guild.id}/files/{message.id}/{i.filename}"
+        fname: bytes = i.filename.encode("utf8")
+
+        ramfs_path = f"{message.guild.id}/files/{message.id}/{hashlib.sha256(fname).hexdigest()}"
+
+        namefile = kernel_ramfs.create_f(f"{ramfs_path}/name")
+        namefile.write(fname)
 
         keyfile = kernel_ramfs.create_f(f"{ramfs_path}/key")
         keyfile.write(key := os.urandom(32))
         keyfile.write(iv := os.urandom(16))
 
         pointerfile = kernel_ramfs.create_f(f"{ramfs_path}/pointer")
-        pointer = hashlib.sha256(i.filename.encode("utf8") + key + iv).hexdigest()
+        pointer = hashlib.sha256(fname + key + iv).hexdigest()
         file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 

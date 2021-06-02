@@ -301,6 +301,10 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
             key = keys.read(32)
             iv = keys.read(16)
 
+            name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+            name.seek(0)
+            fname = name.read().decode("utf8")
+
             encrypted_file = encrypted_reader(pointer, key, iv)
             rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
 
@@ -309,7 +313,7 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
             rawfile.close()
             encrypted_file.close()
 
-            discord_files.append(discord.File(dfile, filename=i))
+            discord_files.append(discord.File(dfile, filename=fname))
 
             if delete:
                 try:
