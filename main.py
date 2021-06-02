@@ -460,7 +460,7 @@ class errtype:
 
 
 # Catch errors
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_error(event: str, *args: Any, **kwargs: Any) -> None:
     raise
 
@@ -554,27 +554,27 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
     return True
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_connect() -> None:
     await event_call("on-connect")
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_disconnect() -> None:
     await event_call("on-disconnect")
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_ready() -> None:
     await event_call("on-ready")
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_resumed() -> None:
     await event_call("on-resumed")
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_message(message: discord.Message) -> None:
 
     args = message.content.split(" ")
@@ -597,7 +597,7 @@ async def on_message(message: discord.Message) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_message_delete(message: discord.Message) -> None:
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-message-delete", message):
@@ -607,7 +607,7 @@ async def on_message_delete(message: discord.Message) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_bulk_message_delete(messages: List[discord.Message]) -> None:
     if await safety_check(guild=messages[0].guild, user=messages[0].author):
         if e := await event_call("on-bulk-message-delete", messages):
@@ -617,7 +617,7 @@ async def on_bulk_message_delete(messages: List[discord.Message]) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_raw_message_delete(payload: discord.RawMessageDeleteEvent) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-message-delete", payload):
@@ -627,7 +627,7 @@ async def on_raw_message_delete(payload: discord.RawMessageDeleteEvent) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_raw_bulk_message_delete(payload: discord.RawBulkMessageDeleteEvent) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-bulk-message-delete", payload):
@@ -637,7 +637,7 @@ async def on_raw_bulk_message_delete(payload: discord.RawBulkMessageDeleteEvent)
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_message_edit(old_message: discord.Message, message: discord.Message) -> None:
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-message-edit", old_message, message):
@@ -647,7 +647,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_raw_message_edit(payload: discord.RawMessageUpdateEvent) -> None:
     if e := await event_call("on-raw-message-edit", payload):
         try:
@@ -656,7 +656,7 @@ async def on_raw_message_edit(payload: discord.RawMessageUpdateEvent) -> None:
             pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> None:
     if await safety_check(guild=reaction.message.guild, user=user):
         if e := await event_call("on-reaction-add", reaction, user):
@@ -666,7 +666,7 @@ async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.Member
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
     if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
         if e := await event_call("on-raw-reaction-add", payload):
@@ -676,7 +676,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_reaction_remove(reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> None:
     if await safety_check(guild=reaction.message.guild, user=user):
         if e := await event_call("on-reaction-remove", reaction, user):
@@ -686,7 +686,7 @@ async def on_reaction_remove(reaction: discord.Reaction, user: Union[discord.Mem
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent) -> None:
     if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
         if e := await event_call("on-raw-reaction-remove", payload):
@@ -696,7 +696,7 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent) -> Non
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_reaction_clear(message: discord.Message, reactions: List[discord.Reaction]) -> None:
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-reaction-clear", message, reactions):
@@ -706,7 +706,7 @@ async def on_reaction_clear(message: discord.Message, reactions: List[discord.Re
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_raw_reaction_clear(payload: discord.RawReactionClearEvent) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-reaction-clear", payload):
@@ -716,7 +716,7 @@ async def on_raw_reaction_clear(payload: discord.RawReactionClearEvent) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_reaction_clear_emoji(reaction: discord.Reaction) -> None:
     if await safety_check(guild=reaction.message.guild):
         if e := await event_call("on-reaction-clear-emoji", reaction):
@@ -726,7 +726,7 @@ async def on_reaction_clear_emoji(reaction: discord.Reaction) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_raw_reaction_clear_emoji(payload: discord.Reaction) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-reaction-clear-emoji", payload):
@@ -736,48 +736,48 @@ async def on_raw_reaction_clear_emoji(payload: discord.Reaction) -> None:
                 pass
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_member_join(member: discord.Member) -> None:
     if await safety_check(user=member, guild=member.guild):
         await event_call("on-member-join", member)
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_member_remove(member: discord.Member) -> None:
     if await safety_check(guild=member.guild):
         await event_call("on-member-remove", member)
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_member_update(before: discord.Member, after: discord.Member) -> None:
     if await safety_check(user=before, guild=before.guild):
         await event_call("on-member-update", before, after)
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_guild_join(guild: discord.Guild) -> None:
     if await safety_check(guild=guild):
         await event_call("on-guild-join", guild)
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_guild_remove(guild: discord.Guild) -> None:
     await event_call("on-guild-remove", guild)
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_guild_update(before: discord.Guild, after: discord.Guild) -> None:
     if await safety_check(guild=before):
         await event_call("on-guild-update", before, after)
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_member_ban(guild: discord.Guild, user: discord.User) -> None:
     if await safety_check(guild=guild):
         await event_call("on-member-ban", guild, user)
 
 
-@Client.event
+@Client.event  # type: ignore[misc]
 async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
     if await safety_check(guild=guild, user=user):
         await event_call("on-member-unban", guild, user)
