@@ -33,7 +33,7 @@ class encrypted_writer:
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()
+        self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()  # type: ignore
 
         # Initalize HMAC generator
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
@@ -118,7 +118,7 @@ class encrypted_reader:
 
         # Make decryptor instance
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.decryptor_module: crypto_typing.encryptor_decryptor = self.cipher.decryptor()
+        self.decryptor_module: crypto_typing.encryptor_decryptor = self.cipher.decryptor()  # type: ignore
 
         # Generate HMAC
         HMACobj = hmac.HMAC(key, hashes.SHA512())
