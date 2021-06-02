@@ -106,9 +106,9 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
 
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
-    for i in regex_blacklist:
+    for r in regex_blacklist:
         try:
-            if (broke := i.findall(message.content.lower())):  # type: ignore
+            if (broke := r.findall(message.content.lower())):
                 broke_blacklist = True
                 infraction_type.append(f"RegEx({', '.join(broke)})")
         except re.error:
@@ -116,16 +116,16 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
 
     # Check message against REGEXP notifier list
     regex_blacklist = blacklist["regex-notifier"]
-    for i in regex_blacklist:
-        if i.findall(message.content.lower()):  # type: ignore
+    for r in regex_blacklist:
+        if r.findall(message.content.lower()):
             notifier = True
 
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
     if filetype_blacklist and message.attachments:
-        for i in message.attachments:
+        for ft in message.attachments:
             for a in filetype_blacklist:
-                if i.filename.lower().endswith(a):  # type: ignore
+                if ft.filename.lower().endswith(a):
                     broke_blacklist = True
                     infraction_type.append(f"FileType({a})")
 

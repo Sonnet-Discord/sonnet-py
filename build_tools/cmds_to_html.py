@@ -4,7 +4,7 @@
 import importlib
 import os
 import sys
-from typing import Dict, List
+from typing import Dict, List, cast
 
 sys.path.insert(1, os.getcwd() + '/cmds')
 sys.path.insert(1, os.getcwd() + '/common')
@@ -17,7 +17,7 @@ command_modules_dict: lexdpyx.cmd_modules_dict = {}
 # Init imports
 for f in os.listdir('./cmds'):
     if f.startswith("cmd_") and f.endswith(".py"):
-        command_modules.append(importlib.import_module(f[:-3]))  # type: ignore
+        command_modules.append(cast(lexdpyx.cmd_module, importlib.import_module(f[:-3])))
     # Update hashmaps
     for module in command_modules:
         command_modules_dict.update(module.commands)

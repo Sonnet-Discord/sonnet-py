@@ -21,7 +21,7 @@ if DB_TYPE == "mariadb":
 elif DB_TYPE == "sqlite3":
     import lib_sql_handler
     importlib.reload(lib_sql_handler)
-    from lib_sql_handler import db_handler, db_error  # type: ignore
+    from lib_sql_handler import db_handler, db_error  # type: ignore[misc]
     db_connection_parameters = SQLITE3_LOCATION
 
 
@@ -341,7 +341,7 @@ class db_hlapi:
 
         mutetable: List[Tuple[str, str, str, int]] = []
         for i in tablelist:
-            mutetable.extend([(i[0][:-6], ) + tuple(a) for a in self.database.fetch_table(i[0])])  # type: ignore
+            mutetable.extend([(i[0][:-6], ) + tuple(a) for a in self.database.fetch_table(i[0])])  # type: ignore[misc]
 
         return mutetable
 
