@@ -186,9 +186,13 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
         log_channel_str = args[0].strip("<#!>")
     else:
         with db_hlapi(message.guild.id) as db:
-            lchannel = f"<#{lchannel}>" if (lchannel := db.grab_config(log_name)) else "nothing"
+            try:
+                lchannel = f"<#{int(lchannel)}>" if (lchannel := db.grab_config(log_name)) else "nothing"
+            except ValueError:
+                await message.channel.send(f"ERROR: {log_name} is corrupt, please reset this channel config")
+                raise errors.log_channel_update_error("Corrupted db location")
         await message.channel.send(f"{log_name} is set to {lchannel}")
-        raise errors.log_channel_update_error(constants.sonnet.error_channel.none)
+        return
 
     if log_channel_str in ["remove", "rm", "delete"]:
         with db_hlapi(message.guild.id) as db:
@@ -374,7 +378,12 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
         role_str: str = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
-            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
+            try:
+                r_int = int(db.grab_config(db_entry) or 0)
+            except ValueError:
+                await message.channel.send(f"ERROR: {db_entry} is corrupt, please reset this role config")
+                return 1
+        await message.channel.send(f"{db_entry} is {message.guild.get_role(r_int)}")
         return 0
 
     if role_str in ["remove", "rm", "delete"]:
