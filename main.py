@@ -8,7 +8,7 @@ import os, importlib, sys, io, time, traceback
 import glob, json, hashlib, logging, getpass, datetime
 
 # Import typing support
-from typing import List, Optional, Any, Tuple, Dict
+from typing import List, Optional, Any, Tuple, Dict, Union
 
 # Start Discord.py
 import discord, asyncio
@@ -96,11 +96,11 @@ class miniflip:
 
 # Define ramfs
 class ram_filesystem:
-    def __init__(self):
-        self.directory_table: Dict[str, Any] = {}
+    def __init__(self) -> None:
+        self.directory_table: Dict[str, "ram_filesystem"] = {}
         self.data_table: Dict[str, Any] = {}
 
-    def __enter__(self):
+    def __enter__(self) -> "ram_filesystem":
         return self
 
     def mkdir(self, make_dir_str: str) -> Any:
@@ -183,7 +183,7 @@ class ram_filesystem:
         except KeyError:
             raise FileNotFoundError("Filepath does not exist")
 
-    def tree(self, *folderpath_str: str):
+    def tree(self, *folderpath_str: str) -> Any:
         try:
             if folderpath_str:
                 folderpath: List[str] = folderpath_str[0].split("/")
@@ -240,7 +240,7 @@ else:
     BOT_OWNER = []
 
 
-def kernel_load_command_modules(*args: str):
+def kernel_load_command_modules(*args: str) -> Any:
     print("Loading Kernel Modules")
     # Globalize variables
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -282,17 +282,17 @@ def kernel_load_command_modules(*args: str):
     if err: return ("\n".join([f"Error importing {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
 
 
-def regenerate_ramfs(*args: str):
+def regenerate_ramfs(*args: str) -> Any:
     global ramfs
     ramfs = ram_filesystem()
 
 
-def regenerate_kernel_ramfs(*args: str):
+def regenerate_kernel_ramfs(*args: str) -> Any:
     global kernel_ramfs
     kernel_ramfs = ram_filesystem()
 
 
-def kernel_reload_command_modules(*args: str):
+def kernel_reload_command_modules(*args: str) -> Any:
     print("Reloading Kernel Modules")
     # Init vars
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -332,7 +332,7 @@ def kernel_reload_command_modules(*args: str):
     if err: return ("\n".join([f"Error reimporting {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
 
 
-def kernel_blacklist_guild(*args: str):
+def kernel_blacklist_guild(*args: str) -> Any:
 
     try:
         blacklist["guild"].append(int(args[0][0]))
@@ -343,7 +343,7 @@ def kernel_blacklist_guild(*args: str):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_blacklist_user(*args: str):
+def kernel_blacklist_user(*args: str) -> Any:
 
     try:
         blacklist["user"].append(int(args[0][0]))
@@ -354,7 +354,7 @@ def kernel_blacklist_user(*args: str):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_unblacklist_guild(*args: str):
+def kernel_unblacklist_guild(*args: str) -> Any:
 
     try:
         if int(args[0][0]) in blacklist["guild"]:
@@ -368,7 +368,7 @@ def kernel_unblacklist_guild(*args: str):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_unblacklist_user(*args: str):
+def kernel_unblacklist_user(*args: str) -> Any:
 
     try:
         if int(args[0][0]) in blacklist["user"]:
@@ -382,23 +382,23 @@ def kernel_unblacklist_user(*args: str):
         json.dump(blacklist, blacklist_file)
 
 
-def kernel_logout(*args: str):
+def kernel_logout(*args: str) -> Any:
     asyncio.create_task(Client.close())
 
 
-def kernel_drop_dlibs(*args: str):
+def kernel_drop_dlibs(*args: str) -> Any:
     global dynamiclib_modules, dynamiclib_modules_dict
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
 
 
-def kernel_drop_cmds(*args: str):
+def kernel_drop_cmds(*args: str) -> Any:
     global command_modules, command_modules_dict
     command_modules = []
     command_modules_dict = {}
 
 
-def logging_toggle(*args: str):
+def logging_toggle(*args: str) -> Any:
     if logger.isEnabledFor(10):
         logger.setLevel(20)
         return ["Logging at L20", []]
@@ -461,11 +461,11 @@ class errtype:
 
 # Catch errors
 @Client.event
-async def on_error(event, *args, **kwargs):
+async def on_error(event: str, *args: Any, **kwargs: Any) -> None:
     raise
 
 
-async def do_event(event: str, args: Any):
+async def do_event(event: str, args: Any) -> None:
     await dynamiclib_modules_dict[event](
         *args,
         client=Client,
@@ -478,7 +478,7 @@ async def do_event(event: str, args: Any):
         )
 
 
-async def event_call(argtype: str, *args: Any):
+async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
 
     etypes = []
 
@@ -503,7 +503,7 @@ async def event_call(argtype: str, *args: Any):
         return None
 
 
-async def safety_check(guild: discord.Guild = None, guild_id: int = None, user: discord.User = None, user_id: int = None) -> bool:
+async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional[int] = None, user: Optional[discord.User] = None, user_id: Optional[int] = None) -> bool:
 
     if guild: guild_id = guild.id
     if user: user_id = user.id
@@ -555,27 +555,27 @@ async def safety_check(guild: discord.Guild = None, guild_id: int = None, user: 
 
 
 @Client.event
-async def on_connect():
+async def on_connect() -> None:
     await event_call("on-connect")
 
 
 @Client.event
-async def on_disconnect():
+async def on_disconnect() -> None:
     await event_call("on-disconnect")
 
 
 @Client.event
-async def on_ready():
+async def on_ready() -> None:
     await event_call("on-ready")
 
 
 @Client.event
-async def on_resumed():
+async def on_resumed() -> None:
     await event_call("on-resumed")
 
 
 @Client.event
-async def on_message(message):
+async def on_message(message: discord.Message) -> None:
 
     args = message.content.split(" ")
 
@@ -598,7 +598,7 @@ async def on_message(message):
 
 
 @Client.event
-async def on_message_delete(message):
+async def on_message_delete(message: discord.Message) -> None:
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-message-delete", message):
             try:
@@ -608,7 +608,7 @@ async def on_message_delete(message):
 
 
 @Client.event
-async def on_bulk_message_delete(messages):
+async def on_bulk_message_delete(messages: List[discord.Message]) -> None:
     if await safety_check(guild=messages[0].guild, user=messages[0].author):
         if e := await event_call("on-bulk-message-delete", messages):
             try:
@@ -618,7 +618,7 @@ async def on_bulk_message_delete(messages):
 
 
 @Client.event
-async def on_raw_message_delete(payload):
+async def on_raw_message_delete(payload: discord.RawMessageDeleteEvent) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-message-delete", payload):
             try:
@@ -628,7 +628,7 @@ async def on_raw_message_delete(payload):
 
 
 @Client.event
-async def on_raw_bulk_message_delete(payload):
+async def on_raw_bulk_message_delete(payload: discord.RawBulkMessageDeleteEvent) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-bulk-message-delete", payload):
             try:
@@ -638,7 +638,7 @@ async def on_raw_bulk_message_delete(payload):
 
 
 @Client.event
-async def on_message_edit(old_message, message):
+async def on_message_edit(old_message: discord.Message, message: discord.Message) -> None:
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-message-edit", old_message, message):
             try:
@@ -648,7 +648,7 @@ async def on_message_edit(old_message, message):
 
 
 @Client.event
-async def on_raw_message_edit(payload):
+async def on_raw_message_edit(payload: discord.RawMessageUpdateEvent) -> None:
     if e := await event_call("on-raw-message-edit", payload):
         try:
             await Client.get_channel(payload.channel_id).send(e.errmsg)
@@ -657,7 +657,7 @@ async def on_raw_message_edit(payload):
 
 
 @Client.event
-async def on_reaction_add(reaction, user):
+async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> None:
     if await safety_check(guild=reaction.message.guild, user=user):
         if e := await event_call("on-reaction-add", reaction, user):
             try:
@@ -667,7 +667,7 @@ async def on_reaction_add(reaction, user):
 
 
 @Client.event
-async def on_raw_reaction_add(payload):
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
     if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
         if e := await event_call("on-raw-reaction-add", payload):
             try:
@@ -677,7 +677,7 @@ async def on_raw_reaction_add(payload):
 
 
 @Client.event
-async def on_reaction_remove(reaction, user):
+async def on_reaction_remove(reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> None:
     if await safety_check(guild=reaction.message.guild, user=user):
         if e := await event_call("on-reaction-remove", reaction, user):
             try:
@@ -687,7 +687,7 @@ async def on_reaction_remove(reaction, user):
 
 
 @Client.event
-async def on_raw_reaction_remove(payload):
+async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent) -> None:
     if await safety_check(guild_id=payload.guild_id, user_id=payload.user_id):
         if e := await event_call("on-raw-reaction-remove", payload):
             try:
@@ -697,7 +697,7 @@ async def on_raw_reaction_remove(payload):
 
 
 @Client.event
-async def on_reaction_clear(message, reactions):
+async def on_reaction_clear(message: discord.Message, reactions: List[discord.Reaction]) -> None:
     if await safety_check(guild=message.guild, user=message.author):
         if e := await event_call("on-reaction-clear", message, reactions):
             try:
@@ -707,7 +707,7 @@ async def on_reaction_clear(message, reactions):
 
 
 @Client.event
-async def on_raw_reaction_clear(payload):
+async def on_raw_reaction_clear(payload: discord.RawReactionClearEvent) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-reaction-clear", payload):
             try:
@@ -717,7 +717,7 @@ async def on_raw_reaction_clear(payload):
 
 
 @Client.event
-async def on_reaction_clear_emoji(reaction):
+async def on_reaction_clear_emoji(reaction: discord.Reaction) -> None:
     if await safety_check(guild=reaction.message.guild):
         if e := await event_call("on-reaction-clear-emoji", reaction):
             try:
@@ -727,7 +727,7 @@ async def on_reaction_clear_emoji(reaction):
 
 
 @Client.event
-async def on_raw_reaction_clear_emoji(payload):
+async def on_raw_reaction_clear_emoji(payload: discord.Reaction) -> None:
     if await safety_check(guild_id=payload.guild_id):
         if e := await event_call("on-raw-reaction-clear-emoji", payload):
             try:
@@ -737,54 +737,54 @@ async def on_raw_reaction_clear_emoji(payload):
 
 
 @Client.event
-async def on_member_join(member):
+async def on_member_join(member: discord.Member) -> None:
     if await safety_check(user=member, guild=member.guild):
         await event_call("on-member-join", member)
 
 
 @Client.event
-async def on_member_remove(member):
+async def on_member_remove(member: discord.Member) -> None:
     if await safety_check(guild=member.guild):
         await event_call("on-member-remove", member)
 
 
 @Client.event
-async def on_member_update(before, after):
+async def on_member_update(before: discord.Member, after: discord.Member) -> None:
     if await safety_check(user=before, guild=before.guild):
         await event_call("on-member-update", before, after)
 
 
 @Client.event
-async def on_guild_join(guild):
+async def on_guild_join(guild: discord.Guild) -> None:
     if await safety_check(guild=guild):
         await event_call("on-guild-join", guild)
 
 
 @Client.event
-async def on_guild_remove(guild):
+async def on_guild_remove(guild: discord.Guild) -> None:
     await event_call("on-guild-remove", guild)
 
 
 @Client.event
-async def on_guild_update(before, after):
+async def on_guild_update(before: discord.Guild, after: discord.Guild) -> None:
     if await safety_check(guild=before):
         await event_call("on-guild-update", before, after)
 
 
 @Client.event
-async def on_member_ban(guild, user):
+async def on_member_ban(guild: discord.Guild, user: discord.User) -> None:
     if await safety_check(guild=guild):
         await event_call("on-member-ban", guild, user)
 
 
 @Client.event
-async def on_member_unban(guild, user):
+async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
     if await safety_check(guild=guild, user=user):
         await event_call("on-member-unban", guild, user)
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.3.3"
+version_info: str = "LeXdPyK 1.3.4"
 bot_start_time: float = time.time()
 
 # Start bot
