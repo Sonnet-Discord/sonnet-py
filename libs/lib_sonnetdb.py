@@ -69,13 +69,13 @@ class db_hlapi:
             self._lock.acquire()
         return self
 
-    def _validate_enum(self, schema: List[Tuple[str, type]]) -> bool:
+    def _validate_enum(self, schema: List[Tuple[str, Type[Union[str, int]]]]) -> bool:
         for i in schema:
             if type(i[0]) != str or i[1] not in [str, int]:
                 return False
         return True
 
-    def inject_enum(self, enumname: str, schema: List[Tuple[str, type]]) -> None:
+    def inject_enum(self, enumname: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> None:
         if not self._validate_enum(schema):
             raise TypeError("Invalid schema passed")
 
@@ -123,7 +123,10 @@ class db_hlapi:
 
         for index, i in enumerate(cpush):
             if type(i) != self.__enum_input[name][index][1]:
-                raise TypeError(f"Improper type passed based on enum registry (type '{type(i).__name__}' is not type '{self.__enum_input[name][index][1].__name__}')")
+                errtuple = self.__enum_input[name][index]
+                errmsg: str = f"Improper type passed based on enum registry, index: {index} name: {errtuple[0]}\n"
+                errmsg += f"(given type '{type(i).__name__}' is not type '{errtuple[1].__name__}')"
+                raise TypeError(errmsg)
 
         push = tuple(zip(map(lambda i: i[0], self.__enum_input[name]), cpush))
 
