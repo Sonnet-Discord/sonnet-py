@@ -375,49 +375,52 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     del arguments[0]
 
     # Process commands
-    if command in command_modules_dict.keys():
-        if "alias" in command_modules_dict[command].keys():
+    if command in command_modules_dict:
+
+        if "alias" in command_modules_dict[command]:  # Do alias mapping
             command = command_modules_dict[command]["alias"]
-        permission = await parse_permissions(message, mconf, command_modules_dict[command]['permission'])
+
+        if not await parse_permissions(message, mconf, command_modules_dict[command]['permission']):
+            return  # Return on no perms
+
         try:
-            if permission:
-                stats["end"] = round(time.time() * 100000)
+            stats["end"] = round(time.time() * 100000)
 
-                await command_modules_dict[command]['execute'](
-                    message,
-                    arguments,
-                    client,
-                    stats=stats,
-                    cmds=command_modules,
-                    ramfs=ramfs,
-                    bot_start=bot_start_time,
-                    dlibs=kargs["dynamiclib_modules"][0],
-                    main_version=main_version_info,
-                    kernel_ramfs=kargs["kernel_ramfs"],
-                    conf_cache=mconf,
-                    verbose=True,
-                    cmds_dict=command_modules_dict
-                    )
+            await command_modules_dict[command]['execute'](
+                message,
+                arguments,
+                client,
+                stats=stats,
+                cmds=command_modules,
+                ramfs=ramfs,
+                bot_start=bot_start_time,
+                dlibs=kargs["dynamiclib_modules"][0],
+                main_version=main_version_info,
+                kernel_ramfs=kargs["kernel_ramfs"],
+                conf_cache=mconf,
+                verbose=True,
+                cmds_dict=command_modules_dict
+                )
 
-                # Regenerate cache
-                if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
-                    for i in ["caches", "regex"]:
-                        try:
-                            ramfs.rmdir(f"{message.guild.id}/{i}")
-                        except FileNotFoundError:
-                            pass
+            # Regenerate cache
+            if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
+                for i in ["caches", "regex"]:
+                    try:
+                        ramfs.rmdir(f"{message.guild.id}/{i}")
+                    except FileNotFoundError:
+                        pass
 
-                elif command_modules_dict[command]['cache'].startswith("direct:"):
-                    for i in command_modules_dict[command]['cache'][len('direct:'):].split(";"):
-                        try:
-                            if i.startswith("(d)"):
-                                ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
-                            elif i.startswith("(f)"):
-                                ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
-                            else:
-                                raise RuntimeError("Cache directive is invalid")
-                        except FileNotFoundError:
-                            pass
+            elif command_modules_dict[command]['cache'].startswith("direct:"):
+                for i in command_modules_dict[command]['cache'][len('direct:'):].split(";"):
+                    try:
+                        if i.startswith("(d)"):
+                            ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
+                        elif i.startswith("(f)"):
+                            ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
+                        else:
+                            raise RuntimeError("Cache directive is invalid")
+                    except FileNotFoundError:
+                        pass
 
         except discord.errors.Forbidden as e:
 
