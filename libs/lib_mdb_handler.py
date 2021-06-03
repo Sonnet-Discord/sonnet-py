@@ -15,7 +15,9 @@ class db_error:  # DB error codes
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
-    TEXT_KEY = mdb_version >= (10, 4)
+    @property
+    def TEXT_KEY(self) -> bool:
+        self.con.get_server_version() >= (10, 4)
 
     def __init__(self, login_info: Dict[str, Any]) -> None:
         # Connect to database with login info
