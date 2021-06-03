@@ -3,7 +3,8 @@
 
 import importlib
 
-import discord, datetime, time, asyncio, math
+import discord, time, asyncio, math
+from datetime import datetime
 
 import lib_db_obfuscator
 
@@ -57,6 +58,8 @@ async def log_infraction(
     if not user:
         return None, None
 
+    timestamp = datetime.utcnow()  # Infraction timestamp
+
     with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
         # Collision test
         while db.grab_infraction(generated_id := generate_infractionid()):
@@ -64,7 +67,7 @@ async def log_infraction(
         # Grab log channel
         log_channel = client.get_channel(int(db.grab_config("infraction-log") or 0))
         # Send infraction to database
-        db.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, round(time.time()))
+        db.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, int(timestamp.timestamp()))
 
     if log_channel:
 
@@ -76,7 +79,7 @@ async def log_infraction(
         log_embed.add_field(name="Type", value=infraction_type)
         log_embed.add_field(name="Reason", value=infraction_reason)
 
-        log_embed.set_footer(text=f"uid: {user.id}, unix: {int(datetime.datetime.utcnow().timestamp())}")
+        log_embed.set_footer(text=f"uid: {user.id}, unix: {int(timestamp.timestamp())}")
 
         asyncio.create_task(catch_logging_error(log_embed, log_channel))
 
@@ -89,7 +92,7 @@ async def log_infraction(
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
 
-    dm_embed.timestamp = datetime.datetime.utcnow()
+    dm_embed.timestamp = timestamp
 
     dm_sent = asyncio.create_task(catch_dm_error(user, dm_embed, log_channel))
 
@@ -452,7 +455,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     infraction_embed.add_field(name="Reason", value=reason)
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
-    infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
+    infraction_embed.timestamp = datetime.utcfromtimestamp(int(timestamp))
 
     try:
         await message.channel.send(embed=infraction_embed)
@@ -489,7 +492,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
 
-    infraction_embed.timestamp = datetime.datetime.utcfromtimestamp(int(timestamp))
+    infraction_embed.timestamp = datetime.utcfromtimestamp(int(timestamp))
 
     try:
         await message.channel.send(embed=infraction_embed)
