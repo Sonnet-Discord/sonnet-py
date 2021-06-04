@@ -29,7 +29,7 @@ class InvalidEmoji(Exception):
 
 async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Client) -> str:
 
-    if len(pEmoji) <= 2:
+    if len(pEmoji) <= 5:
         return pEmoji
     else:
 
@@ -305,4 +305,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.6-DEV"
