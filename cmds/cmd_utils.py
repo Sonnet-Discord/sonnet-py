@@ -125,6 +125,20 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     cmds: List[lexdpyk.cmd_module] = kwargs["cmds"]
     cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
 
+    page: int = 0
+    per_page: int = 10
+
+    if len(args) > 1:
+        try:
+            if args[0] in ["-p", "--page"]:
+                page = int(args[1]) - 1
+                args = args[2:]
+            elif len(args) > 2 and args[1] in ["-p", "--page"]:
+                page = int(args[2]) - 1
+        except ValueError:
+            await message.channel.send("ERROR: Page not valid int")
+            return 1
+
     if args:
 
         modules = {mod.category_info["name"] for mod in cmds}
@@ -134,12 +148,21 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         if (a := args[0].lower()) in modules:
 
             curmod = [mod for mod in cmds if mod.category_info["name"] == a][0]
+            nonAliasCommands = list(filter(lambda c: "alias" not in curmod.commands[c], curmod.commands))
+            pagecount = (len(nonAliasCommands) + (per_page - 1)) // per_page
+
+            if page < 0 or page >= pagecount:
+                await message.channel.send(f"ERROR: No such page {page+1}")
+                return 1
+
             cmd_embed = discord.Embed(
-                title=curmod.category_info["pretty_name"], description=curmod.category_info["description"], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
+                title=f"{curmod.category_info['pretty_name']} (Page {page+1} / {pagecount})",
+                description=curmod.category_info["description"],
+                color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
                 )
             cmd_embed.set_author(name=helpname)
 
-            for i in filter(lambda c: "alias" not in curmod.commands[c], curmod.commands.keys()):
+            for i in sorted(nonAliasCommands)[page * per_page:(page * per_page) + per_page]:
                 cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
 
             try:
@@ -188,12 +211,16 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     # Total help
     else:
 
-        cmd_embed = discord.Embed(title="Category Listing", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+        if page < 0 or page >= (len(cmds) + (per_page - 1)) // per_page:
+            await message.channel.send(f"ERROR: No such page {page+1}")
+            return 1
+
+        cmd_embed = discord.Embed(title=f"Category Listing (Page {page+1} / {(len(cmds) + (per_page-1))//per_page})", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
         cmd_embed.set_author(name=helpname)
 
         total = 0
 
-        for module in cmds:
+        for module in sorted(cmds, key=lambda m: m.category_info['pretty_name'])[(page * per_page):(page * per_page) + per_page]:
             mnames = [f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]]
             helptext = ', '.join(mnames)
             total += len(mnames)
@@ -276,7 +303,7 @@ commands = {
         },
     'help':
         {
-            'pretty_name': 'help [category|command]',
+            'pretty_name': 'help [category|command] [-p PAGE]',
             'description': 'Print helptext',
             'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
             'permission': 'everyone',
