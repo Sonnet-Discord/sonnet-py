@@ -128,7 +128,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     page: int = 0
     per_page: int = 10
 
-    if len(args) > 1:
+    if len(args) > 1:  # This is cursed if anyone has any better ideas please uncurse it
         try:
             if args[0] in ["-p", "--page"]:
                 page = int(args[1]) - 1
