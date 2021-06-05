@@ -3,7 +3,7 @@
 
 import importlib
 
-import threading
+import threading, warnings
 
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
@@ -57,7 +57,7 @@ class db_hlapi:
         self.guild: Optional[int] = guild_id
         self._lock: Optional[threading.Lock] = lock
 
-        self.__enum_input: Dict[str, List[Tuple[str, type]]] = {}
+        self.__enum_input: Dict[str, List[Tuple[str, Type[Union[str, int]]]]] = {}
         self.__enum_pool: Dict[str, List[Tuple[Any, ...]]] = {}
 
         self.inject_enum("config", [("property", str), ("value", str)])
@@ -169,6 +169,7 @@ class db_hlapi:
         """
         Deprecated, replaced by grab_filter_infractions
         """
+        warnings.warn("grab_user_infractions is Deprecated, use grab_filter_infractions instead", DeprecationWarning)
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
@@ -182,6 +183,7 @@ class db_hlapi:
         """
         Deprecated, replaced by grab_filter_infractions
         """
+        warnings.warn("grab_moderator_infractions is Deprecated, use grab_filter_infractions instead", DeprecationWarning)
 
         try:
             data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
@@ -227,6 +229,7 @@ class db_hlapi:
         """
         Deprecated as starboard is now expected to use enums directly
         """
+        warnings.warn("in_starboard is Deprecated, use db enums functions instead", DeprecationWarning)
 
         self.inject_enum("starboard", [
             ("messageID", str),
@@ -237,6 +240,7 @@ class db_hlapi:
         """
         Deprecated as starboard is now expected to use enums directly
         """
+        warnings.warn("add_to_starboard is Deprecated, use db enums functions instead", DeprecationWarning)
 
         self.inject_enum("starboard", [
             ("messageID", str),
