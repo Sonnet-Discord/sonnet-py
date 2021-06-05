@@ -24,7 +24,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
 import lib_constants as constants
 
-from typing import List, Tuple, Any, Awaitable, Optional, cast
+from typing import List, Tuple, Any, Awaitable, Optional, Callable, cast
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -559,10 +559,12 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: Cannot purge more than 100 messages or less than 1 message")
         return 1
 
+    ucheck: Optional[Callable[[discord.Message], bool]]
+
     try:
         if not (user := client.get_user(int(args[1].strip("<@!>")))):
             user = await client.fetch_user(int(args[1].strip("<@!>")))
-        ucheck: Any = purger(user.id).check
+        ucheck = purger(user.id).check
     except ValueError:
         await message.channel.send("Invalid UserID")
         return 1
