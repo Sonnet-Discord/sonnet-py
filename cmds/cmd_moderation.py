@@ -52,29 +52,37 @@ async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextCha
 
 # Sends an infraction to database and log channels if user exists
 async def log_infraction(
-    message: discord.Message, client: discord.Client, user: discord.User, moderator_id: int, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
-    ) -> Tuple[Optional[str], Optional[Awaitable[None]]]:
-
-    if not user:
-        return None, None
+    message: discord.Message, client: discord.Client, user: discord.User, moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
+    ) -> Tuple[str, Optional[Awaitable[None]]]:
 
     timestamp = datetime.utcnow()  # Infraction timestamp
 
+    # Define db outputs scoped correctly
+    generated_id: str
+    log_channel: Optional[discord.TextChannel]
+
     with db_hlapi(message.guild.id, lock=get_guild_lock(message.guild, ramfs)) as db:
-        # Collision test
+
+        # Infraction id collision test
         while db.grab_infraction(generated_id := generate_infractionid()):
-            pass
+            continue
+
         # Grab log channel
-        log_channel = client.get_channel(int(db.grab_config("infraction-log") or 0))
+        try:
+            chan: int = int(db.grab_config("infraction-log") or "0")
+        except ValueError:
+            chan = 0
+        log_channel = client.get_channel(chan)
+
         # Send infraction to database
-        db.add_infraction(generated_id, user.id, moderator_id, infraction_type, infraction_reason, int(timestamp.timestamp()))
+        db.add_infraction(generated_id, user.id, moderator.id, infraction_type, infraction_reason, int(timestamp.timestamp()))
 
     if log_channel:
 
         log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
         log_embed.set_thumbnail(url=user.avatar_url)
         log_embed.add_field(name="Infraction ID", value=generated_id)
-        log_embed.add_field(name="Moderator", value=client.get_user(int(moderator_id)).mention)
+        log_embed.add_field(name="Moderator", value=moderator.mention)
         log_embed.add_field(name="User", value=user.mention)
         log_embed.add_field(name="Type", value=infraction_type)
         log_embed.add_field(name="Reason", value=infraction_reason)
@@ -109,7 +117,7 @@ async def process_infraction(message: discord.Message,
                              client: discord.Client,
                              infraction_type: str,
                              ramfs: lexdpyk.ram_filesystem,
-                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, Optional[str], Optional[Awaitable[None]]]:
+                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, str, Optional[Awaitable[None]]]:
 
     # Check if automod
     automod: bool = False
@@ -122,7 +130,7 @@ async def process_infraction(message: discord.Message,
 
     reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
-    moderator_id: int = client.user.id if automod else message.author.id
+    moderator: discord.User = client.user if automod else message.author
 
     # Test if user is valid
     try:
@@ -131,7 +139,7 @@ async def process_infraction(message: discord.Message,
         raise InfractionGenerationError("Could not parse user")
 
     # Test if user is self
-    if member and moderator_id == member.id:
+    if member and moderator.id == member.id:
         await message.channel.send(f"Cannot {infraction_type} yourself")
         raise InfractionGenerationError(f"Attempted self {infraction_type}")
 
@@ -141,7 +149,7 @@ async def process_infraction(message: discord.Message,
         raise InfractionGenerationError(f"Attempted nonperm {infraction_type}")
 
     # Log infraction
-    infraction_id, dm_sent = await log_infraction(message, client, user, moderator_id, reason, infraction_type, infraction, ramfs)
+    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, infraction_type, infraction, ramfs)
 
     return (member, user, reason, infraction_id, dm_sent)
 
@@ -313,10 +321,6 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     if mutetime:
-
-        if not infractionID:
-            await message.channel.send("CAUGHT ERROR: There has been an error in grabbing the infractionID\n(User muted but no mute timer created)")
-            raise RuntimeError("Impossible code loop detected")
 
         if kwargs["verbose"]:
             asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}", allowed_mentions=discord.AllowedMentions.none()))
