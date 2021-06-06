@@ -26,6 +26,7 @@ outlist: List[str] = []
 starter_padding: int = 0
 outlist.append("")
 
+# Test for valid cache formatting
 for command in command_modules_dict:
     if "alias" in command_modules_dict[command]:
         continue
@@ -43,6 +44,17 @@ for command in command_modules_dict:
         continue
 
     raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
+
+
+for command in command_modules_dict:
+    if "alias" not in command_modules_dict[command]:
+        continue
+
+    if command_modules_dict[command]['alias'] in command_modules_dict:
+        continue
+
+    raise SyntaxError(f"ERROR IN ALIAS:{command}, NO SUCH COMMAND {command_modules_dict[command]['alias']}")
+
 
 # Make alias mappings
 aliasmap: Dict[str, List[str]] = {}
