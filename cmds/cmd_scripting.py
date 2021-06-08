@@ -5,7 +5,8 @@
 
 import importlib
 
-import shlex, discord, time
+import shlex, discord, time, asyncio
+import copy as pycopy
 
 import lib_parsers
 
@@ -16,8 +17,30 @@ importlib.reload(lib_lexdpyk_h)
 
 from lib_parsers import parse_permissions
 
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Awaitable, Dict
 import lib_lexdpyk_h as lexdpyk
+
+
+def do_cache_sweep(cache: str, ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
+
+    if cache in ["purge", "regenerate"]:
+        for i in ["caches", "regex"]:
+            try:
+                ramfs.rmdir(f"{guild.id}/{i}")
+            except FileNotFoundError:
+                pass
+
+    elif cache.startswith("direct:"):
+        for i in cache[len('direct:'):].split(";"):
+            try:
+                if i.startswith("(d)"):
+                    ramfs.rmdir(f"{guild.id}/{i[3:]}")
+                elif i.startswith("(f)"):
+                    ramfs.remove_f(f"{guild.id}/{i[3:]}")
+                else:
+                    raise RuntimeError("Cache directive is invalid")
+            except FileNotFoundError:
+                pass
 
 
 async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -57,8 +80,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
     keepref: str = message.content
     try:
 
-        cache_purge: bool = False
-        cache_directives: List[str] = []
+        cache_args: List[str] = []
 
         for totalcommand in commandsparse:
 
@@ -99,32 +121,14 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                         return 1
 
                     # Regenerate cache
-                    if cmds_dict[command]['cache'] in ["purge", "regenerate"]:
-                        cache_purge = True
-                    elif cmds_dict[command]['cache'].startswith("direct:"):
-                        cache_directives.extend(cmds_dict[command]['cache'][len('direct:'):].split(";"))
+                    cache_args.append(cmds_dict[command]['cache'])
                 else:
                     return 1
 
         ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
-        if cache_purge:
-            for i in ["caches", "regex"]:
-                try:
-                    ramfs.rmdir(f"{message.guild.id}/{i}")
-                except FileNotFoundError:
-                    pass
-
-        for i in cache_directives:
-            try:
-                if i.startswith("(d)"):
-                    ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
-                elif i.startswith("(f)"):
-                    ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
-                else:
-                    raise RuntimeError("Cache directive is invalid")
-            except FileNotFoundError:
-                pass
+        for i in cache_args:
+            do_cache_sweep(i, ramfs, message.guild)
 
         tend: int = time.monotonic_ns()
 
@@ -136,16 +140,17 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         message.content = keepref
 
 
-async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+class MapProcessError(Exception):
+    pass
 
-    tstart: int = time.monotonic_ns()
-    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+
+async def map_preprocessor(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict, conf_cache: Dict[str, Any]) -> Tuple[List[str], int, str, List[str]]:
 
     try:
         targs: List[str] = shlex.split(" ".join(args))
     except ValueError:
         await message.channel.send("ERROR: shlex parser could not parse args")
-        return 1
+        raise MapProcessError("ERRNO")
 
     if targs:
         if targs[0] == "-e":
@@ -155,23 +160,36 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 targlen = 3
             else:
                 await message.channel.send("No command specified/-e specified but no input")
-                return 1
+                raise MapProcessError("ERRNO")
         else:
             endlargs = []
             command = targs[0]
             targlen = 1
     else:
         await message.channel.send("No command specified")
-        return 1
+        raise MapProcessError("ERRNO")
 
     if command not in cmds_dict:
         await message.channel.send("Invalid command")
-        return 1
+        raise MapProcessError("ERRNO")
 
     if "alias" in cmds_dict[command]:
         command = cmds_dict[command]["alias"]
 
-    if not await parse_permissions(message, kwargs["conf_cache"], cmds_dict[command]['permission']):
+    if not await parse_permissions(message, conf_cache, cmds_dict[command]['permission']):
+        raise MapProcessError("ERRNO")
+
+    return targs, targlen, command, endlargs
+
+
+async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    tstart: int = time.monotonic_ns()
+    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+
+    try:
+        targs, targlen, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
+    except MapProcessError:
         return 1
 
     # Keep original message content
@@ -205,26 +223,8 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 await message.channel.send(f"ERROR: command `{command}` exited with non success status")
                 return 1
 
-        ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-
-        if cmds_dict[command]['cache'] in ["purge", "regenerate"]:
-            for i in ["caches", "regex"]:
-                try:
-                    ramfs.rmdir(f"{message.guild.id}/{i}")
-                except FileNotFoundError:
-                    pass
-
-        elif cmds_dict[command]['cache'].startswith("direct:"):
-            for i in cmds_dict[command]['cache'][len('direct:'):].split(";"):
-                try:
-                    if i.startswith("(d)"):
-                        ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
-                    elif i.startswith("(f)"):
-                        ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
-                    else:
-                        raise RuntimeError("Cache directive is invalid")
-                except FileNotFoundError:
-                    pass
+        # Do cache sweep on command
+        do_cache_sweep(cmds_dict[command]['cache'], kwargs["ramfs"], message.guild)
 
         tend: int = time.monotonic_ns()
 
@@ -234,6 +234,57 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
     finally:
         message.content = keepref
+
+
+async def sonnet_async_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    tstart: int = time.monotonic_ns()
+    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+
+    try:
+        targs, targlen, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
+    except MapProcessError:
+        return 1
+
+    promises: List[Awaitable[Any]] = []
+
+    for i in targs[targlen:]:
+
+        newmsg: discord.Message = pycopy.copy(message)
+        newmsg.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
+
+        promises.append(
+            asyncio.create_task(
+                cmds_dict[command]['execute'](
+                    newmsg,
+                    i.split() + endlargs,
+                    client,
+                    stats=kwargs["stats"],
+                    cmds=kwargs["cmds"],
+                    ramfs=kwargs["ramfs"],
+                    bot_start=kwargs["bot_start"],
+                    dlibs=kwargs["dlibs"],
+                    main_version=kwargs["main_version"],
+                    kernel_ramfs=kwargs["kernel_ramfs"],
+                    conf_cache=kwargs["conf_cache"],
+                    automod=kwargs["automod"],
+                    cmds_dict=cmds_dict,
+                    verbose=False,
+                    )
+                )
+            )
+
+    for p in promises:
+        await p
+
+    # Do a cache sweep after running
+    do_cache_sweep(cmds_dict[command]['cache'], kwargs["ramfs"], message.guild)
+
+    tend: int = time.monotonic_ns()
+
+    fmttime: int = (tend - tstart) // 1000 // 1000
+
+    if kwargs["verbose"]: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
 
 
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
@@ -264,6 +315,14 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             'execute':
                 sonnet_map
             },
+    'amap':
+        {
+            'pretty_name': 'amap [-e args] <command> (<args>)+',
+            'description': 'Like map, but processes asynchronously, meaning it ignores errors',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': sonnet_async_map
+            }
     }
 
 version_info: str = "1.2.6-DEV"
