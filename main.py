@@ -234,7 +234,7 @@ BOT_OWNER: List[int]
 
 if isinstance(UNKNOWN_OWNER, (str, int)):
     BOT_OWNER = [int(UNKNOWN_OWNER)] if UNKNOWN_OWNER else []
-elif isinstance(UNKNOWN_OWNER, (list, tuple)):
+elif isinstance(UNKNOWN_OWNER, (list, tuple)):  # type: ignore[unreachable]
     BOT_OWNER = [int(i) for i in UNKNOWN_OWNER]
 else:
     BOT_OWNER = []
