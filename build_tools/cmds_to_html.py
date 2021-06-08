@@ -45,7 +45,6 @@ for command in command_modules_dict:
 
     raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
 
-
 for command in command_modules_dict:
     if "alias" not in command_modules_dict[command]:
         continue
@@ -54,7 +53,6 @@ for command in command_modules_dict:
         continue
 
     raise SyntaxError(f"ERROR IN ALIAS:{command}, NO SUCH COMMAND {command_modules_dict[command]['alias']}")
-
 
 # Make alias mappings
 aliasmap: Dict[str, List[str]] = {}

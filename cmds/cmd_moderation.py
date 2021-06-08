@@ -117,16 +117,8 @@ async def process_infraction(message: discord.Message,
                              client: discord.Client,
                              infraction_type: str,
                              ramfs: lexdpyk.ram_filesystem,
-                             infraction: bool = True) -> Tuple[discord.Member, discord.User, str, str, Optional[Awaitable[None]]]:
-
-    # Check if automod
-    automod: bool = False
-    try:
-        if isinstance(args[0], int):
-            args[0] = str(args[0])
-            automod = True
-    except IndexError:
-        pass
+                             infraction: bool = True,
+                             automod: bool = False) -> Tuple[discord.Member, discord.User, str, str, Optional[Awaitable[None]]]:
 
     reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
@@ -157,7 +149,7 @@ async def process_infraction(message: discord.Message,
 async def warn_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", kwargs["ramfs"])
+        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", kwargs["ramfs"], automod=kwargs["automod"])
     except InfractionGenerationError:
         return 1
 
@@ -171,7 +163,7 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
 async def note_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "note", kwargs["ramfs"], infraction=False)
+        _, user, reason, _, _ = await process_infraction(message, args, client, "note", kwargs["ramfs"], infraction=False, automod=kwargs["automod"])
     except InfractionGenerationError:
         return 1
 
@@ -185,7 +177,7 @@ async def note_user(message: discord.Message, args: List[str], client: discord.C
 async def kick_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", kwargs["ramfs"])
+        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", kwargs["ramfs"], automod=kwargs["automod"])
     except InfractionGenerationError:
         return 1
 
@@ -208,17 +200,14 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
 async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", kwargs["ramfs"])
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", kwargs["ramfs"], automod=kwargs["automod"])
     except InfractionGenerationError:
         return 1
 
-    # Attempt to ban user
     try:
-        if member:
-            if dm_sent:
-                await dm_sent  # Wait for dm to be sent before banning
+        if member and dm_sent:
+            await dm_sent  # Wait for dm to be sent before banning
         await message.guild.ban(user, delete_message_days=0, reason=reason)
-
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to ban this user.")
         return 1
@@ -229,7 +218,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
 async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "unban", kwargs["ramfs"], infraction=False)
+        _, user, reason, _, _ = await process_infraction(message, args, client, "unban", kwargs["ramfs"], infraction=False, automod=kwargs["automod"])
     except InfractionGenerationError:
         return 1
 
@@ -301,7 +290,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     try:
         mute_role = await grab_mute_role(message, kwargs["ramfs"])
-        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", kwargs["ramfs"])
+        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", kwargs["ramfs"], automod=kwargs["automod"])
     except (NoMuteRole, InfractionGenerationError):
         return 1
 
@@ -338,7 +327,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
     try:
         mute_role = await grab_mute_role(message, kwargs["ramfs"])
-        member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", kwargs["ramfs"], infraction=False)
+        member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", kwargs["ramfs"], infraction=False, automod=kwargs["automod"])
     except (InfractionGenerationError, NoMuteRole):
         return 1
 

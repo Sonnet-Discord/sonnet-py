@@ -87,6 +87,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                             main_version=kwargs["main_version"],
                             kernel_ramfs=kwargs["kernel_ramfs"],
                             conf_cache=kwargs["conf_cache"],
+                            automod=kwargs["automod"],
                             cmds_dict=cmds_dict,
                             verbose=False,
                             )
@@ -194,6 +195,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                     main_version=kwargs["main_version"],
                     kernel_ramfs=kwargs["kernel_ramfs"],
                     conf_cache=kwargs["conf_cache"],
+                    automod=kwargs["automod"],
                     cmds_dict=cmds_dict,
                     verbose=False,
                     )

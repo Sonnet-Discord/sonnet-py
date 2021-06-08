@@ -154,8 +154,8 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
-        execargs = [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs)
+        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True)
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
@@ -338,16 +338,16 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        execargs = [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs))
+        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True))
 
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                execargs = [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, execargs, client, verbose=False, ramfs=ramfs))
+                execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf, ramfs))
@@ -399,7 +399,8 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
                 kernel_ramfs=kargs["kernel_ramfs"],
                 conf_cache=mconf,
                 verbose=True,
-                cmds_dict=command_modules_dict
+                cmds_dict=command_modules_dict,
+                automod=False
                 )
 
             # Regenerate cache
