@@ -228,13 +228,14 @@ class KernelSyntaxError(SyntaxError):
 
 
 # Import configs
-from LeXdPyK_conf import BOT_OWNER as UNKNOWN_OWNER
+from LeXdPyK_conf import BOT_OWNER as KNOWN_OWNER
 
+UNKNOWN_OWNER: Any = KNOWN_OWNER
 BOT_OWNER: List[int]
 
 if isinstance(UNKNOWN_OWNER, (str, int)):
     BOT_OWNER = [int(UNKNOWN_OWNER)] if UNKNOWN_OWNER else []
-elif isinstance(UNKNOWN_OWNER, (list, tuple)):  # type: ignore[unreachable]
+elif isinstance(UNKNOWN_OWNER, (list, tuple)):
     BOT_OWNER = [int(i) for i in UNKNOWN_OWNER]
 else:
     BOT_OWNER = []
