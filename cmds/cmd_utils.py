@@ -151,16 +151,19 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             nonAliasCommands = list(filter(lambda c: "alias" not in curmod.commands[c], curmod.commands))
             pagecount = (len(nonAliasCommands) + (per_page - 1)) // per_page
 
-            if page < 0 or page >= pagecount:
-                await message.channel.send(f"ERROR: No such page {page+1}")
-                return 1
-
             cmd_embed = discord.Embed(
                 title=f"{curmod.category_info['pretty_name']} (Page {page+1} / {pagecount})",
                 description=curmod.category_info["description"],
                 color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
                 )
             cmd_embed.set_author(name=helpname)
+
+            if page < 0 or page >= pagecount:
+                if page == 0:
+                    await message.channel.send(embed=cmd_embed)
+                    return 0
+                await message.channel.send(f"ERROR: No such page {page+1}")
+                return 1
 
             for i in sorted(nonAliasCommands)[page * per_page:(page * per_page) + per_page]:
                 cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
@@ -224,6 +227,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             mnames = [f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]]
             helptext = ', '.join(mnames)
             total += len(mnames)
+            helptext = helptext if helptext else module.category_info['description']
             cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
 
         cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)}")
