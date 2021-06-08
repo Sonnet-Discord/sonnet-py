@@ -273,13 +273,6 @@ def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_fi
     return int(load_message_config(guild.id, ramfs, datatypes=_colortypes_cache)[f"embed-color-{colortype}"], 16)
 
 
-def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> threading.Lock:
-
-    l: threading.Lock
-
-    try:
-        l = ramfs.read_f(f"{guild.id}/db_lock")
-    except FileNotFoundError:
-        l = ramfs.create_f(f"{guild.id}/db_lock", f_type=threading.Lock, f_args=[])
-
-    return l
+# Deprecated immediately as threading.Lock can cause deadlocking in asyncio, what the shit
+def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> Optional[threading.Lock]:
+    return None
