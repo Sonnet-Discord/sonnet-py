@@ -274,6 +274,10 @@ def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_fi
 
 
 # Deprecated immediately as threading.Lock can cause deadlocking in asyncio, what the shit
-def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> Optional[threading.Lock]:
+def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> threading.Lock:
+    """
+    Deprecated command to get a threading.Lock for a guilds db
+    Now returns a new lock every time, ensuring no deadlocking, but nothing should use it
+    """
     warnings.warn("get_guild_lock and db_hlapi(lock=) are deprecated due to possibility of async deadlock", DeprecationWarning)
-    return None
+    return threading.Lock()

@@ -55,7 +55,9 @@ class db_hlapi:
     def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
         self.database = db_grab_connection()
         self.guild: Optional[int] = guild_id
-        self._lock: Optional[threading.Lock] = lock
+
+        if lock:
+            warnings.warn("db_hlapi(lock: threading.Lock) is deprecated", DeprecationWarning)
 
         self.__enum_input: Dict[str, List[Tuple[str, Type[Union[str, int]]]]] = {}
         self.__enum_pool: Dict[str, List[Tuple[Any, ...]]] = {}
@@ -65,8 +67,6 @@ class db_hlapi:
         self.inject_enum("mutes", [("infractionID", str), ("userID", str), ("endMute", int)])
 
     def __enter__(self) -> "db_hlapi":
-        if self._lock:
-            self._lock.acquire()
         return self
 
     def _validate_enum(self, schema: List[Tuple[str, Type[Union[str, int]]]]) -> bool:
@@ -368,8 +368,6 @@ class db_hlapi:
         self.database.commit()
 
     def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
-        if self._lock:
-            self._lock.release()
         self.database.commit()
         if err_type:
             raise err_type(err_value)
