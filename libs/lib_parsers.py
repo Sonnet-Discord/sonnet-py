@@ -282,7 +282,7 @@ def ifgate(inlist: Iterable[Any]) -> bool:
     return any(inlist)
 
 
-# Grab files of a message from the internal cache or using webrequests
+# Grab files of a message from the internal cache
 def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, delete: bool = False) -> Optional[List[discord.File]]:
     """
     Grab all files from a message from the internal encryption cache
@@ -296,34 +296,42 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
         discord_files = []
         for i in files:
 
-            loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
-            loc.seek(0)
-            pointer = loc.read()
+            try:
 
-            keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
-            keys.seek(0)
-            key = keys.read(32)
-            iv = keys.read(16)
+                loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                loc.seek(0)
+                pointer = loc.read()
 
-            name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
-            name.seek(0)
-            fname = name.read().decode("utf8")
+                keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                keys.seek(0)
+                key = keys.read(32)
+                iv = keys.read(16)
 
-            encrypted_file = encrypted_reader(pointer, key, iv)
-            rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
+                name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                name.seek(0)
+                fname = name.read().decode("utf8")
 
-            dfile = io.BytesIO(rawfile.read())
-
-            rawfile.close()
-            encrypted_file.close()
-
-            discord_files.append(discord.File(dfile, filename=fname))
-
-            if delete:
                 try:
-                    os.remove(pointer)
-                except FileNotFoundError:
+                    encrypted_file = encrypted_reader(pointer, key, iv)  # errors raised here
+                    rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
+
+                    dfile = io.BytesIO(rawfile.read())
+
+                    rawfile.close()
+                    encrypted_file.close()
+
+                    discord_files.append(discord.File(dfile, filename=fname))
+                except (lib_encryption_wrapper.errors.HMACInvalidError, lib_encryption_wrapper.errors.NotSonnetAESError):
                     pass
+
+                if delete:
+                    try:
+                        os.remove(pointer)
+                    except FileNotFoundError:
+                        pass
+
+            except FileNotFoundError:
+                continue
 
         if delete:
             try:

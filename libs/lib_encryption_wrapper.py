@@ -8,6 +8,13 @@ import io
 
 from typing import Generator, Tuple, Any
 
+class errors:
+
+    class HMACInvalidError(ValueError):
+        pass
+
+    class NotSonnetAESError(FileNotFoundError):
+        pass
 
 class crypto_typing:
     class encryptor_decryptor:
@@ -128,14 +135,14 @@ class encrypted_reader:
             checksum = self.rawfile.read(64)
         else:
             self.rawfile.close()
-            raise FileNotFoundError("The file requested is not a SONNETAES file")
+            raise errors.NotSonnetAESError("The file requested is not a SONNETAES file")
 
         # Calculate HMAC of encrypted field
         while a := self.rawfile.read(2):
             HMACobj.update(self.rawfile.read(int.from_bytes(a, "little")))
 
         if not HMACobj.finalize() == checksum:
-            raise ValueError("The encrypted contents does not match the HMAC")
+            raise errors.HMACInvalidError("The encrypted contents does not match the HMAC")
 
         # Seek to start of file after checking HMAC
         self.rawfile.seek(10 + 64)
