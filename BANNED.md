@@ -17,11 +17,16 @@ None of the things listed below should happen in Sonnet.
 - Do not hand end users turing complete
 - Do not hand bot owners turing complete, but let them break things a little
 - Do not do something for an end user, they must ask for it
+- Do not feel bad if you break windows compat, no one should use windows anyways
 # Basic Heresy
-- Do not use exec: ```py
-v = __import__("sys").setrecursionlimit(2**30)or(not(a:=(lambda: a())))or a()```
-- Do not use eval: ```py
-__import__("sys").setrecursionlimit(2**30)or(not(a:=(lambda: a())))or a()```
+- Do not use exec: 
+```py
+v = __import__("sys").setrecursionlimit(2**30)or(not(a:=(lambda: a())))or a()
+```
+- Do not use eval: 
+```py
+__import__("sys").setrecursionlimit(2**30)or(not(a:=(lambda: a())))or a()
+```
 - Do not use library endpoints that have had a bug
 - Do not use deprecated endpoints
 
