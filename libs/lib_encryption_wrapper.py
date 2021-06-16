@@ -8,13 +8,14 @@ import io
 
 from typing import Generator, Tuple, Any
 
-class errors:
 
+class errors:
     class HMACInvalidError(ValueError):
         pass
 
     class NotSonnetAESError(FileNotFoundError):
         pass
+
 
 class crypto_typing:
     class encryptor_decryptor:
