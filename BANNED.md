@@ -13,8 +13,10 @@ None of the things listed below should happen in Sonnet.
 - Do not trust user input
 - Do not trust the filesystem will not be corrupt
 - Do not trust the database will not be corrupt
+- `turing:`
 - Do not hand end users turing complete
-- Do not hand end users turing complete
+- **Do not hand end users turing complete**
+- `goto turing;`
 - Do not hand bot owners turing complete, but let them break things a little
 - Do not do something for an end user, they must ask for it
 - Do not feel bad if you break windows compat, no one should use windows anyways
