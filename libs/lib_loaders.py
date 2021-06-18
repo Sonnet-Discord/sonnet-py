@@ -247,6 +247,12 @@ def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_fi
 
 
 def inc_statistics(indata: List[Any]) -> None:
+    """
+    Deprecated way to increment statistics of a dpy event
+    Use inc_statistics_better instead
+    """
+
+    warnings.warn("inc_statistics is deprecated, use inc_statistics_better instead", DeprecationWarning)
 
     guild, inctype, kernel_ramfs = indata
 
@@ -270,6 +276,13 @@ class embed_colors:
 
 
 def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
+    """
+    Load a named embed color for a discord.Embed, these can be configured per guild
+
+    :returns: int - A color in the range of 0 - 2^24 (RGB8 valid)
+    :raises: KeyError - The color name did not exist, this is passed directly from the dict.__getitem__ call
+        and as such produces no extra overhead, but the error returned does not make as much sense as tradeoff
+    """
     return int(load_message_config(guild.id, ramfs, datatypes=_colortypes_cache)[f"embed-color-{colortype}"], 16)
 
 
