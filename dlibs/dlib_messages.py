@@ -53,13 +53,16 @@ async def catch_logging_error(channel: discord.TextChannel, contents: str, files
 async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     client: discord.Client = kargs["client"]
+    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
+
     # Ignore bots
     if parse_skip_message(client, message):
         return
 
-    files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
+    files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kernel_ramfs, delete=True)
 
-    inc_statistics_better(message.guild.id, "on-message-delete", kargs["kernel_ramfs"])
+    inc_statistics_better(message.guild.id, "on-message-delete", kernel_ramfs)
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -68,8 +71,18 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     if message_log and (log_channel := client.get_channel(int(message_log))):
 
         message_embed = discord.Embed(
-            title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"])
+            title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, ramfs)
             )
+
+        # Parse for message lengths >2048 (discord now does 4000 hhhhhh)
+        if len(message.content) > constants.embed.description:
+            limend = constants.embed.description + constants.embed.field.value
+            message_embed.add_field(name="(Continued)", value=message.content[constants.embed.description:limend])
+
+            if len(message.content) > limend:
+                flimend = limend + constants.embed.field.value
+                message_embed.add_field(name="(Continued further)", value=message.content[limend:flimend])
+
         message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
 
         if (r := message.reference) and (rr := r.resolved):
