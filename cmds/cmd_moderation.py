@@ -366,7 +366,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     for index, item in enumerate(args):
         try:
             if item in ["-p", "--page"]:
-                selected_chunk = int(float(args[index + 1])) - 1
+                selected_chunk = int(args[index + 1]) - 1
             elif item in ["-m", "--mod"]:
                 responsible_mod = int(args[index + 1].strip("<@!>"))
             elif item in ["-u", "--user"]:

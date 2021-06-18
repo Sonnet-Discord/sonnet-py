@@ -67,10 +67,14 @@ async def set_starboard_count(message: discord.Message, args: List[str], client:
     if args:
 
         try:
-            count = int(float(args[0]))
+            count = int(args[0])
+
+            if count > 100:
+                await message.channel.send("ERROR: Cannot set a starboard count higher than 100")
+                return 1
 
             with db_hlapi(message.guild.id) as database:
-                database.add_config("starboard-count", str(count))
+                database.add_config("starboard-count", str(int(count)))
 
             if kwargs["verbose"]: await message.channel.send(f"Updated starboard count to {count}")
 
