@@ -17,7 +17,7 @@ import lib_lexdpyk_h
 importlib.reload(lib_lexdpyk_h)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import inc_statistics, load_embed_color, embed_colors, load_message_config
+from lib_loaders import inc_statistics_better, load_embed_color, embed_colors, load_message_config
 
 from typing import Any, Dict, Union, List
 import lib_lexdpyk_h as lexdpyk
@@ -32,7 +32,7 @@ async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed
 
 async def on_member_update(before: discord.Member, after: discord.Member, **kargs: Any) -> None:
 
-    inc_statistics([before.guild.id, "on-member-update", kargs["kernel_ramfs"]])
+    inc_statistics_better(before.guild.id, "on-member-update", kargs["kernel_ramfs"])
 
     with db_hlapi(before.guild.id) as db:
         username_log = db.grab_config("username-log")
@@ -78,7 +78,7 @@ async def notify_problem(member: discord.Member, ptype: List[str], log: str, cli
 
 async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
-    inc_statistics([member.guild.id, "on-member-join", kargs["kernel_ramfs"]])
+    inc_statistics_better(member.guild.id, "on-member-join", kargs["kernel_ramfs"])
 
     notifier_cache = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_notifier)
 
@@ -111,7 +111,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
 async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
 
-    inc_statistics([member.guild.id, "on-member-remove", kargs["kernel_ramfs"]])
+    inc_statistics_better(member.guild.id, "on-member-remove", kargs["kernel_ramfs"])
 
     with db_hlapi(member.guild.id) as db:
         if (joinlog := (db.grab_config("leave-log") or db.grab_config("join-log"))):

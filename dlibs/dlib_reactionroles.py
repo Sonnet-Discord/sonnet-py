@@ -9,7 +9,7 @@ import lib_loaders
 
 importlib.reload(lib_loaders)
 
-from lib_loaders import load_message_config, inc_statistics
+from lib_loaders import load_message_config, inc_statistics_better
 
 from typing import Dict, Any, Union, Optional
 
@@ -30,7 +30,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent, **kargs: 
 
     if not payload.guild_id: return
 
-    inc_statistics([payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"]])
+    inc_statistics_better(payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"])
 
     client = kargs["client"]
     rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
@@ -50,7 +50,7 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent, **karg
 
     if not payload.guild_id: return
 
-    inc_statistics([payload.guild_id, "on-raw-reaction-remove", kargs["kernel_ramfs"]])
+    inc_statistics_better(payload.guild_id, "on-raw-reaction-remove", kargs["kernel_ramfs"])
 
     client = kargs["client"]
     rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
@@ -73,4 +73,4 @@ commands = {
     "on-raw-reaction-remove": on_raw_reaction_remove,
     }
 
-version_info = "1.2.3"
+version_info = "1.2.6-DEV"

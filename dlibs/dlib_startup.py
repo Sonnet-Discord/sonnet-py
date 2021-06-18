@@ -8,8 +8,12 @@ import discord, time, asyncio
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
+import lib_loaders
+
+importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
+from lib_loaders import inc_statistics_better
 
 from typing import Dict, Callable, Any, List, Tuple, Coroutine
 
@@ -29,6 +33,9 @@ async def attempt_unmute(Client: discord.Client, mute_entry: Tuple[str, str, str
 
 
 async def on_ready(**kargs: Any) -> None:
+
+    inc_statistics_better(0, "on-ready", kargs["kernel_ramfs"])
+
     Client: discord.Client = kargs["client"]
     print(f'{Client.user} has connected to Discord!')
 
@@ -64,6 +71,7 @@ async def on_ready(**kargs: Any) -> None:
 
 
 async def on_guild_join(guild: discord.Guild, **kargs: Any) -> None:
+    inc_statistics_better(guild.id, "on-guild-join", kargs["kernel_ramfs"])
     with db_hlapi(guild.id) as db:
         db.create_guild_db()
 
