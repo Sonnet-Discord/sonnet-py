@@ -53,8 +53,12 @@ def db_grab_connection() -> db_handler:
 # Because being lazy writes good code
 class db_hlapi:
     def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
-        self.database = db_grab_connection()
+        self._db = db_grab_connection()
+        self.database = self._db  # Deprecated name
         self.guild: Optional[int] = guild_id
+
+        self.hlapi_version = (1, 2, 6)
+        self._sonnet_db_version = self._get_db_version()
 
         if lock:
             warnings.warn("db_hlapi(lock: threading.Lock) is deprecated", DeprecationWarning)
@@ -68,6 +72,20 @@ class db_hlapi:
 
     def __enter__(self) -> "db_hlapi":
         return self
+
+    def _get_db_version(self) -> Tuple[int, int, int]:
+        try:
+            d = self._db.fetch_rows_from_table("version_info", ["property", "db_version"])
+            if d:
+                ver = [int(i) for i in d[0][1].split(".")]
+                return ver[0], ver[1], ver[2]  # mypy caused this
+            else:
+                self._db.add_to_table("version_info", [["property", "db_version"], ["value", "1.0.0"]])
+                return (1, 0, 0)
+        except db_error.OperationalError:
+            self._db.make_new_table("version_info", [("property", tuple, 1), ("value", str)])
+            self._db.add_to_table("version_info", [["property", "db_version"], ["value", "1.0.0"]])
+            return (1, 0, 0)
 
     def _validate_enum(self, schema: List[Tuple[str, Type[Union[str, int]]]]) -> bool:
         for i in schema:
@@ -108,7 +126,7 @@ class db_hlapi:
             raise TypeError("grab type does not match enum PK signature")
 
         try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_{name}", [self.__enum_input[name][0][0], cname])
+            data = self._db.fetch_rows_from_table(f"{self.guild}_{name}", [self.__enum_input[name][0][0], cname])
         except db_error.OperationalError:
             return None
 
@@ -131,19 +149,19 @@ class db_hlapi:
         push = tuple(zip(map(lambda i: i[0], self.__enum_input[name]), cpush))
 
         try:
-            self.database.add_to_table(f"{self.guild}_{name}", push)
+            self._db.add_to_table(f"{self.guild}_{name}", push)
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(f"{self.guild}_{name}", push)
+            self._db.add_to_table(f"{self.guild}_{name}", push)
 
     def create_guild_db(self) -> None:
         for i in self.__enum_pool:
-            self.database.make_new_table(f"{self.guild}_{i}", self.__enum_pool[i])
+            self._db.make_new_table(f"{self.guild}_{i}", self.__enum_pool[i])
 
     def grab_config(self, config: str) -> Optional[str]:
 
         try:
-            data: Optional[Tuple[List[Any], ...]] = self.database.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
+            data: Optional[Tuple[List[Any], ...]] = self._db.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
         except db_error.OperationalError:
             data = None
 
@@ -152,15 +170,15 @@ class db_hlapi:
     def add_config(self, config: str, value: str) -> None:
 
         try:
-            self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
+            self._db.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
+            self._db.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
 
     def delete_config(self, config: str) -> None:
 
         try:
-            self.database.delete_rows_from_table(f"{self.guild}_config", ["property", config])
+            self._db.delete_rows_from_table(f"{self.guild}_config", ["property", config])
         except db_error.OperationalError:
             pass
 
@@ -172,7 +190,7 @@ class db_hlapi:
         warnings.warn("grab_user_infractions is Deprecated, use grab_filter_infractions instead", DeprecationWarning)
 
         try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
+            data = self._db.fetch_rows_from_table(f"{self.guild}_infractions", ["userID", userid])
         except db_error.OperationalError:
             data = tuple()
 
@@ -186,7 +204,7 @@ class db_hlapi:
         warnings.warn("grab_moderator_infractions is Deprecated, use grab_filter_infractions instead", DeprecationWarning)
 
         try:
-            data = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
+            data = self._db.fetch_rows_from_table(f"{self.guild}_infractions", ["moderatorID", moderatorid])
         except db_error.OperationalError:
             data = tuple()
 
@@ -212,13 +230,13 @@ class db_hlapi:
         db_type = Union[Tuple[str, str, str, str, str, int], int]
 
         try:
-            if self.database.TEXT_KEY:
-                self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
-                self.database.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
+            if self._db.TEXT_KEY:
+                self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
+                self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
             if count:
-                data = cast(db_type, self.database.multicount_rows_from_table(f"{self.guild}_infractions", schm))
+                data = cast(db_type, self._db.multicount_rows_from_table(f"{self.guild}_infractions", schm))
             else:
-                data = cast(db_type, self.database.multifetch_rows_from_table(f"{self.guild}_infractions", schm))
+                data = cast(db_type, self._db.multifetch_rows_from_table(f"{self.guild}_infractions", schm))
         except db_error.OperationalError:
             data = cast(db_type, tuple()) if not count else 0
 
@@ -251,7 +269,7 @@ class db_hlapi:
     def grab_infraction(self, infractionID: str) -> Optional[Tuple[str, str, str, str, str, int]]:
 
         try:
-            infraction: Any = self.database.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
+            infraction: Any = self._db.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])
         except db_error.OperationalError:
             infraction = None
 
@@ -260,25 +278,25 @@ class db_hlapi:
     def delete_infraction(self, infraction_id: str) -> None:
 
         try:
-            self.database.delete_rows_from_table(f"{self.guild}_infractions", ["infractionID", infraction_id])
+            self._db.delete_rows_from_table(f"{self.guild}_infractions", ["infractionID", infraction_id])
         except db_error.OperationalError:
             pass
 
     def mute_user(self, user: int, endtime: int, infractionID: str) -> None:
 
         try:
-            self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
+            self._db.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
+            self._db.add_to_table(f"{self.guild}_mutes", [["infractionID", infractionID], ["userID", user], ["endMute", endtime]])
 
     def unmute_user(self, infractionid: Optional[str] = None, userid: Optional[int] = None) -> None:
 
         try:
             if infractionid:
-                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid])
+                self._db.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid])
             if userid:
-                self.database.delete_rows_from_table(f"{self.guild}_mutes", ["userid", userid])
+                self._db.delete_rows_from_table(f"{self.guild}_mutes", ["userid", userid])
         except db_error.OperationalError:
             pass
 
@@ -293,7 +311,7 @@ class db_hlapi:
 
         for i in ["config", "infractions", "starboard", "mutes"]:
             try:
-                dbdict[i].extend(self.database.fetch_table(f"{self.guild}_{i}"))
+                dbdict[i].extend(self._db.fetch_table(f"{self.guild}_{i}"))
             except db_error.OperationalError:
                 pass
 
@@ -317,7 +335,7 @@ class db_hlapi:
         for i in reimport.keys():
             for row in reimport[i][1:]:
                 try:
-                    self.database.add_to_table(f"{self.guild}_{i}", tuple(zip(reimport[i][0], row)))
+                    self._db.add_to_table(f"{self.guild}_{i}", tuple(zip(reimport[i][0], row)))
                 except db_error.OperationalError:
                     return False
 
@@ -327,7 +345,7 @@ class db_hlapi:
 
         for i in ["config", "infractions", "starboard", "mutes"]:
             try:
-                self.database.delete_table(f"{self.guild}_{i}")
+                self._db.delete_table(f"{self.guild}_{i}")
             except db_error.OperationalError:
                 pass
 
@@ -336,19 +354,19 @@ class db_hlapi:
         quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), din))
 
         try:
-            self.database.add_to_table(f"{self.guild}_infractions", quer)
+            self._db.add_to_table(f"{self.guild}_infractions", quer)
         except db_error.OperationalError:
             self.create_guild_db()
-            self.database.add_to_table(f"{self.guild}_infractions", quer)
+            self._db.add_to_table(f"{self.guild}_infractions", quer)
 
     def fetch_all_mutes(self) -> List[Tuple[str, str, str, int]]:
 
         # Grab list of tables
-        tablelist = self.database.list_tables("%_mutes")
+        tablelist = self._db.list_tables("%_mutes")
 
         mutetable: List[Tuple[str, str, str, int]] = []
         for i in tablelist:
-            mutetable.extend([(i[0][:-6], ) + tuple(a) for a in self.database.fetch_table(i[0])])  # type: ignore[misc]
+            mutetable.extend([(i[0][:-6], ) + tuple(a) for a in self._db.fetch_table(i[0])])  # type: ignore[misc]
 
         return mutetable
 
@@ -356,18 +374,18 @@ class db_hlapi:
 
         try:
             if userid:
-                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", userid]))
+                muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", userid]))
             elif infractionid:
-                muted = bool(self.database.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid]))
+                muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid]))
         except db_error.OperationalError:
             muted = False
 
         return muted
 
     def close(self) -> None:
-        self.database.commit()
+        self._db.commit()
 
     def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
-        self.database.commit()
+        self._db.commit()
         if err_type:
             raise err_type(err_value)
