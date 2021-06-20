@@ -63,11 +63,35 @@ for i in command_modules_dict:
         else:
             aliasmap[command_modules_dict[i]['alias']] = [i]
 
+
+# Slow, do i care? no
+def escape(s: str) -> str:
+    repl: Dict[str, str] = {
+            "&": "&amp;",
+            "'": "&#39;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&#34;",
+        }
+
+    for i in repl:
+        s = s.replace(i, repl[i])
+
+    return s
+
+
 for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
+    # Assert all these fields exist
+    assert isinstance(module.version_info, str), f"{module.__name__}.version_info malformed"
+    assert isinstance(module.category_info, dict), f"{module.__name__}.category_info malformed"
+    assert isinstance(module.commands, dict), f"{module.__name__}.commands malformed"
+
+
+
     # Append header
-    outlist.append(f"<h2 id=\"{module.category_info['name']}\">")
-    outlist.append(f"\t<a href=\"#{module.category_info['name']}\">{module.category_info['pretty_name']}</a>")
+    outlist.append(f"<h2 id=\"{escape(module.category_info['name'])}\">")
+    outlist.append(f"\t<a href=\"#{escape(module.category_info['name'])}\">{escape(module.category_info['pretty_name'])}</a>")
     outlist.append("</h2>")
 
     # Create table
@@ -82,7 +106,7 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
     for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]:
 
-        command_name = module.commands[i]["pretty_name"].replace("<", "&lt;").replace(">", "&gt;")
+        command_name = module.commands[i]["pretty_name"]
 
         command_perms = module.commands[i]['permission'][0].upper()
         command_perms += module.commands[i]['permission'][1:].lower()
@@ -93,10 +117,10 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
             aliases = "None"
 
         outlist.append("\t<tr>")
-        outlist.append(f"\t\t<td>{command_name}</td>")
-        outlist.append(f"\t\t<td>{module.commands[i]['description']}</td>")
-        outlist.append(f"\t\t<td>{aliases}</td>")
-        outlist.append(f"\t\t<td>{command_perms}</td>")
+        outlist.append(f"\t\t<td>{escape(command_name)}</td>")
+        outlist.append(f"\t\t<td>{escape(module.commands[i]['description'])}</td>")
+        outlist.append(f"\t\t<td>{escape(aliases)}</td>")
+        outlist.append(f"\t\t<td>{escape(command_perms)}</td>")
         outlist.append("\t</tr>")
 
     outlist.append("</table>")
