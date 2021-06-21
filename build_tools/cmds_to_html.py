@@ -67,11 +67,11 @@ for i in command_modules_dict:
 # Slow, do i care? no
 def escape(s: str) -> str:
     repl: Dict[str, str] = {
-            "&": "&amp;",
-            "'": "&#39;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&#34;",
+        "&": "&amp;",
+        "'": "&#39;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&#34;",
         }
 
     for i in repl:
@@ -86,8 +86,6 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     assert isinstance(module.version_info, str), f"{module.__name__}.version_info malformed"
     assert isinstance(module.category_info, dict), f"{module.__name__}.category_info malformed"
     assert isinstance(module.commands, dict), f"{module.__name__}.commands malformed"
-
-
 
     # Append header
     outlist.append(f"<h2 id=\"{escape(module.category_info['name'])}\">")
