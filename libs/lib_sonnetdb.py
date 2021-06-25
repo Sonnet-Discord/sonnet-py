@@ -94,6 +94,11 @@ class db_hlapi:
         return True
 
     def inject_enum(self, enumname: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> None:
+        """
+        Add a custom table schema to the database
+
+        :raises: TypeError - The schema passed is not valid
+        """
         if not self._validate_enum(schema):
             raise TypeError("Invalid schema passed")
 
@@ -119,6 +124,14 @@ class db_hlapi:
         self.__enum_pool[enumname] = cols
 
     def grab_enum(self, name: str, cname: Union[str, int]) -> Optional[List[Union[str, int]]]:
+        """
+        Grab an item from the database table based on the first value
+
+        This does not create a new enum, there are zero ways to modify an enum after it has been registered
+        And an enum may only be registered through inject_enum
+
+        :raises: TypeError - The table name is not registered or the requested key is not the correct type
+        """
         if name not in self.__enum_pool:
             raise TypeError(f"Trying to grab from table that is not registered ({name} not registered)")
 
@@ -133,6 +146,14 @@ class db_hlapi:
         return data[0] if data else None
 
     def set_enum(self, name: str, cpush: List[Union[str, int]]) -> None:
+        """
+        Set an item into the database table with a list of values
+
+        This does not create a new enum, there are zero ways to modify an enum after it has been registered
+        And an enum may only be registered through inject_enum
+
+        :raises: TypeError - The table name is not registered or the types in the list do not match the table schema
+        """
         if name not in self.__enum_pool:
             raise TypeError(f"Trying to set to table that is not registered ({name})")
 
@@ -154,11 +175,40 @@ class db_hlapi:
             self.create_guild_db()
             self._db.add_to_table(f"{self.guild}_{name}", push)
 
+    def delete_enum(self, enumname: str, key: str) -> None:
+        """
+        Deletes a row in an enums table based on primary key
+
+        This does not create a new enum, there are zero ways to modify an enum after it has been registered
+        And an enum may only be registered through inject_enum
+
+        :raises: TypeError - The table name is not registered or the requested key is not the correct type
+        """
+        if enumname not in self.__enum_pool:
+            raise TypeError(f"Trying to delete from table that is not registered ({enumname} not registered)")
+
+        if type(key) != self.__enum_input[enumname][0][1]:
+            raise TypeError("delete type does not match enum PK signature")
+
+        try:
+            self._db.delete_rows_from_table(f"{self.guild}_{enumname}", [self.__enum_input[enumname][0][0], key])
+        except db_error.OperationalError:
+            pass
+
     def create_guild_db(self) -> None:
+        """
+        Create a guilds database
+        This function is mainly for internal use as db calls will automatically create a db if it does not exist
+        """
         for i in self.__enum_pool:
             self._db.make_new_table(f"{self.guild}_{i}", self.__enum_pool[i])
 
     def grab_config(self, config: str) -> Optional[str]:
+        """
+        Grabs a config from the guilds config table
+
+        :returns: Optional[str] - The configuration value
+        """
 
         try:
             data: Optional[Tuple[List[Any], ...]] = self._db.fetch_rows_from_table(f"{self.guild}_config", ["property", config])
@@ -168,6 +218,9 @@ class db_hlapi:
         return data[0][1] if data else None
 
     def add_config(self, config: str, value: str) -> None:
+        """
+        Adds a config to the guilds config table
+        """
 
         try:
             self._db.add_to_table(f"{self.guild}_config", [["property", config], ["value", value]])
@@ -300,9 +353,17 @@ class db_hlapi:
         except db_error.OperationalError:
             pass
 
-    def download_guild_db(self) -> Dict[str, List[List[str]]]:
+    def download_guild_db(self) -> Dict[str, List[List[Union[str, int]]]]:
+        """
+        Download a guilds database
 
-        dbdict = {
+        This function is pending deprecation till a better solution is coded into an endpoint
+
+        :returns: Dict[str, List[List[Union[str, int]]]] - A json safe export of a guilds tables
+        """
+
+        # TODO(ultrabear): deprecate and rewrite this to grab schema from the database, allowing for enums
+        dbdict: Dict[str, List[List[Union[str, int]]]] = {
             "config": [["property", "value"]],
             "infractions": [["infractionID", "userID", "moderatorID", "type", "reason", "timestamp"]],
             "mutes": [["infractionID", "userID", "endMute"]],
@@ -317,7 +378,27 @@ class db_hlapi:
 
         return dbdict
 
+    def full_download_guild_db(self) -> Dict[str, List[List[Union[str, int]]]]:
+        """
+        full_download_guild_db downloads an entire database including custom enum tables
+
+        Currently this function just calls download_guild_db() but it is planned to be replaced with a dynamic solution
+        New code should use this function so that they dont have to rename their functions later
+
+        :returns: Dict[str, List[List[Union[str, int]]]] - A json safe export of a guilds tables
+        """
+        return self.download_guild_db()
+
     def upload_guild_db(self, dbdict: Dict[str, List[List[Any]]]) -> bool:
+        """
+        Uploads a guilds database from a db hashmap
+
+        If you are uploading a db with custom enums you must inject those enums before uploading
+        """
+
+        self.inject_enum("starboard", [
+            ("messageID", str),
+            ])
 
         reimport = {
             "config": [["property", "value"]],
