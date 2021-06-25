@@ -5,7 +5,7 @@ import importlib
 
 import discord
 
-import random, os, ctypes, time, io, json, pickle, threading
+import random, os, ctypes, time, io, json, pickle, threading, warnings
 
 import lib_db_obfuscator
 
@@ -247,6 +247,12 @@ def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_fi
 
 
 def inc_statistics(indata: List[Any]) -> None:
+    """
+    Deprecated way to increment statistics of a dpy event
+    Use inc_statistics_better instead
+    """
+
+    warnings.warn("inc_statistics is deprecated, use inc_statistics_better instead", DeprecationWarning)
 
     guild, inctype, kernel_ramfs = indata
 
@@ -270,16 +276,21 @@ class embed_colors:
 
 
 def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
+    """
+    Load a named embed color for a discord.Embed, these can be configured per guild
+
+    :returns: int - A color in the range of 0 - 2^24 (RGB8 valid)
+    :raises: KeyError - The color name did not exist, this is passed directly from the dict.__getitem__ call
+        and as such produces no extra overhead, but the error returned does not make as much sense as tradeoff
+    """
     return int(load_message_config(guild.id, ramfs, datatypes=_colortypes_cache)[f"embed-color-{colortype}"], 16)
 
 
+# Deprecated immediately as threading.Lock can cause deadlocking in asyncio, what the shit
 def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> threading.Lock:
-
-    l: threading.Lock
-
-    try:
-        l = ramfs.read_f(f"{guild.id}/db_lock")
-    except FileNotFoundError:
-        l = ramfs.create_f(f"{guild.id}/db_lock", f_type=threading.Lock, f_args=[])
-
-    return l
+    """
+    Deprecated command to get a threading.Lock for a guilds db
+    Now returns a new lock every time, ensuring no deadlocking, but nothing should use it
+    """
+    warnings.warn("get_guild_lock and db_hlapi(lock=) are deprecated due to possibility of async deadlock", DeprecationWarning)
+    return threading.Lock()

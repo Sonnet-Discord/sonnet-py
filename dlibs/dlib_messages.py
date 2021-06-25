@@ -53,13 +53,16 @@ async def catch_logging_error(channel: discord.TextChannel, contents: str, files
 async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     client: discord.Client = kargs["client"]
+    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
+
     # Ignore bots
     if parse_skip_message(client, message):
         return
 
-    files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kargs["kernel_ramfs"], delete=True)
+    files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kernel_ramfs, delete=True)
 
-    inc_statistics_better(message.guild.id, "on-message-delete", kargs["kernel_ramfs"])
+    inc_statistics_better(message.guild.id, "on-message-delete", kernel_ramfs)
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
@@ -68,8 +71,18 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     if message_log and (log_channel := client.get_channel(int(message_log))):
 
         message_embed = discord.Embed(
-            title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, kargs["ramfs"])
+            title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, ramfs)
             )
+
+        # Parse for message lengths >2048 (discord now does 4000 hhhhhh)
+        if len(message.content) > constants.embed.description:
+            limend = constants.embed.description + constants.embed.field.value
+            message_embed.add_field(name="(Continued)", value=message.content[constants.embed.description:limend])
+
+            if len(message.content) > limend:
+                flimend = limend + constants.embed.field.value
+                message_embed.add_field(name="(Continued further)", value=message.content[limend:flimend])
+
         message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
 
         if (r := message.reference) and (rr := r.resolved):
@@ -154,8 +167,8 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     if broke_blacklist:
         asyncio.create_task(attempt_message_delete(message))
-        execargs = [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs)
+        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True)
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
@@ -281,14 +294,19 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
 
     for i in message.attachments:
 
-        ramfs_path = f"{message.channel.guild.id}/files/{message.id}/{i.filename}"
+        fname: bytes = i.filename.encode("utf8")
+
+        ramfs_path = f"{message.guild.id}/files/{message.id}/{hashlib.sha256(fname).hexdigest()}"
+
+        namefile = kernel_ramfs.create_f(f"{ramfs_path}/name")
+        namefile.write(fname)
 
         keyfile = kernel_ramfs.create_f(f"{ramfs_path}/key")
         keyfile.write(key := os.urandom(32))
         keyfile.write(iv := os.urandom(16))
 
         pointerfile = kernel_ramfs.create_f(f"{ramfs_path}/pointer")
-        pointer = hashlib.sha256(i.filename.encode("utf8") + key + iv).hexdigest()
+        pointer = hashlib.sha256(fname + key + iv).hexdigest()
         file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 
@@ -333,16 +351,16 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        execargs = [int(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs))
+        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True))
 
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
-                execargs = [int(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, execargs, client, verbose=False, ramfs=ramfs))
+                execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
+                asyncio.create_task(command_modules_dict["mute"]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, client, mconf, ramfs))
@@ -370,37 +388,54 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     del arguments[0]
 
     # Process commands
-    if command in command_modules_dict.keys():
-        if "alias" in command_modules_dict[command].keys():
+    if command in command_modules_dict:
+
+        if "alias" in command_modules_dict[command]:  # Do alias mapping
             command = command_modules_dict[command]["alias"]
-        permission = await parse_permissions(message, mconf, command_modules_dict[command]['permission'])
+
+        if not await parse_permissions(message, mconf, command_modules_dict[command]['permission']):
+            return  # Return on no perms
+
         try:
-            if permission:
-                stats["end"] = round(time.time() * 100000)
+            stats["end"] = round(time.time() * 100000)
 
-                await command_modules_dict[command]['execute'](
-                    message,
-                    arguments,
-                    client,
-                    stats=stats,
-                    cmds=command_modules,
-                    ramfs=ramfs,
-                    bot_start=bot_start_time,
-                    dlibs=kargs["dynamiclib_modules"][0],
-                    main_version=main_version_info,
-                    kernel_ramfs=kargs["kernel_ramfs"],
-                    conf_cache=mconf,
-                    verbose=True,
-                    cmds_dict=command_modules_dict
-                    )
+            await command_modules_dict[command]['execute'](
+                message,
+                arguments,
+                client,
+                stats=stats,
+                cmds=command_modules,
+                ramfs=ramfs,
+                bot_start=bot_start_time,
+                dlibs=kargs["dynamiclib_modules"][0],
+                main_version=main_version_info,
+                kernel_ramfs=kargs["kernel_ramfs"],
+                conf_cache=mconf,
+                verbose=True,
+                cmds_dict=command_modules_dict,
+                automod=False
+                )
 
-                # Regenerate cache
-                if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
-                    for i in ["caches", "regex"]:
-                        try:
-                            ramfs.rmdir(f"{message.guild.id}/{i}")
-                        except FileNotFoundError:
-                            pass
+            # Regenerate cache
+            if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
+                for i in ["caches", "regex"]:
+                    try:
+                        ramfs.rmdir(f"{message.guild.id}/{i}")
+                    except FileNotFoundError:
+                        pass
+
+            elif command_modules_dict[command]['cache'].startswith("direct:"):
+                for i in command_modules_dict[command]['cache'][len('direct:'):].split(";"):
+                    try:
+                        if i.startswith("(d)"):
+                            ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
+                        elif i.startswith("(f)"):
+                            ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
+                        else:
+                            raise RuntimeError("Cache directive is invalid")
+                    except FileNotFoundError:
+                        pass
+
         except discord.errors.Forbidden as e:
 
             try:
@@ -428,4 +463,4 @@ commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6"

@@ -83,7 +83,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
 
     # If in whitelist, skip parse to save resources
-    if blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
+    if message.author.guild and blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
         return (False, False, [])
 
     text_to_blacklist = unicodeFilter.sub('', message.content.lower().replace(":", " ").replace("\n", " "))
@@ -106,9 +106,9 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
 
     # Check message against REGEXP blacklist
     regex_blacklist = blacklist["regex-blacklist"]
-    for i in regex_blacklist:
+    for r in regex_blacklist:
         try:
-            if (broke := i.findall(message.content.lower())):  # type: ignore
+            if (broke := r.findall(message.content.lower())):
                 broke_blacklist = True
                 infraction_type.append(f"RegEx({', '.join(broke)})")
         except re.error:
@@ -116,16 +116,16 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
 
     # Check message against REGEXP notifier list
     regex_blacklist = blacklist["regex-notifier"]
-    for i in regex_blacklist:
-        if i.findall(message.content.lower()):  # type: ignore
+    for r in regex_blacklist:
+        if r.findall(message.content.lower()):
             notifier = True
 
     # Check against filetype blacklist
     filetype_blacklist = blacklist["filetype-blacklist"]
     if filetype_blacklist and message.attachments:
-        for i in message.attachments:
+        for ft in message.attachments:
             for a in filetype_blacklist:
-                if i.filename.lower().endswith(a):  # type: ignore
+                if ft.filename.lower().endswith(a):
                     broke_blacklist = True
                     infraction_type.append(f"FileType({a})")
 
@@ -186,9 +186,13 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
         log_channel_str = args[0].strip("<#!>")
     else:
         with db_hlapi(message.guild.id) as db:
-            lchannel = f"<#{lchannel}>" if (lchannel := db.grab_config(log_name)) else "nothing"
+            try:
+                lchannel = f"<#{int(lchannel)}>" if (lchannel := db.grab_config(log_name)) else "nothing"
+            except ValueError:
+                await message.channel.send(f"ERROR: {log_name} is corrupt, please reset this channel config")
+                raise errors.log_channel_update_error("Corrupted db location")
         await message.channel.send(f"{log_name} is set to {lchannel}")
-        raise errors.log_channel_update_error(constants.sonnet.error_channel.none)
+        return
 
     if log_channel_str in ["remove", "rm", "delete"]:
         with db_hlapi(message.guild.id) as db:
@@ -213,7 +217,7 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
 
     # Nothing failed so send to db
     with db_hlapi(message.guild.id) as db:
-        db.add_config(log_name, log_channel)
+        db.add_config(log_name, str(log_channel))
 
     if verbose: await message.channel.send(f"Successfully updated {log_name}")
 
@@ -278,7 +282,7 @@ def ifgate(inlist: Iterable[Any]) -> bool:
     return any(inlist)
 
 
-# Grab files of a message from the internal cache or using webrequests
+# Grab files of a message from the internal cache
 def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, delete: bool = False) -> Optional[List[discord.File]]:
     """
     Grab all files from a message from the internal encryption cache
@@ -292,30 +296,42 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
         discord_files = []
         for i in files:
 
-            loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
-            loc.seek(0)
-            pointer = loc.read()
+            try:
 
-            keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
-            keys.seek(0)
-            key = keys.read(32)
-            iv = keys.read(16)
+                loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                loc.seek(0)
+                pointer = loc.read()
 
-            encrypted_file = encrypted_reader(pointer, key, iv)
-            rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
+                keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                keys.seek(0)
+                key = keys.read(32)
+                iv = keys.read(16)
 
-            dfile = io.BytesIO(rawfile.read())
+                name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                name.seek(0)
+                fname = name.read().decode("utf8")
 
-            rawfile.close()
-            encrypted_file.close()
-
-            discord_files.append(discord.File(dfile, filename=i))
-
-            if delete:
                 try:
-                    os.remove(pointer)
-                except FileNotFoundError:
+                    encrypted_file = encrypted_reader(pointer, key, iv)  # errors raised here
+                    rawfile = lz4.frame.LZ4FrameFile(filename=encrypted_file, mode="rb")
+
+                    dfile = io.BytesIO(rawfile.read())
+
+                    rawfile.close()
+                    encrypted_file.close()
+
+                    discord_files.append(discord.File(dfile, filename=fname))
+                except (lib_encryption_wrapper.errors.HMACInvalidError, lib_encryption_wrapper.errors.NotSonnetAESError):
                     pass
+
+                if delete:
+                    try:
+                        os.remove(pointer)
+                    except FileNotFoundError:
+                        pass
+
+            except FileNotFoundError:
+                continue
 
         if delete:
             try:
@@ -370,7 +386,12 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
         role_str: str = args[0].strip("<@&>")
     else:
         with db_hlapi(message.guild.id) as db:
-            await message.channel.send(f"{db_entry} is {message.guild.get_role(int(db.grab_config(db_entry) or 0))}")
+            try:
+                r_int = int(db.grab_config(db_entry) or 0)
+            except ValueError:
+                await message.channel.send(f"ERROR: {db_entry} is corrupt, please reset this role config")
+                return 1
+        await message.channel.send(f"{db_entry} is {message.guild.get_role(r_int)}")
         return 0
 
     if role_str in ["remove", "rm", "delete"]:

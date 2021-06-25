@@ -9,6 +9,14 @@ import io
 from typing import Generator, Tuple, Any
 
 
+class errors:
+    class HMACInvalidError(ValueError):
+        pass
+
+    class NotSonnetAESError(FileNotFoundError):
+        pass
+
+
 class crypto_typing:
     class encryptor_decryptor:
         def __init__(self) -> None:
@@ -33,7 +41,7 @@ class encrypted_writer:
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()
+        self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()  # type: ignore[no-untyped-call]
 
         # Initalize HMAC generator
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
@@ -42,7 +50,7 @@ class encrypted_writer:
         if isinstance(filename, io.BytesIO):
             self.rawfile = filename
         else:
-            self.rawfile = open(filename, "wb+")  # type: ignore
+            self.rawfile = open(filename, "wb+")  # type: ignore[assignment]
         self.rawfile.write(b"SONNETAES\x01")
         self.rawfile.write(bytes(64))
 
@@ -114,11 +122,11 @@ class encrypted_reader:
         if isinstance(filename, io.BytesIO):
             self.rawfile = filename
         else:
-            self.rawfile = open(filename, "rb+")  # type: ignore
+            self.rawfile = open(filename, "rb+")  # type: ignore[assignment]
 
         # Make decryptor instance
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.decryptor_module: crypto_typing.encryptor_decryptor = self.cipher.decryptor()
+        self.decryptor_module: crypto_typing.encryptor_decryptor = self.cipher.decryptor()  # type: ignore[no-untyped-call]
 
         # Generate HMAC
         HMACobj = hmac.HMAC(key, hashes.SHA512())
@@ -128,14 +136,14 @@ class encrypted_reader:
             checksum = self.rawfile.read(64)
         else:
             self.rawfile.close()
-            raise FileNotFoundError("The file requested is not a SONNETAES file")
+            raise errors.NotSonnetAESError("The file requested is not a SONNETAES file")
 
         # Calculate HMAC of encrypted field
         while a := self.rawfile.read(2):
             HMACobj.update(self.rawfile.read(int.from_bytes(a, "little")))
 
         if not HMACobj.finalize() == checksum:
-            raise ValueError("The encrypted contents does not match the HMAC")
+            raise errors.HMACInvalidError("The encrypted contents does not match the HMAC")
 
         # Seek to start of file after checking HMAC
         self.rawfile.seek(10 + 64)

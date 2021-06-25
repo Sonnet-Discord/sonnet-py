@@ -22,7 +22,10 @@ from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
 from typing import Dict, Any, Union
 
-starboard_types: Dict[Union[str, int], Any] = {0: "sonnet_starboard", "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT]]}
+starboard_types: Dict[Union[str, int], Any] = {
+    0: "sonnet_starboard",
+    "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]
+    }
 
 
 async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **kargs: Any) -> None:
@@ -37,12 +40,15 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
     mconf = load_message_config(message.guild.id, kargs["ramfs"], datatypes=starboard_types)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
-        with db_hlapi(message.guild.id) as db:
-            if (channel_id := db.grab_config("starboard-channel")) and (channel := kargs["client"].get_channel(int(channel_id))):
-                if not (db.in_starboard(message.id)) and not (int(channel_id) == message.channel.id):
+        if (channel_id := mconf["starboard-channel"]) and (channel := kargs["client"].get_channel(int(channel_id))):
+            with db_hlapi(message.guild.id) as db:
+                db.inject_enum("starboard", [
+                    ("messageID", str),
+                    ])
+                if not (db.grab_enum("starboard", str(message.id))) and not (int(channel_id) == message.channel.id):
 
                     # Add to starboard
-                    db.add_to_starboard(message.id)
+                    db.set_enum("starboard", [str(message.id)])
 
                     # Generate replies
                     message_content = generate_reply_field(message)
@@ -70,4 +76,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info: str = "1.2.4"
+version_info: str = "1.2.6"

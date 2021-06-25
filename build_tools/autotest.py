@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 tests = {
     "pyflakes": "pyflakes .",
-    "mypy": "mypy *.py */*.py --ignore-missing-imports",
+    "mypy": "mypy *.py */*.py --ignore-missing-imports --strict --implicit-reexport --warn-unreachable",
     "pylint": "pylint */ -E",
     "yapf": "yapf -d -r .",
     }

@@ -20,7 +20,7 @@ class db_handler:
         self.cur = self.con.cursor()
         self.closed: bool = False
 
-    def __enter__(self):
+    def __enter__(self) -> "db_handler":
         return self
 
     def make_new_index(self, tablename: str, indexname: str, columns: List[str]) -> None:
@@ -86,7 +86,7 @@ class db_handler:
     def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
         # Test for attack
-        if table.count("\\") or table.count("'"):
+        if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add insert data and generate base tables
@@ -104,7 +104,7 @@ class db_handler:
     def multicount_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> int:
 
         # Test for attack
-        if table.count("\\") or table.count("'"):
+        if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add SELECT data
@@ -122,7 +122,7 @@ class db_handler:
     def fetch_rows_from_table(self, table: str, search: List[Any]) -> Tuple[Any, ...]:
 
         # Test for attack
-        if table.count("\\") or table.count("'"):
+        if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add SELECT data
@@ -137,7 +137,7 @@ class db_handler:
     def multifetch_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> Tuple[Any, ...]:
 
         # Test for attack
-        if table.count("\\") or table.count("'"):
+        if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add SELECT data
@@ -155,7 +155,7 @@ class db_handler:
     def delete_rows_from_table(self, table: str, column_search: List[Any]) -> None:
 
         # Test for attack
-        if table.count("\\") or table.count("'"):
+        if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Do deletion setup
@@ -168,7 +168,7 @@ class db_handler:
     def delete_table(self, table: str) -> None:  # drops the table specified
 
         # Test for attack
-        if table.count("\\") or table.count("'"):
+        if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         self.cur.execute(f"DROP TABLE IF EXISTS '{table}';")
@@ -176,7 +176,7 @@ class db_handler:
     def fetch_table(self, table: str) -> Tuple[Any, ...]:  # Fetches a full table
 
         # Test for attack
-        if table.count("\\") or table.count("'"):
+        if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         self.cur.execute(f"SELECT * FROM '{table}';")

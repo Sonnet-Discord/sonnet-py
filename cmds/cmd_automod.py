@@ -433,8 +433,8 @@ class joinrules:
         else:  # Show current timestamp
 
             with db_hlapi(self.m.guild.id) as db:
-                jointime = db.grab_config(cnf_name)
-            await self.m.channel.send(f"new user notify is set to {jointime} seconds")
+                jointime_str = db.grab_config(cnf_name)
+            await self.m.channel.send(f"new user notify is set to {jointime_str} seconds")
             return 0
 
     async def defaultpfpedit(self, args: List[str], client: discord.Client) -> int:
@@ -447,7 +447,7 @@ class joinrules:
             await self.m.channel.send(f"Updated defaultpfp checking to {bool(true)}")
         else:
             with db_hlapi(self.m.guild.id) as db:
-                await self.m.channel.send(f"Defaultpfp checking is set to {bool(int(db.grab_config(cnf_name)))}")
+                await self.m.channel.send(f"Defaultpfp checking is set to {bool(int(db.grab_config(cnf_name) or 0))}")
 
         return 0
 
@@ -596,4 +596,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.6"
