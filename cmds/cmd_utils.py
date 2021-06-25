@@ -226,10 +226,11 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
         for module in sorted(cmds, key=lambda m: m.category_info['pretty_name'])[(page * per_page):(page * per_page) + per_page]:
             mnames = [f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]]
-            helptext = ', '.join(mnames)
-            total += len(mnames)
-            helptext = helptext if helptext else module.category_info['description']
+
+            helptext = ', '.join(mnames) if mnames else module.category_info['description']
             cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
+
+            total += len(mnames)
 
         cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)}")
 
