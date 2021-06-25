@@ -463,4 +463,4 @@ commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.6-DEV"
+version_info: str = "1.2.6"
