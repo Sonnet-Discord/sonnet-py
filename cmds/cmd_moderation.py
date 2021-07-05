@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, time, asyncio, math
+import discord, time, asyncio, math, io
 from datetime import datetime
 
 import lib_db_obfuscator
@@ -414,9 +414,47 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
         await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
         return 1
 
-    chunk = ""
+    # Why can you never be happy :defeatcry:
+    #
+    # Implemented below is a microreallocator, every infraction in a page has
+    # a fixed maximum length, but if one infraction doesnt need that length we can
+    # give it to other infractions, so we can do a first pass to get lengths of them all,
+    # pool spare space, and give it when needed
+    #
+    # This is similar enough to the golang method of dual pass string operations that
+    # it is worth mentioning that it is infact inspired from the go strings stdlib
+    # (ultrabear) highly reccomends reading it, its really well written!
+
+    maxlen = (1900//per_page)
+
+    # pooled will say how many spare chars we have left
+    # it is calculated as pooled = sum[(maxlen - lencurinfraction) for i in infractions]
+    # In this way, if pool is negative do not have enough space to not cut values off
+    # If it is positive we can loop with no size limit
+
+    arr: List[int] = []
     for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
-        chunk += f"{', '.join([i[0], i[3], i[4]])[:math.floor(1900/per_page)]}\n"
+        arr.append(maxlen - (len(i[0]) + len(i[3]) + len(i[4]) + 4))
+
+    pooled = sum(arr)
+
+    # We write output using a string.Buil- wait this isint golang
+    # Whatever, this is efficient
+    writer = io.StringIO()
+
+    if pooled >= 0:
+        for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
+            writer.write(f"{', '.join([i[0], i[3], i[4]])}\n")
+    else:
+        # We need to go more complicated, by only using the positive pooled we can increase the infraction length cap a little
+        pospool = sum([i for i in arr if i > 0]) # Remove negatives
+        newmaxlen = maxlen + (pospool//per_page) # Account for per item in our new pospool
+        for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
+            writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen]}\n")
+
+    writer.seek(0)
+
+    chunk = writer.read()
 
     tprint = round((time.monotonic() - tstart) * 10000) / 10
 
