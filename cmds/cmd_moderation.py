@@ -425,7 +425,10 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     # it is worth mentioning that it is infact inspired from the go strings stdlib
     # (ultrabear) highly reccomends reading it, its really well written!
 
-    maxlen = (1900//per_page)
+    # This lets us store more on cases where there is less infracs than there should be, i/e eof
+    actual_per_page = len(infractions[selected_chunk * per_page:selected_chunk * per_page + per_page])
+
+    maxlen = (1900 // actual_per_page)
 
     # pooled will say how many spare chars we have left
     # it is calculated as pooled = sum[(maxlen - lencurinfraction) for i in infractions]
@@ -447,8 +450,8 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
             writer.write(f"{', '.join([i[0], i[3], i[4]])}\n")
     else:
         # We need to go more complicated, by only using the positive pooled we can increase the infraction length cap a little
-        pospool = sum([i for i in arr if i > 0]) # Remove negatives
-        newmaxlen = maxlen + (pospool//per_page) # Account for per item in our new pospool
+        pospool = sum([i for i in arr if i > 0])  # Remove negatives
+        newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
         for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
             writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen]}\n")
 
