@@ -2,7 +2,7 @@
 # - UltraBear 2021
 
 import ctypes as _ctypes
-import os
+import subprocess as _subprocess
 
 from typing import cast
 
@@ -23,8 +23,9 @@ if CLIB_LOAD:
         _gotools = _ctypes.CDLL("./libs/compiled/gotools.2.0.0-DEV.0.so")
     except OSError:
         try:
-            os.system("make gotools")
-            _gotools = _ctypes.CDLL("./libs/compiled/gotools.2.0.0-DEV.0.so")
+            if _subprocess.run(["make", "gotools"]).returncode == 0:
+                _gotools = _ctypes.CDLL("./libs/compiled/gotools.2.0.0-DEV.0.so")
+            else: hascompiled = False
         except OSError:
             hascompiled = False
 else:

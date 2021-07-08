@@ -6,6 +6,7 @@ import importlib
 import discord
 
 import random, os, ctypes, time, io, json, pickle, threading, warnings
+import subprocess
 
 import lib_db_obfuscator
 
@@ -50,8 +51,9 @@ if CLIB_LOAD:
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
         try:
-            os.system("make")
-            loader = DotHeaders(ctypes.CDLL(clib_name)).lib
+            if subprocess.run(["make"]).returncode == 0:
+                loader = DotHeaders(ctypes.CDLL(clib_name)).lib
+            else: clib_exists = False
         except OSError:
             clib_exists = False
 else:
