@@ -59,6 +59,12 @@ def ParseDuration(s: str) -> int:
     if not hascompiled:
         raise errors.NoBinaryError("ParseDuration: No binary found")
 
+    # Special case to default to seconds
+    try:
+        return int(s)
+    except ValueError:
+        pass
+
     byte = s.encode("utf8")
 
     r = _gotools.ParseDuration(_GoString(byte, len(byte)))
