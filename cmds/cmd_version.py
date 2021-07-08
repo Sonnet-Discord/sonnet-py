@@ -6,10 +6,14 @@ import importlib
 import discord
 from datetime import datetime
 import sys
+import io
 
 import lib_loaders
 
 importlib.reload(lib_loaders)
+import lib_goparsers
+
+importlib.reload(lib_goparsers)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
@@ -58,21 +62,27 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
     base_versions.append(["Kernel", kwargs['main_version']])
     base = "\n".join(prettyprint(base_versions))
 
-    fmt = f"```py\n{base}\n\nEvent Modules:\n"
+    fmt = io.StringIO()
+
+    fmt.write(f"```py\n{base}\n\nEvent Modules:\n")
 
     for a in prettyprint([[i.category_info['name'], i.version_info] for i in dlib_modules]):
-        fmt += f"  {a}\n"
+        fmt.write(f"  {a}\n")
 
-    fmt += "\nCommand Modules:\n"
+    fmt.write("\nCommand Modules:\n")
 
     for a in prettyprint([[i.category_info['pretty_name'], i.version_info] for i in modules]):
-        fmt += f"  {a}\n"
+        fmt.write(f"  {a}\n")
 
-    fmt += f"\nC accel: {DotHeaders.version}={clib_exists}\n"
+    fmt.write(f"\nC  accel: {DotHeaders.version}={clib_exists}\n")
 
-    fmt += f"\nBot Uptime: {getdelta(bot_start_time)}\n```"
+    fmt.write(f"Go accel: {lib_goparsers.hascompiled}\n")
 
-    await message.channel.send(fmt)
+    fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n```")
+
+    fmt.seek(0)
+
+    await message.channel.send(fmt.read())
 
 
 async def uptime(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -152,4 +162,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.5"
+version_info: str = "pre2.0.0-DEV"
