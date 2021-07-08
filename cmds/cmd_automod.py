@@ -16,7 +16,11 @@ importlib.reload(sonnet_cfg)
 import lib_constants
 
 importlib.reload(lib_constants)
+import lib_goparsers
 
+importlib.reload(lib_goparsers)
+
+from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import REGEX_VERSION
 from lib_parsers import parse_role, parse_boolean, parse_user_member
@@ -302,11 +306,8 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
 
     if args:
         try:
-            if args[0][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
-                mutetime = int(args[0][:-1]) * multi[args[0][-1]]
-            else:
-                mutetime = int(args[0])
-        except (ValueError, TypeError):
+            mutetime = MustParseDuration(args[0])
+        except lib_goparsers.errors.ParseFailureError:
             await message.channel.send("ERROR: Invalid time format")
             return 1
     else:
@@ -400,12 +401,8 @@ class joinrules:
             if args[0] == "add" and len(args) >= 2:  # Add timestamp
 
                 try:  # Parse time
-                    if args[1][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
-                        jointime = int(args[1][:-1]) * multi[args[1][-1]]
-                    else:
-                        jointime = int(args[1])
-
-                except (ValueError, TypeError):
+                    jointime = MustParseDuration(args[1])
+                except lib_goparsers.errors.ParseFailureError:
                     await self.m.channel.send("ERROR: Invalid time format")
                     return 1
 

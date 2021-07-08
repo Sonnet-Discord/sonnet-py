@@ -18,7 +18,11 @@ importlib.reload(lib_parsers)
 import lib_constants
 
 importlib.reload(lib_constants)
+import lib_goparsers
 
+importlib.reload(lib_goparsers)
+
+from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
@@ -273,13 +277,9 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     # Grab mute time
     if len(args) >= 2:
         try:
-            if args[1][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
-                mutetime = int(args[1][:-1]) * multi[args[1][-1]]
-                del args[1]
-            else:
-                mutetime = int(args[1])
-                del args[1]
-        except (ValueError, TypeError):
+            mutetime = MustParseDuration(args[1])
+            del args[1]
+        except lib_goparsers.errors.ParseFailureError:
             mutetime = 0
     else:
         mutetime = 0
