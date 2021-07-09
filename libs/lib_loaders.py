@@ -53,7 +53,8 @@ if CLIB_LOAD:
         try:
             if subprocess.run(["make"]).returncode == 0:
                 loader = DotHeaders(ctypes.CDLL(clib_name)).lib
-            else: clib_exists = False
+            else:
+                clib_exists = False
         except OSError:
             clib_exists = False
 else:

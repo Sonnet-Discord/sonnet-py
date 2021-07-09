@@ -25,7 +25,8 @@ if CLIB_LOAD:
         try:
             if _subprocess.run(["make", "gotools"]).returncode == 0:
                 _gotools = _ctypes.CDLL("./libs/compiled/gotools.2.0.0-DEV.0.so")
-            else: hascompiled = False
+            else:
+                hascompiled = False
         except OSError:
             hascompiled = False
 else:

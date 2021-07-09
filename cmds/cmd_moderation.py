@@ -455,13 +455,9 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
         for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
             writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen]}\n")
 
-    writer.seek(0)
-
-    chunk = writer.read()
-
     tprint = round((time.monotonic() - tstart) * 10000) / 10
 
-    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infractions) ({tprint}ms)\n```css\nID, Type, Reason\n{chunk}```")
+    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infractions) ({tprint}ms)\n```css\nID, Type, Reason\n{writer.getvalue()}```")
 
 
 async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:

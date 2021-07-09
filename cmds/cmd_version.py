@@ -80,9 +80,7 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
 
     fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n```")
 
-    fmt.seek(0)
-
-    await message.channel.send(fmt.read())
+    await message.channel.send(fmt.getvalue())
 
 
 async def uptime(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -118,13 +116,14 @@ async def print_stats(message: discord.Message, args: List[str], client: discord
     for i in global_statistics_file:
         outputmap.append([i, global_statistics_file[i]])
 
+    # Declare here cause fstrings cant have \ in it 草
     newline = "\n"
 
-    fmt = f"```py\n{newline.join(prettyprint(outputmap))}\n"
+    writer = io.StringIO(f"```py\n{newline.join(prettyprint(outputmap))}\n")
 
-    fmt += f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% ({guild_total}/{global_total}) of total processed events since boot```"
+    writer.write(f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% ({guild_total}/{global_total}) of total processed events since boot```")
 
-    await message.channel.send(fmt)
+    await message.channel.send(writer.getvalue())
 
 
 category_info = {'name': 'version', 'pretty_name': 'Version', 'description': 'Information about the current sonnet version'}
