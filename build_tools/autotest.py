@@ -2,6 +2,7 @@ import threading
 import tempfile
 import os
 import sys
+import io
 
 from typing import Dict, Any
 
@@ -32,9 +33,9 @@ for i in tests:
 
 for i in testout:
     testout[i]['p'].join()
-    e: str = ""
-    e += testout[i]["stdout"].read().decode("utf8")
-    e += testout[i]["stderr"].read().decode("utf8")
+    e = io.StringIO()
+    e.write(testout[i]["stdout"].read().decode("utf8"))
+    e.write(testout[i]["stderr"].read().decode("utf8"))
 
     print(f"\033[94m{testout[i]['args']}\033[0m")
-    if e: print(e, end="")
+    if v := e.getvalue(): print(v, end="")

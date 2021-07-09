@@ -3,7 +3,7 @@
 
 import importlib
 
-import threading, warnings
+import threading, warnings, io
 
 from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
 
@@ -163,9 +163,10 @@ class db_hlapi:
         for index, i in enumerate(cpush):
             if type(i) != self.__enum_input[name][index][1]:
                 errtuple = self.__enum_input[name][index]
-                errmsg: str = f"Improper type passed based on enum registry, index: {index} name: {errtuple[0]}\n"
-                errmsg += f"(given type '{type(i).__name__}' is not type '{errtuple[1].__name__}')"
-                raise TypeError(errmsg)
+                errbuilder = io.StringIO()
+                errbuilder.write(f"Improper type passed based on enum registry, index: {index} name: {errtuple[0]}\n")
+                errbuilder.write(f"(given type '{type(i).__name__}' is not type '{errtuple[1].__name__}')")
+                raise TypeError(errbuilder.getvalue())
 
         push = tuple(zip(map(lambda i: i[0], self.__enum_input[name]), cpush))
 

@@ -2,6 +2,7 @@
 # Ultrabear 2020
 
 import mariadb
+import io
 from typing import List, Dict, Any, Tuple, Union
 
 mdb_version = tuple([int(i) for i in mariadb.mariadbapi_version.split(".")])
@@ -64,8 +65,10 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
             bytes(32): "LONGBLOB"
             }
 
+        db_inputBuilder = io.StringIO()
+
         # Add table addition
-        db_inputStr = f'CREATE TABLE IF NOT EXISTS {tablename} ('
+        db_inputBuilder.write(f'CREATE TABLE IF NOT EXISTS {tablename} (')
 
         # Parse through table items, item with 3 entries is primary key
         inlist = []
@@ -76,35 +79,43 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
                 inlist.append(f"{i[0]} {datamap[i[1]]}")
 
         # Add parsed inputs to inputStr
-        db_inputStr += ", ".join(inlist) + ")"
+        db_inputBuilder.write(", ".join(inlist))
+        db_inputBuilder.write(")")
 
         # Execute table generation
-        self.cur.execute(db_inputStr)
+        self.cur.execute(db_inputBuilder.getvalue())
 
     def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
+        db_inputBuilder = io.StringIO()
+
         # Add insert data and generate base tables
-        db_inputStr = f"REPLACE INTO {table} ("
+        db_inputBuilder.write(f"REPLACE INTO {table} (")
         db_inputList = []
-        db_inputStr += ", ".join([i[0] for i in data]) + ")\n"
+        db_inputBuilder.write(", ".join([i[0] for i in data]))
+        db_inputBuilder.write(")\n")
 
         # Insert values data
-        db_inputStr += "VALUES ("
+        db_inputBuilder.write("VALUES (")
         db_inputList.extend([i[1] for i in data])
-        db_inputStr += ", ".join(["?" for i in data]) + ")\n"
 
-        self.cur.execute(db_inputStr, tuple(db_inputList))
+        db_inputBuilder.write(", ".join(["?" for i in data]))
+        db_inputBuilder.write(")\n")
+
+        self.cur.execute(db_inputBuilder.getvalue(), tuple(db_inputList))
 
     def multicount_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> int:
 
-        # Add SELECT data
-        db_inputStr = f"SELECT COUNT(*) FROM {table} WHERE "
+        db_inputBuilder = io.StringIO()
 
-        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        # Add SELECT data
+        db_inputBuilder.write(f"SELECT COUNT(*) FROM {table} WHERE ")
+
+        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute
-        self.cur.execute(db_inputStr, tuple(db_inputList))
+        self.cur.execute(db_inputBuilder.getvalue(), tuple(db_inputList))
 
         retval: int = tuple(self.cur)[0][0]
         return retval
@@ -124,14 +135,16 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
     def multifetch_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> Tuple[Any, ...]:
 
-        # Add SELECT data
-        db_inputStr = f"SELECT * FROM {table} WHERE "
+        db_inputBuilder = io.StringIO()
 
-        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        # Add SELECT data
+        db_inputBuilder.write(f"SELECT * FROM {table} WHERE ")
+
+        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute
-        self.cur.execute(db_inputStr, tuple(db_inputList))
+        self.cur.execute(db_inputBuilder.getvalue(), tuple(db_inputList))
 
         return tuple(self.cur)
 
