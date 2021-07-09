@@ -21,6 +21,10 @@ None of the things listed below should happen in Sonnet.
 - Do not do something for an end user, they must ask for it
 - Do not feel bad if you break windows compat, no one should use windows anyways
 - Do not install sonnet on windows, it will hopefully break
+- Do not use `string1 + string2` operations often, they are slow and eat ram 
+  - (tl;dr it has to allocate a new string that is the length of both strings combined, eating ram and being slow with lots of small mallocs)
+  - Use StringIO() or str.join() instead, with fstrings for readability
+	  - Combine all 3 `buf.write("\n".join([f"item {i} is {v}" for i, v in enumerate(data)]))`
 # Basic Heresy
 - Do not use eval:
 ```py
