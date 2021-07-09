@@ -119,7 +119,9 @@ async def print_stats(message: discord.Message, args: List[str], client: discord
     # Declare here cause fstrings cant have \ in it 草
     newline = "\n"
 
-    writer = io.StringIO(f"```py\n{newline.join(prettyprint(outputmap))}\n")
+    writer = io.StringIO()
+
+    writer.write(f"```py\n{newline.join(prettyprint(outputmap))}\n")
 
     writer.write(f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% ({guild_total}/{global_total}) of total processed events since boot```")
 
