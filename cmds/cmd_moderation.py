@@ -437,7 +437,8 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     arr: List[int] = []
     for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
-        arr.append(maxlen - (len(i[0]) + len(i[3]) + len(i[4]) + 4))
+        # +5 is added for len(", ")*2 + len("\n")
+        arr.append(maxlen - (len(i[0]) + len(i[3]) + len(i[4]) + 5))
 
     pooled = sum(arr)
 
@@ -452,8 +453,16 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
         # We need to go more complicated, by only using the positive pooled we can increase the infraction length cap a little
         pospool = sum([i for i in arr if i > 0])  # Remove negatives
         newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
+        # Technically impossible thanks to lim(5,40), but if i wanna make this lim(1,2000) this is needed
+        if newmaxlen <= 1:
+            await message.channel.send("ERROR: The amount of infractions to display overflows the discord message limit, set -i to a sane value")
+            # Fun fact, you need to set -i to >=951 to trigger this
+            return 1
+
         for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
-            writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen]}\n")
+            # Cap at newmaxlen-1 and then add \n at the end
+            # this ensures we always have newline seperators
+            writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen-1]}\n")
 
     tprint = round((time.monotonic() - tstart) * 10000) / 10
 
