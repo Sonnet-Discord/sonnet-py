@@ -57,7 +57,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
 
-    self_name: str = rawargs[0][len(kwargs["conf_cache"]["prefix"]):]
+    self_name: str = shellargs[0][len(kwargs["conf_cache"]["prefix"]):]
 
     if verbose == False:
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
