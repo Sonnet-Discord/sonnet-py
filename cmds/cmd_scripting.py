@@ -52,7 +52,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
     cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
 
     try:
-        rawargs = shlex.split(arguments[0])
+        shellargs = shlex.split(arguments[0])
     except ValueError:
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
@@ -63,14 +63,28 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
         return 1
 
+    # List of commands to execute and their args
     commandsparse: List[Tuple[str, List[str]]] = []
 
+    # For over each command
     for hlindex, single_cmd in enumerate(arguments[1:]):
+
+        # Split into arguments
         total: List[str] = single_cmd.split()
+
+        # Check command exists and isint self
         if total[0] in cmds_dict and total[0] != self_name:
+
+            # Get arglist seperated from command
             argout: List[str] = total[1:]
-            for index, i in enumerate(rawargs):
-                argout = [arg.replace("${%d}" % index, i) for arg in argout]
+
+            # For each shell arg, if the arg in the command is a shellarg macro then expand it
+            # Do not use .replace, or arg1="${2} ${2}" arg2="${3} ${3}" can be used to exponentially build argument length
+            # Only allow strict arg=${N} macro expansion
+            for index, i in enumerate(shellargs):
+                argout = [i if arg == ("${%d}" % index) else arg for arg in argout]
+
+            # Add to command queue
             commandsparse.append((total[0], argout), )
         else:
             await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatability\nAnd {self_name} is not runnable inside itself")
@@ -325,4 +339,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.6"
+version_info: str = "1.2.6-1"
