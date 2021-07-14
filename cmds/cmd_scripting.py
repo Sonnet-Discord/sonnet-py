@@ -20,6 +20,12 @@ from lib_parsers import parse_permissions
 from typing import List, Any, Tuple, Awaitable, Dict
 import lib_lexdpyk_h as lexdpyk
 
+# This was placed after the exponential expansion exploit was found
+# to help reduce severity if future exploits are found
+#
+# A limit of 1000 will reasonably never be reached by a normal user
+exec_lim = 1000
+
 
 def do_cache_sweep(cache: str, ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
 
@@ -61,6 +67,10 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
     if verbose == False:
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
+        return 1
+
+    if len(arguments[1:]) > exec_lim:
+        await message.channel.send(f"ERROR: {self_name}: Exceeded limit of {exec_lim} commands to run")
         return 1
 
     # List of commands to execute and their args
@@ -193,6 +203,10 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
     if not await parse_permissions(message, conf_cache, cmds_dict[command]['permission']):
         raise MapProcessError("ERRNO")
 
+    if len(targs[targlen:]) > exec_lim:
+        await message.channel.send(f"ERROR: Exceeded limit of {exec_lim} iterations")
+        raise MapProcessError("ERR LIM EXEEDED")
+
     return targs, targlen, command, endlargs
 
 
@@ -264,6 +278,8 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
 
     for i in targs[targlen:]:
 
+        # We need to copy the message object to avoid race conditions since all the commands run at once
+        # All attrs are readonly except for content which we modify the pointer to, so avoiding a deepcopy is possible
         newmsg: discord.Message = pycopy.copy(message)
         newmsg.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
 
@@ -339,4 +355,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.6-1"
+version_info: str = "1.2.6-2"
