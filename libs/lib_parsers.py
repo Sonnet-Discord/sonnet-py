@@ -82,6 +82,12 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
 
+    # Race cond check
+    try:
+        message.author.guild
+    except AttributeError:
+        return (False, False, [])
+
     # If in whitelist, skip parse to save resources
     if message.author.guild and blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
         return (False, False, [])
