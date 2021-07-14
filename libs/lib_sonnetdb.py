@@ -431,15 +431,25 @@ class db_hlapi:
             except db_error.OperationalError:
                 pass
 
-    def add_infraction(self, *din: Union[int, str]) -> None:
+    def add_infraction(self, infraction_id: str, user_id: str, moderator_id: str, itype: str, reason: str, timestamp: int, automod: bool = False) -> None:
 
-        quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), din))
+        quer: Tuple[Tuple[str, Union[str, int]], ...]
+        quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), (infraction_id, user_id, moderator_id, itype, reason, timestamp)))
+
+        table_name: str
+
+        if self._sonnet_db_version >= (1, 1, 0):
+            table_name = f"{self.guild}_infractionsV2"
+            # Tuples have fixed length :cry:
+            quer = quer + (("flags", int(automod)), )
+        else:
+            table_name = f"{self.guild}_infractions"
 
         try:
-            self._db.add_to_table(f"{self.guild}_infractions", quer)
+            self._db.add_to_table(table_name, quer)
         except db_error.OperationalError:
             self.create_guild_db()
-            self._db.add_to_table(f"{self.guild}_infractions", quer)
+            self._db.add_to_table(table_name, quer)
 
     def fetch_all_mutes(self) -> List[Tuple[str, str, str, int]]:
 
