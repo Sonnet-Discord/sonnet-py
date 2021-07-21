@@ -206,6 +206,7 @@ def generate_infractionid() -> str:
             return "".join(output)
 
     else:
+        # TODO(ultrabear) write this part in go its really slow and ugly
         with open("common/wordlist.txt", "rb") as words:
             maxval = 0
             structured_data = []
@@ -228,6 +229,7 @@ def generate_infractionid() -> str:
 
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
+    # TODO(ultrabear) these are typecast to any oops make it not be that way
     try:
         statistics = kernel_ramfs.read_f(f"{guild}/stats")
     except FileNotFoundError:
