@@ -144,7 +144,11 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         # Load json datatype
         for i in datatypes["json"]:
             if message_config[i[0]]:
-                message_config[i[0]] = json.loads(message_config[i[0]])
+                try:
+                    message_config[i[0]] = json.loads(message_config[i[0]])
+                except json.JSONDecodeError:
+                    # Corrupted db objects default to defaults
+                    message_config[i[0]] = None
 
         # Load CSV datatype
         for i in datatypes["csv"]:
@@ -229,14 +233,13 @@ def generate_infractionid() -> str:
 
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
-    # TODO(ultrabear) these are typecast to any oops make it not be that way
     try:
-        statistics = kernel_ramfs.read_f(f"{guild}/stats")
+        statistics: Dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
     except FileNotFoundError:
         statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=dict)
 
     try:
-        global_statistics = kernel_ramfs.read_f("global/stats")
+        global_statistics: Dict[str, int] = kernel_ramfs.read_f("global/stats")
     except FileNotFoundError:
         global_statistics = kernel_ramfs.create_f("global/stats", f_type=dict)
 
