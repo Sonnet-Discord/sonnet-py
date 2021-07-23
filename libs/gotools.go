@@ -136,7 +136,11 @@ func GenerateCacheFile(fin, fout string) int {
 
 	writer := bufio.NewWriter(fp)
 
-	writer.WriteByte(byte(maxlen))
+	werr := writer.WriteByte(byte(maxlen))
+
+	if werr != nil {
+		return 1
+	}
 
 	for i, _ := range filter {
 
@@ -157,7 +161,11 @@ func GenerateCacheFile(fin, fout string) int {
 
 	}
 
-	writer.Flush()
+	ferr := writer.Flush()
+
+	if ferr != nil {
+		return 1
+	}
 
 	return 0
 }

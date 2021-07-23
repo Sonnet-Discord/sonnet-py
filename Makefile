@@ -1,7 +1,7 @@
 CC=gcc
 version=1.2.3-DEV.0
 GOCMD=go
-GOversion=2.0.0-DEV.1
+GOversion=2.0.0-DEV.2
 compilefolder=./libs/compiled
 
 all: ${compilefolder} ./libs/sfdbcloader.c
