@@ -18,13 +18,14 @@ class _ParseDurationRet(_ctypes.Structure):
 
 
 hascompiled = True
+_version = "2.0.0-DEV.1"
 if CLIB_LOAD:
     try:
-        _gotools = _ctypes.CDLL("./libs/compiled/gotools.2.0.0-DEV.0.so")
+        _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
     except OSError:
         try:
             if _subprocess.run(["make", "gotools"]).returncode == 0:
-                _gotools = _ctypes.CDLL("./libs/compiled/gotools.2.0.0-DEV.0.so")
+                _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
             else:
                 hascompiled = False
         except OSError:
@@ -35,6 +36,8 @@ else:
 if hascompiled:
     _gotools.ParseDuration.argtypes = [_GoString]
     _gotools.ParseDuration.restype = _ParseDurationRet
+    _gotools.GenerateCacheFile.argtypes = [_GoString, _GoString]
+    _gotools.GenerateCacheFile.restype = _ctypes.c_int
 
 
 class errors:
@@ -46,6 +49,42 @@ class errors:
 
     class ParseFailureError(GoParsersError):
         pass
+
+
+def _FromString(s: str) -> _GoString:
+    byte = s.encode("utf8")
+    return _GoString(byte, len(byte))
+
+
+def GenerateCacheFile(fin: str, fout: str) -> None:
+
+    if hascompiled:
+
+        ret = _gotools.GenerateCacheFile(_FromString(fin), _FromString(fout))
+
+        if ret == 1:
+            raise errors.ParseFailureError("parser returned error")
+        elif ret == 2:
+            raise FileNotFoundError(f"No file {fin}")
+
+    else:
+
+        with open(fin, "rb") as words:
+            maxval = 0
+            structured_data = []
+            for byte in words.read().split(b"\n"):
+                if byte and not len(byte) > 85 and not b"\xc3" in byte:
+
+                    stv = byte.rstrip(b"\r").decode("utf8")
+                    byte = (stv[0].upper() + stv[1:].lower()).encode("utf8")
+
+                    structured_data.append(bytes([len(byte)]) + byte)
+                    if len(byte) + 1 > maxval:
+                        maxval = len(byte) + 1
+        with open(fout, "wb") as structured_data_file:
+            structured_data_file.write(bytes([maxval]))
+            for byte in structured_data:
+                structured_data_file.write(byte + bytes(maxval - len(byte)))
 
 
 def ParseDuration(s: str) -> int:
@@ -66,9 +105,7 @@ def ParseDuration(s: str) -> int:
     except ValueError:
         pass
 
-    byte = s.encode("utf8")
-
-    r = _gotools.ParseDuration(_GoString(byte, len(byte)))
+    r = _gotools.ParseDuration(_FromString(s))
 
     if r.err != 0:
         raise errors.ParseFailureError(f"ParseDuration: returned status code {r.err}")

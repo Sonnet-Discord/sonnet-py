@@ -14,7 +14,11 @@ importlib.reload(lib_db_obfuscator)
 import sonnet_cfg
 
 importlib.reload(sonnet_cfg)
+import lib_goparsers
 
+importlib.reload(lib_goparsers)
+
+from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
@@ -210,24 +214,8 @@ def generate_infractionid() -> str:
             return "".join(output)
 
     else:
-        # TODO(ultrabear) write this part in go its really slow and ugly
-        with open("common/wordlist.txt", "rb") as words:
-            maxval = 0
-            structured_data = []
-            for byte in words.read().split(b"\n"):
-                if byte and not len(byte) > 85 and not b"\xc3" in byte:
-
-                    stv = byte.rstrip(b"\r").decode("utf8")
-                    byte = (stv[0].upper() + stv[1:].lower()).encode("utf8")
-
-                    structured_data.append(bytes([len(byte)]) + byte)
-                    if len(byte) + 1 > maxval:
-                        maxval = len(byte) + 1
-        with open("datastore/wordlist.cache.db", "wb") as structured_data_file:
-            structured_data_file.write(bytes([maxval]))
-            for byte in structured_data:
-                structured_data_file.write(byte + bytes(maxval - len(byte)))
-
+        # Call go lib to handle this for us
+        GenerateCacheFile("common/wordlist.txt", "datastore/wordlist.cache.db")
         return generate_infractionid()
 
 
