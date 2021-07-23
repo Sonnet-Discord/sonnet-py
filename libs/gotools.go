@@ -3,11 +3,11 @@ package main
 import "C"
 
 import (
-	"time"
-	"os"
+	"bufio"
 	"bytes"
 	"io"
-	"bufio"
+	"os"
+	"time"
 )
 
 //export ParseDuration
@@ -90,7 +90,6 @@ func valid(s []byte) bool {
 	return true
 }
 
-
 //export GenerateCacheFile
 func GenerateCacheFile(fin, fout string) int {
 
@@ -132,7 +131,6 @@ func GenerateCacheFile(fin, fout string) int {
 	writebuffer := make([]byte, maxlen)
 	nilbuffer := make([]byte, maxlen)
 
-
 	// ++ for the length prefix
 	maxlen++
 
@@ -163,6 +161,5 @@ func GenerateCacheFile(fin, fout string) int {
 
 	return 0
 }
-
 
 func main() {}
