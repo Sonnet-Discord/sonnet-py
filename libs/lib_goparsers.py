@@ -18,7 +18,7 @@ class _ParseDurationRet(_ctypes.Structure):
 
 
 hascompiled = True
-_version = "2.0.0-DEV.2"
+_version = "2.0.0-DEV.3"
 if CLIB_LOAD:
     try:
         _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")

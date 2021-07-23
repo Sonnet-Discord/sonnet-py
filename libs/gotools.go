@@ -5,6 +5,7 @@ import "C"
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"time"
@@ -37,6 +38,11 @@ func readfile(f string) ([]byte, error, bool) {
 
 	if stat, err := fp.Stat(); err == nil {
 		flen = stat.Size()
+	}
+
+	// 32 bit overflow
+	if int64(int(flen)) != flen {
+		return nil, errors.New("RAM not large enough to store file"), false
 	}
 
 	if flen == 0 {
@@ -83,7 +89,7 @@ func valid(s []byte) bool {
 	}
 
 	for i, _ := range s {
-		if !('a' <= s[i] && s[i] <= 'z') {
+		if !('0' <= s[i] && s[i] <= 'z') {
 			return false
 		}
 	}
@@ -111,7 +117,9 @@ func GenerateCacheFile(fin, fout string) int {
 
 	for i, _ := range slices {
 		if valid(slices[i]) {
-			slices[i][0] -= 'a' - 'A'
+			if 'a' <= slices[i][0] && slices[i][0] <= 'z' {
+				slices[i][0] -= 'a' - 'A'
+			}
 
 			if len(slices[i]) > maxlen {
 				maxlen = len(slices[i])
