@@ -41,22 +41,44 @@ if hascompiled:
 
 
 class errors:
+    """
+    Errors class for goparsers
+    """
     class GoParsersError(Exception):
+        """
+        Generic error for the goparsers lib, parse related errors should subclass from this
+        """
         pass
 
     class NoBinaryError(GoParsersError):
+        """
+        Error stating there is no golang binary to run
+        """
         pass
 
     class ParseFailureError(GoParsersError):
+        """
+        Error stating there was a failure to parse data for a generic reason
+        """
         pass
 
 
 def _FromString(s: str) -> _GoString:
+    """
+    Returns a GoString from a pystring object
+    """
     byte = s.encode("utf8")
     return _GoString(byte, len(byte))
 
 
 def GenerateCacheFile(fin: str, fout: str) -> None:
+    """
+    Generates a sonnet wordlist cache file using a go library
+    Fallsback to python version if golib is not compiled, aprox 10x slower, but more flexible due to not validating data to be faster
+
+    :raises: errors.ParseFailureError - goparser returned an error, probably io related
+    :raises: FileNotFoundError - infile does not exist
+    """
 
     if hascompiled:
 
