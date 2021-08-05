@@ -9,14 +9,10 @@ from datetime import datetime
 import lib_loaders
 
 importlib.reload(lib_loaders)
-import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
 
-from lib_db_obfuscator import db_hlapi
 from lib_loaders import inc_statistics_better, load_embed_color, embed_colors, load_message_config
 
 from typing import Any, Dict, Union, List
@@ -30,12 +26,14 @@ async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed
         pass
 
 
+join_leave_user_logs: Dict[Union[str, int], Union[str, List[List[Any]]]] = {0: "sonnet_userupdate_log", "text": [["username-log", ""], ["join-log", ""], ["leave-log", ""]]}
+
+
 async def on_member_update(before: discord.Member, after: discord.Member, **kargs: Any) -> None:
 
     inc_statistics_better(before.guild.id, "on-member-update", kargs["kernel_ramfs"])
 
-    with db_hlapi(before.guild.id) as db:
-        username_log = db.grab_config("username-log")
+    username_log = load_message_config(before.guild.id, kargs["ramfs"], datatypes=join_leave_user_logs)["username-log"]
 
     if username_log and (channel := kargs["client"].get_channel(int(username_log))):
         if before.nick == after.nick:
@@ -94,39 +92,40 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
     if issues:
         asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], kargs["client"], kargs["ramfs"]))
 
-    with db_hlapi(member.guild.id) as db:
-        if joinlog := db.grab_config("join-log"):
-            if logging_channel := kargs["client"].get_channel(int(joinlog)):
+    joinlog = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_leave_user_logs)["join-log"]
 
-                embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=load_embed_color(member.guild, embed_colors.creation, kargs["ramfs"]))
-                embed.set_thumbnail(url=member.avatar_url)
+    if joinlog and (logging_channel := kargs["client"].get_channel(int(joinlog))):
 
-                embed.timestamp = datetime.utcnow()
-                embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime.utcnow().timestamp())}")
+        embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=load_embed_color(member.guild, embed_colors.creation, kargs["ramfs"]))
+        embed.set_thumbnail(url=member.avatar_url)
 
-                embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
+        embed.timestamp = datetime.utcnow()
+        embed.set_footer(text=f"uid: {member.id}, unix: {int(discord.utils.utcnow().timestamp())}")
 
-                await catch_logging_error(logging_channel, embed)
+        embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
+
+        await catch_logging_error(logging_channel, embed)
 
 
 async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
 
     inc_statistics_better(member.guild.id, "on-member-remove", kargs["kernel_ramfs"])
 
-    with db_hlapi(member.guild.id) as db:
-        if (joinlog := (db.grab_config("leave-log") or db.grab_config("join-log"))):
-            if logging_channel := kargs["client"].get_channel(int(joinlog)):
+    log_channels = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_leave_user_logs)
 
-                embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=load_embed_color(member.guild, embed_colors.deletion, kargs["ramfs"]))
-                embed.set_thumbnail(url=member.avatar_url)
+    if (joinlog := (log_channels["leave-log"] or log_channels["join-log"])):
+        if logging_channel := kargs["client"].get_channel(int(joinlog)):
 
-                embed.timestamp = datetime.utcnow()
-                embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime.utcnow().timestamp())}")
+            embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=load_embed_color(member.guild, embed_colors.deletion, kargs["ramfs"]))
+            embed.set_thumbnail(url=member.avatar_url)
 
-                embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
-                embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
+            embed.timestamp = datetime.utcnow()
+            embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime.utcnow().timestamp())}")
 
-                await catch_logging_error(logging_channel, embed)
+            embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
+            embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
+
+            await catch_logging_error(logging_channel, embed)
 
 
 category_info = {'name': 'UserUpdate'}
@@ -137,4 +136,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.6"
+version_info: str = "pre2.0.0-DEV"

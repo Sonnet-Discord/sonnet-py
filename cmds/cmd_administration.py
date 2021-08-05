@@ -221,7 +221,7 @@ commands = {
             'description': 'Change leave log, overloads join-log',
             'rich_description': 'Set the leave log, diverts leave logs from join log to leave log',
             'permission': 'administrator',
-            'cache': 'keep',
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
             'execute': leave_log_change
             },
     'join-log':
@@ -230,7 +230,7 @@ commands = {
             'description': 'Change join log',
             'rich_description': 'This log channel logs member joins and member leaves',
             'permission': 'administrator',
-            'cache': 'keep',
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
             'execute': joinlog_change
             },
     'infraction-log': {
@@ -247,13 +247,14 @@ commands = {
         'cache': 'regenerate',
         'execute': notifier_log_change
         },
-    'username-log': {
-        'pretty_name': 'username-log <channel>',
-        'description': 'Change username log',
-        'permission': 'administrator',
-        'cache': 'keep',
-        'execute': username_log_change
-        },
+    'username-log':
+        {
+            'pretty_name': 'username-log <channel>',
+            'description': 'Change username log',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
+            'execute': username_log_change
+            },
     'gdpr': {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
