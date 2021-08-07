@@ -100,7 +100,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
         embed.set_thumbnail(url=member.avatar_url)
 
         embed.timestamp = datetime.utcnow()
-        embed.set_footer(text=f"uid: {member.id}, unix: {int(discord.utils.utcnow().timestamp())}")
+        embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime.utcnow().timestamp())}")
 
         embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
 
