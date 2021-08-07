@@ -32,7 +32,7 @@ from lib_loaders import load_message_config, inc_statistics_better, read_vnum, w
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Coroutine
+from typing import List, Any, Dict, Optional, Callable, Tuple
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -457,7 +457,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
 category_info: Dict[str, str] = {'name': 'Messages'}
 
-commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {
+commands: Dict[str, Callable[..., Any]] = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,

@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives import hashes, hmac
 
 import io
 
-from typing import Generator, Tuple, Any
+from typing import Generator, Tuple, Any, Union, cast
 
 
 class errors:
@@ -22,14 +22,14 @@ class crypto_typing:
         def __init__(self) -> None:
             pass
 
-        def update(self, buf: bytes) -> bytes:
-            pass
+        def update(self, buf: Union[bytes, bytearray]) -> bytes:
+            return bytes()
 
-        def update_into(self, bufin: bytes, bufout: bytes) -> None:
+        def update_into(self, bufin: Union[bytes, bytearray], bufout: Union[bytes, bytearray]) -> None:
             pass
 
         def finalize(self) -> bytes:
-            pass
+            return bytes()
 
 
 def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
@@ -83,7 +83,7 @@ class encrypted_writer:
         self.rawfile.write(bytes(directBinNumber(dlen, 2)))
 
         # Encrypt
-        self.encryptor_module.update_into(unencrypted, self.buf)
+        self.encryptor_module.update_into(unencrypted, cast(Any, self.buf))
         memptr = memoryview(self.buf)
 
         self.rawfile.write(memptr[:dlen])

@@ -23,10 +23,10 @@ class ram_filesystem:
         pass
 
     def ls(self, *folderpath: str) -> Tuple[List[str], List[str]]:
-        pass
+        return ([], [])
 
     def tree(self, *folderpath: str) -> Tuple[List[str], Dict[str, Tuple[Any]]]:
-        pass
+        return ([], {})
 
 
 class cmd_module:

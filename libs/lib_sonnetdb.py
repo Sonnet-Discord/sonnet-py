@@ -36,7 +36,7 @@ except db_error.Error:
     raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
 
 
-def db_grab_connection() -> db_handler:
+def db_grab_connection() -> db_handler:  # pytype: disable=invalid-annotation
     global db_connection
     try:
         db_connection.ping()

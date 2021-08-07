@@ -136,7 +136,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         return message_config
 
     except FileNotFoundError:
-        message_config = {}
+        message_config: Dict[str, Any] = {}  #  type: ignore
 
         # Loads base db
         with db_hlapi(guild_id) as db:
@@ -204,7 +204,7 @@ def generate_infractionid() -> str:
         else:
             with open("datastore/wordlist.cache.db", "rb") as words:
                 chunksize = words.read(1)[0]
-                num_words = (words.seek(0, io.SEEK_END) - 1) // chunksize
+                num_words = ((words.seek(0, io.SEEK_END) or 0) - 1) // chunksize
                 values = ([random.randint(0, (num_words - 1)) for i in range(3)])
                 output = []
                 for i in values:

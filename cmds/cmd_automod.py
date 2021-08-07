@@ -25,7 +25,8 @@ from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import REGEX_VERSION
 from lib_parsers import parse_role, parse_boolean, parse_user_member
 
-from typing import Any, Dict, List, Callable, Coroutine, Final, Tuple
+from typing import Any, Dict, List, Callable, Coroutine, Tuple
+from typing import Final  # pytype: disable=import-error
 import lib_constants as constants
 
 re: Any = importlib.import_module(REGEX_VERSION)

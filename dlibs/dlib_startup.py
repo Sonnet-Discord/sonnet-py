@@ -15,7 +15,7 @@ importlib.reload(lib_loaders)
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import inc_statistics_better
 
-from typing import Dict, Callable, Any, List, Tuple, Coroutine
+from typing import Dict, Callable, Any, List, Tuple
 
 
 async def attempt_unmute(Client: discord.Client, mute_entry: Tuple[str, str, str, int]) -> None:
@@ -78,6 +78,6 @@ async def on_guild_join(guild: discord.Guild, **kargs: Any) -> None:
 
 category_info: Dict[str, str] = {'name': 'Initializers'}
 
-commands: Dict[str, Callable[..., Coroutine[Any, Any, None]]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
+commands: Dict[str, Callable[..., Any]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info: str = "1.2.6"
+version_info: str = "pre2.0.0-DEV"

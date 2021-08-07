@@ -1,7 +1,7 @@
 # Constants cause discord likes to troll us
 # Ultrabear 2021
 
-from typing import Final
+from typing import Final  # pytype: disable=import-error
 
 
 class message:
