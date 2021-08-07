@@ -37,6 +37,8 @@ async def starboard_channel_change(message: discord.Message, args: List[str], cl
 
 
 async def set_starboard_emoji(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         emoji = args[0]
@@ -50,6 +52,8 @@ async def set_starboard_emoji(message: discord.Message, args: List[str], client:
 
 
 async def set_starboard_use(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         gate = parse_boolean(args[0])
@@ -63,6 +67,8 @@ async def set_starboard_use(message: discord.Message, args: List[str], client: d
 
 
 async def set_starboard_count(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
 
@@ -125,4 +131,4 @@ commands: Dict[str, Dict[str, Any]] = {
             }
     }
 
-version_info: str = "1.2.6"
+version_info: str = "pre2.0.0-DEV"

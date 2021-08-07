@@ -50,6 +50,8 @@ def do_cache_sweep(cache: str, ramfs: lexdpyk.ram_filesystem, guild: discord.Gui
 
 
 async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     tstart: int = time.monotonic_ns()
     arguments: List[str] = message.content.split("\n")
@@ -211,6 +213,8 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
 
 
 async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     tstart: int = time.monotonic_ns()
     cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
@@ -265,6 +269,8 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
 
 async def sonnet_async_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     tstart: int = time.monotonic_ns()
     cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
@@ -355,4 +361,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.6-2"
+version_info: str = "pre2.0.0-DEV"

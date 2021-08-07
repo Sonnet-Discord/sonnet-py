@@ -89,6 +89,8 @@ async def uptime(message: discord.Message, args: List[str], client: discord.Clie
 
 
 async def print_stats(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     kernel_ramfs = kwargs["kernel_ramfs"]
 

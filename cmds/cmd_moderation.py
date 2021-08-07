@@ -33,7 +33,7 @@ import lib_lexdpyk_h as lexdpyk
 
 
 # Catches error if the bot cannot message the user
-async def catch_dm_error(user: discord.User, contents: str, log_channel: discord.TextChannel) -> None:
+async def catch_dm_error(user: discord.User, contents: discord.Embed, log_channel: Optional[discord.TextChannel]) -> None:
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
@@ -54,10 +54,18 @@ async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextCha
             pass
 
 
+# Defines an error that somehow log_infraction was called without a guild
+# Should never really happen so its a easter egg now ig
+class GuildScopeError(Exception):
+    pass
+
+
 # Sends an infraction to database and log channels if user exists
 async def log_infraction(
     message: discord.Message, client: discord.Client, user: discord.User, moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
     ) -> Tuple[str, Optional[Awaitable[None]]]:
+    if not message.guild:
+        raise GuildScopeError("How did we even get here")
 
     timestamp = datetime.utcnow()  # Infraction timestamp
 
@@ -76,15 +84,17 @@ async def log_infraction(
             chan: int = int(db.grab_config("infraction-log") or "0")
         except ValueError:
             chan = 0
-        log_channel = client.get_channel(chan)
+
+        c = client.get_channel(chan)
+        log_channel = c if isinstance(c, discord.TextChannel) else None
 
         # Send infraction to database
-        db.add_infraction(generated_id, user.id, moderator.id, infraction_type, infraction_reason, int(timestamp.timestamp()))
+        db.add_infraction(generated_id, str(user.id), str(moderator.id), infraction_type, infraction_reason, int(timestamp.timestamp()))
 
     if log_channel:
 
         log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
-        log_embed.set_thumbnail(url=user.avatar_url)
+        log_embed.set_thumbnail(url=cast(str, user.avatar_url))
         log_embed.add_field(name="Infraction ID", value=generated_id)
         log_embed.add_field(name="Moderator", value=moderator.mention)
         log_embed.add_field(name="User", value=user.mention)
@@ -99,7 +109,7 @@ async def log_infraction(
         return generated_id, None
 
     dm_embed = discord.Embed(title="Sonnet", description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
-    dm_embed.set_thumbnail(url=user.avatar_url)
+    dm_embed.set_thumbnail(url=cast(str, user.avatar_url))
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
@@ -122,11 +132,13 @@ async def process_infraction(message: discord.Message,
                              infraction_type: str,
                              ramfs: lexdpyk.ram_filesystem,
                              infraction: bool = True,
-                             automod: bool = False) -> Tuple[discord.Member, discord.User, str, str, Optional[Awaitable[None]]]:
+                             automod: bool = False) -> Tuple[Optional[discord.Member], discord.User, str, str, Optional[Awaitable[None]]]:
+    if not message.guild or not isinstance(message.author, discord.Member):
+        raise InfractionGenerationError("User is not member, or no guild")
 
     reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
-    moderator: discord.User = client.user if automod else message.author
+    moderator = cast(discord.User, client.user if automod else message.author)
 
     # Test if user is valid
     try:
@@ -179,6 +191,8 @@ async def note_user(message: discord.Message, args: List[str], client: discord.C
 
 
 async def kick_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", kwargs["ramfs"], automod=kwargs["automod"])
@@ -202,6 +216,8 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
 
 
 async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", kwargs["ramfs"], automod=kwargs["automod"])
@@ -220,6 +236,8 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
 
 
 async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "unban", kwargs["ramfs"], infraction=False, automod=kwargs["automod"])
@@ -244,14 +262,15 @@ class NoMuteRole(Exception):
 
 
 async def grab_mute_role(message: discord.Message, ramfs: lexdpyk.ram_filesystem) -> discord.Role:
+    if not message.guild:
+        raise NoMuteRole("No guild table to find mute role")
 
     with db_hlapi(message.guild.id) as db:
-        if (mute_role := db.grab_config("mute-role")):
-            if (mute_role := message.guild.get_role(int(mute_role))):
-                return mute_role
-            else:
-                await message.channel.send("ERROR: no muterole set")
-                raise NoMuteRole("No mute role")
+        mute_role = db.grab_config("mute-role")
+
+        if mute_role and (mute_role_obj := message.guild.get_role(int(mute_role))):
+            return mute_role_obj
+
         else:
             await message.channel.send("ERROR: no muterole set")
             raise NoMuteRole("No mute role")
@@ -273,6 +292,8 @@ async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infract
 
 
 async def mute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     # Grab mute time
     if len(args) >= 2:
@@ -324,6 +345,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
 
 async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         mute_role = await grab_mute_role(message, kwargs["ramfs"])
@@ -350,6 +373,8 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
 
 async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     tstart = time.monotonic()
 
@@ -470,6 +495,8 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
 
 async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -502,6 +529,8 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
 
 
 async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -539,10 +568,16 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
 
 async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         discord_message, _ = await parse_channel_message(message, args, client)
     except lib_parsers.errors.message_parse_failure:
+        return 1
+
+    if not discord_message.guild:
+        await message.channel.send("ERROR: Message not in any guild")
         return 1
 
     # Generate replies
@@ -551,7 +586,7 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     # Message has been grabbed, start generating embed
     message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
 
-    message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
+    message_embed.set_author(name=str(discord_message.author), icon_url=str(discord_message.author.avatar_url))
     message_embed.timestamp = discord_message.created_at
 
     # Grab files from cache
@@ -612,7 +647,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         return 1
 
     try:
-        await message.channel.purge(limit=limit, check=ucheck)
+        await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
     except discord.errors.Forbidden:
         await message.channel.send("ERROR: Bot lacks perms to purge")
         return 1

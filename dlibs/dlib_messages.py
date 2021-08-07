@@ -32,12 +32,12 @@ from lib_loaders import load_message_config, inc_statistics_better, read_vnum, w
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 
-from typing import List, Any, Dict, Optional, Callable, Tuple
+from typing import List, Any, Dict, Optional, Callable, Tuple, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
 
-async def catch_logging_error(channel: discord.TextChannel, contents: str, files: Optional[List[discord.File]]) -> None:
+async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]]) -> None:
     try:
         await channel.send(embed=contents, files=files)
     except discord.errors.Forbidden:
@@ -131,6 +131,8 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     # Ignore bots
     if parse_skip_message(client, message):
         return
+    elif not message.guild:
+        return
 
     inc_statistics_better(message.guild.id, "on-message-edit", kernel_ramfs)
 
@@ -145,7 +147,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             lim: int = constants.embed.field.value
 
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, ramfs))
-            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
+            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=cast(str, message.author.avatar_url))
 
             old_msg = (old_message.content or "NULL")
             message_embed.add_field(name="Old Message", value=(old_msg)[:lim], inline=False)
@@ -175,6 +177,8 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
 
 def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, str]:
+    if not message.guild:
+        raise RuntimeError("How did we end up here? Basically antispam_check was called on a dm message, oops")
 
     userid = message.author.id
 
@@ -263,7 +267,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
     return (False, "")
 
 
-async def download_file(nfile: discord.File, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
+async def download_file(nfile: discord.Attachment, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
     await nfile.save(compression, seek_begin=False)
     compression.close()
@@ -281,7 +285,7 @@ async def download_file(nfile: discord.File, compression: Any, encryption: Any, 
         pass
 
 
-def download_single_file(discord_file: discord.File, filename: str, key: bytes, iv: bytes, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
+def download_single_file(discord_file: discord.Attachment, filename: str, key: bytes, iv: bytes, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
     encryption_fileobj = encrypted_writer(filename, key, iv)
 
@@ -291,6 +295,8 @@ def download_single_file(discord_file: discord.File, filename: str, key: bytes, 
 
 
 async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
+    if not message.guild:
+        return
 
     for i in message.attachments:
 
@@ -307,10 +313,10 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
 
         pointerfile = kernel_ramfs.create_f(f"{ramfs_path}/pointer")
         pointer = hashlib.sha256(fname + key + iv).hexdigest()
-        file_loc = f"./datastore/{message.channel.guild.id}-{pointer}.cache.db"
+        file_loc = f"./datastore/{message.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 
-        download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.channel.guild.id, message.id])
+        download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.guild.id, message.id])
 
 
 async def on_message(message: discord.Message, **kargs: Any) -> None:
@@ -330,6 +336,8 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     stats: Dict[str, int] = {"start": round(time.time() * 100000)}
 
     if parse_skip_message(client, message):
+        return
+    elif not message.guild:
         return
 
     inc_statistics_better(message.guild.id, "on-message", kernel_ramfs)
@@ -463,4 +471,4 @@ commands: Dict[str, Callable[..., Any]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.6"
+version_info: str = "pre2.0.0-DEV"

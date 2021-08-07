@@ -29,7 +29,7 @@ from lib_parsers import parse_permissions, parse_boolean, parse_user_member
 from lib_loaders import load_embed_color, embed_colors
 import lib_constants as constants
 
-from typing import List, Any
+from typing import List, Any, Optional, cast
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -42,6 +42,8 @@ def ctime(t: float) -> int:
 
 
 async def ping_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     stats = kwargs["stats"]
 
@@ -61,11 +63,16 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
     await sent_message.edit(embed=ping_embed)
 
 
-def parsedate(indata: datetime) -> str:
-    return f"{time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())} ({(datetime.utcnow() - indata).days} days ago)"
+def parsedate(indata: Optional[datetime]) -> str:
+    if indata:
+        return f"{time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())} ({(datetime.utcnow() - indata).days} days ago)"
+    else:
+        return "ERROR: Could not fetch this date"
 
 
 async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         user, member = await parse_user_member(message, args, client, default_self=True)
@@ -76,9 +83,9 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
 
     embed = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-    embed.set_thumbnail(url=user.avatar_url)
+    embed.set_thumbnail(url=cast(str, user.avatar_url))
     embed.add_field(name="Username", value=str(user), inline=True)
-    embed.add_field(name="User ID", value=user.id, inline=True)
+    embed.add_field(name="User ID", value=str(user.id), inline=True)
     if member:
         embed.add_field(name="Status", value=status_map[member.raw_status], inline=True)
         embed.add_field(name="Highest Rank", value=f"{member.top_role.mention}", inline=True)
@@ -102,6 +109,8 @@ async def profile_function(message: discord.Message, args: List[str], client: di
 
 
 async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         user, _ = await parse_user_member(message, args, client, default_self=True)
@@ -109,7 +118,7 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
         return 1
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-    embed.set_image(url=user.avatar_url)
+    embed.set_image(url=cast(str, user.avatar_url))
     embed.timestamp = datetime.utcnow()
     try:
         await message.channel.send(embed=embed)
@@ -119,6 +128,8 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
 
 
 async def help_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     helpname: str = "Sonnet Help"
 
@@ -242,20 +253,23 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
 
 async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     guild = message.guild
 
     embed_col = load_embed_color(guild, embed_colors.primary, kwargs["ramfs"])
 
     guild_embed = discord.Embed(title=f"Information on {guild}", color=embed_col)
-    guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
+    if guild.owner:
+        guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
     guild_embed.add_field(name="# of Roles:", value=f"{len(guild.roles)} Roles")
     guild_embed.add_field(name="Top Role:", value=guild.roles[-1].mention)
     guild_embed.add_field(name="Member Count:", value=str(guild.member_count))
     guild_embed.add_field(name="Creation Date:", value=parsedate(guild.created_at))
 
     guild_embed.set_footer(text=f"gid: {guild.id}")
-    guild_embed.set_thumbnail(url=guild.icon_url)
+    guild_embed.set_thumbnail(url=cast(str, guild.icon_url))
 
     try:
         await message.channel.send(embed=guild_embed)
@@ -352,4 +366,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.6"
+version_info: str = "pre2.0.0-DEV"
