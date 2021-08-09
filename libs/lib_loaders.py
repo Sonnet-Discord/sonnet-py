@@ -5,7 +5,7 @@ import importlib
 
 import discord
 
-import random, os, ctypes, time, io, json, pickle, threading, warnings
+import random, ctypes, time, io, json, pickle, threading, warnings
 import subprocess
 
 import lib_db_obfuscator
@@ -28,7 +28,7 @@ import lib_lexdpyk_h as lexdpyk
 
 class DotHeaders:
 
-    version = "1.2.3-DEV.0"
+    version = "2.0.0-DEV.0"
 
     class cdef_load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
@@ -193,15 +193,22 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
 
 # Generate an infraction id from the wordlist cache format
 def generate_infractionid() -> str:
-    if os.path.isfile("datastore/wordlist.cache.db"):
+
+    try:
         if clib_exists:
+
             buf = bytes(256 * 3)
             safe = loader.load_words(b"datastore/wordlist.cache.db\x00", 3, (int(time.time() * 1000000) % (2**32)), buf, len(buf))
+
             if safe == 0:
                 return buf.rstrip(b"\x00").decode("utf8")
+            elif safe == 2:
+                raise FileNotFoundError("No such file")
             else:
                 raise RuntimeError("Wordlist generator received fatal status")
+
         else:
+
             with open("datastore/wordlist.cache.db", "rb") as words:
                 chunksize = words.read(1)[0]
                 num_words = ((words.seek(0, io.SEEK_END) or 0) - 1) // chunksize
@@ -213,10 +220,14 @@ def generate_infractionid() -> str:
 
             return "".join(output)
 
-    else:
+    except FileNotFoundError:
         # Call go lib to handle this for us
         GenerateCacheFile("common/wordlist.txt", "datastore/wordlist.cache.db")
         return generate_infractionid()
+
+    except RecursionError:
+        # This means through some edge case we kept on generating the cache file and not having it be there
+        raise RuntimeError("RecursionError on trying to get an infraction id, check filepath names")
 
 
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:

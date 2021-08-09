@@ -9,7 +9,7 @@ int load_words ( char* filename, int retamount, unsigned int seed, char* pointer
 
 	// Exit if file does not exist
 	if ( fp == NULL ) {
-		return 1;
+		return 2; // Return 2 on file not exist errors, 1 on general errors
 	}
 
 	// Grab length of file
@@ -39,6 +39,7 @@ int load_words ( char* filename, int retamount, unsigned int seed, char* pointer
 		fgets(buf, getamnt, fp);
 
 		// Only add to buffer if it has space
+		// TODO(ultrabear): make this use length prefix strings instead of using strlen and strcat (slow)
 		if ( strlen(buf) + strlen(pointer) < pointer_length ) {
 			strcat(pointer, buf);
 		}
