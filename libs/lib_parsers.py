@@ -185,7 +185,7 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
     Update logging channel db config with name log_name
     Handles exceptions into one exception
 
-    :raises: errors.log_channel_update_error
+    :raises: errors.log_channel_update_error - Updating the channel failed
     """
 
     if args:
@@ -215,6 +215,10 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
         await message.channel.send(constants.sonnet.error_channel.invalid)
+        raise errors.log_channel_update_error("Channel is not a valid channel")
+
+    if not isinstance(discord_channel, discord.TextChannel):
+        await message.channel.send(constants.sonnet.error_channel.wrongType)
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
     if discord_channel.guild.id != message.channel.guild.id:

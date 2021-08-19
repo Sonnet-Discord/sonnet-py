@@ -31,6 +31,7 @@ class sonnet:
     class error_channel:
         none: Final[str] = "ERROR: No channel supplied"
         invalid: Final[str] = "ERROR: Channel is not a valid channel"
+        wrongType: Final[str] = "ERROR: Channel is not the correct type"
         scope: Final[str] = "ERROR: Channel is not in guild"
 
     class error_role:
