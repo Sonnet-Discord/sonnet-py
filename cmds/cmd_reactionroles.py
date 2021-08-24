@@ -319,4 +319,4 @@ commands = {
             },
     }
 
-version_info: str = "pre2.0.0-DEV"
+version_info: str = "1.2.7"

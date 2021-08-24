@@ -480,4 +480,4 @@ commands: Dict[str, Callable[..., Any]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "pre2.0.0-DEV"
+version_info: str = "1.2.7"
