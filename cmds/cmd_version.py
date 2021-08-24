@@ -76,7 +76,7 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
 
     fmt.write(f"\nC  accel: {DotHeaders.version}={clib_exists}\n")
 
-    fmt.write(f"Go accel: {lib_goparsers.hascompiled}\n")
+    fmt.write(f"Go accel: {lib_goparsers.GetVersion()}={lib_goparsers.hascompiled}\n")
 
     fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n```")
 

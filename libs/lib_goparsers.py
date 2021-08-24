@@ -71,6 +71,15 @@ def _FromString(s: str) -> _GoString:
     return _GoString(byte, len(byte))
 
 
+def GetVersion() -> str:
+    """
+    Returns goparsers underlying version string
+
+    :Returns: str - goparsers version
+    """
+    return _version
+
+
 def GenerateCacheFile(fin: str, fout: str) -> None:
     """
     Generates a sonnet wordlist cache file using a go library
