@@ -28,12 +28,12 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
 import lib_constants as constants
 
-from typing import List, Tuple, Any, Awaitable, Optional, Callable, cast
+from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
 import lib_lexdpyk_h as lexdpyk
 
 
 # Catches error if the bot cannot message the user
-async def catch_dm_error(user: discord.User, contents: discord.Embed, log_channel: Optional[discord.TextChannel]) -> None:
+async def catch_dm_error(user: Union[discord.User, discord.Member], contents: discord.Embed, log_channel: Optional[discord.TextChannel]) -> None:
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
@@ -62,7 +62,7 @@ class GuildScopeError(Exception):
 
 # Sends an infraction to database and log channels if user exists
 async def log_infraction(
-    message: discord.Message, client: discord.Client, user: discord.User, moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
+    message: discord.Message, client: discord.Client, user: Union[discord.User, discord.Member], moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
     ) -> Tuple[str, Optional[Awaitable[None]]]:
     if not message.guild:
         raise GuildScopeError("How did we even get here")
@@ -132,7 +132,7 @@ async def process_infraction(message: discord.Message,
                              infraction_type: str,
                              ramfs: lexdpyk.ram_filesystem,
                              infraction: bool = True,
-                             automod: bool = False) -> Tuple[Optional[discord.Member], discord.User, str, str, Optional[Awaitable[None]]]:
+                             automod: bool = False) -> Tuple[Optional[discord.Member], Union[discord.User, discord.Member], str, str, Optional[Awaitable[None]]]:
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
 

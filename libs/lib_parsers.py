@@ -55,6 +55,9 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
     """
     message, blacklist, ramfs = indata
 
+    if not message.guild:
+        return False, False, []
+
     # Preset values
     broke_blacklist = False
     notifier = False
@@ -82,11 +85,9 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
 
-    # So basically message.author.guild can just attr error instead of returning None, what the shit
-    try:
-        message.author.guild
-    except AttributeError:
-        return (False, False, [])
+    # Check that member is still part of guild (yes this is a race cond that happens)
+    if not isinstance(message.author, discord.Member):
+        return False, False, []
 
     # If in whitelist, skip parse to save resources
     if message.author.guild and blacklist["blacklist-whitelist"] and int(blacklist["blacklist-whitelist"]) in [i.id for i in message.author.roles]:
@@ -188,6 +189,12 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
     :raises: errors.log_channel_update_error - Updating the channel failed
     """
 
+    if not message.guild:
+        raise errors.log_channel_update_error("ERROR: No guild")
+
+    if not isinstance(message.channel, discord.TextChannel):
+        raise errors.log_channel_update_error("ERROR: Wrong channel context")
+
     if args:
         log_channel_str = args[0].strip("<#!>")
     else:
@@ -221,6 +228,7 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
         await message.channel.send(constants.sonnet.error_channel.wrongType)
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
+
     if discord_channel.guild.id != message.channel.guild.id:
         await message.channel.send(constants.sonnet.error_channel.scope)
         raise errors.log_channel_update_error("Channel is not in guild")
@@ -232,8 +240,8 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
     if verbose: await message.channel.send(f"Successfully updated {log_name}")
 
 
-def _parse_role_perms(message: discord.Message, permrole: discord.Role) -> bool:
-    return permrole and bool([i.id for i in message.author.roles if int(permrole) == i.id])
+def _parse_role_perms(author: discord.Member, permrole: str) -> bool:
+    return bool(permrole and bool([i.id for i in author.roles if int(permrole) == i.id]))
 
 
 Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
@@ -248,7 +256,11 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
     :returns: bool
     """
 
-    if not message.author.guild:
+    if not isinstance(message.channel, discord.TextChannel):
+        # Perm check called outside a guild
+        return False
+
+    if not isinstance(message.author, discord.Member):
         if verbose:
             await message.channel.send(
                 "CAUGHT ERROR: Attempted permission check on a non member object\n(This can happen if a member that is using a command leaves the server before the permission check is completed)"
@@ -259,16 +271,18 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
     if perms == "everyone":
         you_shall_pass = True
     elif perms == "moderator":
-        default = message.author.permissions_in(message.channel).ban_members
-        modperm = (message, mconf["moderator-role"])
-        adminperm = (message, mconf["admin-role"])
+        default = message.channel.permissions_for(message.author).ban_members
+        modperm = (message.author, mconf["moderator-role"])
+        adminperm = (message.author, mconf["admin-role"])
         you_shall_pass = default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm)
     elif perms == "administrator":
-        default = message.author.permissions_in(message.channel).administrator
-        adminperm = (message, mconf["admin-role"])
+        default = message.channel.permissions_for(message.author).administrator
+        adminperm = (message.author, mconf["admin-role"])
         you_shall_pass = default or _parse_role_perms(*adminperm)
     elif perms == "owner":
-        you_shall_pass = message.author.id == message.channel.guild.owner.id
+        # If we cant check the owner then skip it
+        if message.guild and message.guild.owner:
+            you_shall_pass = message.author.id == message.guild.owner.id
     elif isinstance(perms, (tuple, list)):
         you_shall_pass = perms[1](message)
         perms = perms[0]
@@ -369,7 +383,7 @@ def generate_reply_field(message: discord.Message) -> str:
 
     # Generate replies
     jump = f"\n\n[(Link)]({message.jump_url})"
-    if (r := message.reference) and (rr := r.resolved):
+    if (r := message.reference) and (rr := r.resolved) and isinstance(rr, discord.Message):
         reply_contents = "> {} {}".format(rr.author.mention, rr.content.replace("\n", " ")) + "\n"
         if len(reply_contents) >= mini_lim:
             reply_contents = reply_contents[:mini_lim - 4] + "...\n"
@@ -391,6 +405,10 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
 
     :returns: int -- The success state of adding the role to the db, 0 being no error
     """
+
+    if not message.guild:
+        await message.channel.send("ERROR: Could not resolve guild")
+        return 1
 
     if args:
         role_str: str = args[0].strip("<@&>")
@@ -421,7 +439,7 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        db.add_config(db_entry, role.id)
+        db.add_config(db_entry, str(role.id))
 
     if verbose: await message.channel.send(f"Updated {db_entry} to {role}")
 
@@ -436,6 +454,10 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
     :returns: Tuple[discord.Message, int] -- The message and the amount of args the message grabbing took
     :raises: errors.message_parse_failure -- The message did not exist or the function had invalid inputs
     """
+
+    if not message.guild:
+        await message.channel.send("ERROR: Not a guild message")
+        raise errors.message_parse_failure("ERROR: Not a guild message")
 
     try:
         message_link = args[0].replace("-", "/").split("/")
@@ -462,7 +484,11 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
         await message.channel.send(constants.sonnet.error_channel.invalid)
         raise errors.message_parse_failure
 
-    if discord_channel.guild.id != message.channel.guild.id:
+    if not isinstance(discord_channel, discord.TextChannel):
+        await message.channel.send(constants.sonnet.error_channel.scope)
+        raise errors.message_parse_failure
+
+    if discord_channel.guild.id != message.guild.id:
         await message.channel.send(constants.sonnet.error_channel.scope)
         raise errors.message_parse_failure
 
@@ -479,7 +505,7 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
     return (discord_message, nargs)
 
 
-async def parse_user_member(message: discord.Message, args: List[str], client: discord.Client, argindex: int = 0, default_self: bool = False) -> Tuple[discord.User, Optional[discord.Member]]:
+async def parse_user_member(message: discord.Message, args: List[str], client: discord.Client, argindex: int = 0, default_self: bool = False) -> Tuple[Union[discord.Member, discord.User], Optional[discord.Member]]:
     """
     Parse a user and member object from a potential user string
     Always returns a user, only returns member if the user is in the guild
@@ -489,8 +515,11 @@ async def parse_user_member(message: discord.Message, args: List[str], client: d
     :raises: errors.user_parse_error -- Could not find the user or input invalid
     """
 
-    member: discord.Member
-    user: discord.User
+    if not message.guild or not isinstance(message.author, discord.Member):
+        raise errors.user_parse_error("Not a guild message")
+
+    member: Optional[discord.Member]
+    user: Optional[Union[discord.User, discord.Member]]
 
     try:
         member = message.guild.get_member(int(args[argindex].strip("<@!>")))
