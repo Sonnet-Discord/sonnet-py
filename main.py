@@ -748,7 +748,7 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.3.5"
+version_info: str = "LeXdPyK 1.3.5-DEV"
 bot_start_time: float = time.time()
 
 # Start bot
