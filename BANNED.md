@@ -24,7 +24,10 @@ None of the things listed below should happen in Sonnet.
 - Do not use `string1 + string2` operations often, they are slow and eat ram 
   - (tl;dr it has to allocate a new string that is the length of both strings combined, eating ram and being slow with lots of small mallocs)
   - Use StringIO() or str.join() instead, with fstrings for readability
-	  - Combine all 3 `buf.write("\n".join([f"item {i} is {v}" for i, v in enumerate(data)]))`
+    - Combine all 3 `buf.write("\n".join([f"item {i} is {v}" for i, v in enumerate(data)]))`
+  - Exceptions:
+    - If you are only adding 2 strings together _once_, it is faster to add them than to get the overhead of a builder or fstring
+    - Everything has a use, somewhere
 # Basic Heresy
 - Do not use eval:
 ```py
