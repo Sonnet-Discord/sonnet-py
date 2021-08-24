@@ -59,6 +59,8 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     # Ignore bots
     if parse_skip_message(client, message):
         return
+    elif not message.guild:
+        return
 
     files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kernel_ramfs, delete=True)
 
@@ -69,6 +71,9 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
         message_log = db.grab_config("message-log")
 
     if message_log and (log_channel := client.get_channel(int(message_log))):
+
+        if not isinstance(log_channel, discord.TextChannel):
+            return
 
         message_embed = discord.Embed(
             title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, ramfs)
@@ -83,9 +88,9 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
                 flimend = limend + constants.embed.field.value
                 message_embed.add_field(name="(Continued further)", value=message.content[limend:flimend])
 
-        message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.avatar_url)
+        message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=str(message.author.avatar_url))
 
-        if (r := message.reference) and (rr := r.resolved):
+        if (r := message.reference) and (rr := r.resolved) and isinstance(rr, discord.Message):
             message_embed.add_field(name="Replying to:", value=f"{rr.author.mention} [(Link)]({rr.jump_url})")
 
         message_embed.set_footer(text=f"Message ID: {message.id}")
@@ -101,18 +106,19 @@ async def attempt_message_delete(message: discord.Message) -> None:
         pass
 
 
-async def grab_an_adult(discord_message: discord.Message, client: discord.Client, mconf: Dict[str, Any], ramfs: lexdpyk.ram_filesystem) -> None:
+async def grab_an_adult(discord_message: discord.Message, guild: discord.Guild, client: discord.Client, mconf: Dict[str, Any], ramfs: lexdpyk.ram_filesystem) -> None:
 
     if mconf["regex-notifier-log"] and (notify_log := client.get_channel(int(mconf["regex-notifier-log"]))):
+
+        if not isinstance(notify_log, discord.TextChannel):
+            return
 
         message_content = generate_reply_field(discord_message)
 
         # Message has been grabbed, start generating embed
-        message_embed = discord.Embed(
-            title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(discord_message.guild, embed_colors.primary, ramfs)
-            )
+        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(guild, embed_colors.primary, ramfs))
 
-        message_embed.set_author(name=discord_message.author, icon_url=discord_message.author.avatar_url)
+        message_embed.set_author(name=str(discord_message.author), icon_url=str(discord_message.author.avatar_url))
         message_embed.timestamp = discord_message.created_at
 
         # Grab files async
@@ -138,11 +144,14 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
-        message_log = db.grab_config("message-edit-log") or db.grab_config("message-log")
+        message_log_str = db.grab_config("message-edit-log") or db.grab_config("message-log")
 
     # Skip logging if message is the same or mlog doesnt exist
-    if message_log and not (old_message.content == message.content):
-        if message_log := client.get_channel(int(message_log)):
+    if message_log_str and not (old_message.content == message.content):
+        if message_log := client.get_channel(int(message_log_str)):
+
+            if not isinstance(message_log, discord.TextChannel):
+                return
 
             lim: int = constants.embed.field.value
 
@@ -173,7 +182,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
         await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True)
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, client, mconf, kargs["ramfs"]))
+        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kargs["ramfs"]))
 
 
 def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, str]:
@@ -371,7 +380,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
                 asyncio.create_task(command_modules_dict["mute"]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True))
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, client, mconf, ramfs))
+        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
 
     stats["end-automod"] = round(time.time() * 100000)
 

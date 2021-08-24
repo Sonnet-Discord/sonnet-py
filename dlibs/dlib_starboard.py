@@ -30,11 +30,11 @@ starboard_types: Dict[Union[str, int], Any] = {
 
 async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **kargs: Any) -> None:
 
-    # Skip if not a guild
-    if not reaction.message.guild:
-        return
-
     message = reaction.message
+
+    # Skip if not a guild
+    if not message.guild:
+        return
 
     inc_statistics_better(message.guild.id, "on-reaction-add", kargs["kernel_ramfs"])
     mconf = load_message_config(message.guild.id, kargs["ramfs"], datatypes=starboard_types)
@@ -60,7 +60,7 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
                         if any([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
                             starboard_embed.set_image(url=i.url)
 
-                    starboard_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
+                    starboard_embed.set_author(name=str(message.author), icon_url=str(message.author.avatar_url))
                     starboard_embed.timestamp = message.created_at
                     starboard_embed.set_footer(text=f"#{message.channel}")
 
@@ -76,4 +76,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info: str = "1.2.6"
+version_info: str = "pre2.0.0-DEV"

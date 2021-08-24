@@ -25,7 +25,7 @@ import lib_constants as constants
 
 from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, cast
 
 starboard_types: Dict[Union[str, int], Any] = {
     0: "sonnet_starboard",
@@ -111,6 +111,10 @@ async def force_starboard(message: discord.Message, args: List[str], client: dis
 
     if (channel_id := mconf["starboard-channel"]) and (channel := client.get_channel(int(channel_id))):
 
+        if not isinstance(channel, discord.TextChannel):
+            await message.channel.send("ERROR: Starboard channel is not a TextChannel")
+            return 1
+
         with db_hlapi(message.guild.id) as db:
             db.inject_enum("starboard", [
                 ("messageID", str),
@@ -129,7 +133,7 @@ async def force_starboard(message: discord.Message, args: List[str], client: dis
             if any([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
                 starboard_embed.set_image(url=i.url)
 
-        starboard_embed.set_author(name=starmessage.author, icon_url=starmessage.author.avatar_url)
+        starboard_embed.set_author(name=str(starmessage.author), icon_url=cast(str, starmessage.author.avatar_url))
         starboard_embed.timestamp = starmessage.created_at
         starboard_embed.set_footer(text=f"#{starmessage.channel}")
 
