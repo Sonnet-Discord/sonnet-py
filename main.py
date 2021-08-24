@@ -110,7 +110,7 @@ class ram_filesystem:
             if dirstr is not None:
                 make_dir: List[str] = dirstr.split("/")
             else:
-                raise ValueError("No dirstr or dirlist passed")
+                raise TypeError("No dirstr or dirlist passed")
         else:
             make_dir = dirlist
 
@@ -130,7 +130,7 @@ class ram_filesystem:
             if dirstr is not None:
                 remove_item: List[str] = dirstr.split("/")
             else:
-                raise ValueError("No dirstr or dirlist passed")
+                raise TypeError("No dirstr or dirlist passed")
         else:
             remove_item = dirlist
 
@@ -149,7 +149,7 @@ class ram_filesystem:
             if dirstr is not None:
                 file_to_open: List[str] = dirstr.split("/")
             else:
-                raise ValueError("No dirstr or dirlist passed")
+                raise TypeError("No dirstr or dirlist passed")
         else:
             file_to_open = dirlist
 
@@ -170,7 +170,7 @@ class ram_filesystem:
             if dirstr is not None:
                 file_to_write: List[str] = dirstr.split("/")
             else:
-                raise ValueError("No dirstr or dirlist passed")
+                raise TypeError("No dirstr or dirlist passed")
         else:
             file_to_write = dirlist
 
@@ -191,7 +191,7 @@ class ram_filesystem:
             if dirstr is not None:
                 directory_to_delete: List[str] = dirstr.split("/")
             else:
-                raise ValueError("No dirstr or dirlist passed")
+                raise TypeError("No dirstr or dirlist passed")
         else:
             directory_to_delete = dirlist
 
@@ -212,7 +212,7 @@ class ram_filesystem:
                     if dirstr is not None:
                         folderpath: List[str] = dirstr.split("/")
                     else:
-                        raise ValueError("No dirstr or dirlist passed")
+                        raise TypeError("No dirstr or dirlist passed")
                 else:
                     folderpath = dirlist
 
@@ -233,7 +233,7 @@ class ram_filesystem:
                     if dirstr is not None:
                         folderpath: List[str] = dirstr.split("/")
                     else:
-                        raise ValueError("No dirstr or dirlist passed")
+                        raise TypeError("No dirstr or dirlist passed")
                 else:
                     folderpath = dirlist
 
