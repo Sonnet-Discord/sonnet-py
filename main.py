@@ -8,7 +8,7 @@ import os, importlib, sys, io, time, traceback
 import glob, json, hashlib, logging, getpass, datetime
 
 # Import typing support
-from typing import List, Optional, Any, Tuple, Dict, Union
+from typing import List, Optional, Any, Tuple, Dict, Union, Type
 
 # Start Discord.py
 import discord, asyncio
@@ -103,26 +103,39 @@ class ram_filesystem:
     def __enter__(self) -> "ram_filesystem":
         return self
 
-    def mkdir(self, make_dir_str: str) -> Any:
+    def mkdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
 
         # Make fs list
-        make_dir: List[str] = make_dir_str.split("/")
+        if dirlist is None:
+            if dirstr is not None:
+                make_dir: List[str] = dirstr.split("/")
+            else:
+                raise ValueError("No dirstr or dirlist passed")
+        else:
+            make_dir = dirlist
 
         # If the current dir doesnt exist then create it
-        if not (make_dir[0] in self.directory_table.keys()):
+        if not (make_dir[0] in self.directory_table):
             self.directory_table[make_dir[0]] = ram_filesystem()
 
         # If there is more directory left then keep going
         if len(make_dir) > 1:
-            return self.directory_table[make_dir[0]].mkdir("/".join(make_dir[1:]))
+            return self.directory_table[make_dir[0]].mkdir(dirlist=make_dir[1:])
         else:
             return self
 
-    def remove_f(self, remove_item_str: str) -> Any:
+    def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        remove_item: List[str] = remove_item_str.split("/")
+        if dirlist is None:
+            if dirstr is not None:
+                remove_item: List[str] = dirstr.split("/")
+            else:
+                raise ValueError("No dirstr or dirlist passed")
+        else:
+            remove_item = dirlist
+
         if len(remove_item) > 1:
-            return self.directory_table[remove_item[0]].remove_f("/".join(remove_item[1:]))
+            return self.directory_table[remove_item[0]].remove_f(dirlist=remove_item[1:])
         else:
             try:
                 del self.data_table[remove_item[0]]
@@ -130,70 +143,107 @@ class ram_filesystem:
             except KeyError:
                 raise FileNotFoundError("File does not exist")
 
-    def read_f(self, file_to_open_str: str) -> Any:
+    def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        file_to_open: List[str] = file_to_open_str.split("/")
+        if dirlist is None:
+            if dirstr is not None:
+                file_to_open: List[str] = dirstr.split("/")
+            else:
+                raise ValueError("No dirstr or dirlist passed")
+        else:
+            file_to_open = dirlist
+
         try:
             if len(file_to_open) > 1:
-                return self.directory_table[file_to_open[0]].read_f("/".join(file_to_open[1:]))
+                return self.directory_table[file_to_open[0]].read_f(dirlist=file_to_open[1:])
             else:
                 return self.data_table[file_to_open[0]]
         except KeyError:
             raise FileNotFoundError("File does not exist")
 
-    def create_f(self, file_to_write_str: str, f_type: Optional[type] = None, f_args: Optional[List[Any]] = None) -> Any:
+    def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Any]] = None, f_args: Optional[List[Any]] = None) -> Any:
 
         f_type = io.BytesIO if f_type is None else f_type
         f_args = [] if f_args is None else f_args
 
-        file_to_write: List[str] = file_to_write_str.split("/")
+        if dirlist is None:
+            if dirstr is not None:
+                file_to_write: List[str] = dirstr.split("/")
+            else:
+                raise ValueError("No dirstr or dirlist passed")
+        else:
+            file_to_write = dirlist
+
         if len(file_to_write) > 1:
             try:
-                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]), f_type=f_type, f_args=f_args)
+                return self.directory_table[file_to_write[0]].create_f(dirlist=file_to_write[1:], f_type=f_type, f_args=f_args)
             except KeyError:
                 self.mkdir("/".join(file_to_write[:-1]))
-                return self.directory_table[file_to_write[0]].create_f("/".join(file_to_write[1:]), f_type=f_type, f_args=f_args)
+                return self.directory_table[file_to_write[0]].create_f(dirlist=file_to_write[1:], f_type=f_type, f_args=f_args)
         else:
             self.data_table[file_to_write[0]] = f_type(*f_args)
 
         return self.data_table[file_to_write[0]]
 
-    def rmdir(self, directory_to_delete_str: str) -> None:
+    def rmdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
 
-        directory_to_delete: List[str] = directory_to_delete_str.split("/")
+        if dirlist is None:
+            if dirstr is not None:
+                directory_to_delete: List[str] = dirstr.split("/")
+            else:
+                raise ValueError("No dirstr or dirlist passed")
+        else:
+            directory_to_delete = dirlist
+
         try:
             if len(directory_to_delete) > 1:
-                self.directory_table[directory_to_delete[0]].rmdir("/".join(directory_to_delete[1:]))
+                self.directory_table[directory_to_delete[0]].rmdir(dirlist=directory_to_delete[1:])
             else:
                 del self.directory_table[directory_to_delete[0]]
         except KeyError:
             raise FileNotFoundError("Folder does not exist")
 
-    def ls(self, *folderpath_str: str) -> Tuple[List[str], List[str]]:
+    def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
 
         try:
-            if folderpath_str:
-                folderpath: List[str] = folderpath_str[0].split("/")
+            if dirstr or dirlist:
+
+                if dirlist is None:
+                    if dirstr is not None:
+                        folderpath: List[str] = dirstr.split("/")
+                    else:
+                        raise ValueError("No dirstr or dirlist passed")
+                else:
+                    folderpath = dirlist
+
                 if len(folderpath) > 1:
-                    return self.directory_table[folderpath[0]].ls("/".join(folderpath[1:]))
+                    return self.directory_table[folderpath[0]].ls(dirlist=folderpath[1:])
                 else:
                     return self.directory_table[folderpath[0]].ls()
             else:
-                return (list(self.data_table.keys()), list(self.directory_table.keys()))
+                return (list(self.data_table), list(self.directory_table))
         except KeyError:
             raise FileNotFoundError("Filepath does not exist")
 
-    def tree(self, *folderpath_str: str) -> Any:
+    def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
         try:
-            if folderpath_str:
-                folderpath: List[str] = folderpath_str[0].split("/")
+            if dirstr or dirlist:
+
+                if dirlist is None:
+                    if dirstr is not None:
+                        folderpath: List[str] = dirstr.split("/")
+                    else:
+                        raise ValueError("No dirstr or dirlist passed")
+                else:
+                    folderpath = dirlist
+
                 if len(folderpath) > 1:
-                    return self.directory_table[folderpath[0]].tree("/".join(folderpath[1:]))
+                    return self.directory_table[folderpath[0]].tree(dirlist=folderpath[1:])
                 else:
                     return self.directory_table[folderpath[0]].tree()
             else:
-                datamap: Tuple[List[str], Dict[str, Any]] = (list(self.data_table.keys()), {})
-                for folder in self.directory_table.keys():
+                datamap: Tuple[List[str], Dict[str, Any]] = (list(self.data_table), {})
+                for folder in self.directory_table:
                     datamap[1][folder] = self.directory_table[folder].tree()
                 return datamap
 
@@ -748,7 +798,7 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.3.5-DEV"
+version_info: str = "LeXdPyK 1.4"
 bot_start_time: float = time.time()
 
 # Start bot

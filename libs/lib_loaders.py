@@ -22,7 +22,7 @@ from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from sonnet_cfg import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
-from typing import Dict, List, Union, Any, Tuple, Optional
+from typing import Dict, List, Union, Any, Tuple, Optional, Type, cast
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -235,12 +235,12 @@ def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_fi
     try:
         statistics: Dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
     except FileNotFoundError:
-        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=dict)
+        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(Type[Dict[str, int]], dict))
 
     try:
         global_statistics: Dict[str, int] = kernel_ramfs.read_f("global/stats")
     except FileNotFoundError:
-        global_statistics = kernel_ramfs.create_f("global/stats", f_type=dict)
+        global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(Type[Dict[str, int]], dict))
 
     if inctype in statistics:
         statistics[inctype] += 1

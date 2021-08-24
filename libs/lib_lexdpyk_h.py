@@ -1,31 +1,31 @@
 # Headers for the kernel ramfs
 
-import io
+from typing import Optional, List, Any, Tuple, Dict, Callable, Coroutine, Type, TypeVar
 
-from typing import Optional, List, Any, Tuple, Dict, Callable, Coroutine
+Obj = TypeVar("Obj")
 
 
 # Define ramfs headers
 class ram_filesystem:
-    def mkdir(self, make_dir: str) -> Any:
+    def mkdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
         pass
 
-    def remove_f(self, remove_item: str) -> None:
+    def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
         pass
 
-    def read_f(self, file_to_open: str) -> Any:
+    def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
         pass
 
-    def create_f(self, file_to_write: str, f_type: Optional[type] = io.BytesIO, f_args: Optional[List[Any]] = []) -> Any:
+    def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Obj]] = None, f_args: Optional[List[Any]] = None) -> Obj:
         pass
 
-    def rmdir(self, directory_to_delete: str) -> None:
+    def rmdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
         pass
 
-    def ls(self, *folderpath: str) -> Tuple[List[str], List[str]]:
+    def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
         return ([], [])
 
-    def tree(self, *folderpath: str) -> Tuple[List[str], Dict[str, Tuple[Any]]]:
+    def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], Dict[str, Tuple[Any]]]:
         return ([], {})
 
 

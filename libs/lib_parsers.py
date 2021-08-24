@@ -228,7 +228,6 @@ async def update_log_channel(message: discord.Message, args: List[str], client: 
         await message.channel.send(constants.sonnet.error_channel.wrongType)
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
-
     if discord_channel.guild.id != message.channel.guild.id:
         await message.channel.send(constants.sonnet.error_channel.scope)
         raise errors.log_channel_update_error("Channel is not in guild")
@@ -505,7 +504,11 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
     return (discord_message, nargs)
 
 
-async def parse_user_member(message: discord.Message, args: List[str], client: discord.Client, argindex: int = 0, default_self: bool = False) -> Tuple[Union[discord.Member, discord.User], Optional[discord.Member]]:
+async def parse_user_member(message: discord.Message,
+                            args: List[str],
+                            client: discord.Client,
+                            argindex: int = 0,
+                            default_self: bool = False) -> Tuple[Union[discord.Member, discord.User], Optional[discord.Member]]:
     """
     Parse a user and member object from a potential user string
     Always returns a user, only returns member if the user is in the guild

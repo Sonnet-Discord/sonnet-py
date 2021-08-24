@@ -62,7 +62,8 @@ class GuildScopeError(Exception):
 
 # Sends an infraction to database and log channels if user exists
 async def log_infraction(
-    message: discord.Message, client: discord.Client, user: Union[discord.User, discord.Member], moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem
+    message: discord.Message, client: discord.Client, user: Union[discord.User, discord.Member], moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool,
+    ramfs: lexdpyk.ram_filesystem
     ) -> Tuple[str, Optional[Awaitable[None]]]:
     if not message.guild:
         raise GuildScopeError("How did we even get here")
