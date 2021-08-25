@@ -19,14 +19,10 @@ __all__ = [
 Typ = TypeVar("Typ")
 
 
+# Loads a config and checks its type
 def _load_cfg(attr: str, default: Any, typ: Type[Typ]) -> Typ:
 
-    conf: Any
-
-    try:
-        conf = getattr(sonnet_cfg, attr)
-    except AttributeError:
-        conf = default
+    conf: Any = getattr(sonnet_cfg, attr, default)
 
     if not isinstance(conf, typ):
         raise TypeError(f"Sonnet Config {attr} is not type {typ.__name__}")
