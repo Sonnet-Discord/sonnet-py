@@ -3,6 +3,7 @@
 
 __all__ = [
     "errors",
+    "hascompiled",
     "ParseDuration",
     "MustParseDuration",
     "GenerateCacheFile",
