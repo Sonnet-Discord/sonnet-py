@@ -14,6 +14,7 @@ __all__ = [
     "SQLITE3_LOCATION",
     "REGEX_VERSION",
     "CLIB_LOAD",
+    "GOLIB_LOAD",
     ]
 
 Typ = TypeVar("Typ")
@@ -38,3 +39,4 @@ DB_TYPE = _load_cfg("DB_TYPE", "mariadb", str)
 SQLITE3_LOCATION = _load_cfg("SQLITE3_LOCATION", "datastore/sonnetdb.db", str)
 REGEX_VERSION = _load_cfg("REGEX_VERSION", "re2", str)
 CLIB_LOAD = _load_cfg("CLIB_LOAD", True, bool)
+GOLIB_LOAD = _load_cfg("GOLIB_LOAD", True, bool)

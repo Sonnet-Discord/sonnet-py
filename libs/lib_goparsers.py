@@ -1,12 +1,26 @@
 # package lib_goparsers
 # - UltraBear 2021
 
+__all__ = [
+    "errors",
+    "ParseDuration",
+    "MustParseDuration",
+    "GenerateCacheFile",
+    "GetVersion",
+    ]
+
+import importlib
+
 import ctypes as _ctypes
 import subprocess as _subprocess
 
 from typing import cast
 
-from sonnet_cfg import CLIB_LOAD
+import lib_sonnetconfig
+
+importlib.reload(lib_sonnetconfig)
+
+from lib_sonnetconfig import GOLIB_LOAD
 
 
 class _GoString(_ctypes.Structure):
@@ -19,7 +33,7 @@ class _ParseDurationRet(_ctypes.Structure):
 
 hascompiled = True
 _version = "2.0.0-DEV.3"
-if CLIB_LOAD:
+if GOLIB_LOAD:
     try:
         _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
     except OSError:
