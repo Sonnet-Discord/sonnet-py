@@ -64,8 +64,10 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
 
 
 def parsedate(indata: Optional[datetime]) -> str:
-    if indata:
-        return f"{time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())} ({(datetime.utcnow() - indata).days} days ago)"
+    if indata is not None:
+        basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
+        days = (datetime.utcnow() - indata).days
+        return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
         return "ERROR: Could not fetch this date"
 
