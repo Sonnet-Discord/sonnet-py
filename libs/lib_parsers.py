@@ -11,14 +11,14 @@ importlib.reload(lib_db_obfuscator)
 import lib_encryption_wrapper
 
 importlib.reload(lib_encryption_wrapper)
-import sonnet_cfg
+import lib_sonnetconfig
 
-importlib.reload(sonnet_cfg)
+importlib.reload(lib_sonnetconfig)
 import lib_constants
 
 importlib.reload(lib_constants)
 
-from sonnet_cfg import REGEX_VERSION
+from lib_sonnetconfig import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants

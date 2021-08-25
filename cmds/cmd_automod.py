@@ -10,9 +10,9 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
-import sonnet_cfg
+import lib_sonnetconfig
 
-importlib.reload(sonnet_cfg)
+importlib.reload(lib_sonnetconfig)
 import lib_constants
 
 importlib.reload(lib_constants)
@@ -22,7 +22,7 @@ importlib.reload(lib_goparsers)
 
 from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
-from sonnet_cfg import REGEX_VERSION
+from lib_sonnetconfig import REGEX_VERSION
 from lib_parsers import parse_role, parse_boolean, parse_user_member
 
 from typing import Any, Dict, List, Callable, Coroutine, Tuple
