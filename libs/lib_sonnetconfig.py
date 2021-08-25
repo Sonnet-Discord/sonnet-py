@@ -14,9 +14,10 @@ __all__ = [
     "SQLITE3_LOCATION",
     "REGEX_VERSION",
     "CLIB_LOAD",
-]
+    ]
 
 Typ = TypeVar("Typ")
+
 
 def _load_cfg(attr: str, default: Any, typ: Type[Typ]) -> Typ:
 
