@@ -2,9 +2,7 @@
 # Ultrabear 2020
 
 # Explicitly export db_hlapi
-__all__ = [
-    "db_hlapi"
-]
+__all__ = ["db_hlapi"]
 
 import importlib
 
