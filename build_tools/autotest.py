@@ -8,7 +8,7 @@ from typing import Dict, Any
 
 tests = {
     "pyflakes": "pyflakes .",
-    "mypy": "mypy *.py */*.py --ignore-missing-imports --strict --implicit-reexport --warn-unreachable",
+    "mypy": "mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable",
     "pylint": "pylint */ -E",
     "yapf": "yapf -d -r .",
     }
