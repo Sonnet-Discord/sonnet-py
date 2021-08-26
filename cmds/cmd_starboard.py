@@ -27,7 +27,6 @@ from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import STARBOARD_EMOJI, STARBOARD_COUNT
 import lib_constants as constants
 
-
 from typing import List, Dict, Any, Union, cast
 
 starboard_types: Dict[Union[str, int], Any] = {
