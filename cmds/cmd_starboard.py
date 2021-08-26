@@ -17,13 +17,16 @@ importlib.reload(lib_constants)
 import lib_loaders
 
 importlib.reload(lib_loaders)
+import lib_sonnetconfig
+
+importlib.reload(lib_sonnetconfig)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_channel_message, generate_reply_field
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
+from lib_sonnetconfig import STARBOARD_EMOJI, STARBOARD_COUNT
 import lib_constants as constants
 
-from sonnet_cfg import STARBOARD_EMOJI, STARBOARD_COUNT
 
 from typing import List, Dict, Any, Union, cast
 

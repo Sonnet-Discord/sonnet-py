@@ -11,16 +11,16 @@ import subprocess
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
-import sonnet_cfg
+import lib_sonnetconfig
 
-importlib.reload(sonnet_cfg)
+importlib.reload(lib_sonnetconfig)
 import lib_goparsers
 
 importlib.reload(lib_goparsers)
 
 from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
-from sonnet_cfg import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
+from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
 from typing import Dict, List, Union, Any, Tuple, Optional, Type, cast
 import lib_lexdpyk_h as lexdpyk
