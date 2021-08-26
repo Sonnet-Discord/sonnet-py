@@ -21,7 +21,7 @@ import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
 
-from lib_sonnetconfig import GOLIB_LOAD
+from lib_sonnetconfig import GOLIB_LOAD, GOLIB_VERSION
 
 
 class _GoString(_ctypes.Structure):
@@ -39,7 +39,7 @@ if GOLIB_LOAD:
         _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
     except OSError:
         try:
-            if _subprocess.run(["make", "gotools"]).returncode == 0:
+            if _subprocess.run(["make", "gotools", f"GOCMD={GOLIB_VERSION}"]).returncode == 0:
                 _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
             else:
                 hascompiled = False

@@ -8,3 +8,4 @@
 - `REGEX_VERSION: str` regex version to use, must be either re2 or re, and re2 must be installed if so
 - `CLIB_LOAD: bool` whether to compile and load the clib or not
 - `GOLIB_LOAD: bool` whether to compile and load the golib or not
+- `GOLIB_VERSION: str` the go binary to use (if you dont know about go versioning then ignore this)
