@@ -712,6 +712,9 @@ commands = {
     'list-infractions': {
         'alias': 'search-infractions'
         },
+    'infractions': {
+        'alias': 'search-infractions'
+        },
     'search-infractions':
         {
             'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--no-automod]',
