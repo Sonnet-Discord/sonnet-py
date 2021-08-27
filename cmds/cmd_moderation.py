@@ -727,6 +727,9 @@ commands = {
     'get-infraction': {
         'alias': 'infraction-details'
         },
+    'grab-infraction': {
+        'alias': 'infraction-details'
+        },
     'infraction-details':
         {
             'pretty_name': 'infraction-details <infractionID>',
