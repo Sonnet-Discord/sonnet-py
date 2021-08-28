@@ -1,7 +1,11 @@
 # Dynamic loader for sonnet configs
 # Ultrabear 2021
 
+import importlib
+
 import sonnet_cfg
+
+importlib.reload(sonnet_cfg)
 
 from typing import Any, Type, TypeVar
 
