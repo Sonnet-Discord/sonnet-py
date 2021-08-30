@@ -440,14 +440,13 @@ class db_hlapi:
         quer: Tuple[Tuple[str, Union[str, int]], ...]
         quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), (infraction_id, user_id, moderator_id, itype, reason, timestamp)))
 
-        table_name: str
+        table_name = f"{self.guild}_infractions"
 
+        # TODO(ultrabear): Make all infraction grabbing functions check version and MAINTAIN SAME API
+        # New functions need to be coded to get full flags data
         if self._sonnet_db_version >= (1, 1, 0):
-            table_name = f"{self.guild}_infractionsV2"
             # Tuples have fixed length :cry:
             quer = quer + (("flags", int(automod)), )
-        else:
-            table_name = f"{self.guild}_infractions"
 
         try:
             self._db.add_to_table(table_name, quer)
