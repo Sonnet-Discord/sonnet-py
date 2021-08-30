@@ -39,13 +39,13 @@ async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Cli
             await message.channel.send("ERROR: Could not validate emoji")
             raise InvalidEmoji
 
-        em = client.get_emoji(em)
+        emoji = client.get_emoji(em)
 
-        if not em:
+        if not emoji:
             await message.channel.send("ERROR: Emoji does not exist in scope")
             raise InvalidEmoji
 
-        return str(em)
+        return str(emoji)
 
 
 class RindexFailure(Exception):
@@ -53,6 +53,8 @@ class RindexFailure(Exception):
 
 
 async def rindex_check(message: discord.Message, role: discord.Role) -> None:
+    if not message.guild or not isinstance(message.author, discord.Member):
+        raise RindexFailure("No guild roles/No user")
 
     rindex = message.guild.roles.index(role)
 
@@ -68,10 +70,12 @@ class NoRoleError(Exception):
     pass
 
 
-async def get_exact_role(message: discord.Message, role: discord.Role) -> discord.Role:
+async def get_exact_role(message: discord.Message, rolestr: str) -> discord.Role:
+    if not message.guild:
+        raise NoRoleError("No Guild to parse role from")
 
     try:
-        role = message.guild.get_role(int(role.strip("<@&>")))
+        role = message.guild.get_role(int(rolestr.strip("<@&>")))
     except ValueError:
         await message.channel.send("ERROR: Invalid role")
         raise NoRoleError
@@ -84,6 +88,8 @@ async def get_exact_role(message: discord.Message, role: discord.Role) -> discor
 
 
 async def add_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
@@ -119,6 +125,8 @@ async def add_reactionroles(message: discord.Message, args: List[str], client: d
 
 
 async def remove_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
@@ -162,6 +170,8 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
 
 
 async def list_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     with db_hlapi(message.guild.id) as db:
         data = json.loads(db.grab_config("reaction-role-data") or "{}")
@@ -189,6 +199,8 @@ async def list_reactionroles(message: discord.Message, args: List[str], client: 
 
 
 async def addmany_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         rr_message, nargs = await parse_channel_message(message, args, client)
@@ -221,6 +233,8 @@ async def addmany_reactionroles(message: discord.Message, args: List[str], clien
 
 
 async def rr_purge(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     try:
         message_id = int(args[0].replace("-", "/").split("/")[-1])
@@ -305,4 +319,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.6"
+version_info: str = "1.2.7"

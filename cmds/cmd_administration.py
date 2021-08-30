@@ -77,6 +77,8 @@ class gdpr_functions:
         self.commands = {"delete": self.delete, "download": self.download}
 
     async def delete(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
+        if not message.guild:
+            return
 
         with db_hlapi(message.guild.id) as database:
             database.delete_guild_db()
@@ -130,6 +132,8 @@ Or if discord experienced a lag spike, consider retrying as the network may have
 
 
 async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     ramfs = kwargs["ramfs"]
 
@@ -158,6 +162,8 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
 
 
 async def set_view_infractions(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         gate = parse_boolean(args[0])
@@ -171,6 +177,8 @@ async def set_view_infractions(message: discord.Message, args: List[str], client
 
 
 async def set_prefix(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         prefix = args[0]
@@ -221,7 +229,7 @@ commands = {
             'description': 'Change leave log, overloads join-log',
             'rich_description': 'Set the leave log, diverts leave logs from join log to leave log',
             'permission': 'administrator',
-            'cache': 'keep',
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
             'execute': leave_log_change
             },
     'join-log':
@@ -230,7 +238,7 @@ commands = {
             'description': 'Change join log',
             'rich_description': 'This log channel logs member joins and member leaves',
             'permission': 'administrator',
-            'cache': 'keep',
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
             'execute': joinlog_change
             },
     'infraction-log': {
@@ -247,13 +255,14 @@ commands = {
         'cache': 'regenerate',
         'execute': notifier_log_change
         },
-    'username-log': {
-        'pretty_name': 'username-log <channel>',
-        'description': 'Change username log',
-        'permission': 'administrator',
-        'cache': 'keep',
-        'execute': username_log_change
-        },
+    'username-log':
+        {
+            'pretty_name': 'username-log <channel>',
+            'description': 'Change username log',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
+            'execute': username_log_change
+            },
     'gdpr': {
         'pretty_name': 'gdpr',
         'description': 'Enforce your GDPR rights, Server Owner only',
@@ -302,4 +311,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.7"

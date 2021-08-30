@@ -26,7 +26,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install base deps
       run: |
-        python -m pip install yapf pyflakes pylint mypy
+        python -m pip install yapf pyflakes pylint mypy pytype
         python -m pip install -r requirements.txt
     - name: run pyflakes before running expensive tests
       run: |
@@ -42,7 +42,7 @@ jobs:
         python build_tools/testimport.py
     - name: run mypy type checking
       run: |
-        mypy *.py */*.py --ignore-missing-imports --strict --implicit-reexport --warn-unreachable
+        mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable
     - name: yapf integrity check
       run: |
         yapf -d -r .
@@ -54,3 +54,6 @@ jobs:
     - name: linting pass
       run: |
         pylint ./libs ./cmds ./common ./dlibs ./build_tools -E
+    - name: run pytype
+      run: |
+        pytype .

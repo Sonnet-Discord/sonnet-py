@@ -1,7 +1,7 @@
 # Constants cause discord likes to troll us
 # Ultrabear 2021
 
-from typing import Final
+from typing import Final  # pytype: disable=import-error
 
 
 class message:
@@ -31,6 +31,7 @@ class sonnet:
     class error_channel:
         none: Final[str] = "ERROR: No channel supplied"
         invalid: Final[str] = "ERROR: Channel is not a valid channel"
+        wrongType: Final[str] = "ERROR: Channel is not the correct type"
         scope: Final[str] = "ERROR: Channel is not in guild"
 
     class error_role:

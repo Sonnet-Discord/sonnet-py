@@ -6,10 +6,14 @@ import importlib
 import discord
 from datetime import datetime
 import sys
+import io
 
 import lib_loaders
 
 importlib.reload(lib_loaders)
+import lib_goparsers
+
+importlib.reload(lib_goparsers)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
@@ -58,21 +62,25 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
     base_versions.append(["Kernel", kwargs['main_version']])
     base = "\n".join(prettyprint(base_versions))
 
-    fmt = f"```py\n{base}\n\nEvent Modules:\n"
+    fmt = io.StringIO()
+
+    fmt.write(f"```py\n{base}\n\nEvent Modules:\n")
 
     for a in prettyprint([[i.category_info['name'], i.version_info] for i in dlib_modules]):
-        fmt += f"  {a}\n"
+        fmt.write(f"  {a}\n")
 
-    fmt += "\nCommand Modules:\n"
+    fmt.write("\nCommand Modules:\n")
 
     for a in prettyprint([[i.category_info['pretty_name'], i.version_info] for i in modules]):
-        fmt += f"  {a}\n"
+        fmt.write(f"  {a}\n")
 
-    fmt += f"\nC accel: {DotHeaders.version}={clib_exists}\n"
+    fmt.write(f"\nC  accel: {DotHeaders.version}={clib_exists}\n")
 
-    fmt += f"\nBot Uptime: {getdelta(bot_start_time)}\n```"
+    fmt.write(f"Go accel: {lib_goparsers.GetVersion()}={lib_goparsers.hascompiled}\n")
 
-    await message.channel.send(fmt)
+    fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n```")
+
+    await message.channel.send(fmt.getvalue())
 
 
 async def uptime(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -81,6 +89,8 @@ async def uptime(message: discord.Message, args: List[str], client: discord.Clie
 
 
 async def print_stats(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     kernel_ramfs = kwargs["kernel_ramfs"]
 
@@ -108,13 +118,16 @@ async def print_stats(message: discord.Message, args: List[str], client: discord
     for i in global_statistics_file:
         outputmap.append([i, global_statistics_file[i]])
 
+    # Declare here cause fstrings cant have \ in it 草
     newline = "\n"
 
-    fmt = f"```py\n{newline.join(prettyprint(outputmap))}\n"
+    writer = io.StringIO()
 
-    fmt += f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% ({guild_total}/{global_total}) of total processed events since boot```"
+    writer.write(f"```py\n{newline.join(prettyprint(outputmap))}\n")
 
-    await message.channel.send(fmt)
+    writer.write(f"\nThis guild has sent {round(1000*(guild_total/global_total))/10}% ({guild_total}/{global_total}) of total processed events since boot```")
+
+    await message.channel.send(writer.getvalue())
 
 
 category_info = {'name': 'version', 'pretty_name': 'Version', 'description': 'Information about the current sonnet version'}
@@ -152,4 +165,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.5"
+version_info: str = "1.2.7"

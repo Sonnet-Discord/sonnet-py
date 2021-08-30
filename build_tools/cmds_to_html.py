@@ -102,21 +102,18 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     outlist.append("\t\t<th>Permission Level</th>")
     outlist.append("\t</tr>")
 
-    for i in [i for i in module.commands if 'alias' not in module.commands[i].keys()]:
+    for i in filter(lambda i: "alias" not in module.commands[i], module.commands):
 
         command_name = module.commands[i]["pretty_name"]
+        description = module.commands[i]["description"]
 
-        command_perms = module.commands[i]['permission'][0].upper()
-        command_perms += module.commands[i]['permission'][1:].lower()
+        aliases = ", ".join(aliasmap[i]) if i in aliasmap else "None"
 
-        if i in aliasmap.keys():
-            aliases = ", ".join(aliasmap[i])
-        else:
-            aliases = "None"
+        command_perms = module.commands[i]['permission'][0].upper() + module.commands[i]['permission'][1:].lower()
 
         outlist.append("\t<tr>")
         outlist.append(f"\t\t<td>{escape(command_name)}</td>")
-        outlist.append(f"\t\t<td>{escape(module.commands[i]['description'])}</td>")
+        outlist.append(f"\t\t<td>{escape(description)}</td>")
         outlist.append(f"\t\t<td>{escape(aliases)}</td>")
         outlist.append(f"\t\t<td>{escape(command_perms)}</td>")
         outlist.append("\t</tr>")

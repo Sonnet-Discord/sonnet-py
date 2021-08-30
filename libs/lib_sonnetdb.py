@@ -3,9 +3,13 @@
 
 import importlib
 
-import threading, warnings
+import threading, warnings, io
 
-from sonnet_cfg import DB_TYPE, SQLITE3_LOCATION
+import lib_sonnetconfig
+
+importlib.reload(lib_sonnetconfig)
+
+from lib_sonnetconfig import DB_TYPE, SQLITE3_LOCATION
 
 from typing import Union, Dict, List, Tuple, Optional, Any, Type, cast
 
@@ -36,7 +40,7 @@ except db_error.Error:
     raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
 
 
-def db_grab_connection() -> db_handler:
+def db_grab_connection() -> db_handler:  # pytype: disable=invalid-annotation
     global db_connection
     try:
         db_connection.ping()
@@ -163,9 +167,10 @@ class db_hlapi:
         for index, i in enumerate(cpush):
             if type(i) != self.__enum_input[name][index][1]:
                 errtuple = self.__enum_input[name][index]
-                errmsg: str = f"Improper type passed based on enum registry, index: {index} name: {errtuple[0]}\n"
-                errmsg += f"(given type '{type(i).__name__}' is not type '{errtuple[1].__name__}')"
-                raise TypeError(errmsg)
+                errbuilder = io.StringIO()
+                errbuilder.write(f"Improper type passed based on enum registry, index: {index} name: {errtuple[0]}\n")
+                errbuilder.write(f"(given type '{type(i).__name__}' is not type '{errtuple[1].__name__}')")
+                raise TypeError(errbuilder.getvalue())
 
         push = tuple(zip(map(lambda i: i[0], self.__enum_input[name]), cpush))
 
@@ -430,15 +435,24 @@ class db_hlapi:
             except db_error.OperationalError:
                 pass
 
-    def add_infraction(self, *din: Union[int, str]) -> None:
+    def add_infraction(self, infraction_id: str, user_id: str, moderator_id: str, itype: str, reason: str, timestamp: int, automod: bool = False) -> None:
 
-        quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), din))
+        quer: Tuple[Tuple[str, Union[str, int]], ...]
+        quer = tuple(zip(("infractionID", "userID", "moderatorID", "type", "reason", "timestamp"), (infraction_id, user_id, moderator_id, itype, reason, timestamp)))
+
+        table_name = f"{self.guild}_infractions"
+
+        # TODO(ultrabear): Make all infraction grabbing functions check version and MAINTAIN SAME API
+        # New functions need to be coded to get full flags data
+        if self._sonnet_db_version >= (1, 1, 0):
+            # Tuples have fixed length :cry:
+            quer = quer + (("flags", int(automod)), )
 
         try:
-            self._db.add_to_table(f"{self.guild}_infractions", quer)
+            self._db.add_to_table(table_name, quer)
         except db_error.OperationalError:
             self.create_guild_db()
-            self._db.add_to_table(f"{self.guild}_infractions", quer)
+            self._db.add_to_table(table_name, quer)
 
     def fetch_all_mutes(self) -> List[Tuple[str, str, str, int]]:
 

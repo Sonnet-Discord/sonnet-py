@@ -41,4 +41,4 @@ jobs:
         python build_tools/testimport.py
     - name: run mypy type checking
       run: |
-        mypy *.py */*.py --ignore-missing-imports --strict --implicit-reexport --warn-unreachable
+        mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable

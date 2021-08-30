@@ -25,6 +25,8 @@ def zpadhex(indata: int) -> str:
 
 
 async def set_embed_typec(message: discord.Message, args: List[str], typec: str, verbose: bool, ramfs: lexdpyk.ram_filesystem) -> int:
+    if not message.guild:
+        return 1
 
     if args:
 
@@ -127,4 +129,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.6"
+version_info: str = "1.2.7"

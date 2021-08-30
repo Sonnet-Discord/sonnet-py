@@ -10,18 +10,23 @@ importlib.reload(lib_db_obfuscator)
 import lib_parsers
 
 importlib.reload(lib_parsers)
-import sonnet_cfg
+import lib_sonnetconfig
 
-importlib.reload(sonnet_cfg)
+importlib.reload(lib_sonnetconfig)
 import lib_constants
 
 importlib.reload(lib_constants)
+import lib_goparsers
 
+importlib.reload(lib_goparsers)
+
+from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
-from sonnet_cfg import REGEX_VERSION
+from lib_sonnetconfig import REGEX_VERSION
 from lib_parsers import parse_role, parse_boolean, parse_user_member
 
-from typing import Any, Dict, List, Callable, Coroutine, Final, Tuple
+from typing import Any, Dict, List, Callable, Coroutine, Tuple
+from typing import Final  # pytype: disable=import-error
 import lib_constants as constants
 
 re: Any = importlib.import_module(REGEX_VERSION)
@@ -32,6 +37,8 @@ class blacklist_input_error(Exception):
 
 
 async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True) -> None:
+    if not message.guild:
+        raise blacklist_input_error("No Guild Attached")
 
     if not (args) or len(args) != 1:
         await message.channel.send(f"Malformed {name}")
@@ -68,6 +75,8 @@ async def ftb_change(message: discord.Message, args: List[str], client: discord.
 
 
 async def add_regex_type(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> None:
+    if not message.guild:
+        raise blacklist_input_error("No Guild")
 
     # Test if args supplied
     if not args:
@@ -102,6 +111,8 @@ async def add_regex_type(message: discord.Message, args: List[str], db_entry: st
 
 
 async def remove_regex_type(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> None:
+    if not message.guild:
+        raise blacklist_input_error("No Guild")
 
     # Test if args supplied
     if not args:
@@ -198,6 +209,8 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
 
 
 async def set_blacklist_infraction_level(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         action = args[0].lower()
@@ -221,6 +234,8 @@ async def change_rolewhitelist(message: discord.Message, args: List[str], client
 
 
 async def antispam_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if not args:
         antispam = kwargs["conf_cache"]["antispam"]
@@ -258,6 +273,8 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
 
 
 async def char_antispam_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if not args:
         antispam = kwargs["conf_cache"]["char-antispam"]
@@ -299,14 +316,13 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
 
 
 async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
 
     if args:
         try:
-            if args[0][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
-                mutetime = int(args[0][:-1]) * multi[args[0][-1]]
-            else:
-                mutetime = int(args[0])
-        except (ValueError, TypeError):
+            mutetime = MustParseDuration(args[0])
+        except lib_goparsers.errors.ParseFailureError:
             await message.channel.send("ERROR: Invalid time format")
             return 1
     else:
@@ -324,9 +340,17 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {mutetime} seconds")
 
 
+class NoGuildError(Exception):
+    pass
+
+
 class joinrules:
     def __init__(self, message: discord.Message):
+        if not message.guild:
+            raise NoGuildError(f"{message}: contains no guild")
+
         self.m: Final[discord.Message] = message
+        self.guild = message.guild
 
         self.ops: Dict[str, Tuple[Callable[[List[str], discord.Client], Coroutine[Any, Any, int]], str]] = {
             "user": (self.useredit, "add|remove <id> 'Add or remove a userid from the watchlist'"),
@@ -352,7 +376,7 @@ class joinrules:
                 except lib_parsers.errors.user_parse_error:
                     return 1
 
-                with db_hlapi(self.m.guild.id) as db:
+                with db_hlapi(self.guild.id) as db:
                     blusers: List[int] = json.loads(db.grab_config(cnf_name) or "[]")
 
                 if user.id in blusers:
@@ -361,7 +385,7 @@ class joinrules:
 
                 blusers.append(user.id)
 
-                with db_hlapi(self.m.guild.id) as db:
+                with db_hlapi(self.guild.id) as db:
                     db.add_config(cnf_name, json.dumps(blusers))
 
                 await self.m.channel.send(f"Added {user.mention} with ID {user.id} joining to the notifier log", allowed_mentions=discord.AllowedMentions.none())
@@ -372,7 +396,7 @@ class joinrules:
                 except lib_parsers.errors.user_parse_error:
                     return 1
 
-                with db_hlapi(self.m.guild.id) as db:
+                with db_hlapi(self.guild.id) as db:
                     blusers = json.loads(db.grab_config(cnf_name) or "[]")
 
                 if user.id not in blusers:
@@ -381,7 +405,7 @@ class joinrules:
 
                 del blusers[blusers.index(user.id)]
 
-                with db_hlapi(self.m.guild.id) as db:
+                with db_hlapi(self.guild.id) as db:
                     db.add_config(cnf_name, json.dumps(blusers))
 
                 await self.m.channel.send(f"Removed {user.mention} with ID {user.id} joining from the notifier log", allowed_mentions=discord.AllowedMentions.none())
@@ -400,12 +424,8 @@ class joinrules:
             if args[0] == "add" and len(args) >= 2:  # Add timestamp
 
                 try:  # Parse time
-                    if args[1][-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
-                        jointime = int(args[1][:-1]) * multi[args[1][-1]]
-                    else:
-                        jointime = int(args[1])
-
-                except (ValueError, TypeError):
+                    jointime = MustParseDuration(args[1])
+                except lib_goparsers.errors.ParseFailureError:
                     await self.m.channel.send("ERROR: Invalid time format")
                     return 1
 
@@ -413,7 +433,7 @@ class joinrules:
                     await self.m.channel.send("ERROR: Time range entered is larger than one month (~30 days)")
                     return 1
 
-                with db_hlapi(self.m.guild.id) as db:  # Add to db
+                with db_hlapi(self.guild.id) as db:  # Add to db
                     db.add_config(cnf_name, str(jointime))
 
                 await self.m.channel.send(f"Updated new user notify time to <{jointime} seconds since creation")
@@ -421,7 +441,7 @@ class joinrules:
 
             elif args[0] == "remove":  # Remove timestamp
 
-                with db_hlapi(self.m.guild.id) as db:
+                with db_hlapi(self.guild.id) as db:
                     db.delete_config(cnf_name)
                 await self.m.channel.send("Deleted new user notify time")
                 return 0
@@ -432,7 +452,7 @@ class joinrules:
 
         else:  # Show current timestamp
 
-            with db_hlapi(self.m.guild.id) as db:
+            with db_hlapi(self.guild.id) as db:
                 jointime_str = db.grab_config(cnf_name)
             await self.m.channel.send(f"new user notify is set to {jointime_str} seconds")
             return 0
@@ -442,11 +462,11 @@ class joinrules:
         cnf_name: Final[str] = "notifier-log-defaultpfp"
 
         if args:
-            with db_hlapi(self.m.guild.id) as db:
+            with db_hlapi(self.guild.id) as db:
                 db.add_config(cnf_name, str(true := int(parse_boolean(args[0]))))
             await self.m.channel.send(f"Updated defaultpfp checking to {bool(true)}")
         else:
-            with db_hlapi(self.m.guild.id) as db:
+            with db_hlapi(self.guild.id) as db:
                 await self.m.channel.send(f"Defaultpfp checking is set to {bool(int(db.grab_config(cnf_name) or 0))}")
 
         return 0
@@ -454,7 +474,10 @@ class joinrules:
 
 async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
-    rules = joinrules(message)
+    try:
+        rules = joinrules(message)
+    except NoGuildError:
+        return 1
 
     if args:
 
@@ -596,4 +619,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.6"
+version_info: str = "1.2.7"

@@ -5,25 +5,31 @@ import importlib
 
 import discord
 
-import random, os, ctypes, time, io, json, pickle, threading, warnings
+import random, ctypes, time, io, json, pickle, threading, warnings
+import datetime
+import subprocess
 
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
-import sonnet_cfg
+import lib_sonnetconfig
 
-importlib.reload(sonnet_cfg)
+importlib.reload(lib_sonnetconfig)
+import lib_goparsers
 
+importlib.reload(lib_goparsers)
+
+from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
-from sonnet_cfg import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
+from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
-from typing import Dict, List, Union, Any, Tuple, Optional
+from typing import Dict, List, Union, Any, Tuple, Optional, Type, cast
 import lib_lexdpyk_h as lexdpyk
 
 
 class DotHeaders:
 
-    version = "1.2.3-DEV.0"
+    version = "2.0.0-DEV.0"
 
     class cdef_load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
@@ -50,8 +56,10 @@ if CLIB_LOAD:
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
         try:
-            os.system("make")
-            loader = DotHeaders(ctypes.CDLL(clib_name)).lib
+            if subprocess.run(["make"]).returncode == 0:
+                loader = DotHeaders(ctypes.CDLL(clib_name)).lib
+            else:
+                clib_exists = False
         except OSError:
             clib_exists = False
 else:
@@ -129,7 +137,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         return message_config
 
     except FileNotFoundError:
-        message_config = {}
+        message_config: Dict[str, Any] = {}  #  type: ignore
 
         # Loads base db
         with db_hlapi(guild_id) as db:
@@ -141,7 +149,11 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         # Load json datatype
         for i in datatypes["json"]:
             if message_config[i[0]]:
-                message_config[i[0]] = json.loads(message_config[i[0]])
+                try:
+                    message_config[i[0]] = json.loads(message_config[i[0]])
+                except json.JSONDecodeError:
+                    # Corrupted db objects default to defaults
+                    message_config[i[0]] = None
 
         # Load CSV datatype
         for i in datatypes["csv"]:
@@ -182,18 +194,25 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
 
 # Generate an infraction id from the wordlist cache format
 def generate_infractionid() -> str:
-    if os.path.isfile("datastore/wordlist.cache.db"):
+
+    try:
         if clib_exists:
+
             buf = bytes(256 * 3)
             safe = loader.load_words(b"datastore/wordlist.cache.db\x00", 3, (int(time.time() * 1000000) % (2**32)), buf, len(buf))
+
             if safe == 0:
                 return buf.rstrip(b"\x00").decode("utf8")
+            elif safe == 2:
+                raise FileNotFoundError("No such file")
             else:
                 raise RuntimeError("Wordlist generator received fatal status")
+
         else:
+
             with open("datastore/wordlist.cache.db", "rb") as words:
                 chunksize = words.read(1)[0]
-                num_words = (words.seek(0, io.SEEK_END) - 1) // chunksize
+                num_words = ((words.seek(0, io.SEEK_END) or 0) - 1) // chunksize
                 values = ([random.randint(0, (num_words - 1)) for i in range(3)])
                 output = []
                 for i in values:
@@ -202,38 +221,27 @@ def generate_infractionid() -> str:
 
             return "".join(output)
 
-    else:
-        with open("common/wordlist.txt", "rb") as words:
-            maxval = 0
-            structured_data = []
-            for byte in words.read().split(b"\n"):
-                if byte and not len(byte) > 85 and not b"\xc3" in byte:
-
-                    stv = byte.rstrip(b"\r").decode("utf8")
-                    byte = (stv[0].upper() + stv[1:].lower()).encode("utf8")
-
-                    structured_data.append(bytes([len(byte)]) + byte)
-                    if len(byte) + 1 > maxval:
-                        maxval = len(byte) + 1
-        with open("datastore/wordlist.cache.db", "wb") as structured_data_file:
-            structured_data_file.write(bytes([maxval]))
-            for byte in structured_data:
-                structured_data_file.write(byte + bytes(maxval - len(byte)))
-
+    except FileNotFoundError:
+        # Call go lib to handle this for us
+        GenerateCacheFile("common/wordlist.txt", "datastore/wordlist.cache.db")
         return generate_infractionid()
+
+    except RecursionError:
+        # This means through some edge case we kept on generating the cache file and not having it be there
+        raise RuntimeError("RecursionError on trying to get an infraction id, check filepath names")
 
 
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
-        statistics = kernel_ramfs.read_f(f"{guild}/stats")
+        statistics: Dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
     except FileNotFoundError:
-        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=dict)
+        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(Type[Dict[str, int]], dict))
 
     try:
-        global_statistics = kernel_ramfs.read_f("global/stats")
+        global_statistics: Dict[str, int] = kernel_ramfs.read_f("global/stats")
     except FileNotFoundError:
-        global_statistics = kernel_ramfs.create_f("global/stats", f_type=dict)
+        global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(Type[Dict[str, int]], dict))
 
     if inctype in statistics:
         statistics[inctype] += 1
@@ -294,3 +302,12 @@ def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> threa
     """
     warnings.warn("get_guild_lock and db_hlapi(lock=) are deprecated due to possibility of async deadlock", DeprecationWarning)
     return threading.Lock()
+
+
+def datetime_now() -> datetime.datetime:
+    """
+    Returns an aware datetime.datetime with tz set as utc
+
+    :returns: datetime.datetime - timestamp returned
+    """
+    return datetime.datetime.now(datetime.timezone.utc)

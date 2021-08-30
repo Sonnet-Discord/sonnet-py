@@ -2,6 +2,7 @@
 # Ultrabear 2020
 
 import sqlite3
+import io
 from typing import List, Tuple, Any, Union
 
 
@@ -67,7 +68,8 @@ class db_handler:
             raise db_error.OperationalError("Detected SQL injection attack")
 
         # Add table addition
-        db_inputStr = f"CREATE TABLE IF NOT EXISTS '{tablename}' ("
+        db_inputBuilder = io.StringIO()
+        db_inputBuilder.write(f"CREATE TABLE IF NOT EXISTS '{tablename}' (")
 
         # Parse through table items, item with 3 entries is primary key
         inlist = []
@@ -78,10 +80,11 @@ class db_handler:
                 inlist.append(f"{i[0]} {datamap[i[1]]}")
 
         # Add parsed inputs to inputStr
-        db_inputStr += ", ".join(inlist) + ")"
+        db_inputBuilder.write(", ".join(inlist))
+        db_inputBuilder.write(")")
 
         # Execute table generation
-        self.cur.execute(db_inputStr)
+        self.cur.execute(db_inputBuilder.getvalue())
 
     def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]]) -> None:
 
@@ -89,17 +92,23 @@ class db_handler:
         if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
+        db_inputBuilder = io.StringIO()
+
         # Add insert data and generate base tables
-        db_inputStr = f"REPLACE INTO '{table}' ("
+        db_inputBuilder.write(f"REPLACE INTO '{table}' (")
         db_inputList = []
-        db_inputStr += ", ".join([i[0] for i in data]) + ")\n"
+
+        db_inputBuilder.write(", ".join([i[0] for i in data]))
+        db_inputBuilder.write(")\n")
 
         # Insert values data
-        db_inputStr += "VALUES ("
-        db_inputList.extend([i[1] for i in data])
-        db_inputStr += ", ".join(["?" for i in range(len(data))]) + ")\n"
+        db_inputBuilder.write("VALUES (")
+        db_inputBuilder.write(", ".join(["?" for i in range(len(data))]))
+        db_inputBuilder.write(")\n")
 
-        self.cur.execute(db_inputStr, tuple(db_inputList))
+        db_inputList.extend([i[1] for i in data])
+
+        self.cur.execute(db_inputBuilder.getvalue(), tuple(db_inputList))
 
     def multicount_rows_from_table(self, table: str, searchparms: List[List[Any]]) -> int:
 
@@ -107,14 +116,16 @@ class db_handler:
         if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
-        # Add SELECT data
-        db_inputStr = f"SELECT COUNT(*) FROM '{table}' WHERE "
+        db_inputBuilder = io.StringIO()
 
-        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        # Add SELECT data
+        db_inputBuilder.write(f"SELECT COUNT(*) FROM '{table}' WHERE ")
+
+        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute
-        self.cur.execute(db_inputStr, tuple(db_inputList))
+        self.cur.execute(db_inputBuilder.getvalue(), tuple(db_inputList))
 
         retval: int = tuple(self.cur.fetchall())[0][0]
         return retval
@@ -140,14 +151,16 @@ class db_handler:
         if "\\" in table or "'" in table:
             raise db_error.OperationalError("Detected SQL injection attack")
 
-        # Add SELECT data
-        db_inputStr = f"SELECT * FROM '{table}' WHERE "
+        db_inputBuilder = io.StringIO()
 
-        db_inputStr += " AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms])
+        # Add SELECT data
+        db_inputBuilder.write(f"SELECT * FROM '{table}' WHERE ")
+
+        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute
-        self.cur.execute(db_inputStr, tuple(db_inputList))
+        self.cur.execute(db_inputBuilder.getvalue(), tuple(db_inputList))
 
         return tuple(self.cur.fetchall())
 
