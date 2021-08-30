@@ -28,6 +28,7 @@ class ram_filesystem:
 
     def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], Dict[str, Tuple[Any]]]:
         ...
+
     # pytype: enable=bad-return-type
 
 
