@@ -506,7 +506,7 @@ class errtype:
         traceback.print_exception(type(self.err), self.err, self.err.__traceback__)
 
         with open("err.log", "a+") as logfile:
-            logfile.write(f"AT {time.strftime('%a, %d %b %Y %H:%M:%S', datetime.datetime.utcnow().utctimetuple())}:\n")
+            logfile.write(f"AT {time.strftime('%a, %d %b %Y %H:%M:%S', datetime.datetime.now(datetime.timezone.utc).utctimetuple())}:\n")
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
 
