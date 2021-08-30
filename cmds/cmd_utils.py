@@ -26,7 +26,7 @@ importlib.reload(lib_lexdpyk_h)
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean, parse_user_member
-from lib_loaders import load_embed_color, embed_colors
+from lib_loaders import load_embed_color, embed_colors, datetime_now
 import lib_constants as constants
 
 from typing import List, Any, Optional, cast
@@ -102,7 +102,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
         if moderator or (viewinfs and user.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
 
-    embed.timestamp = datetime.utcnow()
+    embed.timestamp = datetime_now()
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
@@ -121,7 +121,7 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_image(url=cast(str, user.avatar_url))
-    embed.timestamp = datetime.utcnow()
+    embed.timestamp = datetime_now()
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:

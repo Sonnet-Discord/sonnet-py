@@ -23,7 +23,7 @@ import lib_goparsers
 importlib.reload(lib_goparsers)
 
 from lib_goparsers import MustParseDuration
-from lib_loaders import generate_infractionid, load_embed_color, embed_colors
+from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
 import lib_constants as constants
@@ -68,7 +68,7 @@ async def log_infraction(
     if not message.guild:
         raise GuildScopeError("How did we even get here")
 
-    timestamp = datetime.utcnow()  # Infraction timestamp
+    timestamp = datetime_now()  # Infraction timestamp
 
     # Define db outputs scoped correctly
     generated_id: str

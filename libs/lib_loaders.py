@@ -6,6 +6,7 @@ import importlib
 import discord
 
 import random, ctypes, time, io, json, pickle, threading, warnings
+import datetime
 import subprocess
 
 import lib_db_obfuscator
@@ -301,3 +302,12 @@ def get_guild_lock(guild: discord.Guild, ramfs: lexdpyk.ram_filesystem) -> threa
     """
     warnings.warn("get_guild_lock and db_hlapi(lock=) are deprecated due to possibility of async deadlock", DeprecationWarning)
     return threading.Lock()
+
+
+def datetime_now() -> datetime.datetime:
+    """
+    Returns an aware datetime.datetime with tz set as utc
+
+    :returns: datetime.datetime - timestamp returned
+    """
+    return datetime.datetime.now(datetime.timezone.utc)
