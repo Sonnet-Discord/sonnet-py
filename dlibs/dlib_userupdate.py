@@ -44,8 +44,8 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
         message_embed.add_field(name=("Before" + " | False" * (not before.nick)), value=str(before.nick))
         message_embed.add_field(name=("After" + " | False" * (not after.nick)), value=str(after.nick))
 
-        message_embed.timestamp = datetime_now()
-        message_embed.set_footer(text=f"unix: {int(datetime_now().timestamp())}")
+        message_embed.timestamp = ts = datetime_now()
+        message_embed.set_footer(text=f"unix: {int(ts.timestamp())}")
 
         await catch_logging_error(channel, message_embed)
 
@@ -111,8 +111,8 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
         embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=load_embed_color(member.guild, embed_colors.creation, kargs["ramfs"]))
         embed.set_thumbnail(url=str(member.avatar_url))
 
-        embed.timestamp = datetime_now()
-        embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime_now().timestamp())}")
+        embed.timestamp = ts = datetime_now()
+        embed.set_footer(text=f"uid: {member.id}, unix: {int(ts.timestamp())}")
 
         embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
 
@@ -137,8 +137,8 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
             embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=load_embed_color(member.guild, embed_colors.deletion, kargs["ramfs"]))
             embed.set_thumbnail(url=str(member.avatar_url))
 
-            embed.timestamp = datetime_now()
-            embed.set_footer(text=f"uid: {member.id}, unix: {int(datetime_now().timestamp())}")
+            embed.timestamp = ts = datetime_now()
+            embed.set_footer(text=f"uid: {member.id}, unix: {int(ts.timestamp())}")
 
             embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
             embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
