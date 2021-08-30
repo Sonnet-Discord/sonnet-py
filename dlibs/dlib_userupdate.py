@@ -53,7 +53,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
         basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
-        days = (datetime_now() - indata).days
+        days = (datetime.utcnow() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
         return "ERROR: Could not fetch this date"
