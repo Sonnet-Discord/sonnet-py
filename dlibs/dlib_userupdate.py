@@ -95,7 +95,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
     # Handle notifer logging
     if member.id in notifier_cache["notifier-log-users"]:
         issues.append("User")
-    if abs(datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
+    if abs(datetime.utcnow().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
         issues.append("Timestamp")
     if int(notifier_cache["notifier-log-defaultpfp"]) and member.avatar_url == member.default_avatar_url:
         issues.append("Default pfp")
