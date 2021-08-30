@@ -7,26 +7,28 @@ Obj = TypeVar("Obj")
 
 # Define ramfs headers
 class ram_filesystem:
+    # pytype: disable=bad-return-type
     def mkdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
-        pass
+        ...
 
     def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
-        pass
+        ...
 
     def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
-        pass
+        ...
 
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Obj]] = None, f_args: Optional[List[Any]] = None) -> Obj:
-        pass
+        ...
 
     def rmdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
-        pass
+        ...
 
     def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
-        return ([], [])
+        ...
 
     def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], Dict[str, Tuple[Any]]]:
-        return ([], {})
+        ...
+    # pytype: enable=bad-return-type
 
 
 class cmd_module:
