@@ -114,15 +114,16 @@ class ram_filesystem:
         else:
             make_dir = dirlist
 
-        # If the current dir doesnt exist then create it
-        if not (make_dir[0] in self.directory_table):
-            self.directory_table[make_dir[0]] = ram_filesystem()
+        path: "ram_filesystem" = self
 
-        # If there is more directory left then keep going
-        if len(make_dir) > 1:
-            return self.directory_table[make_dir[0]].mkdir(dirlist=make_dir[1:])
-        else:
-            return self
+        for item in make_dir:
+            # If the current dir doesnt exist then create it
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                path.directory_table[item] = path = ram_filesystem()
+
+        return path
 
     def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
@@ -134,14 +135,19 @@ class ram_filesystem:
         else:
             remove_item = dirlist
 
-        if len(remove_item) > 1:
-            return self.directory_table[remove_item[0]].remove_f(dirlist=remove_item[1:])
-        else:
+        path: "ram_filesystem" = self
+
+        for i, item in enumerate(remove_item):
+
             try:
-                del self.data_table[remove_item[0]]
-                return self
+                if i < len(remove_item) - 1:
+                    path = path.directory_table[item]
+                else:
+                    del path.data_table[item]
             except KeyError:
-                raise FileNotFoundError("File does not exist")
+                raise FileNotFoundError(f"No such filepath: {'/'.join(remove_item)}")
+
+        return path
 
     def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
@@ -153,13 +159,17 @@ class ram_filesystem:
         else:
             file_to_open = dirlist
 
-        try:
-            if len(file_to_open) > 1:
-                return self.directory_table[file_to_open[0]].read_f(dirlist=file_to_open[1:])
-            else:
-                return self.data_table[file_to_open[0]]
-        except KeyError:
-            raise FileNotFoundError("File does not exist")
+        path: "ram_filesystem" = self
+
+        for i, item in enumerate(file_to_open):
+
+            try:
+                if i < len(file_to_open) - 1:
+                    path = path.directory_table[item]
+                else:
+                    return path.data_table[item]
+            except KeyError:
+                raise FileNotFoundError("No such filepath: {'/'.join(file_to_open)}")
 
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Any]] = None, f_args: Optional[List[Any]] = None) -> Any:
 
@@ -174,16 +184,18 @@ class ram_filesystem:
         else:
             file_to_write = dirlist
 
-        if len(file_to_write) > 1:
-            try:
-                return self.directory_table[file_to_write[0]].create_f(dirlist=file_to_write[1:], f_type=f_type, f_args=f_args)
-            except KeyError:
-                self.mkdir("/".join(file_to_write[:-1]))
-                return self.directory_table[file_to_write[0]].create_f(dirlist=file_to_write[1:], f_type=f_type, f_args=f_args)
-        else:
-            self.data_table[file_to_write[0]] = f_type(*f_args)
+        path: "ram_filesystem" = self
 
-        return self.data_table[file_to_write[0]]
+        for i, item in enumerate(file_to_write):
+
+            if i < len(file_to_write) - 1:
+                try:
+                    path = path.directory_table[item]
+                except KeyError:
+                    path.directory_table[item] = path = ram_filesystem()
+            else:
+                f = path.data_table[item] = f_type(*f_args)
+                return f
 
     def rmdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
 
@@ -195,60 +207,62 @@ class ram_filesystem:
         else:
             directory_to_delete = dirlist
 
-        try:
-            if len(directory_to_delete) > 1:
-                self.directory_table[directory_to_delete[0]].rmdir(dirlist=directory_to_delete[1:])
-            else:
-                del self.directory_table[directory_to_delete[0]]
-        except KeyError:
-            raise FileNotFoundError("Folder does not exist")
+        path: "ram_filesystem" = self
+
+        for i, item in enumerate(directory_to_delete):
+
+            try:
+                if i < len(directory_to_delete) - 1:
+                    path = path.directory_table[item]
+                else:
+                    del path.data_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such filepath: {'/'.join(directory_to_delete)}")
 
     def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
 
-        try:
-            if dirstr or dirlist:
+        if dirlist is None and dirstr is not None:
+            folderpath = dirstr.split("/")
+        elif dirlist is not None:
+            folderpath = dirlist
+        else:
+            folderpath = []
 
-                if dirlist is None:
-                    if dirstr is not None:
-                        folderpath: List[str] = dirstr.split("/")
-                    else:
-                        raise TypeError("No dirstr or dirlist passed")
-                else:
-                    folderpath = dirlist
+        path: "ram_filesystem" = self
 
-                if len(folderpath) > 1:
-                    return self.directory_table[folderpath[0]].ls(dirlist=folderpath[1:])
-                else:
-                    return self.directory_table[folderpath[0]].ls()
-            else:
-                return (list(self.data_table), list(self.directory_table))
-        except KeyError:
-            raise FileNotFoundError("Filepath does not exist")
+        for item in folderpath:
+
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+
+        return list(path.data_table), list(self.directory_table)
 
     def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
-        try:
-            if dirstr or dirlist:
 
-                if dirlist is None:
-                    if dirstr is not None:
-                        folderpath: List[str] = dirstr.split("/")
-                    else:
-                        raise TypeError("No dirstr or dirlist passed")
-                else:
-                    folderpath = dirlist
+        if dirlist is None and dirstr is not None:
+            folderpath = dirstr.split("/")
+        elif dirlist is not None:
+            folderpath = dirlist
+        else:
+            folderpath = []
 
-                if len(folderpath) > 1:
-                    return self.directory_table[folderpath[0]].tree(dirlist=folderpath[1:])
-                else:
-                    return self.directory_table[folderpath[0]].tree()
-            else:
-                datamap: Tuple[List[str], Dict[str, Any]] = (list(self.data_table), {})
-                for folder in self.directory_table:
-                    datamap[1][folder] = self.directory_table[folder].tree()
-                return datamap
+        path = self
 
-        except KeyError:
-            raise FileNotFoundError("Filepath does not exist")
+        for item in folderpath:
+
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+
+        datamap: Tuple[List[str], Dict[str, Any]] = (list(path.data_table), {})
+
+        for folder in path.directory_table:
+            datamap[1][folder] = path.directory_table[folder].tree()
+
+        return datamap
 
 
 # Import blacklist
@@ -798,7 +812,7 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4"
+version_info: str = "LeXdPyK 1.4.1"
 bot_start_time: float = time.time()
 
 # Start bot
