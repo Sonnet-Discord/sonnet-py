@@ -103,16 +103,21 @@ class ram_filesystem:
     def __enter__(self) -> "ram_filesystem":
         return self
 
+    def _parsedirlist(self, dirstr: Optional[str], dirlist: Optional[List[str]], allowNone: bool = False) -> List[str]:
+
+        if dirlist is None and dirstr is not None:
+            return dirstr.split("/")
+        elif dirlist is not None:
+            return dirlist
+        elif allowNone:
+            return []
+
+        raise TypeError("No dirstr or dirlist passed")
+
     def mkdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
 
         # Make fs list
-        if dirlist is None:
-            if dirstr is not None:
-                make_dir: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            make_dir = dirlist
+        make_dir = self._parsedirlist(dirstr, dirlist)
 
         path: "ram_filesystem" = self
 
@@ -127,13 +132,7 @@ class ram_filesystem:
 
     def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        if dirlist is None:
-            if dirstr is not None:
-                remove_item: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            remove_item = dirlist
+        remove_item = self._parsedirlist(dirstr, dirlist)
 
         path: "ram_filesystem" = self
 
@@ -151,13 +150,7 @@ class ram_filesystem:
 
     def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        if dirlist is None:
-            if dirstr is not None:
-                file_to_open: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            file_to_open = dirlist
+        file_to_open = self._parsedirlist(dirstr, dirlist)
 
         path: "ram_filesystem" = self
 
@@ -176,13 +169,7 @@ class ram_filesystem:
         f_type = io.BytesIO if f_type is None else f_type
         f_args = [] if f_args is None else f_args
 
-        if dirlist is None:
-            if dirstr is not None:
-                file_to_write: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            file_to_write = dirlist
+        file_to_write = self._parsedirlist(dirstr, dirlist)
 
         path: "ram_filesystem" = self
 
@@ -199,13 +186,7 @@ class ram_filesystem:
 
     def rmdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
 
-        if dirlist is None:
-            if dirstr is not None:
-                directory_to_delete: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            directory_to_delete = dirlist
+        directory_to_delete = self._parsedirlist(dirstr, dirlist)
 
         path: "ram_filesystem" = self
 
@@ -221,12 +202,7 @@ class ram_filesystem:
 
     def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
 
-        if dirlist is None and dirstr is not None:
-            folderpath = dirstr.split("/")
-        elif dirlist is not None:
-            folderpath = dirlist
-        else:
-            folderpath = []
+        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
 
         path: "ram_filesystem" = self
 
@@ -237,18 +213,13 @@ class ram_filesystem:
             except KeyError:
                 raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
 
-        return list(path.data_table), list(self.directory_table)
+        return list(path.data_table), list(path.directory_table)
 
     def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        if dirlist is None and dirstr is not None:
-            folderpath = dirstr.split("/")
-        elif dirlist is not None:
-            folderpath = dirlist
-        else:
-            folderpath = []
+        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
 
-        path = self
+        path: "ram_filesystem" = self
 
         for item in folderpath:
 
