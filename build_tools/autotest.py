@@ -11,12 +11,13 @@ tests = {
     "mypy": "mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable",
     "pylint": "pylint */ -E",
     "yapf": "yapf -d -r .",
+    "pytype": "pytype .",
     }
 
-notttest = set(sys.argv[1:])
+nottest = set(sys.argv[1:])
 
-for i in list(tests.keys()):
-    if i in notttest:
+for i in list(tests):
+    if i in nottest:
         del tests[i]
 
 testout: Dict[str, Any] = {}
