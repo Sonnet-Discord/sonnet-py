@@ -139,6 +139,8 @@ async def process_infraction(message: discord.Message,
 
     reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
+    # Potential BUG: discord.abc.User != discord.user.User under mypy
+    # Due to this we have to cast
     moderator = cast(discord.User, client.user if automod else message.author)
 
     # Test if user is valid
@@ -307,7 +309,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         mutetime = 0
 
     # This ones for you, curl
-    if mutetime >= 60 * 60 * 256 or mutetime < 0:
+    if not 0 <= mutetime < 60 * 60 * 256:
         mutetime = 0
 
     try:
@@ -407,7 +409,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
             await message.channel.send("Invalid flags supplied")
             return 1
 
-    if per_page > 40 or per_page < 5:
+    if not 5 <= per_page <= 40:
         await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
         return 1
 
@@ -436,7 +438,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
         selected_chunk %= cpagecount
         selected_chunk += 1
 
-    if selected_chunk > cpagecount or selected_chunk < 0:
+    if not 0 <= selected_chunk < cpagecount:
         await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
         return 1
 
@@ -773,4 +775,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.7-1"
