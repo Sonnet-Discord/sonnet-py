@@ -7,31 +7,26 @@ import discord
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
-import lib_parsers
-
-importlib.reload(lib_parsers)
 import lib_loaders
 
 importlib.reload(lib_loaders)
-import lib_sonnetconfig
+import lib_starboard
 
-importlib.reload(lib_sonnetconfig)
+importlib.reload(lib_starboard)
 
+from lib_starboard import starboard_cache, build_starboard_embed
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better
-from lib_parsers import generate_reply_field
 
-from lib_sonnetconfig import STARBOARD_EMOJI, STARBOARD_COUNT
-
-from typing import Dict, Any, Union
-
-starboard_types: Dict[Union[str, int], Any] = {
-    0: "sonnet_starboard",
-    "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]
-    }
+from typing import Any
+import lib_lexdpyk_h as lexdpyk
 
 
 async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **kargs: Any) -> None:
+
+    client: discord.Client = kargs["client"]
+    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
 
     message = reaction.message
 
@@ -39,11 +34,12 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
     if not message.guild:
         return
 
-    inc_statistics_better(message.guild.id, "on-reaction-add", kargs["kernel_ramfs"])
-    mconf = load_message_config(message.guild.id, kargs["ramfs"], datatypes=starboard_types)
+    inc_statistics_better(message.guild.id, "on-reaction-add", kernel_ramfs)
+    mconf = load_message_config(message.guild.id, ramfs, datatypes=starboard_cache)
 
     if bool(int(mconf["starboard-enabled"])) and reaction.emoji == mconf["starboard-emoji"] and reaction.count >= int(mconf["starboard-count"]):
-        if (channel_id := mconf["starboard-channel"]) and (channel := kargs["client"].get_channel(int(channel_id))):
+        if (channel_id := mconf["starboard-channel"]) and (channel := client.get_channel(int(channel_id))) and isinstance(channel, discord.TextChannel):
+
             with db_hlapi(message.guild.id) as db:
                 db.inject_enum("starboard", [
                     ("messageID", str),
@@ -53,22 +49,8 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
                     # Add to starboard
                     db.set_enum("starboard", [str(message.id)])
 
-                    # Generate replies
-                    message_content = generate_reply_field(message)
-
-                    # Generate embed
-                    starboard_embed = discord.Embed(title="Starred message", description=message_content, color=0xffa700)
-
-                    for i in message.attachments:
-                        if any([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
-                            starboard_embed.set_image(url=i.url)
-
-                    starboard_embed.set_author(name=str(message.author), icon_url=str(message.author.avatar_url))
-                    starboard_embed.timestamp = message.created_at
-                    starboard_embed.set_footer(text=f"#{message.channel}")
-
                     try:
-                        await channel.send(embed=starboard_embed)
+                        await channel.send(embed=(await build_starboard_embed(message)))
                     except discord.errors.Forbidden:
                         pass
 
@@ -79,4 +61,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.8-DEV"
