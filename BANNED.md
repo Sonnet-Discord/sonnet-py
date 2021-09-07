@@ -31,11 +31,11 @@ None of the things listed below should happen in Sonnet.
 # Basic Heresy
 - Do not use eval:
 ```py
-__import__("sys").setrecursionlimit(2**30)or(not(a:=(lambda: a())))or a()
+__import__("sys").setrecursionlimit(1<<30)or(a:=lambda:a())()
 ```
 - Do not use exec:
 ```py
-v = __import__("sys").setrecursionlimit(2**30)or(not(a:=(lambda: a())))or a()
+v = __import__("sys").setrecursionlimit(1<<30)or(a:=lambda:a())()
 ```
 - Do not use third party library endpoints that have had a bug
 - Do not use deprecated endpoints
