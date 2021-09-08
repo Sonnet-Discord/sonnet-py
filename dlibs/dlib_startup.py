@@ -13,7 +13,7 @@ import lib_loaders
 importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import inc_statistics_better
+from lib_loaders import inc_statistics_better, datetime_now
 
 from typing import Dict, Callable, Any, List, Tuple
 
@@ -50,19 +50,21 @@ async def on_ready(**kargs: Any) -> None:
             mutes: List[Tuple[str, str, str, int]] = db.fetch_all_mutes()
             lost_mutes = sorted(mutes, key=lambda a: a[3])
 
+        ts = datetime_now().timestamp()
+
         if lost_mutes:
 
             print(f"Lost mutes: {len(lost_mutes)}")
             for i in lost_mutes:
-                if time.time() > i[3]:
+                if 0 != i[3] < ts:
                     await attempt_unmute(Client, i)
 
-            lost_mute_timers = [i for i in lost_mutes if time.time() < i[3]]
+            lost_mute_timers = [i for i in lost_mutes if 0 != i[3] < ts]
             if lost_mute_timers:
                 print(f"Mute timers to recover: {len(lost_mute_timers)}\nThis process will end in {round(lost_mutes[-1][3]-time.time())} seconds")
 
                 for i in lost_mute_timers:
-                    await asyncio.sleep(i[3] - time.time())
+                    await asyncio.sleep(i[3] - datetime_now().timestamp())
                     with db_hlapi(int(i[0])) as db:
                         if db.is_muted(infractionid=i[1]):
                             await attempt_unmute(Client, i)
@@ -80,4 +82,4 @@ category_info: Dict[str, str] = {'name': 'Initializers'}
 
 commands: Dict[str, Callable[..., Any]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.7-2"

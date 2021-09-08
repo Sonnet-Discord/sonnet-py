@@ -357,6 +357,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     if verbose and not mutetime:
         await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
+    # if mutetime call db timed mute
     if mutetime:
 
         if verbose:
@@ -365,10 +366,17 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
             db.unmute_user(userid=member.id)
-            db.mute_user(member.id, int(time.time() + mutetime), infractionID)
+            db.mute_user(member.id, int(datetime_now().timestamp() + mutetime), infractionID)
 
         # Create in other thread to not block command execution
         asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime, ramfs))
+
+    else:
+
+        # When muted with no unmute add to db as 0 timestamp to unmute, program should treat 0 as invalid
+        with db_hlapi(message.guild.id) as db:
+            db.unmute_user(userid=member.id)
+            db.mute_user(member.id, 0, infractionID)
 
 
 async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
