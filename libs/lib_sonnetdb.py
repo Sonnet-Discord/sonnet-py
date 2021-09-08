@@ -276,11 +276,11 @@ class db_hlapi:
                                 count: bool = False) -> Union[Tuple[str, str, str, str, str, int], int]:
 
         schm: List[List[str]] = []
-        if user:
+        if user is not None:
             schm.append(["userID", str(user)])
-        if moderator:
+        if moderator is not None:
             schm.append(["moderatorID", str(moderator)])
-        if itype:
+        if itype is not None:
             schm.append(["type", itype])
         if not automod:
             schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
@@ -351,9 +351,9 @@ class db_hlapi:
     def unmute_user(self, infractionid: Optional[str] = None, userid: Optional[int] = None) -> None:
 
         try:
-            if infractionid:
+            if infractionid is not None:
                 self._db.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid])
-            if userid:
+            if userid is not None:
                 self._db.delete_rows_from_table(f"{self.guild}_mutes", ["userid", userid])
         except db_error.OperationalError:
             pass
@@ -468,9 +468,9 @@ class db_hlapi:
     def is_muted(self, userid: Optional[int] = None, infractionid: Optional[str] = None) -> bool:
 
         try:
-            if userid:
+            if userid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", userid]))
-            elif infractionid:
+            elif infractionid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid]))
         except db_error.OperationalError:
             muted = False
