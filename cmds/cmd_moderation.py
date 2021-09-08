@@ -355,7 +355,6 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
             db.mute_user(member.id, 0, infractionID)
 
 
-
 async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
