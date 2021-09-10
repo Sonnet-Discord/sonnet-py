@@ -238,12 +238,12 @@ def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_fi
     try:
         statistics: dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
     except FileNotFoundError:
-        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(dict[str, int], dict))
+        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(type[dict[str, int]], dict))
 
     try:
         global_statistics: dict[str, int] = kernel_ramfs.read_f("global/stats")
     except FileNotFoundError:
-        global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(dict[str, int], dict))
+        global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(type[dict[str, int]], dict))
 
     if inctype in statistics:
         statistics[inctype] += 1
