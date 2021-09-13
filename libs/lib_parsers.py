@@ -25,7 +25,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Union
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union
 import lib_lexdpyk_h as lexdpyk
 
 re: Any = importlib.import_module(REGEX_VERSION)
@@ -44,7 +44,7 @@ class errors:
 
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
-_parse_blacklist_inputs = "tuple[discord.Message, dict[str, Any], lexdpyk.ram_filesystem]"
+_parse_blacklist_inputs = Tuple[discord.Message, Dict[str, Any], lexdpyk.ram_filesystem]
 
 
 # Run a blacklist pass over a messages content and files
