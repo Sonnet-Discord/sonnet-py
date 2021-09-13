@@ -245,7 +245,7 @@ def _parse_role_perms(author: discord.Member, permrole: str) -> bool:
     return bool(permrole and bool([i.id for i in author.roles if int(permrole) == i.id]))
 
 
-Permtype = Union[str, tuple[str, Callable[[discord.Message], bool]]]
+Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 
 # Parse user permissions to run a command
