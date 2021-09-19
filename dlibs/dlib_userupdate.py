@@ -12,8 +12,12 @@ importlib.reload(lib_loaders)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_loaders import inc_statistics_better, load_embed_color, embed_colors, load_message_config, datetime_now
+from lib_compatibility import user_avatar_url, discord_datetime_now
 
 from typing import Any, Dict, Union, List, Optional
 import lib_lexdpyk_h as lexdpyk
@@ -40,7 +44,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
             return
 
         message_embed = discord.Embed(title="Nickname updated", color=load_embed_color(before.guild, embed_colors.edit, kargs["ramfs"]))
-        message_embed.set_author(name=f"{before} ({before.id})", icon_url=str(before.avatar_url))
+        message_embed.set_author(name=f"{before} ({before.id})", icon_url=user_avatar_url(before))
         message_embed.add_field(name=("Before" + " | False" * (not before.nick)), value=str(before.nick))
         message_embed.add_field(name=("After" + " | False" * (not after.nick)), value=str(after.nick))
 
@@ -53,7 +57,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
         basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
-        days = (datetime.utcnow() - indata).days
+        days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
         return "ERROR: Could not fetch this date"
@@ -95,9 +99,9 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
     # Handle notifer logging
     if member.id in notifier_cache["notifier-log-users"]:
         issues.append("User")
-    if abs(datetime.utcnow().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
+    if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
         issues.append("Timestamp")
-    if int(notifier_cache["notifier-log-defaultpfp"]) and member.avatar_url == member.default_avatar_url:
+    if int(notifier_cache["notifier-log-defaultpfp"]) and user_avatar_url(member) == str(member.default_avatar_url):
         issues.append("Default pfp")
 
     if issues:
@@ -109,7 +113,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
     if joinlog and (logging_channel := kargs["client"].get_channel(int(joinlog))):
 
         embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=load_embed_color(member.guild, embed_colors.creation, kargs["ramfs"]))
-        embed.set_thumbnail(url=str(member.avatar_url))
+        embed.set_thumbnail(url=user_avatar_url(member))
 
         embed.timestamp = ts = datetime_now()
         embed.set_footer(text=f"uid: {member.id}, unix: {int(ts.timestamp())}")
@@ -135,7 +139,7 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
                 return
 
             embed = discord.Embed(title=f"{member} left.", description=f"*{member.mention} left the server.*", color=load_embed_color(member.guild, embed_colors.deletion, kargs["ramfs"]))
-            embed.set_thumbnail(url=str(member.avatar_url))
+            embed.set_thumbnail(url=user_avatar_url(member))
 
             embed.timestamp = ts = datetime_now()
             embed.set_footer(text=f"uid: {member.id}, unix: {int(ts.timestamp())}")

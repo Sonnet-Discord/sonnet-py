@@ -4,7 +4,6 @@
 import importlib
 
 import time, asyncio, os, hashlib, io
-import datetime
 
 import discord, lz4.frame
 
@@ -26,13 +25,17 @@ importlib.reload(lib_lexdpyk_h)
 import lib_constants
 
 importlib.reload(lib_constants)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum, load_embed_color, embed_colors, datetime_now
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
+from lib_compatibility import user_avatar_url, discord_datetime_now
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, cast
+from typing import List, Any, Dict, Optional, Callable, Tuple
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -96,7 +99,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
             flimend = limend + constants.embed.field.value
             message_embed.add_field(name="(Continued further)", value=message.content[limend:flimend])
 
-    message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=str(message.author.avatar_url))
+    message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=user_avatar_url(message.author))
 
     if (r := message.reference) and (rr := r.resolved) and isinstance(rr, discord.Message):
         message_embed.add_field(name="Replying to:", value=f"{rr.author.mention} [(Link)]({rr.jump_url})")
@@ -126,7 +129,7 @@ async def grab_an_adult(discord_message: discord.Message, guild: discord.Guild, 
         # Message has been grabbed, start generating embed
         message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(guild, embed_colors.primary, ramfs))
 
-        message_embed.set_author(name=str(discord_message.author), icon_url=str(discord_message.author.avatar_url))
+        message_embed.set_author(name=str(discord_message.author), icon_url=user_avatar_url(discord_message.author))
         message_embed.timestamp = discord_message.created_at
 
         # Grab files async
@@ -164,7 +167,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             lim: int = constants.embed.field.value
 
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, ramfs))
-            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=cast(str, message.author.avatar_url))
+            message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=user_avatar_url(message.author))
 
             old_msg = (old_message.content or "NULL")
             message_embed.add_field(name="Old Message", value=(old_msg)[:lim], inline=False)
@@ -212,7 +215,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
         messages.seek(0, 2)
         EOF = messages.tell()
         messages.seek(0)
-        droptime = round(datetime.datetime.utcnow().timestamp() * 1000) - timecount
+        droptime = round(discord_datetime_now().timestamp() * 1000) - timecount
         userlist = []
         ismute = 1
 
@@ -250,7 +253,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
         messages.seek(0, 2)
         EOF = messages.tell()
         messages.seek(0)
-        droptime = round(datetime.datetime.utcnow().timestamp() * 1000) - timecount
+        droptime = round(discord_datetime_now().timestamp() * 1000) - timecount
         userlist = []
         ismute = 1
         charc = 0

@@ -13,9 +13,13 @@ importlib.reload(lib_sonnetconfig)
 import lib_parsers
 
 importlib.reload(lib_parsers)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_parsers import generate_reply_field
 from lib_sonnetconfig import STARBOARD_EMOJI, STARBOARD_COUNT
+from lib_compatibility import user_avatar_url
 
 from typing import Dict, Union, Any
 
@@ -37,7 +41,7 @@ async def build_starboard_embed(message: discord.Message) -> discord.Embed:
         if any(i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]):
             starboard_embed.set_image(url=i.url)
 
-    starboard_embed.set_author(name=str(message.author), icon_url=str(message.author.avatar_url))
+    starboard_embed.set_author(name=str(message.author), icon_url=user_avatar_url(message.author))
     starboard_embed.timestamp = message.created_at
     starboard_embed.set_footer(text=f"#{message.channel}")
 

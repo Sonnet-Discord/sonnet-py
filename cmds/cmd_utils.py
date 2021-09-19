@@ -23,10 +23,14 @@ importlib.reload(lib_constants)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean, parse_user_member
 from lib_loaders import load_embed_color, embed_colors, datetime_now
+from lib_compatibility import user_avatar_url, discord_datetime_now
 import lib_constants as constants
 
 from typing import List, Any, Optional, cast
@@ -66,7 +70,7 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
         basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
-        days = (datetime.utcnow() - indata).days
+        days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
         return "ERROR: Could not fetch this date"
@@ -85,7 +89,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
 
     embed = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-    embed.set_thumbnail(url=cast(str, user.avatar_url))
+    embed.set_thumbnail(url=user_avatar_url(user))
     embed.add_field(name="Username", value=str(user), inline=True)
     embed.add_field(name="User ID", value=str(user.id), inline=True)
     if member:
@@ -120,7 +124,7 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
         return 1
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-    embed.set_image(url=cast(str, user.avatar_url))
+    embed.set_image(url=user_avatar_url(user))
     embed.timestamp = datetime_now()
     try:
         await message.channel.send(embed=embed)

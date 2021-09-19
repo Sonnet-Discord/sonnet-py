@@ -21,11 +21,16 @@ importlib.reload(lib_constants)
 import lib_goparsers
 
 importlib.reload(lib_goparsers)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
+
 
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
+from lib_compatibility import user_avatar_url
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
@@ -95,7 +100,7 @@ async def log_infraction(
     if log_channel:
 
         log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
-        log_embed.set_thumbnail(url=cast(str, user.avatar_url))
+        log_embed.set_thumbnail(url=user_avatar_url(user))
         log_embed.add_field(name="Infraction ID", value=generated_id)
         log_embed.add_field(name="Moderator", value=moderator.mention)
         log_embed.add_field(name="User", value=user.mention)
@@ -110,7 +115,7 @@ async def log_infraction(
         return generated_id, None
 
     dm_embed = discord.Embed(title="Sonnet", description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
-    dm_embed.set_thumbnail(url=cast(str, user.avatar_url))
+    dm_embed.set_thumbnail(url=user_avatar_url(user))
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
@@ -633,7 +638,7 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     # Message has been grabbed, start generating embed
     message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, ramfs))
 
-    message_embed.set_author(name=str(discord_message.author), icon_url=str(discord_message.author.avatar_url))
+    message_embed.set_author(name=str(discord_message.author), icon_url=user_avatar_url(discord_message.author))
     message_embed.timestamp = discord_message.created_at
 
     # Grab files from cache
