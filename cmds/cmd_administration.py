@@ -165,15 +165,22 @@ async def set_view_infractions(message: discord.Message, args: List[str], client
     if not message.guild:
         return 1
 
-    if args:
-        gate = parse_boolean(args[0])
-        with db_hlapi(message.guild.id) as database:
-            database.add_config("member-view-infractions", str(int(gate)))
-    else:
-        with db_hlapi(message.guild.id) as database:
-            gate = bool(int(database.grab_config("member-view-infractions") or 0))
+    gate: bool
 
-    if kwargs["verbose"]: await message.channel.send(f"Member View Own Infractions is set to {gate}")
+    if args:
+
+        gate = (parse_boolean(args[0]) or False)
+
+        with db_hlapi(message.guild.id) as db:
+            db.add_config("member-view-infractions", str(int(gate)))
+
+        if kwargs["verbose"]: await message.channel.send(f"Set member view own infractions to {gate}")
+
+    else:
+        with db_hlapi(message.guild.id) as db:
+            gate = bool(int(db.grab_config("member-view-infractions") or 0))
+
+        if kwargs["verbose"]: await message.channel.send(f"Member view own infractions is set to {gate}")
 
 
 async def set_prefix(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -311,4 +318,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.8-DEV"
