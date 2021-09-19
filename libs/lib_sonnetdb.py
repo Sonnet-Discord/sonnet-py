@@ -139,7 +139,7 @@ class db_hlapi:
         if name not in self.__enum_pool:
             raise TypeError(f"Trying to grab from table that is not registered ({name} not registered)")
 
-        if type(cname) != self.__enum_input[name][0][1]:
+        if not isinstance(cname, self.__enum_input[name][0][1]):
             raise TypeError("grab type does not match enum PK signature")
 
         try:
@@ -165,7 +165,7 @@ class db_hlapi:
             raise TypeError(f"Length of table does not match length of input ({len(cpush)} != {len(self.__enum_input[name])})")
 
         for index, i in enumerate(cpush):
-            if type(i) != self.__enum_input[name][index][1]:
+            if not isinstance(i, self.__enum_input[name][index][1]):
                 errtuple = self.__enum_input[name][index]
                 errbuilder = io.StringIO()
                 errbuilder.write(f"Improper type passed based on enum registry, index: {index} name: {errtuple[0]}\n")
@@ -192,7 +192,7 @@ class db_hlapi:
         if enumname not in self.__enum_pool:
             raise TypeError(f"Trying to delete from table that is not registered ({enumname} not registered)")
 
-        if type(key) != self.__enum_input[enumname][0][1]:
+        if not isinstance(key, self.__enum_input[enumname][0][1]):
             raise TypeError("delete type does not match enum PK signature")
 
         try:
