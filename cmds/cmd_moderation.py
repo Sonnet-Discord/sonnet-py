@@ -25,7 +25,6 @@ import lib_compatibility
 
 importlib.reload(lib_compatibility)
 
-
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
