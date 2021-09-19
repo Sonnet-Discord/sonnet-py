@@ -9,6 +9,12 @@ from typing import Union, cast
 
 releaselevel: int = discord.version_info[0]
 
+__all__ = [
+    "compatErrors",
+    "user_avatar_url",
+    "discord_datetime_now",
+    ]
+
 
 class compatErrors:
     class NotFound(Exception):
