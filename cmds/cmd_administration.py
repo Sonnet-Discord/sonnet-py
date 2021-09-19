@@ -169,7 +169,7 @@ async def set_view_infractions(message: discord.Message, args: List[str], client
 
     if args:
 
-        gate = (parse_boolean(args[0]) or False)
+        gate = pb if isinstance((pb := parse_boolean(args[0])), bool) else False
 
         with db_hlapi(message.guild.id) as db:
             db.add_config("member-view-infractions", str(int(gate)))

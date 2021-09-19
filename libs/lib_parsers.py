@@ -165,7 +165,7 @@ def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool
 
 
 # Parse a boolean datatype from a string
-def parse_boolean(instr: str) -> bool | int:
+def parse_boolean(instr: str) -> Union[bool, int]:
     """
     Parse a boolean from preset true|false values
     Returns 0 (a falsey) if data could not be parsed
@@ -462,7 +462,7 @@ async def parse_channel_message(message: discord.Message, args: list[str], clien
 
     try:
         message_link = args[0].replace("-", "/").split("/")
-        log_channel: str | int = message_link[-2]
+        log_channel: Union[str, int] = message_link[-2]
         message_id = message_link[-1]
         nargs = 1
     except IndexError:

@@ -25,7 +25,7 @@ from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
-from typing import Any, Tuple, Optional, cast
+from typing import Any, Tuple, Optional, Union, cast
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -73,7 +73,7 @@ def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
     return tuple(inData.to_bytes(length, byteorder="little"))
 
 
-defaultcache: dict[str | int, Any] = {
+defaultcache: dict[Union[str, int], Any] = {
     "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["antispam", "3,2"], ["char-antispam", "2,2,1000"]],
     "text":
         [
@@ -97,7 +97,7 @@ def write_vnum(fileobj: io.BufferedWriter, number: int) -> None:
 
 
 # Load config from cache, or load from db if cache isn't existant
-def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[dict[str | int, Any]] = None) -> dict[str, Any]:
+def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[dict[Union[str, int], Any]] = None) -> dict[str, Any]:
 
     datatypes = defaultcache if datatypes is None else datatypes
 
