@@ -460,9 +460,11 @@ def logging_toggle(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]
         logger.setLevel(10)
         return "Logging at L10", []
 
+
 class DebugCallable(Protocol):
     def __call__(self, args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
         return None
+
 
 # Generate debug command subset
 debug_commands: Dict[str, DebugCallable] = {}
