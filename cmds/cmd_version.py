@@ -58,7 +58,7 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
 
     base_versions = []
     base_versions.append(["Python", sys.version.split(" ")[0]])
-    base_versions.append(["Discord.py", discord.__version__])
+    base_versions.append(["Wrapper", discord.__version__])
     base_versions.append(["Kernel", kwargs['main_version']])
     base = "\n".join(prettyprint(base_versions))
 
@@ -165,4 +165,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.8-DEV"
