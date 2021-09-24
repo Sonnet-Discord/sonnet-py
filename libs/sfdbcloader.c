@@ -2,29 +2,33 @@
 #include <string.h>
 #include <stdlib.h>
 
-int load_words ( char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length ) {
+typedef struct {
+	char* ptr;
+	size_t len;
+	size_t cap;
+} String;
 
-	// Open cache file
-	FILE* fp = fopen(filename, "rb");
+// Copies amount from fp into String
+// If the String does not have the capacity it returns 1 and no call occurs, else returns 0
+int fcopys(FILE* fp, String* s, int amount) {
 
-	// Exit if file does not exist
-	if ( fp == NULL ) {
-		return 2; // Return 2 on file not exist errors, 1 on general errors
+	if ((size_t)amount > (s->cap - s->len)) {
+		return 1;
 	}
 
+	fgets(s->ptr+s->len, amount+1, fp);
+
+	s->len += amount;
+
+	return 0;
+}
+
+int load_words_to_string ( FILE* fp, int retamount, String* s ) {
+	
 	// Grab length of file
 	int maxln = fgetc(fp);
 	fseek(fp, 0, SEEK_END);
 	int size = (ftell(fp) - 1) / maxln ;
-
-	// Make mini buffer to hold words
-	char buf[256];
-
-	// Seed random number generator
-	srand(seed);
-
-	// Empty buffer
-	memset(pointer, 0, pointer_length);
 
 	// Grab X amount of words
 	for ( int i = 0 ; i < retamount; i++ ) {
@@ -34,25 +38,42 @@ int load_words ( char* filename, int retamount, unsigned int seed, char* pointer
 		fseek(fp, randval, SEEK_SET);
 
 		// Grab word and add it to buffer
-		// The plus one makes no sense i think it just reads one less than its supposed to cause \x00 terminator?
-		int getamnt = fgetc(fp)+1;
-		fgets(buf, getamnt, fp);
+		int getamnt = fgetc(fp);
 
-		// Only add to buffer if it has space
-		// TODO(ultrabear): make this use length prefix strings instead of using strlen and strcat (slow)
-		if ( strlen(buf) + strlen(pointer) < pointer_length ) {
-			strcat(pointer, buf);
-		}
-		else {
-			fclose(fp);
+		if (fcopys(fp, s, getamnt) != 0) {
 			return 1;
 		}
 
 	}
 
-	// Close file pointer
-	fclose(fp);
 	return 0;
+}
+
+int load_words ( char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length ) {
+
+	// Seed random number generator
+	srand(seed);
+
+	// Open cache file
+	FILE* fp = fopen(filename, "rb");
+
+	// Exit if file does not exist
+	if ( fp == NULL ) {
+		return 2; // Return 2 on file not exist errors, 1 on general errors
+	}
+	
+	// Create String object
+	String b = {pointer, 0, (size_t)pointer_length};
+
+	// Zero string
+	memset(b.ptr, 0, b.cap);
+
+	int retcode = load_words_to_string(fp, retamount, &b);
+
+	// Close fp regardless of output
+	fclose(fp);
+
+	return retcode;
 }
 
 int load_words_test( char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length, int testcount) {
