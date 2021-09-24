@@ -16,7 +16,11 @@ int fcopys(FILE* fp, String* s, int amount) {
 		return 1;
 	}
 
-	fgets(s->ptr+s->len, amount+1, fp);
+	char* r = fgets(s->ptr+s->len, amount+1, fp);
+
+	if (r == NULL) {
+		return 1;
+	}
 
 	s->len += amount;
 
