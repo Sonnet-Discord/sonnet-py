@@ -66,7 +66,7 @@ def discord_datetime_now() -> datetime.datetime:
     # 2.0: datetime aware
 
     if releaselevel == 1:
-        return datetime.datetime.now()
+        return datetime.datetime.utcnow()
     elif releaselevel == 2:
         return datetime.datetime.now(datetime.timezone.utc)
     else:
