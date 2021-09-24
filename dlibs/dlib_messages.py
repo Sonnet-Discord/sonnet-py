@@ -200,7 +200,8 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
     if not message.guild:
         raise RuntimeError("How did we end up here? Basically antispam_check was called on a dm message, oops")
 
-    # Wierd behavior: message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
+    # Wierd behavior(ultrabear): message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
+    # Update(ultrabear): now that we use discord_datetime_now() we get an unaware dt or aware dt depending on dpy version
 
     userid = message.author.id
     sent_at: float = message.created_at.timestamp()
