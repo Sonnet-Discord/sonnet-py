@@ -26,7 +26,7 @@ import lib_compatibility
 importlib.reload(lib_compatibility)
 
 from lib_goparsers import MustParseDuration
-from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
+from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
 from lib_compatibility import user_avatar_url
@@ -564,7 +564,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     infraction_embed.add_field(name="Reason", value=reason)
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
-    infraction_embed.timestamp = datetime.utcfromtimestamp(int(timestamp))
+    infraction_embed.timestamp = datetime_unix(int(timestamp))
 
     try:
         await message.channel.send(embed=infraction_embed)
@@ -606,7 +606,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
 
-    infraction_embed.timestamp = datetime.utcfromtimestamp(int(timestamp))
+    infraction_embed.timestamp = datetime_unix(int(timestamp))
 
     try:
         await message.channel.send(embed=infraction_embed)

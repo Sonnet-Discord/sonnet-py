@@ -313,3 +313,19 @@ def datetime_now() -> datetime.datetime:
     :returns: datetime.datetime - timestamp returned
     """
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+def datetime_unix(unix: int) -> datetime.datetime:
+    """
+    Returns aware datetime from a unix timestamp
+
+    Why was this so hard, datetime devs?
+
+    :returns: datetime.datetime - The datetime object
+    """
+
+    # WHY IS THIS SO DIFFICULT (ultrabear)
+    # This is the worst api I have ever used and its stdlib
+    # Ive used discord.py pre 1.0 ok ive seen messy apis
+    return datetime.datetime.fromtimestamp(unix).astimezone(datetime.timezone.utc)
+

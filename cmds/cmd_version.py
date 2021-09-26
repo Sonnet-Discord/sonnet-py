@@ -18,7 +18,7 @@ import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
 
-from lib_loaders import clib_exists, DotHeaders
+from lib_loaders import clib_exists, DotHeaders, datetime_now, datetime_unix
 
 from typing import List, Any, Union
 import lib_lexdpyk_h as lexdpyk
@@ -41,7 +41,7 @@ def zpad(innum: int) -> str:
 
 def getdelta(past: Union[int, float]) -> str:
 
-    trunning = (datetime.utcnow() - datetime.utcfromtimestamp(past))
+    trunning = (datetime_now() - datetime_unix(int(past)))
 
     seconds = trunning.seconds % 60
     minutes = ((trunning.seconds) // 60 % 60)
