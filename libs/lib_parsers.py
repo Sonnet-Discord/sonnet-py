@@ -25,7 +25,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, cast
 import lib_lexdpyk_h as lexdpyk
 
 re: Any = importlib.import_module(REGEX_VERSION)
@@ -99,12 +99,12 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
         if blacklist["url-blacklist"]:
             ramfs.create_f(f"{message.guild.id}/regex/url", f_type=re.compile, f_args=[_compileurl(blacklist["url-blacklist"])])
         else:
-            ramfs.create_f(f"{message.guild.id}/regex/url", f_type=lambda:None, f_args=[])
+            ramfs.create_f(f"{message.guild.id}/regex/url", f_type=cast(Any, lambda:None), f_args=[])
 
 
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
-    blacklist["url-blacklist_regex"]: Optional[Any] = ramfs.read_f(f"{message.guild.id}/regex/url")
+    blacklist["url-blacklist_regex"] = ramfs.read_f(f"{message.guild.id}/regex/url")
 
     # Check that member is still part of guild (yes this is a race cond that happens)
     if not isinstance(message.author, discord.Member):
