@@ -199,7 +199,7 @@ class ram_filesystem:
                 if i < len(directory_to_delete) - 1:
                     path = path.directory_table[item]
                 else:
-                    del path.data_table[item]
+                    del path.directory_table[item]
             except KeyError:
                 raise FileNotFoundError(f"No such filepath: {'/'.join(directory_to_delete)}")
 
@@ -831,7 +831,7 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.2"
+version_info: str = "LeXdPyK 1.4.3"
 bot_start_time: float = time.time()
 
 # Start bot
