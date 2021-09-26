@@ -4,7 +4,6 @@
 import importlib
 
 import discord
-from datetime import datetime
 import sys
 import io
 

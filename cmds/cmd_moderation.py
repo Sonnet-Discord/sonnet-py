@@ -4,7 +4,6 @@
 import importlib
 
 import discord, time, asyncio, math, io
-from datetime import datetime
 
 import lib_db_obfuscator
 
