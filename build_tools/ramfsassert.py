@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(1, os.getcwd())
 
-from main import ram_filesystem
+from main import ram_filesystem  # pylint: disable=E0401
 
 from typing import List
 

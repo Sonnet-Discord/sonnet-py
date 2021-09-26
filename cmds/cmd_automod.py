@@ -587,13 +587,14 @@ commands = {
     'list-blacklist': {
         'alias': 'list-automod'
         },
-    'list-automod': {
-        'pretty_name': 'list-automod [-r | --raw]',
-        'description': 'List automod configs, use --raw to forcedump json file',
-        'permission': 'moderator',
-        'cache': 'keep',
-        'execute': list_blacklist
-        },
+    'list-automod':
+        {
+            'pretty_name': 'list-automod [-r | --raw]',
+            'description': 'List automod configs, use --raw to forcedump json file',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': list_blacklist
+            },
     'blacklist-action':
         {
             'pretty_name': 'blacklist-action <warn|mute|kick|ban>',
