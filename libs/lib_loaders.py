@@ -328,4 +328,3 @@ def datetime_unix(unix: int) -> datetime.datetime:
     # This is the worst api I have ever used and its stdlib
     # Ive used discord.py pre 1.0 ok ive seen messy apis
     return datetime.datetime.fromtimestamp(unix).astimezone(datetime.timezone.utc)
-
