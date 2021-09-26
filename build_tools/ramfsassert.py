@@ -6,6 +6,7 @@
 
 import sys
 import os
+
 sys.path.insert(1, os.getcwd())
 
 from main import ram_filesystem
@@ -14,7 +15,8 @@ from typing import List
 
 testfs = ram_filesystem()
 
-def assertdir(files: List[str], directory: List[str]):
+
+def assertdir(files: List[str], directory: List[str]) -> None:
     assert testfs.ls() == (files, directory)
 
 
