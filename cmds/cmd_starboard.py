@@ -176,4 +176,4 @@ commands: Dict[str, Dict[str, Any]] = {
             },
     }
 
-version_info: str = "1.2.8-DEV"
+version_info: str = "1.2.8"
