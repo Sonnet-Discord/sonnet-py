@@ -230,6 +230,7 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
     if len(formatted_pretty) <= 2000 and not raw:
         await message.channel.send(formatted_pretty)
     else:
+        # Error message is first one if raw is False, second one if raw is True
         errmsg = ["Total Blacklist too large to be previewed", "--raw specified, file supplied"][raw]
         file_to_upload = io.BytesIO()
         file_to_upload.write(formatted.encode("utf8"))
