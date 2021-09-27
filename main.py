@@ -1,3 +1,8 @@
+# Check to ensure we dont import this file
+if __name__ != "__main__":
+    import warnings
+    warnings.warn("LeXdPyK is not meant to be imported")
+
 # Intro
 print("Booting LeXdPyK")
 
@@ -8,20 +13,21 @@ import os, importlib, sys, io, time, traceback
 import glob, json, hashlib, logging, getpass, datetime
 
 # Import typing support
-from typing import List, Optional, Any, Tuple, Dict, Union, Type
+from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol
 
 # Start Discord.py
 import discord, asyncio
 
-# Start Logging
-logger = logging.getLogger('discord')
-logger.setLevel(logging.INFO)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
+if __name__ == "__main__":
+    # Start Logging
+    logger = logging.getLogger('discord')
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+    logger.addHandler(handler)
 
-# Get token from environment variables.
-TOKEN: Optional[str] = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
+    # Get token from environment variables.
+    TOKEN: Optional[str] = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
 
 # Initialize kernel workspace
 sys.path.insert(1, os.getcwd() + '/cmds')
@@ -103,165 +109,155 @@ class ram_filesystem:
     def __enter__(self) -> "ram_filesystem":
         return self
 
+    def _parsedirlist(self, dirstr: Optional[str], dirlist: Optional[List[str]], allowNone: bool = False) -> List[str]:
+
+        if dirlist is None and dirstr is not None:
+            return dirstr.split("/")
+        elif dirlist is not None:
+            return dirlist
+        elif allowNone:
+            return []
+
+        raise TypeError("No dirstr or dirlist passed")
+
     def mkdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
 
         # Make fs list
-        if dirlist is None:
-            if dirstr is not None:
-                make_dir: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            make_dir = dirlist
+        make_dir = self._parsedirlist(dirstr, dirlist)
 
-        # If the current dir doesnt exist then create it
-        if not (make_dir[0] in self.directory_table):
-            self.directory_table[make_dir[0]] = ram_filesystem()
+        path: "ram_filesystem" = self
 
-        # If there is more directory left then keep going
-        if len(make_dir) > 1:
-            return self.directory_table[make_dir[0]].mkdir(dirlist=make_dir[1:])
-        else:
-            return self
+        for item in make_dir:
+            # If the current dir doesnt exist then create it
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                path.directory_table[item] = path = ram_filesystem()
+
+        return path
 
     def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        if dirlist is None:
-            if dirstr is not None:
-                remove_item: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            remove_item = dirlist
+        remove_item = self._parsedirlist(dirstr, dirlist)
 
-        if len(remove_item) > 1:
-            return self.directory_table[remove_item[0]].remove_f(dirlist=remove_item[1:])
-        else:
+        path: "ram_filesystem" = self
+
+        for i, item in enumerate(remove_item):
+
             try:
-                del self.data_table[remove_item[0]]
-                return self
+                if i < len(remove_item) - 1:
+                    path = path.directory_table[item]
+                else:
+                    del path.data_table[item]
             except KeyError:
-                raise FileNotFoundError("File does not exist")
+                raise FileNotFoundError(f"No such filepath: {'/'.join(remove_item)}")
+
+        return path
 
     def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        if dirlist is None:
-            if dirstr is not None:
-                file_to_open: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            file_to_open = dirlist
+        file_to_open = self._parsedirlist(dirstr, dirlist)
 
-        try:
-            if len(file_to_open) > 1:
-                return self.directory_table[file_to_open[0]].read_f(dirlist=file_to_open[1:])
-            else:
-                return self.data_table[file_to_open[0]]
-        except KeyError:
-            raise FileNotFoundError("File does not exist")
+        path: "ram_filesystem" = self
+
+        for i, item in enumerate(file_to_open):
+
+            try:
+                if i < len(file_to_open) - 1:
+                    path = path.directory_table[item]
+                else:
+                    return path.data_table[item]
+            except KeyError:
+                raise FileNotFoundError("No such filepath: {'/'.join(file_to_open)}")
 
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Any]] = None, f_args: Optional[List[Any]] = None) -> Any:
 
         f_type = io.BytesIO if f_type is None else f_type
         f_args = [] if f_args is None else f_args
 
-        if dirlist is None:
-            if dirstr is not None:
-                file_to_write: List[str] = dirstr.split("/")
+        file_to_write = self._parsedirlist(dirstr, dirlist)
+
+        path: "ram_filesystem" = self
+
+        for i, item in enumerate(file_to_write):
+
+            if i < len(file_to_write) - 1:
+                try:
+                    path = path.directory_table[item]
+                except KeyError:
+                    path.directory_table[item] = path = ram_filesystem()
             else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            file_to_write = dirlist
-
-        if len(file_to_write) > 1:
-            try:
-                return self.directory_table[file_to_write[0]].create_f(dirlist=file_to_write[1:], f_type=f_type, f_args=f_args)
-            except KeyError:
-                self.mkdir("/".join(file_to_write[:-1]))
-                return self.directory_table[file_to_write[0]].create_f(dirlist=file_to_write[1:], f_type=f_type, f_args=f_args)
-        else:
-            self.data_table[file_to_write[0]] = f_type(*f_args)
-
-        return self.data_table[file_to_write[0]]
+                f = path.data_table[item] = f_type(*f_args)
+                return f
 
     def rmdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
 
-        if dirlist is None:
-            if dirstr is not None:
-                directory_to_delete: List[str] = dirstr.split("/")
-            else:
-                raise TypeError("No dirstr or dirlist passed")
-        else:
-            directory_to_delete = dirlist
+        directory_to_delete = self._parsedirlist(dirstr, dirlist)
 
-        try:
-            if len(directory_to_delete) > 1:
-                self.directory_table[directory_to_delete[0]].rmdir(dirlist=directory_to_delete[1:])
-            else:
-                del self.directory_table[directory_to_delete[0]]
-        except KeyError:
-            raise FileNotFoundError("Folder does not exist")
+        path: "ram_filesystem" = self
+
+        for i, item in enumerate(directory_to_delete):
+
+            try:
+                if i < len(directory_to_delete) - 1:
+                    path = path.directory_table[item]
+                else:
+                    del path.directory_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such filepath: {'/'.join(directory_to_delete)}")
 
     def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
 
-        try:
-            if dirstr or dirlist:
+        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
 
-                if dirlist is None:
-                    if dirstr is not None:
-                        folderpath: List[str] = dirstr.split("/")
-                    else:
-                        raise TypeError("No dirstr or dirlist passed")
-                else:
-                    folderpath = dirlist
+        path: "ram_filesystem" = self
 
-                if len(folderpath) > 1:
-                    return self.directory_table[folderpath[0]].ls(dirlist=folderpath[1:])
-                else:
-                    return self.directory_table[folderpath[0]].ls()
-            else:
-                return (list(self.data_table), list(self.directory_table))
-        except KeyError:
-            raise FileNotFoundError("Filepath does not exist")
+        for item in folderpath:
+
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+
+        return list(path.data_table), list(path.directory_table)
 
     def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
-        try:
-            if dirstr or dirlist:
 
-                if dirlist is None:
-                    if dirstr is not None:
-                        folderpath: List[str] = dirstr.split("/")
-                    else:
-                        raise TypeError("No dirstr or dirlist passed")
-                else:
-                    folderpath = dirlist
+        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
 
-                if len(folderpath) > 1:
-                    return self.directory_table[folderpath[0]].tree(dirlist=folderpath[1:])
-                else:
-                    return self.directory_table[folderpath[0]].tree()
-            else:
-                datamap: Tuple[List[str], Dict[str, Any]] = (list(self.data_table), {})
-                for folder in self.directory_table:
-                    datamap[1][folder] = self.directory_table[folder].tree()
-                return datamap
+        path: "ram_filesystem" = self
 
-        except KeyError:
-            raise FileNotFoundError("Filepath does not exist")
+        for item in folderpath:
+
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+
+        datamap: Tuple[List[str], Dict[str, Any]] = (list(path.data_table), {})
+
+        for folder in path.directory_table:
+            datamap[1][folder] = path.directory_table[folder].tree()
+
+        return datamap
 
 
-# Import blacklist
-try:
-    with open("common/blacklist.json", "r") as blacklist_file:
-        blacklist = json.load(blacklist_file)
-except FileNotFoundError:
-    blacklist = {"guild": [], "user": []}
-    with open("common/blacklist.json", "w") as blacklist_file:
-        json.dump(blacklist, blacklist_file)
+if __name__ == "__main__":
+    # Import blacklist
+    try:
+        with open("common/blacklist.json", "r") as blacklist_file:
+            blacklist = json.load(blacklist_file)
+
+        # Ensures blacklist properly init
+        assert isinstance(blacklist["guild"], list)
+        assert isinstance(blacklist["user"], list)
+
+    except FileNotFoundError:
+        blacklist = {"guild": [], "user": []}
+        with open("common/blacklist.json", "w") as blacklist_file:
+            json.dump(blacklist, blacklist_file)
 
 # Define debug commands
-
 command_modules: List[Any] = []
 command_modules_dict: Dict[str, Any] = {}
 dynamiclib_modules: List[Any] = []
@@ -291,7 +287,7 @@ else:
     BOT_OWNER = []
 
 
-def kernel_load_command_modules(args: List[str] = []) -> Any:
+def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     print("Loading Kernel Modules")
     # Globalize variables
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -302,7 +298,7 @@ def kernel_load_command_modules(args: List[str] = []) -> Any:
     importlib.invalidate_caches()
 
     # Init return state
-    err = []
+    err: List[Tuple[Exception, str]] = []
 
     # Init imports
     for f in filter(lambda f: f.startswith("cmd_") and f.endswith(".py"), os.listdir('./cmds')):
@@ -310,40 +306,43 @@ def kernel_load_command_modules(args: List[str] = []) -> Any:
         try:
             command_modules.append(importlib.import_module(f[:-3]))
         except Exception as e:
-            err.append([e, f[:-3]])
+            err.append((e, f[:-3]), )
     for f in filter(lambda f: f.startswith("dlib_") and f.endswith(".py"), os.listdir("./dlibs")):
         print(f)
         try:
             dynamiclib_modules.append(importlib.import_module(f[:-3]))
         except Exception as e:
-            err.append([e, f[:-3]])
+            err.append((e, f[:-3]), )
 
     # Update hashmaps
     for module in command_modules:
         try:
             command_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__), )
     for module in dynamiclib_modules:
         try:
             dynamiclib_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__), )
 
     if err: return ("\n".join([f"Error importing {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
+    else: return None
 
 
-def regenerate_ramfs(args: List[str] = []) -> Any:
+def regenerate_ramfs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     global ramfs
     ramfs = ram_filesystem()
+    return None
 
 
-def regenerate_kernel_ramfs(args: List[str] = []) -> Any:
+def regenerate_kernel_ramfs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     global kernel_ramfs
     kernel_ramfs = ram_filesystem()
+    return None
 
 
-def kernel_reload_command_modules(args: List[str] = []) -> Any:
+def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     print("Reloading Kernel Modules")
     # Init vars
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
@@ -381,85 +380,102 @@ def kernel_reload_command_modules(args: List[str] = []) -> Any:
     regenerate_ramfs()
 
     if err: return ("\n".join([f"Error reimporting {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
+    else: return None
 
 
-def kernel_blacklist_guild(args: List[str] = []) -> Any:
+def kernel_blacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
 
     try:
         blacklist["guild"].append(int(args[0]))
     except (ValueError, IndexError):
-        return ["Asking value is not INT", []]
+        return "Asking value is not INT", []
 
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
+    return None
 
-def kernel_blacklist_user(args: List[str] = []) -> Any:
+
+def kernel_blacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
 
     try:
         blacklist["user"].append(int(args[0]))
     except (ValueError, IndexError):
-        return ["Asking value is not INT", []]
+        return "Asking value is not INT", []
 
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
+    return None
 
-def kernel_unblacklist_guild(args: List[str] = []) -> Any:
+
+def kernel_unblacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
 
     try:
         if int(args[0]) in blacklist["guild"]:
             del blacklist["guild"][blacklist["guild"].index(int(args[0]))]
         else:
-            return ["Item is not blacklisted", []]
+            return "Item is not blacklisted", []
     except (ValueError, IndexError):
-        return ["Asking value is not INT", []]
+        return "Asking value is not INT", []
 
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
+    return None
 
-def kernel_unblacklist_user(args: List[str] = []) -> Any:
+
+def kernel_unblacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
 
     try:
         if int(args[0]) in blacklist["user"]:
             del blacklist["user"][blacklist["user"].index(int(args[0]))]
         else:
-            return ["Item is not blacklisted", []]
+            return "Item is not blacklisted", []
     except (ValueError, IndexError):
-        return ["Asking value is not INT", []]
+        return "Asking value is not INT", []
 
     with open("common/blacklist.json", "w") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
+    return None
 
-def kernel_logout(args: List[str] = []) -> Any:
+
+def kernel_logout(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     asyncio.create_task(Client.close())
+    return None
 
 
-def kernel_drop_dlibs(args: List[str] = []) -> Any:
+def kernel_drop_dlibs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     global dynamiclib_modules, dynamiclib_modules_dict
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
+    return None
 
 
-def kernel_drop_cmds(args: List[str] = []) -> Any:
+def kernel_drop_cmds(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     global command_modules, command_modules_dict
     command_modules = []
     command_modules_dict = {}
+    return None
 
 
-def logging_toggle(args: List[str] = []) -> Any:
+def logging_toggle(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     if logger.isEnabledFor(10):
         logger.setLevel(20)
-        return ["Logging at L20", []]
+        return "Logging at L20", []
     else:
         logger.setLevel(10)
-        return ["Logging at L10", []]
+        return "Logging at L10", []
+
+
+class DebugCallable(Protocol):
+    def __call__(self, args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+        return None
 
 
 # Generate debug command subset
-debug_commands = {}
+debug_commands: Dict[str, DebugCallable] = {}
 debug_commands["debug-add-guild-blacklist"] = kernel_blacklist_guild
 debug_commands["debug-add-user-blacklist"] = kernel_blacklist_user
 debug_commands["debug-remove-guild-blacklist"] = kernel_unblacklist_guild
@@ -473,26 +489,27 @@ debug_commands["debug-drop-modules"] = kernel_drop_dlibs
 debug_commands["debug-drop-commands"] = kernel_drop_cmds
 debug_commands["debug-toggle-logging"] = logging_toggle
 
-# Generate tokenfile
-if len(sys.argv) >= 2 and "--generate-token" in sys.argv:
-    tokenfile = open(".tokenfile", "wb")
-    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-    tokenfile.write(encryptor.encrypt(TOKEN := getpass.getpass("Enter TOKEN: ")))
-    tokenfile.close()
+if __name__ == "__main__":
+    # Generate tokenfile
+    if len(sys.argv) >= 2 and "--generate-token" in sys.argv:
+        tokenfile = open(".tokenfile", "wb")
+        encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+        tokenfile.write(encryptor.encrypt(TOKEN := getpass.getpass("Enter TOKEN: ")))
+        tokenfile.close()
 
-# Load token
-if not TOKEN and os.path.isfile(".tokenfile"):
-    tokenfile = open(".tokenfile", "rb")
-    encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-    TOKEN = encryptor.decrypt(tokenfile.read())
-    tokenfile.close()
-    if not TOKEN:
-        print("Invalid TOKEN password")
-        sys.exit(1)
+    # Load token
+    if not TOKEN and os.path.isfile(".tokenfile"):
+        tokenfile = open(".tokenfile", "rb")
+        encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+        TOKEN = encryptor.decrypt(tokenfile.read())
+        tokenfile.close()
+        if not TOKEN:
+            print("Invalid TOKEN password")
+            sys.exit(1)
 
-# Load command modules
-if e := kernel_load_command_modules():
-    print(e[0])
+    # Load command modules
+    if e := kernel_load_command_modules():
+        print(e[0])
 
 
 # A object used to pass error messages from the kernel callers to the event handlers
@@ -510,14 +527,19 @@ class errtype:
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
 
+# KeyError sentinel so we dont catch KeyError
+class KernelKeyError(KeyError):
+    pass
+
+
 # Catch errors
 @Client.event
 async def on_error(event: str, *args: Any, **kwargs: Any) -> None:
     raise
 
 
-async def do_event(event: str, args: Any) -> None:
-    await dynamiclib_modules_dict[event](
+async def do_event(event: Any, args: Tuple[Any, ...]) -> None:
+    await event(
         *args,
         client=Client,
         ramfs=ramfs,
@@ -534,15 +556,35 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
     etypes = []
 
     try:
-        if argtype in dynamiclib_modules_dict.keys():
-            await do_event(argtype, args)
+
+        # Do hash lookup with KeyError
+        # Seperate from running function so we do not catch a KeyError deeper in the stack
+        try:
+            func = dynamiclib_modules_dict[argtype]
+        except KeyError:
+            raise KernelKeyError
+
+        await do_event(func, args)
+
+    # Check for KernelKeyError before checking for Exception (inherits from)
+    except KernelKeyError:
+        pass
     except Exception as e:
         etypes.append(errtype(e, argtype))
 
     call = 0
-    while (exname := f"{argtype}-{call}") in dynamiclib_modules_dict.keys():
+    while True:
+
+        exname = f"{argtype}-{call}"
+
+        # If there is no hash then break the loop
         try:
-            await do_event(exname, args)
+            func = dynamiclib_modules_dict[exname]
+        except KeyError:
+            break
+
+        try:
+            await do_event(func, args)
         except Exception as e:
             etypes.append(errtype(e, exname))
 
@@ -639,7 +681,7 @@ async def on_message(message: discord.Message) -> None:
     args = message.content.split(" ")
 
     # If bot owner run a debug command
-    if len(args) >= 2 and args[0] in debug_commands.keys() and message.author.id in BOT_OWNER and args[1] == str(Client.user.id):
+    if len(args) >= 2 and args[0] in debug_commands and message.author.id in BOT_OWNER and args[1] == str(Client.user.id):
         if e := debug_commands[args[0]](args[2:]):
             await message.channel.send(e[0])
             for i in e[1]:
@@ -649,8 +691,8 @@ async def on_message(message: discord.Message) -> None:
             return
 
     if await safety_check(guild=message.guild, user=message.author):
-        if e := await event_call("on-message", message):
-            await sendable_send(message.channel, e.errmsg)
+        if err := await event_call("on-message", message):
+            await sendable_send(message.channel, err.errmsg)
 
 
 @Client.event
@@ -798,21 +840,23 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4"
+version_info: str = "LeXdPyK 1.4.4"
 bot_start_time: float = time.time()
 
-# Start bot
-if TOKEN:
-    try:
-        Client.run(TOKEN, bot=True, reconnect=True)
-    except discord.errors.LoginFailure:
-        print("Invalid token passed")
+if __name__ == "__main__":
+    # Start bot
+    if TOKEN:
+        try:
+            Client.run(TOKEN, reconnect=True)
+        except discord.errors.LoginFailure:
+            print("Invalid token passed")
+            sys.exit(1)
+    else:
+        print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables, or a encrypted token in .tokenfile, to use sonnet")
         sys.exit(1)
-else:
-    print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables, or a encrypted token in .tokenfile, to use sonnet")
-    sys.exit(1)
 
-# Clear cache at exit
-for i in glob.glob("datastore/*.cache.db"):
-    os.remove(i)
-print("\rCache Cleared, Thank you for Using Sonnet")
+    # Clear cache at exit
+    for i in glob.glob("datastore/*.cache.db"):
+        os.remove(i)
+
+    print("\rCache Cleared, Thank you for Using Sonnet")

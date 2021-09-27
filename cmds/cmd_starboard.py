@@ -17,22 +17,17 @@ importlib.reload(lib_constants)
 import lib_loaders
 
 importlib.reload(lib_loaders)
-import lib_sonnetconfig
+import lib_starboard
 
-importlib.reload(lib_sonnetconfig)
+importlib.reload(lib_starboard)
 
-from lib_parsers import parse_boolean, update_log_channel, parse_channel_message, generate_reply_field
+from lib_starboard import starboard_cache, build_starboard_embed
+from lib_parsers import parse_boolean, update_log_channel, parse_channel_message
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
-from lib_sonnetconfig import STARBOARD_EMOJI, STARBOARD_COUNT
 import lib_constants as constants
 
-from typing import List, Dict, Any, Union, cast
-
-starboard_types: Dict[Union[str, int], Any] = {
-    0: "sonnet_starboard",
-    "text": [["starboard-enabled", "0"], ["starboard-emoji", STARBOARD_EMOJI], ["starboard-count", STARBOARD_COUNT], ["starboard-channel", ""]]
-    }
+from typing import List, Dict, Any
 
 
 async def starboard_channel_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -52,7 +47,7 @@ async def set_starboard_emoji(message: discord.Message, args: List[str], client:
             database.add_config("starboard-emoji", emoji)
             if kwargs["verbose"]: await message.channel.send(f"Updated starboard emoji to {emoji}")
     else:
-        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
+        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_cache)
         emoji = mconf["starboard-emoji"]
         await message.channel.send(f"Starboard emoji is {emoji}")
 
@@ -67,7 +62,7 @@ async def set_starboard_use(message: discord.Message, args: List[str], client: d
             database.add_config("starboard-enabled", str(int(gate)))
             if kwargs["verbose"]: await message.channel.send(f"Set starboard enabled to {bool(gate)}")
     else:
-        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
+        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_cache)
         gate = bool(int(mconf["starboard-enabled"]))
         await message.channel.send(f"Starboard enabled is {bool(gate)}")
 
@@ -95,7 +90,7 @@ async def set_starboard_count(message: discord.Message, args: List[str], client:
             return 1
 
     else:
-        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
+        mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_cache)
         count = int(mconf["starboard-count"])
         await message.channel.send(f"Starboard count is {count}")
 
@@ -104,7 +99,7 @@ async def force_starboard(message: discord.Message, args: List[str], client: dis
     if not message.guild:
         return 1
 
-    mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_types)
+    mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_cache)
 
     try:
         starmessage, _ = await parse_channel_message(message, args, client)
@@ -125,22 +120,8 @@ async def force_starboard(message: discord.Message, args: List[str], client: dis
             # Add to starboard
             db.set_enum("starboard", [str(starmessage.id)])
 
-        # Generate replies
-        message_content = generate_reply_field(starmessage)
-
-        # Generate embed
-        starboard_embed = discord.Embed(title="Starred message", description=message_content, color=0xffa700)
-
-        for i in starmessage.attachments:
-            if any([i.url.endswith(ext) for ext in [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]]):
-                starboard_embed.set_image(url=i.url)
-
-        starboard_embed.set_author(name=str(starmessage.author), icon_url=cast(str, starmessage.author.avatar_url))
-        starboard_embed.timestamp = starmessage.created_at
-        starboard_embed.set_footer(text=f"#{starmessage.channel}")
-
         try:
-            await channel.send(embed=starboard_embed)
+            await channel.send(embed=(await build_starboard_embed(starmessage)))
         except discord.errors.Forbidden:
             await message.channel.send(constants.sonnet.error_embed)
             return 1
@@ -195,4 +176,4 @@ commands: Dict[str, Dict[str, Any]] = {
             },
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.8"

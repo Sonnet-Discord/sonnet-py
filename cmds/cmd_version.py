@@ -4,9 +4,9 @@
 import importlib
 
 import discord
-from datetime import datetime
 import sys
 import io
+import time
 
 import lib_loaders
 
@@ -18,7 +18,7 @@ import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
 
-from lib_loaders import clib_exists, DotHeaders
+from lib_loaders import clib_exists, DotHeaders, datetime_unix
 
 from typing import List, Any, Union
 import lib_lexdpyk_h as lexdpyk
@@ -41,7 +41,7 @@ def zpad(innum: int) -> str:
 
 def getdelta(past: Union[int, float]) -> str:
 
-    trunning = (datetime.utcnow() - datetime.utcfromtimestamp(past))
+    trunning = (datetime_unix(int(time.time())) - datetime_unix(int(past)))
 
     seconds = trunning.seconds % 60
     minutes = ((trunning.seconds) // 60 % 60)
@@ -58,7 +58,7 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
 
     base_versions = []
     base_versions.append(["Python", sys.version.split(" ")[0]])
-    base_versions.append(["Discord.py", discord.__version__])
+    base_versions.append(["Wrapper", discord.__version__])
     base_versions.append(["Kernel", kwargs['main_version']])
     base = "\n".join(prettyprint(base_versions))
 
@@ -165,4 +165,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.8"

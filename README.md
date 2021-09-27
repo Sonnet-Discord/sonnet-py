@@ -5,5 +5,5 @@ Do me a favor and read up on the [discord.py shutdown notice](https://gist.githu
 This projects (sonnet-py) future is currently uncertain, and so is the future of many discord bots  
 What can you do? Spread the word, and protest, protest alot.
 # Sonnet py
-A discord bot written in python with a primary focus on moderation  
+A discord bot written in python 3.8-3.9 with a primary focus on moderation  
 More details are available at [The Sonnet Website](https://sonnet-discord.github.io)

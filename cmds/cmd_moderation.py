@@ -4,7 +4,6 @@
 import importlib
 
 import discord, time, asyncio, math, io
-from datetime import datetime
 
 import lib_db_obfuscator
 
@@ -21,11 +20,15 @@ importlib.reload(lib_constants)
 import lib_goparsers
 
 importlib.reload(lib_goparsers)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_goparsers import MustParseDuration
-from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
+from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
+from lib_compatibility import user_avatar_url
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
@@ -95,7 +98,7 @@ async def log_infraction(
     if log_channel:
 
         log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
-        log_embed.set_thumbnail(url=cast(str, user.avatar_url))
+        log_embed.set_thumbnail(url=user_avatar_url(user))
         log_embed.add_field(name="Infraction ID", value=generated_id)
         log_embed.add_field(name="Moderator", value=moderator.mention)
         log_embed.add_field(name="User", value=user.mention)
@@ -110,7 +113,7 @@ async def log_infraction(
         return generated_id, None
 
     dm_embed = discord.Embed(title="Sonnet", description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
-    dm_embed.set_thumbnail(url=cast(str, user.avatar_url))
+    dm_embed.set_thumbnail(url=user_avatar_url(user))
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
     dm_embed.add_field(name="Reason", value=infraction_reason)
@@ -167,12 +170,16 @@ async def process_infraction(message: discord.Message,
 
 async def warn_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    automod: bool = kwargs["automod"]
+    verbose: bool = kwargs["verbose"]
+
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", kwargs["ramfs"], automod=kwargs["automod"])
+        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ramfs, automod=automod)
     except InfractionGenerationError:
         return 1
 
-    if kwargs["verbose"] and user:
+    if verbose and user:
         await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
@@ -181,12 +188,16 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
 
 async def note_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    automod: bool = kwargs["automod"]
+    verbose: bool = kwargs["verbose"]
+
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "note", kwargs["ramfs"], infraction=False, automod=kwargs["automod"])
+        _, user, reason, _, _ = await process_infraction(message, args, client, "note", ramfs, infraction=False, automod=automod)
     except InfractionGenerationError:
         return 1
 
-    if kwargs["verbose"] and user:
+    if verbose and user:
         await message.channel.send(f"Put a note on {user.mention} with ID {user.id}: {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
@@ -197,8 +208,12 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     if not message.guild:
         return 1
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    automod: bool = kwargs["automod"]
+    verbose: bool = kwargs["verbose"]
+
     try:
-        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", kwargs["ramfs"], automod=kwargs["automod"])
+        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", ramfs, automod=automod)
     except InfractionGenerationError:
         return 1
 
@@ -215,15 +230,19 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("User is not in this guild")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    automod: bool = kwargs["automod"]
+    verbose: bool = kwargs["verbose"]
+
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", kwargs["ramfs"], automod=kwargs["automod"])
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ramfs, automod=automod)
     except InfractionGenerationError:
         return 1
 
@@ -235,15 +254,19 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
         await message.channel.send("The bot does not have permission to ban this user.")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    automod: bool = kwargs["automod"]
+    verbose: bool = kwargs["verbose"]
+
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "unban", kwargs["ramfs"], infraction=False, automod=kwargs["automod"])
+        _, user, reason, _, _ = await process_infraction(message, args, client, "unban", ramfs, infraction=False, automod=automod)
     except InfractionGenerationError:
         return 1
 
@@ -257,7 +280,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
         await message.channel.send("This user is not banned")
         return 1
 
-    if kwargs["verbose"]: await message.channel.send(f"Unbanned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if verbose: await message.channel.send(f"Unbanned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 class NoMuteRole(Exception):
@@ -298,6 +321,10 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     if not message.guild:
         return 1
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    automod: bool = kwargs["automod"]
+    verbose: bool = kwargs["verbose"]
+
     # Grab mute time
     if len(args) >= 2:
         try:
@@ -313,8 +340,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         mutetime = 0
 
     try:
-        mute_role = await grab_mute_role(message, kwargs["ramfs"])
-        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", kwargs["ramfs"], automod=kwargs["automod"])
+        mute_role = await grab_mute_role(message, ramfs)
+        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", ramfs, automod=automod)
     except (NoMuteRole, InfractionGenerationError):
         return 1
 
@@ -330,13 +357,13 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("The bot does not have permission to mute this user.")
         return 1
 
-    if kwargs["verbose"] and not mutetime:
+    if verbose and not mutetime:
         await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     # if mutetime call db timed mute
     if mutetime:
 
-        if kwargs["verbose"]:
+        if verbose:
             asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}", allowed_mentions=discord.AllowedMentions.none()))
 
         # Stop other mute timers and add to mutedb
@@ -345,7 +372,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
             db.mute_user(member.id, int(datetime_now().timestamp() + mutetime), infractionID)
 
         # Create in other thread to not block command execution
-        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime, kwargs["ramfs"]))
+        asyncio.create_task(sleep_and_unmute(message.guild, member, infractionID, mute_role, mutetime, ramfs))
 
     else:
 
@@ -359,9 +386,13 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
     if not message.guild:
         return 1
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    automod: bool = kwargs["automod"]
+    verbose: bool = kwargs["verbose"]
+
     try:
-        mute_role = await grab_mute_role(message, kwargs["ramfs"])
-        member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", kwargs["ramfs"], infraction=False, automod=kwargs["automod"])
+        mute_role = await grab_mute_role(message, ramfs)
+        member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod)
     except (InfractionGenerationError, NoMuteRole):
         return 1
 
@@ -380,7 +411,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
     with db_hlapi(message.guild.id) as db:
         db.unmute_user(userid=member.id)
 
-    if kwargs["verbose"]: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if verbose: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -509,6 +540,8 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     if not message.guild:
         return 1
 
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+
     if args:
         with db_hlapi(message.guild.id) as db:
             infraction = db.grab_infraction(args[0])
@@ -523,14 +556,14 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     # pylint: disable=E0633
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
-    infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
     infraction_embed.add_field(name="Infraction ID", value=infraction_id)
     infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
     infraction_embed.add_field(name="Type", value=infraction_type)
     infraction_embed.add_field(name="Reason", value=reason)
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
-    infraction_embed.timestamp = datetime.utcfromtimestamp(int(timestamp))
+    infraction_embed.timestamp = datetime_unix(int(timestamp))
 
     try:
         await message.channel.send(embed=infraction_embed)
@@ -542,6 +575,9 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
 async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
+
+    verbose: bool = kwargs["verbose"]
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -555,13 +591,13 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
         await message.channel.send("ERROR: No argument supplied")
         return 1
 
-    if not kwargs["verbose"]:
+    if not verbose:
         return
 
     # pylint: disable=E0633
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
-    infraction_embed = discord.Embed(title="Infraction Deleted", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.deletion, kwargs["ramfs"]))
+    infraction_embed = discord.Embed(title="Infraction Deleted", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.deletion, ramfs))
     infraction_embed.add_field(name="Infraction ID", value=infraction_id)
     infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
     infraction_embed.add_field(name="Type", value=infraction_type)
@@ -569,7 +605,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
 
-    infraction_embed.timestamp = datetime.utcfromtimestamp(int(timestamp))
+    infraction_embed.timestamp = datetime_unix(int(timestamp))
 
     try:
         await message.channel.send(embed=infraction_embed)
@@ -581,6 +617,9 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
+
+    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+    kernel_ramfs: lexdpyk.ram_filesystem = kwargs["kernel_ramfs"]
 
     try:
         discord_message, _ = await parse_channel_message(message, args, client)
@@ -595,13 +634,13 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     message_content = generate_reply_field(discord_message)
 
     # Message has been grabbed, start generating embed
-    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, ramfs))
 
-    message_embed.set_author(name=str(discord_message.author), icon_url=str(discord_message.author.avatar_url))
+    message_embed.set_author(name=str(discord_message.author), icon_url=user_avatar_url(discord_message.author))
     message_embed.timestamp = discord_message.created_at
 
     # Grab files from cache
-    fileobjs = grab_files(discord_message.guild.id, discord_message.id, kwargs["kernel_ramfs"])
+    fileobjs = grab_files(discord_message.guild.id, discord_message.id, kernel_ramfs)
 
     # Grab files async if not in cache
     if not fileobjs:
@@ -783,4 +822,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.7-2"
+version_info: str = "1.2.8"

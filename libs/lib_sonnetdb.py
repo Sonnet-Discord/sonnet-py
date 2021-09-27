@@ -139,7 +139,7 @@ class db_hlapi:
         if name not in self.__enum_pool:
             raise TypeError(f"Trying to grab from table that is not registered ({name} not registered)")
 
-        if type(cname) != self.__enum_input[name][0][1]:
+        if not isinstance(cname, self.__enum_input[name][0][1]):
             raise TypeError("grab type does not match enum PK signature")
 
         try:
@@ -165,7 +165,7 @@ class db_hlapi:
             raise TypeError(f"Length of table does not match length of input ({len(cpush)} != {len(self.__enum_input[name])})")
 
         for index, i in enumerate(cpush):
-            if type(i) != self.__enum_input[name][index][1]:
+            if not isinstance(i, self.__enum_input[name][index][1]):
                 errtuple = self.__enum_input[name][index]
                 errbuilder = io.StringIO()
                 errbuilder.write(f"Improper type passed based on enum registry, index: {index} name: {errtuple[0]}\n")
@@ -192,7 +192,7 @@ class db_hlapi:
         if enumname not in self.__enum_pool:
             raise TypeError(f"Trying to delete from table that is not registered ({enumname} not registered)")
 
-        if type(key) != self.__enum_input[enumname][0][1]:
+        if not isinstance(key, self.__enum_input[enumname][0][1]):
             raise TypeError("delete type does not match enum PK signature")
 
         try:
@@ -276,11 +276,11 @@ class db_hlapi:
                                 count: bool = False) -> Union[Tuple[str, str, str, str, str, int], int]:
 
         schm: List[List[str]] = []
-        if user:
+        if user is not None:
             schm.append(["userID", str(user)])
-        if moderator:
+        if moderator is not None:
             schm.append(["moderatorID", str(moderator)])
-        if itype:
+        if itype is not None:
             schm.append(["type", itype])
         if not automod:
             schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
@@ -351,9 +351,9 @@ class db_hlapi:
     def unmute_user(self, infractionid: Optional[str] = None, userid: Optional[int] = None) -> None:
 
         try:
-            if infractionid:
+            if infractionid is not None:
                 self._db.delete_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid])
-            if userid:
+            if userid is not None:
                 self._db.delete_rows_from_table(f"{self.guild}_mutes", ["userid", userid])
         except db_error.OperationalError:
             pass
@@ -468,9 +468,9 @@ class db_hlapi:
     def is_muted(self, userid: Optional[int] = None, infractionid: Optional[str] = None) -> bool:
 
         try:
-            if userid:
+            if userid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", userid]))
-            elif infractionid:
+            elif infractionid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid]))
         except db_error.OperationalError:
             muted = False

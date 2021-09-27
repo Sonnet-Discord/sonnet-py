@@ -1,6 +1,8 @@
 # Parsers for message handling
 # Ultrabear 2020
 
+from __future__ import annotations
+
 import importlib
 
 import lz4.frame, discord, os, json, hashlib, io, warnings
@@ -23,7 +25,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Union, List, Tuple, Dict, Callable, Iterable, Optional, Any
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, cast
 import lib_lexdpyk_h as lexdpyk
 
 re: Any = importlib.import_module(REGEX_VERSION)
@@ -40,13 +42,27 @@ class errors:
         pass
 
 
+_urlFilter = re.compile(r"[^a-z0-9\-\.]+")
+
+
+def _compileurl(urllist: List[str]) -> str:
+
+    urllist = [_urlFilter.sub("", i).replace(".", r"\.") for i in urllist]
+
+    return "(https?://)(" + "|".join(urllist) + ")\W?"
+
+
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
 
 _parse_blacklist_inputs = Tuple[discord.Message, Dict[str, Any], lexdpyk.ram_filesystem]
 
 
+def _formatregexfind(gex: List[Any]) -> str:
+    return ", ".join(i if isinstance(i, str) else "".join(i) for i in gex)
+
+
 # Run a blacklist pass over a messages content and files
-def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[str]]:
+def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[str]]:
     """
     Deprecated, this should be in dlib_messages.py
     Parse the blacklist over a message object
@@ -82,8 +98,14 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
                 regexname = hex(int.from_bytes(hashlib.sha256(i.encode("utf8")).digest(), "big"))[-32:]
                 ramfs.create_f(f"{message.guild.id}/regex/{regex_type}/{regexname}", f_type=re.compile, f_args=[i])
 
+        if blacklist["url-blacklist"]:
+            ramfs.create_f(f"{message.guild.id}/regex/url", f_type=re.compile, f_args=[_compileurl(blacklist["url-blacklist"])])
+        else:
+            ramfs.create_f(f"{message.guild.id}/regex/url", f_type=cast(Any, lambda: None), f_args=[])
+
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
+    blacklist["url-blacklist_regex"] = ramfs.read_f(f"{message.guild.id}/regex/url")
 
     # Check that member is still part of guild (yes this is a race cond that happens)
     if not isinstance(message.author, discord.Member):
@@ -94,6 +116,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
         return (False, False, [])
 
     text_to_blacklist = unicodeFilter.sub('', message.content.lower().replace(":", " ").replace("\n", " "))
+    LowerCaseContent = message.content.lower()
 
     # Check message against word blacklist
     word_blacklist = blacklist["word-blacklist"]
@@ -115,16 +138,16 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
     regex_blacklist = blacklist["regex-blacklist"]
     for r in regex_blacklist:
         try:
-            if (broke := r.findall(message.content.lower())):
+            if broke := r.findall(LowerCaseContent):
                 broke_blacklist = True
-                infraction_type.append(f"RegEx({', '.join(broke)})")
+                infraction_type.append(f"RegEx({_formatregexfind(broke)})")
         except re.error:
             pass  # GC for old regex
 
     # Check message against REGEXP notifier list
     regex_blacklist = blacklist["regex-notifier"]
     for r in regex_blacklist:
-        if r.findall(message.content.lower()):
+        if r.findall(LowerCaseContent):
             notifier = True
 
     # Check against filetype blacklist
@@ -135,6 +158,13 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> Tuple[bool, bool, List[s
                 if ft.filename.lower().endswith(a):
                     broke_blacklist = True
                     infraction_type.append(f"FileType({a})")
+
+    # Check url blacklist
+    url_blacklist: Any = blacklist["url-blacklist_regex"]
+    if url_blacklist is not None:
+        if broke := url_blacklist.findall(LowerCaseContent):
+            broke_blacklist = True
+            infraction_type.append(f"URL({_formatregexfind(broke)})")
 
     return (broke_blacklist, notifier, infraction_type)
 
@@ -169,8 +199,8 @@ def parse_boolean(instr: str) -> Union[bool, int]:
     Returns 0 (a falsey) if data could not be parsed
     """
 
-    yeslist: List[str] = ["yes", "true", "y", "t", "1"]
-    nolist: List[str] = ["no", "false", "n", "f", "0"]
+    yeslist: list[str] = ["yes", "true", "y", "t", "1"]
+    nolist: list[str] = ["no", "false", "n", "f", "0"]
 
     if instr.lower() in yeslist:
         return True
@@ -181,7 +211,7 @@ def parse_boolean(instr: str) -> Union[bool, int]:
 
 
 # Parse channel from message and put it into specified config
-async def update_log_channel(message: discord.Message, args: List[str], client: discord.Client, log_name: str, verbose: bool = True) -> None:
+async def update_log_channel(message: discord.Message, args: list[str], client: discord.Client, log_name: str, verbose: bool = True) -> None:
     """
     Update logging channel db config with name log_name
     Handles exceptions into one exception
@@ -247,7 +277,7 @@ Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 
 # Parse user permissions to run a command
-async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
+async def parse_permissions(message: discord.Message, mconf: dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
     """
     Parse the permissions of the given member object to check if they meet the required permtype
     Verbosity can be set to not print if the perm check failed
@@ -306,7 +336,7 @@ def ifgate(inlist: Iterable[Any]) -> bool:
 
 
 # Grab files of a message from the internal cache
-def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, delete: bool = False) -> Optional[List[discord.File]]:
+def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, delete: bool = False) -> Optional[list[discord.File]]:
     """
     Grab all files from a message from the internal encryption cache
 
@@ -398,7 +428,7 @@ def generate_reply_field(message: discord.Message) -> str:
 
 
 # Parse a role name and put it into the specified db conf
-async def parse_role(message: discord.Message, args: List[str], db_entry: str, verbose: bool = True) -> int:
+async def parse_role(message: discord.Message, args: list[str], db_entry: str, verbose: bool = True) -> int:
     """
     Parse a role from a command and put it into the db under the db_entry name
 
@@ -446,7 +476,7 @@ async def parse_role(message: discord.Message, args: List[str], db_entry: str, v
 
 
 # Grab a message object from a link or message mention
-async def parse_channel_message(message: discord.Message, args: List[str], client: discord.Client) -> Tuple[discord.Message, int]:
+async def parse_channel_message(message: discord.Message, args: list[str], client: discord.Client) -> tuple[discord.Message, int]:
     """
     Parse a channel message from a url, #channel messageid, or channelid-messageid field
 
@@ -505,10 +535,10 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
 
 
 async def parse_user_member(message: discord.Message,
-                            args: List[str],
+                            args: list[str],
                             client: discord.Client,
                             argindex: int = 0,
-                            default_self: bool = False) -> Tuple[Union[discord.Member, discord.User], Optional[discord.Member]]:
+                            default_self: bool = False) -> tuple[discord.Member | discord.User, Optional[discord.Member]]:
     """
     Parse a user and member object from a potential user string
     Always returns a user, only returns member if the user is in the guild
@@ -522,7 +552,7 @@ async def parse_user_member(message: discord.Message,
         raise errors.user_parse_error("Not a guild message")
 
     member: Optional[discord.Member]
-    user: Optional[Union[discord.User, discord.Member]]
+    user: Optional[discord.User | discord.Member]
 
     try:
         member = message.guild.get_member(int(args[argindex].strip("<@!>")))

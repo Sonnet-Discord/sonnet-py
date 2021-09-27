@@ -2,7 +2,7 @@
 
 import importlib
 
-import json, io, discord
+import json, io, discord, string
 
 import lib_db_obfuscator
 
@@ -25,24 +25,38 @@ from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import REGEX_VERSION
 from lib_parsers import parse_role, parse_boolean, parse_user_member
 
-from typing import Any, Dict, List, Callable, Coroutine, Tuple
+from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional
 from typing import Final  # pytype: disable=import-error
 import lib_constants as constants
 
 re: Any = importlib.import_module(REGEX_VERSION)
+
+wb_allowedrunes = string.ascii_lowercase + string.digits + ","
+urlb_allowedrunes = string.ascii_lowercase + string.digits + "-,."
 
 
 class blacklist_input_error(Exception):
     pass
 
 
-async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True) -> None:
+async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True, allowed: Optional[str] = None) -> None:
     if not message.guild:
         raise blacklist_input_error("No Guild Attached")
 
-    if not (args) or len(args) != 1:
+    if len(args) >= 2 and args[1] in ["rm", "remove"]:
+        with db_hlapi(message.guild.id) as db:
+            db.delete_config(name)
+
+        await message.channel.send(f"Removed {name} config from database")
+        return
+
+    if not args or len(args) != 1:
         await message.channel.send(f"Malformed {name}")
         raise blacklist_input_error(f"Malformed {name}")
+
+    if (allowed is not None) and not all(i in allowed for i in args[0]):
+        await message.channel.send(f"The {name} does not support characters used, only supports {allowed}")
+        raise blacklist_input_error("Unsupported chars")
 
     with db_hlapi(message.guild.id) as db:
         db.add_config(name, args[0])
@@ -53,7 +67,7 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
 async def wb_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        await update_csv_blacklist(message, args, "word-blacklist", verbose=kwargs["verbose"])
+        await update_csv_blacklist(message, args, "word-blacklist", verbose=kwargs["verbose"], allowed=wb_allowedrunes)
     except blacklist_input_error:
         return 1
 
@@ -61,7 +75,7 @@ async def wb_change(message: discord.Message, args: List[str], client: discord.C
 async def word_in_word_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        await update_csv_blacklist(message, args, "word-in-word-blacklist", verbose=kwargs["verbose"])
+        await update_csv_blacklist(message, args, "word-in-word-blacklist", verbose=kwargs["verbose"], allowed=wb_allowedrunes)
     except blacklist_input_error:
         return 1
 
@@ -70,6 +84,16 @@ async def ftb_change(message: discord.Message, args: List[str], client: discord.
 
     try:
         await update_csv_blacklist(message, args, "filetype-blacklist", verbose=kwargs["verbose"])
+    except blacklist_input_error:
+        return 1
+
+
+async def urlblacklist_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+    verbose: bool = kwargs["verbose"]
+
+    try:
+        await update_csv_blacklist(message, args, "url-blacklist", verbose=verbose, allowed=urlb_allowedrunes)
     except blacklist_input_error:
         return 1
 
@@ -120,10 +144,10 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
         raise blacklist_input_error("No RegEx supplied")
 
     # Load DB
-    with db_hlapi(message.guild.id) as database:
+    with db_hlapi(message.guild.id) as db:
 
         # Attempt to read blacklist if exists
-        if strjson := database.grab_config(db_entry):
+        if strjson := db.grab_config(db_entry):
             curlist = json.loads(strjson)
         else:
             await message.channel.send("ERROR: There is no RegEx")
@@ -138,7 +162,7 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
             raise blacklist_input_error("RegEx not found")
 
         # Update DB
-        database.add_config(db_entry, json.dumps(curlist))
+        db.add_config(db_entry, json.dumps(curlist))
 
     if verbose: await message.channel.send("Successfully Updated RegEx")
 
@@ -173,7 +197,11 @@ async def regex_notifier_remove(message: discord.Message, args: List[str], clien
 
 async def list_blacklist(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
-    mconf = kwargs["conf_cache"]
+    mconf: Dict[str, Any] = kwargs["conf_cache"]
+
+    raw = False
+    if args and args[0] in ["--raw", "-r"]:
+        raw = True
 
     # Format blacklist
     blacklist: Dict[str, Any] = {}
@@ -182,9 +210,10 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
     blacklist["word-blacklist"] = ",".join(mconf["word-blacklist"])
     blacklist["word-in-word-blacklist"] = ",".join(mconf["word-in-word-blacklist"])
     blacklist["filetype-blacklist"] = ",".join(mconf["filetype-blacklist"])
+    blacklist["url-blacklist"] = ",".join(mconf["url-blacklist"])
 
     # If word blacklist or filetype blacklist then load them
-    for i in ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist"]:
+    for i in ["word-blacklist", "filetype-blacklist", "word-in-word-blacklist", "url-blacklist"]:
         if blacklist[i]:
             blacklist[i] = [blacklist[i]]
 
@@ -198,14 +227,16 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
 
     # Print blacklist
     formatted_pretty = "```json\n" + formatted.replace('\\\\', '\\') + "```"
-    if len(formatted_pretty) <= 2000:
+    if len(formatted_pretty) <= 2000 and not raw:
         await message.channel.send(formatted_pretty)
     else:
+        # Error message is first one if raw is False, second one if raw is True
+        errmsg = ["Total Blacklist too large to be previewed", "--raw specified, file supplied"][raw]
         file_to_upload = io.BytesIO()
         file_to_upload.write(formatted.encode("utf8"))
         file_to_upload.seek(0)
         fileobj = discord.File(file_to_upload, filename="blacklist.json")
-        await message.channel.send("Total Blacklist too large to be previewed", file=fileobj)
+        await message.channel.send(errmsg, file=fileobj)
 
 
 async def set_blacklist_infraction_level(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -259,10 +290,10 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
 
     # Prevent bullshit
     outside_range = "ERROR: Cannot go outside range"
-    if messages < 2 or messages > 64:
+    if not (2 <= messages <= 64):
         await message.channel.send(f"{outside_range} 2-64 messages")
         return 1
-    elif seconds > 10 or seconds < 0:
+    elif not (0 <= seconds <= 10):
         await message.channel.send(f"{outside_range} 0-10 seconds")
         return 1
 
@@ -299,13 +330,13 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
 
     # Prevent bullshit
     outside_range = "ERROR: Cannot go outside range"
-    if messages < 2 or messages > 64:
+    if not (2 <= messages <= 64):
         await message.channel.send(f"{outside_range} 2-64 messages")
         return 1
-    elif seconds > 10 or seconds < 0:
+    elif not (0 <= seconds <= 10):
         await message.channel.send(f"{outside_range} 0-10 seconds")
         return 1
-    elif chars < 128 or chars > 2**16:
+    elif not (128 <= chars <= 2**16):
         await message.channel.send(f"{outside_range} 128-{2**16} chars")
         return 1
 
@@ -332,6 +363,10 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
 
     if mutetime < 0:
         await message.channel.send("ERROR: Mutetime cannot be negative")
+        return 1
+
+    elif mutetime >= 60 * 60 * 256:
+        await message.channel.send("ERROR: Mutetime cannot be greater than 256 hours")
         return 1
 
     with db_hlapi(message.guild.id) as db:
@@ -502,13 +537,14 @@ commands = {
         'cache': 'regenerate',
         'execute': add_joinrule
         },
-    'wb-change': {
-        'pretty_name': 'wb-change <csv list>',
-        'description': 'Change word blacklist',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': wb_change
-        },
+    'wb-change':
+        {
+            'pretty_name': 'wb-change <csv list> [rm|remove]',
+            'description': 'Change word blacklist, use `wb-change - rm` to reset',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': wb_change
+            },
     'add-regexblacklist':
         {
             'pretty_name': 'add-regexblacklist <regex>',
@@ -517,13 +553,14 @@ commands = {
             'cache': 'regenerate',
             'execute': regexblacklist_add
             },
-    'wiwb-change': {
-        'pretty_name': 'wiwb-change <csv list>',
-        'description': 'Change the WordInWord blacklist',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': word_in_word_change
-        },
+    'wiwb-change':
+        {
+            'pretty_name': 'wiwb-change <csv list> [rm|remove]',
+            'description': 'Change the WordInWord blacklist, use `wiwb-change - rm` to reset',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': word_in_word_change
+            },
     'remove-regexblacklist':
         {
             'pretty_name': 'remove-regexblacklist <regex>',
@@ -532,23 +569,33 @@ commands = {
             'cache': 'regenerate',
             'execute': regexblacklist_remove
             },
-    'ftb-change': {
-        'pretty_name': 'ftb-change <csv list>',
-        'description': 'Change filetype blacklist',
-        'permission': 'administrator',
-        'cache': 'regenerate',
-        'execute': ftb_change
-        },
+    'ftb-change':
+        {
+            'pretty_name': 'ftb-change <csv list> [rm|remove]',
+            'description': 'Change filetype blacklist, use `ftb-change - rm` to reset',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': ftb_change
+            },
+    'urlb-change':
+        {
+            'pretty_name': 'urlb-change <csv list> [rm|remove]',
+            'description': 'Change url blacklist, use `urlb-change - rm` to reset',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': urlblacklist_change
+            },
     'list-blacklist': {
         'alias': 'list-automod'
         },
-    'list-automod': {
-        'pretty_name': 'list-automod',
-        'description': 'List automod configs',
-        'permission': 'moderator',
-        'cache': 'keep',
-        'execute': list_blacklist
-        },
+    'list-automod':
+        {
+            'pretty_name': 'list-automod [-r | --raw]',
+            'description': 'List automod configs, use --raw to forcedump json file',
+            'permission': 'moderator',
+            'cache': 'keep',
+            'execute': list_blacklist
+            },
     'blacklist-action':
         {
             'pretty_name': 'blacklist-action <warn|mute|kick|ban>',
@@ -619,4 +666,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.8"

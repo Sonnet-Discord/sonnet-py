@@ -1,6 +1,8 @@
 # cache generation tools
 # Ultabear 2020
 
+from __future__ import annotations
+
 import importlib
 
 import discord
@@ -23,13 +25,13 @@ from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
-from typing import Dict, List, Union, Any, Tuple, Optional, Type, cast
+from typing import Any, Tuple, Optional, Union, cast, Type, Dict
 import lib_lexdpyk_h as lexdpyk
 
 
 class DotHeaders:
 
-    version = "2.0.0-DEV.0"
+    version = "1.2.8-DEV.1"
 
     class cdef_load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
@@ -71,8 +73,8 @@ def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
     return tuple(inData.to_bytes(length, byteorder="little"))
 
 
-defaultcache: Dict[Union[str, int], Any] = {
-    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["antispam", "3,2"], ["char-antispam", "2,2,1000"]],
+defaultcache: dict[Union[str, int], Any] = {
+    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["url-blacklist", ""], ["antispam", "3,2"], ["char-antispam", "2,2,1000"]],
     "text":
         [
             ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""],
@@ -95,7 +97,7 @@ def write_vnum(fileobj: io.BufferedWriter, number: int) -> None:
 
 
 # Load config from cache, or load from db if cache isn't existant
-def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[Dict[Union[str, int], Any]] = None) -> Dict[str, Any]:
+def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[dict[Union[str, int], Any]] = None) -> dict[str, Any]:
 
     datatypes = defaultcache if datatypes is None else datatypes
 
@@ -108,7 +110,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         # Loads fileio object
         blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
         blacklist_cache.seek(0)
-        message_config: Dict[str, Any] = {}
+        message_config: dict[str, Any] = {}
 
         # Imports csv style data
         for i in datatypes["csv"]:
@@ -137,7 +139,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         return message_config
 
     except FileNotFoundError:
-        message_config: Dict[str, Any] = {}  #  type: ignore
+        message_config: dict[str, Any] = {}  #  type: ignore
 
         # Loads base db
         with db_hlapi(guild_id) as db:
@@ -234,12 +236,12 @@ def generate_infractionid() -> str:
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
-        statistics: Dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
+        statistics: dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
     except FileNotFoundError:
         statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(Type[Dict[str, int]], dict))
 
     try:
-        global_statistics: Dict[str, int] = kernel_ramfs.read_f("global/stats")
+        global_statistics: dict[str, int] = kernel_ramfs.read_f("global/stats")
     except FileNotFoundError:
         global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(Type[Dict[str, int]], dict))
 
@@ -254,7 +256,7 @@ def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_fi
         global_statistics[inctype] = 1
 
 
-def inc_statistics(indata: List[Any]) -> None:
+def inc_statistics(indata: list[Any]) -> None:
     """
     Deprecated way to increment statistics of a dpy event
     Use inc_statistics_better instead
@@ -267,7 +269,7 @@ def inc_statistics(indata: List[Any]) -> None:
     inc_statistics_better(guild, inctype, kernel_ramfs)
 
 
-_colortypes_cache: Dict[Any, Any] = {
+_colortypes_cache: dict[Any, Any] = {
     0: "sonnet_colortypes",
     "text": [["embed-color-primary", "0x0057e7"], ["embed-color-creation", "0x008744"], ["embed-color-edit", "0xffa700"], ["embed-color-deletion", "0xd62d20"]]
     }
@@ -311,3 +313,18 @@ def datetime_now() -> datetime.datetime:
     :returns: datetime.datetime - timestamp returned
     """
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+def datetime_unix(unix: int) -> datetime.datetime:
+    """
+    Returns aware datetime from a unix timestamp
+
+    Why was this so hard, datetime devs?
+
+    :returns: datetime.datetime - The datetime object
+    """
+
+    # WHY IS THIS SO DIFFICULT (ultrabear)
+    # This is the worst api I have ever used and its stdlib
+    # Ive used discord.py pre 1.0 ok ive seen messy apis
+    return datetime.datetime.fromtimestamp(unix).astimezone(datetime.timezone.utc)
