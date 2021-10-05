@@ -591,7 +591,7 @@ def format_duration(durationSeconds: Union[int, float]) -> str:
 
     for i in ranges:
 
-        if fseconds > i[1]:
+        if fseconds >= i[1]:
             fseconds /= i[1]
             base = i[0]
 
