@@ -7,7 +7,7 @@ import sonnet_cfg
 
 importlib.reload(sonnet_cfg)
 
-from typing import Any, Type, TypeVar
+from typing import Any, Type, TypeVar, Union
 
 __all__ = [
     "GLOBAL_PREFIX",
@@ -26,9 +26,9 @@ Typ = TypeVar("Typ")
 
 
 # Loads a config and checks its type
-def _load_cfg(attr: str, default: Any, typ: Type[Typ]) -> Typ:
+def _load_cfg(attr: str, default: Typ, typ: Type[Typ]) -> Typ:
 
-    conf: Any = getattr(sonnet_cfg, attr, default)
+    conf: Union[Any, Typ] = getattr(sonnet_cfg, attr, default)
 
     if not isinstance(conf, typ):
         raise TypeError(f"Sonnet Config {attr} is not type {typ.__name__}")
