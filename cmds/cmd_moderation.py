@@ -27,7 +27,7 @@ importlib.reload(lib_compatibility)
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member, format_duration
 from lib_compatibility import user_avatar_url
 import lib_constants as constants
 
@@ -364,7 +364,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     if mutetime:
 
         if verbose:
-            asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {mutetime}s for {reason}", allowed_mentions=discord.AllowedMentions.none()))
+            asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none()))
 
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
@@ -822,4 +822,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.9-DEV"

@@ -573,3 +573,34 @@ async def parse_user_member(message: discord.Message,
         raise errors.user_parse_error("User does not exist")
 
     return user, member
+
+
+def format_duration(durationSeconds: Union[int, float]) -> str:
+    """
+    Returns an end user formatted duration from a seconds duration up to decades
+
+    :returns: str - Formatted string
+    """
+
+    fseconds = float(durationSeconds)
+
+    # The general idea is this steps through timepoints till the number is in a low enough range to be human readable
+
+    base = "second"
+    ranges: List[Tuple[str, int]] = [("minute", 60), ("hour", 60), ("day", 24), ("year", 365), ("decade", 10)]
+
+    for i in ranges:
+
+        if fseconds > i[1]:
+            fseconds /= i[1]
+            base = i[0]
+
+        else:
+            break
+
+    rounded = round(fseconds, 1)
+
+    # Basically removes a .0 if the number ends in .0
+    perfectround = int(rounded) if float(int(rounded)) == rounded else rounded
+
+    return f"{perfectround} {base}{'s'*(perfectround!=1)}"
