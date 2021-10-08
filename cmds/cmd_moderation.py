@@ -492,8 +492,11 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     # it is worth mentioning that it is infact inspired from the go strings stdlib
     # (ultrabear) highly reccomends reading it, its really well written!
 
+    # Take slice once to avoid memcopies every iteration
+    pageslice = infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]
+
     # This lets us store more on cases where there is less infracs than there should be, i/e eof
-    actual_per_page = len(infractions[selected_chunk * per_page:selected_chunk * per_page + per_page])
+    actual_per_page = len(pageslice)
 
     maxlen = (1900 // actual_per_page)
 
@@ -503,7 +506,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     # If it is positive we can loop with no size limit
 
     arr: List[int] = []
-    for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
+    for i in pageslice:
         # +5 is added for len(", ")*2 + len("\n")
         arr.append(maxlen - (len(i[0]) + len(i[3]) + len(i[4]) + 5))
 
@@ -514,7 +517,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     writer = io.StringIO()
 
     if pooled >= 0:
-        for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
+        for i in pageslice:
             writer.write(f"{', '.join([i[0], i[3], i[4]])}\n")
     else:
         # We need to go more complicated, by only using the positive pooled we can increase the infraction length cap a little
@@ -526,14 +529,14 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
             # Fun fact, you need to set -i to >=951 to trigger this
             return 1
 
-        for i in infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]:
+        for i in pageslice:
             # Cap at newmaxlen-1 and then add \n at the end
             # this ensures we always have newline seperators
             writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen-1]}\n")
 
-    tprint = round((time.monotonic() - tstart) * 10000) / 10
+    tprint = (time.monotonic() - tstart) * 1000
 
-    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infractions) ({tprint}ms)\n```css\nID, Type, Reason\n{writer.getvalue()}```")
+    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infraction{'s'*(len(infractions)!=1)}) ({tprint:.1f}ms)\n```css\nID, Type, Reason\n{writer.getvalue()}```")
 
 
 async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
