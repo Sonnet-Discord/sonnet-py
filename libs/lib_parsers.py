@@ -544,30 +544,32 @@ async def parse_user_member(message: discord.Message,
     Always returns a user, only returns member if the user is in the guild
     User returned might be a member, do not rely on this.
 
-    :returns: Tuple[discord.User, Optional[discord.Member]] -- A discord user and optional member
+    :returns: tuple[discord.User | discord.Member, Optional[discord.Member]] -- A discord user and optional member
     :raises: errors.user_parse_error -- Could not find the user or input invalid
     """
 
     if not message.guild or not isinstance(message.author, discord.Member):
         raise errors.user_parse_error("Not a guild message")
 
-    member: Optional[discord.Member]
-    user: Optional[discord.User | discord.Member]
-
     try:
-        member = message.guild.get_member(int(args[argindex].strip("<@!>")))
-        if not (user := client.get_user(int(args[argindex].strip("<@!>")))):
-            user = await client.fetch_user(int(args[argindex].strip("<@!>")))
+        uid = int(args[argindex].strip("<@!>"))
     except ValueError:
         await message.channel.send("Invalid UserID")
         raise errors.user_parse_error("Invalid User")
     except IndexError:
         if default_self:
-            member = message.author
-            user = message.author
+            return message.author, message.author
         else:
             await message.channel.send("No user specified")
             raise errors.user_parse_error("No user specified")
+
+    member: Optional[discord.Member]
+    user: Optional[discord.User | discord.Member]
+
+    try:
+        member = message.guild.get_member(uid)
+        if not (user := client.get_user(uid)):
+            user = await client.fetch_user(uid)
     except (discord.errors.NotFound, discord.errors.HTTPException):
         await message.channel.send("User does not exist")
         raise errors.user_parse_error("User does not exist")
