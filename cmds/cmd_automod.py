@@ -154,7 +154,7 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
             raise blacklist_input_error("No RegEx")
 
         # Check if in list
-        remove_data = "__REGEXP " + " ".join(args)
+        remove_data = "__REGEXP " + " ".join(args).strip("`")
         if remove_data in curlist["blacklist"]:
             del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
         else:
