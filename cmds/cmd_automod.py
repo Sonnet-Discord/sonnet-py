@@ -153,13 +153,26 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
             await message.channel.send("ERROR: There is no RegEx")
             raise blacklist_input_error("No RegEx")
 
-        # Check if in list
-        remove_data = "__REGEXP " + " ".join(args)
-        if remove_data in curlist["blacklist"]:
-            del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
+        # Remove by index
+        if len(args) >= 2 and args[0] in ["-i", "--index"]:
+            try:
+                del curlist["blacklist"][int(args[1])]
+            except ValueError:
+                await message.channel.send("ERROR: Index specified but invalid int")
+                raise blacklist_input_error("Pattern not in regex")
+            except IndexError:
+                await message.channel.send("ERROR: Pattern not found in RegEx index")
+                raise blacklist_input_error("Pattern not in regex")
+
+        # Remove by value
         else:
-            await message.channel.send("ERROR: Pattern not found in RegEx")
-            raise blacklist_input_error("RegEx not found")
+            # Check if in list
+            remove_data = f"__REGEXP {' '.join(args)}"
+            if remove_data in curlist["blacklist"]:
+                del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
+            else:
+                await message.channel.send("ERROR: Pattern not found in RegEx")
+                raise blacklist_input_error("RegEx not found")
 
         # Update DB
         db.add_config(db_entry, json.dumps(curlist))
@@ -563,7 +576,7 @@ commands = {
             },
     'remove-regexblacklist':
         {
-            'pretty_name': 'remove-regexblacklist <regex>',
+            'pretty_name': 'remove-regexblacklist <<regex> | -i INDEX> ',
             'description': 'Remove an item from regex blacklist',
             'permission': 'administrator',
             'cache': 'regenerate',
@@ -658,7 +671,7 @@ commands = {
             },
     'remove-regexnotifier':
         {
-            'pretty_name': 'remove-regexnotifier <regex>',
+            'pretty_name': 'remove-regexnotifier <<regex> | -i INDEX>',
             'description': 'Remove an item from notifier list',
             'permission': 'administrator',
             'cache': 'regenerate',
@@ -666,4 +679,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.9-DEV"
