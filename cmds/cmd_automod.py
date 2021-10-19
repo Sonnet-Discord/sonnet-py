@@ -400,7 +400,7 @@ class joinrules:
         self.m: Final[discord.Message] = message
         self.guild = message.guild
 
-        self.ops: Dict[str, Tuple[Callable[[List[str], discord.Client], Coroutine[Any, Any, int]], str]] = {
+        self.ops: Dict[str, Tuple[Callable[[List[str], discord.Client], Coroutine[Any, Any, int]], str]] = {  # pytype: disable=annotation-type-mismatch
             "user": (self.useredit, "add|remove <id> 'Add or remove a userid from the watchlist'"),
             "timestamp": (self.timestampedit, "add|remove [offset(time[h|m|S])] 'Add or remove the account creation offset to warn for'"),
             "defaultpfp": (self.defaultpfpedit, "true|false 'Set whether or not to notify on a default pfp'"),
