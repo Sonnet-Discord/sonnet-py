@@ -222,7 +222,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
         try:
             if dm_sent:
                 await dm_sent  # Wait for dm to be sent before kicking
-            await message.guild.kick((member), reason=reason)
+            await message.guild.kick((member), reason=reason[:512])
         except discord.errors.Forbidden:
             await message.channel.send("The bot does not have permission to kick this user.")
             return 1
@@ -249,7 +249,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     try:
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.guild.ban(user, delete_message_days=0, reason=reason)
+        await message.guild.ban(user, delete_message_days=0, reason=reason[:512])
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to ban this user.")
         return 1
@@ -272,7 +272,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
 
     # Attempt to unban user
     try:
-        await message.guild.unban(user, reason=reason)
+        await message.guild.unban(user, reason=reason[:512])
     except discord.errors.Forbidden:
         await message.channel.send("The bot does not have permission to unban this user.")
         return 1
