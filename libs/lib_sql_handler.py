@@ -98,12 +98,12 @@ class db_handler:
         db_inputBuilder.write(f"REPLACE INTO '{table}' (")
         db_inputList = []
 
-        db_inputBuilder.write(", ".join([i[0] for i in data]))
+        db_inputBuilder.write(", ".join(i[0] for i in data))
         db_inputBuilder.write(")\n")
 
         # Insert values data
         db_inputBuilder.write("VALUES (")
-        db_inputBuilder.write(", ".join(["?" for i in range(len(data))]))
+        db_inputBuilder.write(", ".join("?" for _ in data))
         db_inputBuilder.write(")\n")
 
         db_inputList.extend([i[1] for i in data])
@@ -121,7 +121,7 @@ class db_handler:
         # Add SELECT data
         db_inputBuilder.write(f"SELECT COUNT(*) FROM '{table}' WHERE ")
 
-        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
+        db_inputBuilder.write(" AND ".join(f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute
@@ -156,7 +156,7 @@ class db_handler:
         # Add SELECT data
         db_inputBuilder.write(f"SELECT * FROM '{table}' WHERE ")
 
-        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
+        db_inputBuilder.write(" AND ".join(f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute
