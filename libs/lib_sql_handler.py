@@ -14,6 +14,8 @@ class db_error:  # DB error codes
 
 class db_handler:
 
+    __slots__ = "con", "cur", "closed"
+
     TEXT_KEY = True
 
     def __init__(self, db_location: str) -> None:

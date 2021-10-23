@@ -15,6 +15,9 @@ class db_error:  # DB error codes
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
+
+    __slots__ = "con", "cur", "db_name", "closed"
+
     @property
     def TEXT_KEY(self) -> bool:
         return bool(self.con.server_version_info >= (10, 4))

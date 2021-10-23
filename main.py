@@ -48,6 +48,8 @@ Client = discord.Client(status=discord.Status.online, intents=intents)
 
 # Define token encryption system "miniflip"
 class miniflip:
+    __slots__ = "_width", "_passkey"
+
     def __init__(self, password: str):
         key = hashlib.sha512(password.encode("utf8")).digest()
         self._width = 8
@@ -102,6 +104,8 @@ class miniflip:
 
 # Define ramfs
 class ram_filesystem:
+    __slots__ = "data_table", "directory_table"
+
     def __init__(self) -> None:
         self.directory_table: Dict[str, "ram_filesystem"] = {}
         self.data_table: Dict[str, Any] = {}
@@ -514,6 +518,8 @@ if __name__ == "__main__":
 
 # A object used to pass error messages from the kernel callers to the event handlers
 class errtype:
+    __slots__ = "err", "errmsg"
+
     def __init__(self, err: Exception, argtype: str):
 
         self.err = err
@@ -840,7 +846,7 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.5"
+version_info: str = "LeXdPyK 1.4.6"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":

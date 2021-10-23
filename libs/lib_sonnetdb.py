@@ -56,6 +56,9 @@ def db_grab_connection() -> db_handler:  # pytype: disable=invalid-annotation
 
 # Because being lazy writes good code
 class db_hlapi:
+
+    __slots__ = "_db", "database", "guild", "hlapi_version", "_sonnet_db_version", "__enum_input", "__enum_pool"
+
     def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
         self._db = db_grab_connection()
         self.database = self._db  # Deprecated name
