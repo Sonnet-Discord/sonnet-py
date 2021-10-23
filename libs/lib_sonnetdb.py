@@ -19,7 +19,7 @@ if DB_TYPE == "mariadb":
     importlib.reload(lib_mdb_handler)
     import json
     from lib_mdb_handler import db_handler, db_error
-    with open(".login-info.txt") as login_info_file:  # Grab login data
+    with open(".login-info.txt", encoding="utf-8") as login_info_file:  # Grab login data
         db_connection_parameters = json.load(login_info_file)
 
 elif DB_TYPE == "sqlite3":

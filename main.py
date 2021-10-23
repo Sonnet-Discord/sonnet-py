@@ -245,7 +245,7 @@ class ram_filesystem:
 if __name__ == "__main__":
     # Import blacklist
     try:
-        with open("common/blacklist.json", "r") as blacklist_file:
+        with open("common/blacklist.json", "r", encoding="utf-8") as blacklist_file:
             blacklist = json.load(blacklist_file)
 
         # Ensures blacklist properly init
@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     except FileNotFoundError:
         blacklist = {"guild": [], "user": []}
-        with open("common/blacklist.json", "w") as blacklist_file:
+        with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
             json.dump(blacklist, blacklist_file)
 
 # Define debug commands
@@ -390,7 +390,7 @@ def kernel_blacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[Exc
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -403,7 +403,7 @@ def kernel_blacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Exce
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -419,7 +419,7 @@ def kernel_unblacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[E
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -435,7 +435,7 @@ def kernel_unblacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Ex
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -522,7 +522,7 @@ class errtype:
 
         traceback.print_exception(type(self.err), self.err, self.err.__traceback__)
 
-        with open("err.log", "a+") as logfile:
+        with open("err.log", "a+", encoding="utf-8") as logfile:
             logfile.write(f"AT {time.strftime('%a, %d %b %Y %H:%M:%S', datetime.datetime.now(datetime.timezone.utc).utctimetuple())}:\n")
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
@@ -840,7 +840,7 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.4"
+version_info: str = "LeXdPyK 1.4.5"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":

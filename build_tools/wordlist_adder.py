@@ -2,7 +2,7 @@
 
 from typing import Set
 
-with open("common/wordlist.txt") as fp:
+with open("common/wordlist.txt", encoding="utf-8") as fp:
     used: Set[str] = {i for i in fp.read().split("\n") if i}
 
 try:
@@ -20,7 +20,7 @@ except (KeyboardInterrupt, EOFError):
     print("Exiting")
 
 finally:
-    with open("common/wordlist.txt", "w") as fp:
+    with open("common/wordlist.txt", "w", encoding="utf-8") as fp:
         for i in sorted(used):
             fp.write(i)
             fp.write("\n")
