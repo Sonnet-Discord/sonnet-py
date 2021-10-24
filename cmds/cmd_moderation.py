@@ -661,6 +661,8 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
 
 
 class purger:
+    __slots__ = "user_id",
+
     def __init__(self, user_id: int):
         self.user_id = user_id
 
