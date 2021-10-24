@@ -393,6 +393,8 @@ class NoGuildError(Exception):
 
 
 class joinrules:
+    __slots__ = "m", "guild", "ops"
+
     def __init__(self, message: discord.Message):
         if not message.guild:
             raise NoGuildError(f"{message}: contains no guild")
@@ -411,6 +413,7 @@ class joinrules:
 
         nsv: List[str] = [f"{i} {self.ops[i][1]}\n" for i in self.ops]
         await self.m.channel.send(f"JoinRule Help```py\n{''.join(nsv)}```")
+
         return 0
 
     async def useredit(self, args: List[str], client: discord.Client) -> int:
