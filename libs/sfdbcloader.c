@@ -10,7 +10,7 @@ typedef struct {
 
 // Copies amount from fp into String
 // If the String does not have the capacity it returns 1 and no call occurs, else returns 0
-int fcopys(FILE* fp, String* s, int amount) {
+int fcopys(FILE* fp, String* s, long amount) {
 
 	if ((size_t)amount > (s->cap - s->len)) {
 		return 1;
@@ -30,19 +30,19 @@ int fcopys(FILE* fp, String* s, int amount) {
 int load_words_to_string ( FILE* fp, int retamount, String* s ) {
 	
 	// Grab length of file
-	int maxln = fgetc(fp);
+	long maxln = fgetc(fp);
 	fseek(fp, 0, SEEK_END);
-	int size = (ftell(fp) - 1) / maxln ;
+	long size = (ftell(fp) - 1) / maxln ;
 
 	// Grab X amount of words
-	for ( int i = 0 ; i < retamount; i++ ) {
+	for ( long i = 0; i < retamount; i++ ) {
 
 		// Seek to random word pointer
-		int randval = ((rand() % (size)) * maxln) + 1;
+		long randval = ((rand() % (size)) * maxln) + 1;
 		fseek(fp, randval, SEEK_SET);
 
 		// Grab word and add it to buffer
-		int getamnt = fgetc(fp);
+		long getamnt = fgetc(fp);
 
 		if (fcopys(fp, s, getamnt) != 0) {
 			return 1;
