@@ -16,7 +16,7 @@ int fcopys(FILE* fp, String* s, long amount) {
 		return 1;
 	}
 
-	char* r = fgets(s->ptr+s->len, amount+1, fp);
+	char* r = fgets(s->ptr + s->len, amount + 1, fp);
 
 	if (r == NULL) {
 		return 1;
@@ -27,15 +27,15 @@ int fcopys(FILE* fp, String* s, long amount) {
 	return 0;
 }
 
-int load_words_to_string ( FILE* fp, int retamount, String* s ) {
-	
+int load_words_to_string(FILE* fp, int retamount, String* s) {
+
 	// Grab length of file
 	long maxln = fgetc(fp);
 	fseek(fp, 0, SEEK_END);
-	long size = (ftell(fp) - 1) / maxln ;
+	long size = (ftell(fp) - 1) / maxln;
 
 	// Grab X amount of words
-	for ( long i = 0; i < retamount; i++ ) {
+	for (long i = 0; i < retamount; i++) {
 
 		// Seek to random word pointer
 		long randval = ((rand() % (size)) * maxln) + 1;
@@ -47,13 +47,12 @@ int load_words_to_string ( FILE* fp, int retamount, String* s ) {
 		if (fcopys(fp, s, getamnt) != 0) {
 			return 1;
 		}
-
 	}
 
 	return 0;
 }
 
-int load_words ( char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length ) {
+int load_words(char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length) {
 
 	// Seed random number generator
 	srand(seed);
@@ -62,12 +61,12 @@ int load_words ( char* filename, int retamount, unsigned int seed, char* pointer
 	FILE* fp = fopen(filename, "rb");
 
 	// Exit if file does not exist
-	if ( fp == NULL ) {
-		return 2; // Return 2 on file not exist errors, 1 on general errors
+	if (fp == NULL) {
+		return 2;  // Return 2 on file not exist errors, 1 on general errors
 	}
-	
+
 	// Create String object
-	String b = {pointer, 0, (size_t)pointer_length};
+	String b = { pointer, 0, (size_t)pointer_length };
 
 	// Zero string
 	memset(b.ptr, 0, b.cap);
@@ -80,7 +79,7 @@ int load_words ( char* filename, int retamount, unsigned int seed, char* pointer
 	return retcode;
 }
 
-int load_words_test( char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length, int testcount) {
+int load_words_test(char* filename, int retamount, unsigned int seed, char* pointer, int pointer_length, int testcount) {
 	for (int i = 0; i < testcount; i++) {
 		seed++;
 		load_words(filename, retamount, seed, pointer, pointer_length);
