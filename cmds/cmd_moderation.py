@@ -448,6 +448,13 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
             await message.channel.send("Invalid flags supplied")
             return 1
 
+    # Default to user if no user/mod flags are supplied
+    if None is responsible_mod is user_affected:
+        try:
+            user_affected = int(args[0].strip("<@!>"))
+        except (IndexError, ValueError):
+            pass
+
     if not 5 <= per_page <= 40:
         await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
         return 1
