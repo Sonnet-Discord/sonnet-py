@@ -48,7 +48,7 @@ jobs:
         mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable
     - name: yapf integrity check
       run: |
-        yapf -d -r .
+        yapf -drp .
     - name: Install mariadb cause pylint actually wants to kill me
       run: |
         sudo apt update
