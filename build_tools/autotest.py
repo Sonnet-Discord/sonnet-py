@@ -9,8 +9,8 @@ from typing import Dict, Any
 tests = {
     "pyflakes": "pyflakes .",
     "mypy": "mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable",
+    "yapf": "yapf -drp .",
     "pylint": "pylint */ -E",
-    "yapf": "yapf -d -r .",
     "pytype": "pytype .",
     }
 
