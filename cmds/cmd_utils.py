@@ -226,7 +226,20 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
         # Do not echo user input
         else:
-            await message.channel.send("No command or command module with that name")
+            # lets check if they cant read documentation
+            probably_tried_paging: bool
+            try:
+                probably_tried_paging = int(args[0]) <= ((len(cmds) + (per_page - 1)) // per_page)
+            except ValueError:
+                probably_tried_paging = False
+
+            no_command_text: str = "No command or command module with that name"
+
+            if probably_tried_paging:
+                await message.channel.send(f"{no_command_text} (did you mean `{PREFIX}help -p {int(args[0])}`?)")
+            else:
+                await message.channel.send(no_command_text)
+
             return 1
 
     # Total help
@@ -374,4 +387,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.9"

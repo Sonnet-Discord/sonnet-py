@@ -15,6 +15,9 @@ class db_error:  # DB error codes
 
 
 class db_handler:  # Im sorry I OOP'd it :c -ultrabear
+
+    __slots__ = "con", "cur", "db_name", "closed"
+
     @property
     def TEXT_KEY(self) -> bool:
         return bool(self.con.server_version_info >= (10, 4))
@@ -91,15 +94,15 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
 
         # Add insert data and generate base tables
         db_inputBuilder.write(f"REPLACE INTO {table} (")
-        db_inputList = []
-        db_inputBuilder.write(", ".join([i[0] for i in data]))
+        db_inputList: List[Any] = []
+        db_inputBuilder.write(", ".join(i[0] for i in data))
         db_inputBuilder.write(")\n")
 
         # Insert values data
         db_inputBuilder.write("VALUES (")
-        db_inputList.extend([i[1] for i in data])
+        db_inputList.extend(i[1] for i in data)
 
-        db_inputBuilder.write(", ".join(["?" for i in data]))
+        db_inputBuilder.write(", ".join("?" for i in data))
         db_inputBuilder.write(")\n")
 
         self.cur.execute(db_inputBuilder.getvalue(), tuple(db_inputList))
@@ -111,7 +114,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Add SELECT data
         db_inputBuilder.write(f"SELECT COUNT(*) FROM {table} WHERE ")
 
-        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
+        db_inputBuilder.write(" AND ".join(f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute
@@ -140,7 +143,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         # Add SELECT data
         db_inputBuilder.write(f"SELECT * FROM {table} WHERE ")
 
-        db_inputBuilder.write(" AND ".join([f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms]))
+        db_inputBuilder.write(" AND ".join(f"({i[0]} {i[2] if len(i) > 2 else '='} ?)" for i in searchparms))
         db_inputList = [i[1] for i in searchparms]
 
         # Execute

@@ -1,5 +1,5 @@
 CC=gcc
-version=1.2.8-DEV.1
+version=1.2.9-DEV.0
 GOCMD=go
 GOversion=2.0.0-DEV.3
 compilefolder=./libs/compiled

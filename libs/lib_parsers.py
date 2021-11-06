@@ -544,32 +544,65 @@ async def parse_user_member(message: discord.Message,
     Always returns a user, only returns member if the user is in the guild
     User returned might be a member, do not rely on this.
 
-    :returns: Tuple[discord.User, Optional[discord.Member]] -- A discord user and optional member
+    :returns: tuple[discord.User | discord.Member, Optional[discord.Member]] -- A discord user and optional member
     :raises: errors.user_parse_error -- Could not find the user or input invalid
     """
 
     if not message.guild or not isinstance(message.author, discord.Member):
         raise errors.user_parse_error("Not a guild message")
 
-    member: Optional[discord.Member]
-    user: Optional[discord.User | discord.Member]
-
     try:
-        member = message.guild.get_member(int(args[argindex].strip("<@!>")))
-        if not (user := client.get_user(int(args[argindex].strip("<@!>")))):
-            user = await client.fetch_user(int(args[argindex].strip("<@!>")))
+        uid = int(args[argindex].strip("<@!>"))
     except ValueError:
         await message.channel.send("Invalid UserID")
         raise errors.user_parse_error("Invalid User")
     except IndexError:
         if default_self:
-            member = message.author
-            user = message.author
+            return message.author, message.author
         else:
             await message.channel.send("No user specified")
             raise errors.user_parse_error("No user specified")
+
+    member: Optional[discord.Member]
+    user: Optional[discord.User | discord.Member]
+
+    try:
+        member = message.guild.get_member(uid)
+        if not (user := client.get_user(uid)):
+            user = await client.fetch_user(uid)
     except (discord.errors.NotFound, discord.errors.HTTPException):
         await message.channel.send("User does not exist")
         raise errors.user_parse_error("User does not exist")
 
     return user, member
+
+
+def format_duration(durationSeconds: Union[int, float]) -> str:
+    """
+    Returns an end user formatted duration from a seconds duration up to decades
+
+    :returns: str - Formatted string
+    """
+
+    fseconds = float(durationSeconds)
+
+    # The general idea is this steps through timepoints till the number is in a low enough range to be human readable
+
+    base = "second"
+    ranges: List[Tuple[str, int]] = [("minute", 60), ("hour", 60), ("day", 24), ("year", 365), ("decade", 10)]
+
+    for i in ranges:
+
+        if fseconds >= i[1]:
+            fseconds /= i[1]
+            base = i[0]
+
+        else:
+            break
+
+    rounded = round(fseconds, 1)
+
+    # Basically removes a .0 if the number ends in .0
+    perfectround = int(rounded) if float(int(rounded)) == rounded else rounded
+
+    return f"{perfectround} {base}{'s'*(perfectround!=1)}"

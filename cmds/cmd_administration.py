@@ -73,6 +73,8 @@ async def username_log_change(message: discord.Message, args: List[str], client:
 
 
 class gdpr_functions:
+    __slots__ = "commands",
+
     def __init__(self) -> None:
         self.commands = {"delete": self.delete, "download": self.download}
 
@@ -318,4 +320,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.9"

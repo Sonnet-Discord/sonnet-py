@@ -1,0 +1,181 @@
+# Credit: github.com/mattfbacon/templates
+#
+# LICENSE: Attribution appreciated but not required. Projects based on these templates are not considered derivative works.
+#
+---
+Language: Cpp
+AccessModifierOffset: -2
+AlignAfterOpenBracket: AlwaysBreak
+# AlignArrayOfStructures: None
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: None
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: None
+AlignEscapedNewlines: DontAlign
+AlignOperands: DontAlign
+AlignTrailingComments: false
+AllowAllArgumentsOnNextLine: true
+AllowAllConstructorInitializersOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Never # empty doesn't work and never behaves like empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Always # AllIfsAndElse
+AllowShortLambdasOnASingleLine: Empty
+AllowShortLoopsOnASingleLine: true
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakTemplateDeclarations: Yes
+AttributeMacros:
+  - __capability
+  - __output
+BinPackArguments: false
+BinPackParameters: false
+BitFieldColonSpacing: After
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false # change?
+  AfterControlStatement: Never # change?
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+BreakAfterJavaFieldAnnotations: true
+BreakBeforeBinaryOperators: All
+BreakBeforeBraces: Attach
+BreakBeforeConceptDeclarations: true
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeComma
+BreakInheritanceList: BeforeComma
+BreakStringLiterals: true
+ColumnLimit: 160
+CommentPragmas: '^ IWYU pragma:'
+CompactNamespaces: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true # change?
+ConstructorInitializerIndentWidth: 2
+ContinuationIndentWidth: 2
+Cpp11BracedListStyle: false # spaces around
+DeriveLineEnding: false # always lf
+DerivePointerAlignment: false
+DisableFormat: false
+# EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: Leave
+ExperimentalAutoDetectBinPacking: false
+FixNamespaceComments: true
+ForEachMacros:
+  - foreach
+  - Q_FOREACH
+  - BOOST_FOREACH
+# IfMacros: []
+IncludeBlocks: Regroup
+IncludeCategories:
+# main include (implicit 0)
+# system includes
+  - Regex: '^<'
+    Priority: 1
+    CaseSensitive: true
+# class quote includes
+  - Regex: '^"[A-Z]'
+    Priority: 2
+    CaseSensitive: true
+# non-class quote includes
+  - Regex: '^"[a-z]'
+    Priority: 3
+    CaseSensitive: true
+# overflow
+  - Regex: '.*'
+    Priority: 4
+    CaseSensitive: false
+IncludeIsMainRegex: '^(test_)?.*(.hpp)?$'
+IncludeIsMainSourceRegex: ''
+# IndentAccessModifiers: false
+IndentCaseBlocks: false
+IndentCaseLabels: true
+IndentExternBlock: NoIndent
+IndentGotoLabels: false # flush left
+IndentPPDirectives: None
+IndentRequires: false
+IndentWidth: 2
+IndentWrappedFunctionNames: false
+InsertTrailingCommas: None # wish this could be "always"...
+KeepEmptyLinesAtTheStartOfBlocks: true
+# LambdaBodyIndentation: Signature
+MacroBlockBegin: '' # change?
+MacroBlockEnd: '' # change?
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
+NamespaceMacros: []
+# PPIndentWidth: -1
+# below is witchcraft
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 200
+PenaltyBreakFirstLessLess: 60
+PenaltyBreakString: 100
+PenaltyBreakTemplateDeclaration: 10
+PenaltyExcessCharacter: 1
+PenaltyReturnTypeOnItsOwnLine: 60
+PenaltyIndentedWhitespace: 0
+# above is witchcraft
+PointerAlignment: Left
+# ReferenceAlignment: Left
+ReflowComments: true
+# ShortNamespaceLines: 20
+SortIncludes: true # CaseInsensitive
+SortUsingDeclarations: true
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+SpaceAroundPointerQualifiers: Default # change?
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInConditionalStatement: false
+SpacesInContainerLiterals: true
+SpacesInCStyleCastParentheses: false
+# SpacesInLineCommentPrefix:
+#   Minimum: 1
+#   Maximum: 1
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+Standard: Latest
+SpaceBeforeSquareBrackets: false
+StatementAttributeLikeMacros:
+  - Q_EMIT
+  - emit
+StatementMacros:
+  - Q_UNUSED
+  - QT_REQUIRE_VERSION
+TabWidth: 2
+TypenameMacros:
+UseCRLF: false
+UseTab: AlignWithSpaces
+WhitespaceSensitiveMacros:
+  - STRINGIZE
+  - PP_STRINGIZE
+  - BOOST_PP_STRINGIZE
+  - NS_SWIFT_NAME
+  - CF_SWIFT_NAME
+...

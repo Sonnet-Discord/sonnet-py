@@ -19,7 +19,7 @@ if DB_TYPE == "mariadb":
     importlib.reload(lib_mdb_handler)
     import json
     from lib_mdb_handler import db_handler, db_error
-    with open(".login-info.txt") as login_info_file:  # Grab login data
+    with open(".login-info.txt", encoding="utf-8") as login_info_file:  # Grab login data
         db_connection_parameters = json.load(login_info_file)
 
 elif DB_TYPE == "sqlite3":
@@ -54,17 +54,28 @@ def db_grab_connection() -> db_handler:  # pytype: disable=invalid-annotation
             raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
 
 
+# Define base infraction type
+InfractionT = Tuple[str, str, str, str, str, int]
+# Unused currently, will roll into new apis as DBV1.1 rolls out
+TaggedInfractionT = Tuple[str, str, str, str, str, int, int]
+
+__all__ = ["db_hlapi"]
+
+
 # Because being lazy writes good code
 class db_hlapi:
+
+    __slots__ = "_db", "database", "guild", "hlapi_version", "_sonnet_db_version", "__enum_input", "__enum_pool"
+
     def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
         self._db = db_grab_connection()
         self.database = self._db  # Deprecated name
         self.guild: Optional[int] = guild_id
 
-        self.hlapi_version = (1, 2, 6)
+        self.hlapi_version = (1, 2, 9)
         self._sonnet_db_version = self._get_db_version()
 
-        if lock:
+        if lock is not None:
             warnings.warn("db_hlapi(lock: threading.Lock) is deprecated", DeprecationWarning)
 
         self.__enum_input: Dict[str, List[Tuple[str, Type[Union[str, int]]]]] = {}
@@ -200,6 +211,20 @@ class db_hlapi:
         except db_error.OperationalError:
             pass
 
+    def list_enum(self, enumName: str) -> List[Union[str, int]]:
+        """
+        Returns a list of an enums primary keys, fetched from the db
+
+        :returns: List[Union[str, int]] - A list of primary keys
+        """
+        if enumName not in self.__enum_pool:
+            raise TypeError(f"Trying to list from table that is not registered ({enumName} not registered)")
+
+        try:
+            return cast(List[Union[str, int]], [i[0] for i in self._db.fetch_table(f"{self.guild}_{enumName}")])
+        except db_error.OperationalError:
+            return []
+
     def create_guild_db(self) -> None:
         """
         Create a guilds database
@@ -268,12 +293,7 @@ class db_hlapi:
 
         return data
 
-    def grab_filter_infractions(self,
-                                user: Optional[int] = None,
-                                moderator: Optional[int] = None,
-                                itype: Optional[str] = None,
-                                automod: bool = True,
-                                count: bool = False) -> Union[Tuple[str, str, str, str, str, int], int]:
+    def grab_filter_infractions(self, user: Optional[int] = None, moderator: Optional[int] = None, itype: Optional[str] = None, automod: bool = True, count: bool = False) -> Union[InfractionT, int]:
 
         schm: List[List[str]] = []
         if user is not None:
@@ -285,7 +305,7 @@ class db_hlapi:
         if not automod:
             schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
 
-        db_type = Union[Tuple[str, str, str, str, str, int], int]
+        db_type = Union[InfractionT, int]
 
         try:
             if self._db.TEXT_KEY:
@@ -324,7 +344,7 @@ class db_hlapi:
         self.set_enum("starboard", [str(message_id)])
         return True
 
-    def grab_infraction(self, infractionID: str) -> Optional[Tuple[str, str, str, str, str, int]]:
+    def grab_infraction(self, infractionID: str) -> Optional[InfractionT]:
 
         try:
             infraction: Any = self._db.fetch_rows_from_table(f"{self.guild}_infractions", ["infractionID", infractionID])

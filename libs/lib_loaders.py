@@ -31,7 +31,7 @@ import lib_lexdpyk_h as lexdpyk
 
 class DotHeaders:
 
-    version = "1.2.8-DEV.1"
+    version = "1.2.9-DEV.0"
 
     class cdef_load_words:
         argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]

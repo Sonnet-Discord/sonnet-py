@@ -153,13 +153,26 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
             await message.channel.send("ERROR: There is no RegEx")
             raise blacklist_input_error("No RegEx")
 
-        # Check if in list
-        remove_data = "__REGEXP " + " ".join(args)
-        if remove_data in curlist["blacklist"]:
-            del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
+        # Remove by index
+        if len(args) >= 2 and args[0] in ["-i", "--index"]:
+            try:
+                del curlist["blacklist"][int(args[1])]
+            except ValueError:
+                await message.channel.send("ERROR: Index specified but invalid int")
+                raise blacklist_input_error("Pattern not in regex")
+            except IndexError:
+                await message.channel.send("ERROR: Pattern not found in RegEx index")
+                raise blacklist_input_error("Pattern not in regex")
+
+        # Remove by value
         else:
-            await message.channel.send("ERROR: Pattern not found in RegEx")
-            raise blacklist_input_error("RegEx not found")
+            # Check if in list
+            remove_data = f"__REGEXP {' '.join(args)}"
+            if remove_data in curlist["blacklist"]:
+                del curlist["blacklist"][curlist["blacklist"].index(remove_data)]
+            else:
+                await message.channel.send("ERROR: Pattern not found in RegEx")
+                raise blacklist_input_error("RegEx not found")
 
         # Update DB
         db.add_config(db_entry, json.dumps(curlist))
@@ -380,6 +393,8 @@ class NoGuildError(Exception):
 
 
 class joinrules:
+    __slots__ = "m", "guild", "ops"
+
     def __init__(self, message: discord.Message):
         if not message.guild:
             raise NoGuildError(f"{message}: contains no guild")
@@ -387,7 +402,7 @@ class joinrules:
         self.m: Final[discord.Message] = message
         self.guild = message.guild
 
-        self.ops: Dict[str, Tuple[Callable[[List[str], discord.Client], Coroutine[Any, Any, int]], str]] = {
+        self.ops: Dict[str, Tuple[Callable[[List[str], discord.Client], Coroutine[Any, Any, int]], str]] = {  # pytype: disable=annotation-type-mismatch
             "user": (self.useredit, "add|remove <id> 'Add or remove a userid from the watchlist'"),
             "timestamp": (self.timestampedit, "add|remove [offset(time[h|m|S])] 'Add or remove the account creation offset to warn for'"),
             "defaultpfp": (self.defaultpfpedit, "true|false 'Set whether or not to notify on a default pfp'"),
@@ -398,6 +413,7 @@ class joinrules:
 
         nsv: List[str] = [f"{i} {self.ops[i][1]}\n" for i in self.ops]
         await self.m.channel.send(f"JoinRule Help```py\n{''.join(nsv)}```")
+
         return 0
 
     async def useredit(self, args: List[str], client: discord.Client) -> int:
@@ -563,7 +579,7 @@ commands = {
             },
     'remove-regexblacklist':
         {
-            'pretty_name': 'remove-regexblacklist <regex>',
+            'pretty_name': 'remove-regexblacklist <<regex> | -i INDEX> ',
             'description': 'Remove an item from regex blacklist',
             'permission': 'administrator',
             'cache': 'regenerate',
@@ -658,7 +674,7 @@ commands = {
             },
     'remove-regexnotifier':
         {
-            'pretty_name': 'remove-regexnotifier <regex>',
+            'pretty_name': 'remove-regexnotifier <<regex> | -i INDEX>',
             'description': 'Remove an item from notifier list',
             'permission': 'administrator',
             'cache': 'regenerate',
@@ -666,4 +682,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.9"

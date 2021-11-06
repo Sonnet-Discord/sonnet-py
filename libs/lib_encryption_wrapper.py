@@ -1,12 +1,14 @@
 # Cryptographically sound AES-CTR-HMAC wrapper for fileio
 # Ultrabear 2021
 
+# This module sucks, python was not meant to do disk handling
+
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import hashes, hmac
 
 import io
 
-from typing import Generator, Tuple, Any, Union, cast
+from typing import Generator, Any, Union
 
 
 class errors:
@@ -32,11 +34,13 @@ class crypto_typing:
             return bytes()
 
 
-def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
-    return tuple([(inData >> (8 * i) & 0xff) for i in range(length)])
+def directBinNumber(inData: int, length: int) -> bytes:
+    return bytes((inData >> (8 * i) & 0xff) for i in range(length))
 
 
 class encrypted_writer:
+    __slots__ = "cipher", "encryptor_module", "HMACencrypt", "rawfile", "buf"
+
     def __init__(self, filename: Any, key: bytes, iv: bytes) -> None:
 
         # Start cipher system
@@ -57,14 +61,14 @@ class encrypted_writer:
         # Initialize writable buffer
         self.buf = bytes(2**16 + 256)
 
-    def _generate_chunks(self, data: bytes) -> Generator[bytes, None, None]:
+    def _generate_chunks(self, data: bytes) -> Generator[memoryview, None, None]:
 
         # Init mem map
         raw_data = memoryview(data)
 
         # Yield data in chunks
         for i in range(0, len(data), ((2**16) - 1)):
-            yield bytes(raw_data[i:i + ((2**16) - 1)])
+            yield raw_data[i:i + ((2**16) - 1)]
 
     def write(self, data: bytes) -> None:
 
@@ -76,14 +80,14 @@ class encrypted_writer:
 
             self._write_data(data)
 
-    def _write_data(self, unencrypted: bytes) -> None:
+    def _write_data(self, unencrypted: Union[memoryview, bytes]) -> None:
 
         # Write length of data to file
         dlen = len(unencrypted)
-        self.rawfile.write(bytes(directBinNumber(dlen, 2)))
+        self.rawfile.write(directBinNumber(dlen, 2))
 
         # Encrypt
-        self.encryptor_module.update_into(unencrypted, cast(Any, self.buf))
+        self.encryptor_module.update_into(unencrypted, self.buf)
         memptr = memoryview(self.buf)
 
         self.rawfile.write(memptr[:dlen])
@@ -116,6 +120,8 @@ class encrypted_writer:
 
 
 class encrypted_reader:
+    __slots__ = "rawfile", "cipher", "decryptor_module", "pointer", "cache"
+
     def __init__(self, filename: Any, key: bytes, iv: bytes) -> None:
 
         # Open rawfile
@@ -164,7 +170,7 @@ class encrypted_reader:
         while len(self.cache) < self.pointer + amount_wanted and not eof_reached:
             read_amount = int.from_bytes(self.rawfile.read(2), "little")
             if read_amount:
-                self.cache.extend(((self._grab_amount(read_amount))))
+                self.cache.extend(self._grab_amount(read_amount))
             else:
                 eof_reached = True
 
@@ -181,7 +187,6 @@ class encrypted_reader:
                 return b"".join(datamap)
             else:
                 # Return remainder of data
-                self.cache
                 while a := self.rawfile.read(2):
                     self.cache.extend((self._grab_amount(int.from_bytes(a, "little"))))
                 return bytes(memoryview(self.cache)[self.pointer:])

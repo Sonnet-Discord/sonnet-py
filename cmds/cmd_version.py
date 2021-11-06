@@ -24,6 +24,7 @@ from typing import List, Any, Union
 import lib_lexdpyk_h as lexdpyk
 
 
+# Pretty gives spacing between key-value items to have them padded
 def prettyprint(inlist: List[List[str]]) -> List[str]:
 
     maxln = 0
@@ -35,19 +36,32 @@ def prettyprint(inlist: List[List[str]]) -> List[str]:
     return [(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}") for i in inlist]
 
 
-def zpad(innum: int) -> str:
-    return (2 - len(str(innum))) * "0" + str(innum)
+# Adds zero padding to number
+def zpad(n: int) -> str:
+    """
+    Deprecated, just use a format string directly
+    """
+    return f"{n:02d}"
 
 
 def getdelta(past: Union[int, float]) -> str:
+    """
+    Formats a delta between a past time and now to be human readable
+    """
 
     trunning = (datetime_unix(int(time.time())) - datetime_unix(int(past)))
 
     seconds = trunning.seconds % 60
     minutes = ((trunning.seconds) // 60 % 60)
     hours = ((trunning.seconds) // (60 * 60))
+    days = trunning.days
 
-    return f"{trunning.days} Day{'s'*(trunning.days != 1)}, {zpad(hours)}:{zpad(minutes)}:{zpad(seconds)}"
+    hms = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+    # if days is 0 dont bother rendering it
+    if days == 0: return hms
+
+    return f"{days} Day{'s'*(days != 1)}, {hms}"
 
 
 async def print_version_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -80,7 +94,12 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
 
     fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n```")
 
-    await message.channel.send(fmt.getvalue())
+    content = fmt.getvalue()
+
+    if len(content) <= 2000:
+        await message.channel.send(content)
+    else:
+        await message.channel.send("ERROR: Exeeded discord message length limits, tell a developer to stop being lazy about rendering this")
 
 
 async def uptime(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -165,4 +184,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.9"

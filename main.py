@@ -48,6 +48,8 @@ Client = discord.Client(status=discord.Status.online, intents=intents)
 
 # Define token encryption system "miniflip"
 class miniflip:
+    __slots__ = "_width", "_passkey"
+
     def __init__(self, password: str):
         key = hashlib.sha512(password.encode("utf8")).digest()
         self._width = 8
@@ -102,6 +104,8 @@ class miniflip:
 
 # Define ramfs
 class ram_filesystem:
+    __slots__ = "data_table", "directory_table"
+
     def __init__(self) -> None:
         self.directory_table: Dict[str, "ram_filesystem"] = {}
         self.data_table: Dict[str, Any] = {}
@@ -245,7 +249,7 @@ class ram_filesystem:
 if __name__ == "__main__":
     # Import blacklist
     try:
-        with open("common/blacklist.json", "r") as blacklist_file:
+        with open("common/blacklist.json", "r", encoding="utf-8") as blacklist_file:
             blacklist = json.load(blacklist_file)
 
         # Ensures blacklist properly init
@@ -254,7 +258,7 @@ if __name__ == "__main__":
 
     except FileNotFoundError:
         blacklist = {"guild": [], "user": []}
-        with open("common/blacklist.json", "w") as blacklist_file:
+        with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
             json.dump(blacklist, blacklist_file)
 
 # Define debug commands
@@ -390,7 +394,7 @@ def kernel_blacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[Exc
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -403,7 +407,7 @@ def kernel_blacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Exce
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -419,7 +423,7 @@ def kernel_unblacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[E
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -435,7 +439,7 @@ def kernel_unblacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Ex
     except (ValueError, IndexError):
         return "Asking value is not INT", []
 
-    with open("common/blacklist.json", "w") as blacklist_file:
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
         json.dump(blacklist, blacklist_file)
 
     return None
@@ -514,6 +518,8 @@ if __name__ == "__main__":
 
 # A object used to pass error messages from the kernel callers to the event handlers
 class errtype:
+    __slots__ = "err", "errmsg"
+
     def __init__(self, err: Exception, argtype: str):
 
         self.err = err
@@ -522,7 +528,7 @@ class errtype:
 
         traceback.print_exception(type(self.err), self.err, self.err.__traceback__)
 
-        with open("err.log", "a+") as logfile:
+        with open("err.log", "a+", encoding="utf-8") as logfile:
             logfile.write(f"AT {time.strftime('%a, %d %b %Y %H:%M:%S', datetime.datetime.now(datetime.timezone.utc).utctimetuple())}:\n")
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
@@ -840,7 +846,7 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.4"
+version_info: str = "LeXdPyK 1.4.6"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
