@@ -5,9 +5,9 @@
 import discord
 import datetime
 
-from typing import Union, cast
+from typing import Union, Dict, Callable, cast
 
-releaselevel: int = discord.version_info[0]
+_releaselevel: int = discord.version_info[0]
 
 __all__ = [
     "compatErrors",
@@ -24,6 +24,27 @@ class compatErrors:
         pass
 
 
+_avatar_url_funcs: Dict[int, Callable[[Union[discord.User, discord.Member]], str]] = {
+    # 1.0: User.avatar_url
+    1: (lambda user: str(getattr(user, "avatar_url"))),
+    # 2.0: User.display_avatar.url
+    2: (lambda user: cast(str, getattr(getattr(user, "display_avatar"), "url"))),
+    }
+
+_datetime_now_funcs: Dict[int, Callable[[], datetime.datetime]] = {
+    # 1.0: naive datetime
+    1: (lambda: datetime.datetime.utcnow()),
+    # 2.0: aware datetime
+    2: (lambda: datetime.datetime.now(datetime.timezone.utc)),
+    }
+
+if _releaselevel in [1, 2]:
+    _avatar_url_func = _avatar_url_funcs[_releaselevel]
+    _datetime_now_func = _datetime_now_funcs[_releaselevel]
+else:
+    raise compatErrors.VersionError("Could not get the library version")
+
+
 def user_avatar_url(user: Union[discord.User, discord.Member]) -> str:
     """
     Gets the avatar url of a user object
@@ -31,24 +52,12 @@ def user_avatar_url(user: Union[discord.User, discord.Member]) -> str:
 
     :returns: str - The avatar url
     :raises: AttributeError - Failed to get the avatar url (programming error)
-    :raises: compatErrors.NotFound - Could not get the avatar url (raised only in 2.0)
-    :raises: compatErrors.VersionError - Could not parse library version
     """
 
     # 1.7: user.avatar_url -> Asset (supports __str__())
-    # 2.0: user.avatar.url -> str
+    # 2.0: user.display_avatar.url -> str
 
-    if releaselevel == 1:
-        return str(getattr(user, "avatar_url"))
-    elif releaselevel == 2:
-        avatar = getattr(user, "avatar")
-        if avatar is not None:
-            # Do a cast here since url is a str already
-            return cast(str, getattr(avatar, "url"))
-        else:
-            raise compatErrors.NotFound(f"Could not find avatar for user {user:r}")
-    else:
-        raise compatErrors.VersionError("Could not get the library version")
+    return _avatar_url_func(user)
 
 
 # Returns either an aware or unaware
@@ -59,15 +68,9 @@ def discord_datetime_now() -> datetime.datetime:
     Timestamps passed to dpy should use lib_loaders.datetime_now to assert unix
 
     :returns: datetime.datetime - an aware or naive datetime object depending on dpy version
-    :raises: compatErrors.VersionError - Could not parse library version
     """
 
     # 1.7: datetime naive
     # 2.0: datetime aware
 
-    if releaselevel == 1:
-        return datetime.datetime.utcnow()
-    elif releaselevel == 2:
-        return datetime.datetime.now(datetime.timezone.utc)
-    else:
-        raise compatErrors.VersionError("Could not passe library version")
+    return _datetime_now_func()
