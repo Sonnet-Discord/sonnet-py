@@ -23,7 +23,7 @@ importlib.reload(lib_goparsers)
 from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import REGEX_VERSION
-from lib_parsers import parse_role, parse_boolean, parse_user_member
+from lib_parsers import parse_role, parse_boolean, parse_user_member, format_duration
 
 from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional
 from typing import Final  # pytype: disable=import-error
@@ -385,7 +385,7 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     with db_hlapi(message.guild.id) as db:
         db.add_config("antispam-time", str(mutetime))
 
-    if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {mutetime} seconds")
+    if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {format_duration(mutetime)}")
 
 
 class NoGuildError(Exception):
@@ -682,4 +682,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.9"
+version_info: str = "1.2.10-DEV"
