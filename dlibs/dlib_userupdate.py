@@ -17,7 +17,7 @@ import lib_compatibility
 importlib.reload(lib_compatibility)
 
 from lib_loaders import inc_statistics_better, load_embed_color, embed_colors, load_message_config, datetime_now
-from lib_compatibility import user_avatar_url, discord_datetime_now
+from lib_compatibility import user_avatar_url, discord_datetime_now, has_default_avatar
 
 from typing import Any, Dict, Union, List, Optional
 import lib_lexdpyk_h as lexdpyk
@@ -101,7 +101,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
         issues.append("User")
     if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
         issues.append("Timestamp")
-    if int(notifier_cache["notifier-log-defaultpfp"]) and user_avatar_url(member) == str(member.default_avatar_url):
+    if int(notifier_cache["notifier-log-defaultpfp"]) and has_default_avatar(member):
         issues.append("Default pfp")
 
     if issues:
