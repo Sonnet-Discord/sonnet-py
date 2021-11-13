@@ -1,6 +1,8 @@
 # High Level API calls for sonnet style databases
 # Ultrabear 2020
 
+import discord
+
 import importlib
 
 import threading, warnings, io
@@ -67,10 +69,16 @@ class db_hlapi:
 
     __slots__ = "_db", "database", "guild", "hlapi_version", "_sonnet_db_version", "__enum_input", "__enum_pool"
 
-    def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
+    def __init__(self, guild_id: Union[Optional[int], discord.Guild], lock: Optional[threading.Lock] = None) -> None:
         self._db = db_grab_connection()
         self.database = self._db  # Deprecated name
-        self.guild: Optional[int] = guild_id
+
+        self.guild: Optional[int]
+
+        if isinstance(guild_id, discord.Guild):
+            self.guild = guild_id.id
+        else:
+            self.guild = guild_id
 
         self.hlapi_version = (1, 2, 9)
         self._sonnet_db_version = self._get_db_version()
