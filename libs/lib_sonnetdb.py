@@ -1,11 +1,12 @@
 # High Level API calls for sonnet style databases
 # Ultrabear 2020
 
-import discord
-
 import importlib
 
-import threading, warnings, io
+import discord
+import threading
+import warnings
+import io
 
 import lib_sonnetconfig
 
@@ -76,7 +77,7 @@ class db_hlapi:
         self.guild: Optional[int]
 
         if isinstance(guild_id, discord.Guild):
-            self.guild = guild_id.id
+            self.guild = guild_id.id  # pytype: disable=attribute-error
         else:
             self.guild = guild_id
 
