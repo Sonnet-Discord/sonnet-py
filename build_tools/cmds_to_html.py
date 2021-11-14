@@ -11,6 +11,7 @@ sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
 
 import lib_lexdpyk_h as lexdpyx
+from lib_sonnetcommands import SonnetCommand
 
 command_modules: List[lexdpyx.cmd_module] = []
 command_modules_dict: lexdpyx.cmd_modules_dict = {}
@@ -31,7 +32,9 @@ for command in command_modules_dict:
     if "alias" in command_modules_dict[command]:
         continue
 
-    cache = command_modules_dict[command]["cache"]
+    sonnetcmd = SonnetCommand(command_modules_dict[command])
+
+    cache = sonnetcmd["cache"]
     if cache in ["purge", "regenerate", "keep"]:
         continue
 
@@ -103,13 +106,14 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     outlist.append("\t</tr>")
 
     for i in filter(lambda i: "alias" not in module.commands[i], module.commands):
+        sonnetcmd = SonnetCommand(module.commands[i])
 
-        command_name = module.commands[i]["pretty_name"]
-        description = module.commands[i]["description"]
+        command_name = sonnetcmd["pretty_name"]
+        description = sonnetcmd["description"]
 
         aliases = ", ".join(aliasmap[i]) if i in aliasmap else "None"
 
-        command_perms = module.commands[i]['permission'][0].upper() + module.commands[i]['permission'][1:].lower()
+        command_perms = sonnetcmd['permission'][0].upper() + sonnetcmd['permission'][1:].lower()
 
         outlist.append("\t<tr>")
         outlist.append(f"\t\t<td>{escape(command_name)}</td>")
