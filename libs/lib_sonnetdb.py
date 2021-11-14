@@ -3,7 +3,6 @@
 
 import importlib
 
-import discord
 import threading
 import warnings
 import io
@@ -70,16 +69,10 @@ class db_hlapi:
 
     __slots__ = "_db", "database", "guild", "hlapi_version", "_sonnet_db_version", "__enum_input", "__enum_pool"
 
-    def __init__(self, guild_id: Union[Optional[int], discord.Guild], lock: Optional[threading.Lock] = None) -> None:
+    def __init__(self, guild_id: Optional[int], lock: Optional[threading.Lock] = None) -> None:
         self._db = db_grab_connection()
         self.database = self._db  # Deprecated name
-
-        self.guild: Optional[int]
-
-        if isinstance(guild_id, discord.Guild):
-            self.guild = guild_id.id  # pytype: disable=attribute-error
-        else:
-            self.guild = guild_id
+        self.guild: Optional[int] = guild_id
 
         self.hlapi_version = (1, 2, 9)
         self._sonnet_db_version = self._get_db_version()
@@ -484,6 +477,12 @@ class db_hlapi:
             self._db.add_to_table(table_name, quer)
 
     def fetch_all_mutes(self) -> List[Tuple[str, str, str, int]]:
+        """
+        Fetches all mutes across all guilds
+        Not meant to be used in guild scope commands, only by startup routines
+
+        :returns: List[Tuple[str, str, str, int]] - Guild, InfractionID, UserId, Time to be unmuted
+        """
 
         # Grab list of tables
         tablelist = self._db.list_tables("%_mutes")
@@ -495,12 +494,20 @@ class db_hlapi:
         return mutetable
 
     def is_muted(self, userid: Optional[int] = None, infractionid: Optional[str] = None) -> bool:
+        """
+        Queries whether the userid or infractionid is in the mute database
+        Must specify either a userid or infractionid, or a TypeError will be raised
+
+        :returns: bool - Whether the user is muted or not
+        """
 
         try:
             if userid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", userid]))
             elif infractionid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid]))
+            else:
+                raise TypeError("Must specify either a userid or infractionid")
         except db_error.OperationalError:
             muted = False
 
