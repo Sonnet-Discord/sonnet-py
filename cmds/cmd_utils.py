@@ -354,8 +354,6 @@ commands = {
             'pretty_name': 'help [category|command] [-p PAGE]',
             'description': 'Print helptext',
             'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
-            'permission': 'everyone',
-            'cache': 'keep',
             'execute': help_function
             },
     'pfp': {
