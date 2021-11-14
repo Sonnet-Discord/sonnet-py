@@ -26,11 +26,15 @@ importlib.reload(lib_lexdpyk_h)
 import lib_compatibility
 
 importlib.reload(lib_compatibility)
+import lib_sonnetcommands
+
+importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean, parse_user_member
 from lib_loaders import load_embed_color, embed_colors, datetime_now
 from lib_compatibility import user_avatar_url, discord_datetime_now
+from lib_sonnetcommands import SonnetCommand
 import lib_constants as constants
 
 from typing import List, Any, Optional, cast
@@ -197,18 +201,21 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             if "alias" in cmds_dict[a]:
                 a = cmds_dict[a]["alias"]
 
-            cmd_embed = discord.Embed(title=f'Command "{a}"', description=cmds_dict[a]['description'], color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+            cmd_name = a
+            command = SonnetCommand(cmds_dict[a])
+
+            cmd_embed = discord.Embed(title=f'Command "{cmd_name}"', description=command.description, color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
             cmd_embed.set_author(name=helpname)
 
-            cmd_embed.add_field(name="Usage:", value=PREFIX + cmds_dict[a]["pretty_name"], inline=False)
+            cmd_embed.add_field(name="Usage:", value=PREFIX + command.pretty_name, inline=False)
 
-            if "rich_description" in cmds_dict[a]:
-                cmd_embed.add_field(name="Detailed information:", value=cmds_dict[a]["rich_description"], inline=False)
+            if "rich_description" in command:
+                cmd_embed.add_field(name="Detailed information:", value=command.rich_description, inline=False)
 
-            if isinstance(cmds_dict[a]["permission"], str):
-                perms = cmds_dict[a]["permission"]
-            elif isinstance(cmds_dict[a]["permission"], (tuple, list)):
-                perms = cmds_dict[a]["permission"][0]
+            if isinstance(command.permission, str):
+                perms = command.permission
+            elif isinstance(command["permission"], (tuple, list)):
+                perms = command.permission[0]
             else:
                 perms = "NULL"
 
@@ -387,4 +394,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.9"
+version_info: str = "1.2.10-DEV"
