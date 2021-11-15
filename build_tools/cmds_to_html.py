@@ -1,9 +1,11 @@
 # Tools to autogenerate documentation from sonnet source code
 # Ultrabear 2021
+if __name__ != "__main__": raise ImportError("This file is a script, do not import it.")
 
 import importlib
 import os
 import sys
+
 from typing import Dict, List, cast
 
 sys.path.insert(1, os.getcwd() + '/cmds')
@@ -34,20 +36,36 @@ for command in command_modules_dict:
 
     sonnetcmd = SonnetCommand(command_modules_dict[command])
 
-    cache = sonnetcmd["cache"]
+    cache = sonnetcmd.cache
     if cache in ["purge", "regenerate", "keep"]:
         continue
 
     elif cache.startswith("direct:"):
         for i in cache[len('direct:'):].split(";"):
-            if i.startswith("(d)") or i.startswith("(f)"):
-                pass
-            else:
+            if not (i.startswith("(d)") or i.startswith("(f)")):
                 raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
         continue
 
-    raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
+    raise SyntaxError(f"ERROR IN [{sonnetcmd.execute.__module__} : {command}] CACHE BEHAVIOR ({cache})")
 
+# Test for valid permission definition
+for command in command_modules_dict:
+    if "alias" in command_modules_dict[command]:
+        continue
+
+    cmd = SonnetCommand(command_modules_dict[command])
+
+    if isinstance(cmd.permission, str):
+        if cmd.permission in ["everyone", "moderator", "administrator", "owner"]:
+            continue
+    elif isinstance(cmd.permission, (tuple, list)):
+        if isinstance(cmd.permission[0], str) and cmd.permission[1]:
+            continue
+
+    raise SyntaxError(f"ERROR IN [{cmd.execute.__module__} : {command}] PERMISSION TYPE({cmd.permission}) IS NOT VALID")
+
+
+# Test for aliases pointing to existing commands
 for command in command_modules_dict:
     if "alias" not in command_modules_dict[command]:
         continue
