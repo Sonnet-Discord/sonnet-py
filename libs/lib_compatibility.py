@@ -12,6 +12,8 @@ _releaselevel: int = discord.version_info[0]
 __all__ = [
     "compatErrors",
     "user_avatar_url",
+    "default_avatar_url",
+    "has_default_avatar",
     "discord_datetime_now",
     ]
 
