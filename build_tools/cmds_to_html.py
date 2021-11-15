@@ -64,7 +64,6 @@ for command in command_modules_dict:
 
     raise SyntaxError(f"ERROR IN [{cmd.execute.__module__} : {command}] PERMISSION TYPE({cmd.permission}) IS NOT VALID")
 
-
 # Test for aliases pointing to existing commands
 for command in command_modules_dict:
     if "alias" not in command_modules_dict[command]:
@@ -101,6 +100,10 @@ def escape(s: str) -> str:
     return s
 
 
+def titlecase(s: str) -> str:
+    return s[0].upper() + s[1:].lower()
+
+
 for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
     # Assert all these fields exist
@@ -126,12 +129,15 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     for i in filter(lambda i: "alias" not in module.commands[i], module.commands):
         sonnetcmd = SonnetCommand(module.commands[i])
 
-        command_name = sonnetcmd["pretty_name"]
-        description = sonnetcmd["description"]
+        command_name = sonnetcmd.pretty_name
+        description = sonnetcmd.description
 
         aliases = ", ".join(aliasmap[i]) if i in aliasmap else "None"
 
-        command_perms = sonnetcmd['permission'][0].upper() + sonnetcmd['permission'][1:].lower()
+        if isinstance(sonnetcmd.permission, str):
+            command_perms = titlecase(sonnetcmd.permission)
+        else:
+            command_perms = titlecase(sonnetcmd.permission[0])
 
         outlist.append("\t<tr>")
         outlist.append(f"\t\t<td>{escape(command_name)}</td>")
