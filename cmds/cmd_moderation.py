@@ -23,12 +23,16 @@ importlib.reload(lib_goparsers)
 import lib_compatibility
 
 importlib.reload(lib_compatibility)
+import lib_sonnetconfig
+
+importlib.reload(lib_sonnetconfig)
 
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member, format_duration
 from lib_compatibility import user_avatar_url
+from lib_sonnetconfig import BOT_NAME
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
@@ -97,7 +101,7 @@ async def log_infraction(
 
     if log_channel:
 
-        log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
+        log_embed = discord.Embed(title=BOT_NAME, description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
         log_embed.set_thumbnail(url=user_avatar_url(user))
         log_embed.add_field(name="Infraction ID", value=generated_id)
         log_embed.add_field(name="Moderator", value=moderator.mention)
@@ -112,7 +116,7 @@ async def log_infraction(
     if not to_dm:
         return generated_id, None
 
-    dm_embed = discord.Embed(title="Sonnet", description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
+    dm_embed = discord.Embed(title=BOT_NAME, description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
     dm_embed.set_thumbnail(url=user_avatar_url(user))
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=infraction_type)
@@ -834,4 +838,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.9"
+version_info: str = "1.2.10-DEV"

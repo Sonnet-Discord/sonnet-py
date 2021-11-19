@@ -29,12 +29,16 @@ importlib.reload(lib_compatibility)
 import lib_sonnetcommands
 
 importlib.reload(lib_sonnetcommands)
+import lib_sonnetconfig
+
+importlib.reload(lib_sonnetconfig)
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean, parse_user_member
 from lib_loaders import load_embed_color, embed_colors, datetime_now
 from lib_compatibility import user_avatar_url, discord_datetime_now
 from lib_sonnetcommands import SonnetCommand
+from lib_sonnetconfig import BOT_NAME
 import lib_constants as constants
 
 from typing import List, Any, Optional, cast
@@ -141,7 +145,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     if not message.guild:
         return 1
 
-    helpname: str = "Sonnet Help"
+    helpname: str = f"{BOT_NAME} Help"
 
     cmds: List[lexdpyk.cmd_module] = kwargs["cmds"]
     cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
