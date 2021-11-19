@@ -67,11 +67,12 @@ class GuildScopeError(Exception):
     pass
 
 
+InterfacedUser = Union[discord.User, discord.Member]
+
+
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(
-    message: discord.Message, client: discord.Client, user: Union[discord.User, discord.Member], moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool,
-    ramfs: lexdpyk.ram_filesystem
-    ) -> Tuple[str, Optional[Awaitable[None]]]:
+async def log_infraction(message: discord.Message, client: discord.Client, user: InterfacedUser, moderator: InterfacedUser, i_reason: str, i_type: str, to_dm: bool,
+                         ramfs: lexdpyk.ram_filesystem) -> Tuple[str, Optional[Awaitable[None]]]:
     if not message.guild:
         raise GuildScopeError("How did we even get here")
 
@@ -97,7 +98,7 @@ async def log_infraction(
         log_channel = c if isinstance(c, discord.TextChannel) else None
 
         # Send infraction to database
-        db.add_infraction(generated_id, str(user.id), str(moderator.id), infraction_type, infraction_reason, int(timestamp.timestamp()))
+        db.add_infraction(generated_id, str(user.id), str(moderator.id), i_type, i_reason, int(timestamp.timestamp()))
 
     if log_channel:
 
@@ -106,8 +107,8 @@ async def log_infraction(
         log_embed.add_field(name="Infraction ID", value=generated_id)
         log_embed.add_field(name="Moderator", value=moderator.mention)
         log_embed.add_field(name="User", value=user.mention)
-        log_embed.add_field(name="Type", value=infraction_type)
-        log_embed.add_field(name="Reason", value=infraction_reason)
+        log_embed.add_field(name="Type", value=i_type)
+        log_embed.add_field(name="Reason", value=i_reason)
 
         log_embed.set_footer(text=f"uid: {user.id}, unix: {int(timestamp.timestamp())}")
 
@@ -119,8 +120,8 @@ async def log_infraction(
     dm_embed = discord.Embed(title=BOT_NAME, description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
     dm_embed.set_thumbnail(url=user_avatar_url(user))
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
-    dm_embed.add_field(name="Type", value=infraction_type)
-    dm_embed.add_field(name="Reason", value=infraction_reason)
+    dm_embed.add_field(name="Type", value=i_type)
+    dm_embed.add_field(name="Reason", value=i_reason)
 
     dm_embed.timestamp = timestamp
 
@@ -133,14 +134,13 @@ class InfractionGenerationError(Exception):
     pass
 
 
+InfractionInfo = Tuple[Optional[discord.Member], InterfacedUser, str, str, Optional[Awaitable[None]]]
+
+
 # General processor for infractions
-async def process_infraction(message: discord.Message,
-                             args: List[str],
-                             client: discord.Client,
-                             infraction_type: str,
-                             ramfs: lexdpyk.ram_filesystem,
-                             infraction: bool = True,
-                             automod: bool = False) -> Tuple[Optional[discord.Member], Union[discord.User, discord.Member], str, str, Optional[Awaitable[None]]]:
+async def process_infraction(
+    message: discord.Message, args: List[str], client: discord.Client, i_type: str, ramfs: lexdpyk.ram_filesystem, infraction: bool = True, automod: bool = False
+    ) -> InfractionInfo:
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
 
@@ -158,16 +158,16 @@ async def process_infraction(message: discord.Message,
 
     # Test if user is self
     if member and moderator.id == member.id:
-        await message.channel.send(f"Cannot {infraction_type} yourself")
-        raise InfractionGenerationError(f"Attempted self {infraction_type}")
+        await message.channel.send(f"Cannot {i_type} yourself")
+        raise InfractionGenerationError(f"Attempted self {i_type}")
 
     # Do a permission sweep
     if not automod and member and message.guild.roles.index(message.author.roles[-1]) <= message.guild.roles.index(member.roles[-1]):
-        await message.channel.send(f"Cannot {infraction_type} a user with the same or higher role as yourself")
-        raise InfractionGenerationError(f"Attempted nonperm {infraction_type}")
+        await message.channel.send(f"Cannot {i_type} a user with the same or higher role as yourself")
+        raise InfractionGenerationError(f"Attempted nonperm {i_type}")
 
     # Log infraction
-    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, infraction_type, infraction, ramfs)
+    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs)
 
     return (member, user, reason, infraction_id, dm_sent)
 
