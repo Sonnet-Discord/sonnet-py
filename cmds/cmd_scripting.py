@@ -173,7 +173,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
 
 class MapProcessError(Exception):
-    pass
+    __slots__ = ()
 
 
 async def map_preprocessor(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict,

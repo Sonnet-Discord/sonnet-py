@@ -32,7 +32,7 @@ elif DB_TYPE == "sqlite3":
 
 
 class DATABASE_FATAL_CONNECTION_LOSS(Exception):
-    pass
+    __slots__ = ()
 
 
 try:

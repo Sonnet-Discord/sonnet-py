@@ -36,7 +36,7 @@ urlb_allowedrunes = string.ascii_lowercase + string.digits + "-,."
 
 
 class blacklist_input_error(Exception):
-    pass
+    __slots__ = ()
 
 
 async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True, allowed: Optional[str] = None) -> None:
@@ -389,7 +389,7 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
 
 
 class NoGuildError(Exception):
-    pass
+    __slots__ = ()
 
 
 class joinrules:

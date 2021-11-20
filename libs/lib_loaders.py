@@ -30,6 +30,7 @@ import lib_lexdpyk_h as lexdpyk
 
 
 class DotHeaders:
+    __slots__ = "lib",
 
     version = "1.2.9-DEV.0"
 
@@ -279,6 +280,7 @@ _colortypes_cache: dict[Any, Any] = {
 # Because variable names can be statically type checked
 # I hate bugs more than I hate slow python
 class embed_colors:
+    __slots__ = ()
     primary: str = "primary"
     creation: str = "creation"
     edit: str = "edit"

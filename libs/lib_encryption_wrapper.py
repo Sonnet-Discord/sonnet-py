@@ -12,13 +12,16 @@ from typing import Generator, Any, Union
 
 
 class errors:
+    __slots__ = ()
+
     class HMACInvalidError(ValueError):
-        pass
+        __slots__ = ()
 
     class NotSonnetAESError(FileNotFoundError):
-        pass
+        __slots__ = ()
 
 
+# Never actually called
 class crypto_typing:
     class encryptor_decryptor:
         def __init__(self) -> None:

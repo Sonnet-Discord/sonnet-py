@@ -7,11 +7,12 @@ from typing import Dict, Any, Union, List
 
 # Wrapper around string to make the command run in sh instead of pexec
 class Shell(str):
-    ...
+    __slots__ = ()
 
 
 # Represents a ascii escaped color string
 class Color:
+    __slots__ = ()
     red = "\033[91m"
     blue = "\033[94m"
     reset = "\033[0m"

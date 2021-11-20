@@ -64,7 +64,7 @@ async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextCha
 # Defines an error that somehow log_infraction was called without a guild
 # Should never really happen so its a easter egg now ig
 class GuildScopeError(Exception):
-    pass
+    __slots__ = ()
 
 
 InterfacedUser = Union[discord.User, discord.Member]
@@ -131,7 +131,7 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
 
 
 class InfractionGenerationError(Exception):
-    pass
+    __slots__ = ()
 
 
 InfractionInfo = Tuple[Optional[discord.Member], InterfacedUser, str, str, Optional[Awaitable[None]]]
@@ -288,7 +288,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
 
 
 class NoMuteRole(Exception):
-    pass
+    __slots__ = ()
 
 
 async def grab_mute_role(message: discord.Message, ramfs: lexdpyk.ram_filesystem) -> discord.Role:

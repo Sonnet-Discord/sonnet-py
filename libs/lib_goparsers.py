@@ -25,10 +25,12 @@ from lib_sonnetconfig import GOLIB_LOAD, GOLIB_VERSION
 
 
 class _GoString(_ctypes.Structure):
+    __slots__ = ()
     _fields_ = [("data", _ctypes.c_char_p), ("len", _ctypes.c_int)]
 
 
 class _ParseDurationRet(_ctypes.Structure):
+    __slots__ = ()
     _fields_ = [("ret", _ctypes.c_longlong), ("err", _ctypes.c_int)]
 
 
@@ -63,19 +65,19 @@ class errors:
         """
         Generic error for the goparsers lib, parse related errors should subclass from this
         """
-        pass
+        __slots__ = ()
 
     class NoBinaryError(GoParsersError):
         """
         Error stating there is no golang binary to run
         """
-        pass
+        __slots__ = ()
 
     class ParseFailureError(GoParsersError):
         """
         Error stating there was a failure to parse data for a generic reason
         """
-        pass
+        __slots__ = ()
 
 
 def _FromString(s: str) -> _GoString:

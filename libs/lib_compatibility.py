@@ -19,11 +19,13 @@ __all__ = [
 
 
 class compatErrors:
+    __slots__ = ()
+
     class NotFound(Exception):
-        pass
+        __slots__ = ()
 
     class VersionError(Exception):
-        pass
+        __slots__ = ()
 
 
 _avatar_url_funcs: Dict[int, Callable[[Union[discord.User, discord.Member]], str]] = {

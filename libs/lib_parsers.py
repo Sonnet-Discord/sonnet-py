@@ -33,13 +33,13 @@ re: Any = importlib.import_module(REGEX_VERSION)
 
 class errors:
     class log_channel_update_error(RuntimeError):
-        pass
+        __slots__ = ()
 
     class message_parse_failure(Exception):
-        pass
+        __slots__ = ()
 
     class user_parse_error(Exception):
-        pass
+        __slots__ = ()
 
 
 _urlFilter = re.compile(r"[^a-z0-9\-\.]+")
