@@ -487,7 +487,7 @@ class joinrules:
                 with db_hlapi(self.guild.id) as db:  # Add to db
                     db.add_config(cnf_name, str(jointime))
 
-                await self.m.channel.send(f"Updated new user notify time to <{jointime} seconds since creation")
+                await self.m.channel.send(f"Updated new user notify time to <{format_duration(jointime)} since creation")
                 return 0
 
             elif args[0] == "remove":  # Remove timestamp
@@ -505,7 +505,10 @@ class joinrules:
 
             with db_hlapi(self.guild.id) as db:
                 jointime_str = db.grab_config(cnf_name)
-            await self.m.channel.send(f"new user notify is set to {jointime_str} seconds")
+
+            fmt = format_duration(int(jointime_str)) if jointime_str else "None"
+
+            await self.m.channel.send(f"new user notify is set to {fmt}")
             return 0
 
     async def defaultpfpedit(self, args: List[str], client: discord.Client) -> int:
