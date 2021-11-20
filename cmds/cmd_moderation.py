@@ -726,7 +726,7 @@ async def query_mutedb(message: discord.Message, args: List[str], client: discor
     # do page capture
     if len(args) >= 2 and args[0] in ["-p", "--page"]:
         try:
-            page = int(args[1])
+            page = int(args[1]) - 1
             if page < 0: raise ValueError
         except ValueError:
             await message.channel.send("ERROR: Invalid page")
