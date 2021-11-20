@@ -758,9 +758,39 @@ async def query_mutedb(message: discord.Message, args: List[str], client: discor
     await message.channel.send(f"Page {page+1} / {len(table)//per_page+1}, ({len(table)} mute{'s'*(len(table)!=1)})```css\nUid, InfractionID, Unmuted in\n{LF.join(fmt)}```")
 
 
+async def remove_mutedb(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
+
+    try:
+        uid = int(args[0].strip("<@!>"))
+    except ValueError:
+        await message.channel.send("ERROR: Invalid user")
+        return 1
+    except IndexError:
+        await message.channel.send("ERROR: No user specified")
+        return 1
+
+    with db_hlapi(message.guild.id) as db:
+        if db.is_muted(userid=uid):
+            db.unmute_user(userid=uid)
+
+            await message.channel.send("Removed user from mute database")
+
+        else:
+            await message.channel.send("ERROR: User is not in mute database")
+            return 1
+
+
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
 
 commands = {
+    'remove-mute': {
+        'pretty_name': 'remove-mute <user>',
+        'description': 'Removes a user from the mute database. Does not unmute in guild',
+        'permission': 'administrator',
+        'execute': remove_mutedb,
+        },
     'list-mutes': {
         'pretty_name': 'list-mutes [-p PAGE]',
         'description': 'List all mutes in the mute databse',
@@ -771,49 +801,42 @@ commands = {
         'pretty_name': 'warn <uid> [reason]',
         'description': 'Warn a user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': warn_user
         },
     'note': {
         'pretty_name': 'note <uid> [note]',
         'description': 'Put a note into a users infraction log, does not dm user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': note_user
         },
     'kick': {
         'pretty_name': 'kick <uid> [reason]',
         'description': 'Kick a user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': kick_user
         },
     'ban': {
         'pretty_name': 'ban <uid> [reason]',
         'description': 'Ban a user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': ban_user
         },
     'unban': {
         'pretty_name': 'unban <uid>',
         'description': 'Unban a user, does not dm user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': unban_user
         },
     'mute': {
         'pretty_name': 'mute <uid> [time[h|m|S]] [reason]',
         'description': 'Mute a user, defaults to no unmute (0s)',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': mute_user
         },
     'unmute': {
         'pretty_name': 'unmute <uid>',
         'description': 'Unmute a user, does not dm user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': unmute_user
         },
     'warnings': {
@@ -831,7 +854,6 @@ commands = {
             'description': 'Grab infractions of a user',
             'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
-            'cache': 'keep',
             'execute': search_infractions_by_user
             },
     'get-infraction': {
@@ -840,28 +862,24 @@ commands = {
     'grab-infraction': {
         'alias': 'infraction-details'
         },
-    'infraction-details':
-        {
-            'pretty_name': 'infraction-details <infractionID>',
-            'description': 'Grab details of an infractionID',
-            'permission': 'moderator',
-            'cache': 'keep',
-            'execute': get_detailed_infraction
-            },
+    'infraction-details': {
+        'pretty_name': 'infraction-details <infractionID>',
+        'description': 'Grab details of an infractionID',
+        'permission': 'moderator',
+        'execute': get_detailed_infraction
+        },
     'remove-infraction': {
         'alias': 'delete-infraction'
         },
     'rm-infraction': {
         'alias': 'delete-infraction'
         },
-    'delete-infraction':
-        {
-            'pretty_name': 'delete-infraction <infractionID>',
-            'description': 'Delete an infraction by infractionID',
-            'permission': 'administrator',
-            'cache': 'keep',
-            'execute': delete_infraction
-            },
+    'delete-infraction': {
+        'pretty_name': 'delete-infraction <infractionID>',
+        'description': 'Delete an infraction by infractionID',
+        'permission': 'administrator',
+        'execute': delete_infraction
+        },
     'get-message': {
         'alias': 'grab-message'
         },
@@ -869,7 +887,6 @@ commands = {
         'pretty_name': 'grab-message <message>',
         'description': 'Grab a message and show its contents',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': grab_guild_message
         },
     'purge':
@@ -878,7 +895,6 @@ commands = {
             'description': 'Purge messages from a given channel and optionally only from a specified user',
             'rich_description': 'Can only purge up to 100 messages at a time to prevent catastrophic errors',
             'permission': 'moderator',
-            'cache': 'keep',
             'execute': purge_cli
             }
     }
