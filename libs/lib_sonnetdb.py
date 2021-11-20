@@ -513,6 +513,17 @@ class db_hlapi:
 
         return muted
 
+    def fetch_guild_mutes(self) -> List[Tuple[str, str, int]]:
+        """
+        Fetches all mutes in a guild
+        Used to query a guilds mute database
+
+        :returns: List[Tuple[str, str, int]] - InfractionID, UserId, Unmute Time
+        """
+        mutetable = list(self._db.fetch_table(f"{self.guild}_mutes"))
+
+        return mutetable
+
     def close(self) -> None:
         self._db.commit()
 
