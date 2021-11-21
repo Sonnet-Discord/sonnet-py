@@ -405,7 +405,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
-        if client.user.mentioned_in(message) and str(client.user.id) in message.content:
+        if client.user.mentioned_in(message) and str(client.user.id) == message.content.strip("<@!>"):
             try:
                 await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
             except discord.errors.Forbidden:
