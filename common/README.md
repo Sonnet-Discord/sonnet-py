@@ -9,3 +9,4 @@
 - `CLIB_LOAD: bool` whether to compile and load the clib or not
 - `GOLIB_LOAD: bool` whether to compile and load the golib or not
 - `GOLIB_VERSION: str` the go binary to use (if you dont know about go versioning then ignore this)
+- `BOT_NAME: str` the name the bot will use to refer to itself, previously used "Sonnet"
