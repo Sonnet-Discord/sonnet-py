@@ -28,12 +28,16 @@ importlib.reload(lib_constants)
 import lib_compatibility
 
 importlib.reload(lib_compatibility)
+import lib_sonnetcommands
+
+importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum, load_embed_color, embed_colors, datetime_now
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url, discord_datetime_now
+from lib_sonnetcommands import SonnetCommand
 
 from typing import List, Any, Dict, Optional, Callable, Tuple
 import lib_lexdpyk_h as lexdpyk
@@ -401,7 +405,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
-        if client.user.mentioned_in(message) and str(client.user.id) in message.content:
+        if client.user.mentioned_in(message) and str(client.user.id) == message.content.strip("<@!>"):
             try:
                 await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
             except discord.errors.Forbidden:
@@ -421,13 +425,15 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         if "alias" in command_modules_dict[command]:  # Do alias mapping
             command = command_modules_dict[command]["alias"]
 
-        if not await parse_permissions(message, mconf, command_modules_dict[command]['permission']):
+        cmd = SonnetCommand(command_modules_dict[command])
+
+        if not await parse_permissions(message, mconf, cmd.permission):
             return  # Return on no perms
 
         try:
             stats["end"] = round(time.time() * 100000)
 
-            await command_modules_dict[command]['execute'](
+            await cmd.execute(
                 message,
                 arguments,
                 client,
@@ -445,15 +451,15 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
                 )
 
             # Regenerate cache
-            if command_modules_dict[command]['cache'] in ["purge", "regenerate"]:
+            if cmd.cache in ["purge", "regenerate"]:
                 for i in ["caches", "regex"]:
                     try:
                         ramfs.rmdir(f"{message.guild.id}/{i}")
                     except FileNotFoundError:
                         pass
 
-            elif command_modules_dict[command]['cache'].startswith("direct:"):
-                for i in command_modules_dict[command]['cache'][len('direct:'):].split(";"):
+            elif cmd.cache.startswith("direct:"):
+                for i in cmd.cache[len('direct:'):].split(";"):
                     try:
                         if i.startswith("(d)"):
                             ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
@@ -491,4 +497,4 @@ commands: Dict[str, Callable[..., Any]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.10"

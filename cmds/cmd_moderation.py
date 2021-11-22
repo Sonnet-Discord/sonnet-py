@@ -23,12 +23,16 @@ importlib.reload(lib_goparsers)
 import lib_compatibility
 
 importlib.reload(lib_compatibility)
+import lib_sonnetconfig
+
+importlib.reload(lib_sonnetconfig)
 
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member, format_duration
 from lib_compatibility import user_avatar_url
+from lib_sonnetconfig import BOT_NAME
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
@@ -60,14 +64,15 @@ async def catch_logging_error(embed: discord.Embed, log_channel: discord.TextCha
 # Defines an error that somehow log_infraction was called without a guild
 # Should never really happen so its a easter egg now ig
 class GuildScopeError(Exception):
-    pass
+    __slots__ = ()
+
+
+InterfacedUser = Union[discord.User, discord.Member]
 
 
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(
-    message: discord.Message, client: discord.Client, user: Union[discord.User, discord.Member], moderator: discord.User, infraction_reason: str, infraction_type: str, to_dm: bool,
-    ramfs: lexdpyk.ram_filesystem
-    ) -> Tuple[str, Optional[Awaitable[None]]]:
+async def log_infraction(message: discord.Message, client: discord.Client, user: InterfacedUser, moderator: InterfacedUser, i_reason: str, i_type: str, to_dm: bool,
+                         ramfs: lexdpyk.ram_filesystem) -> Tuple[str, Optional[Awaitable[None]]]:
     if not message.guild:
         raise GuildScopeError("How did we even get here")
 
@@ -93,17 +98,17 @@ async def log_infraction(
         log_channel = c if isinstance(c, discord.TextChannel) else None
 
         # Send infraction to database
-        db.add_infraction(generated_id, str(user.id), str(moderator.id), infraction_type, infraction_reason, int(timestamp.timestamp()))
+        db.add_infraction(generated_id, str(user.id), str(moderator.id), i_type, i_reason, int(timestamp.timestamp()))
 
     if log_channel:
 
-        log_embed = discord.Embed(title="Sonnet", description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
+        log_embed = discord.Embed(title=BOT_NAME, description=f"New infraction for {user}:", color=load_embed_color(message.guild, embed_colors.creation, ramfs))
         log_embed.set_thumbnail(url=user_avatar_url(user))
         log_embed.add_field(name="Infraction ID", value=generated_id)
         log_embed.add_field(name="Moderator", value=moderator.mention)
         log_embed.add_field(name="User", value=user.mention)
-        log_embed.add_field(name="Type", value=infraction_type)
-        log_embed.add_field(name="Reason", value=infraction_reason)
+        log_embed.add_field(name="Type", value=i_type)
+        log_embed.add_field(name="Reason", value=i_reason)
 
         log_embed.set_footer(text=f"uid: {user.id}, unix: {int(timestamp.timestamp())}")
 
@@ -112,11 +117,11 @@ async def log_infraction(
     if not to_dm:
         return generated_id, None
 
-    dm_embed = discord.Embed(title="Sonnet", description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
+    dm_embed = discord.Embed(title=BOT_NAME, description=f"You received an infraction in {message.guild.name}:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
     dm_embed.set_thumbnail(url=user_avatar_url(user))
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
-    dm_embed.add_field(name="Type", value=infraction_type)
-    dm_embed.add_field(name="Reason", value=infraction_reason)
+    dm_embed.add_field(name="Type", value=i_type)
+    dm_embed.add_field(name="Reason", value=i_reason)
 
     dm_embed.timestamp = timestamp
 
@@ -126,17 +131,16 @@ async def log_infraction(
 
 
 class InfractionGenerationError(Exception):
-    pass
+    __slots__ = ()
+
+
+InfractionInfo = Tuple[Optional[discord.Member], InterfacedUser, str, str, Optional[Awaitable[None]]]
 
 
 # General processor for infractions
-async def process_infraction(message: discord.Message,
-                             args: List[str],
-                             client: discord.Client,
-                             infraction_type: str,
-                             ramfs: lexdpyk.ram_filesystem,
-                             infraction: bool = True,
-                             automod: bool = False) -> Tuple[Optional[discord.Member], Union[discord.User, discord.Member], str, str, Optional[Awaitable[None]]]:
+async def process_infraction(
+    message: discord.Message, args: List[str], client: discord.Client, i_type: str, ramfs: lexdpyk.ram_filesystem, infraction: bool = True, automod: bool = False
+    ) -> InfractionInfo:
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
 
@@ -154,16 +158,16 @@ async def process_infraction(message: discord.Message,
 
     # Test if user is self
     if member and moderator.id == member.id:
-        await message.channel.send(f"Cannot {infraction_type} yourself")
-        raise InfractionGenerationError(f"Attempted self {infraction_type}")
+        await message.channel.send(f"Cannot {i_type} yourself")
+        raise InfractionGenerationError(f"Attempted self {i_type}")
 
     # Do a permission sweep
     if not automod and member and message.guild.roles.index(message.author.roles[-1]) <= message.guild.roles.index(member.roles[-1]):
-        await message.channel.send(f"Cannot {infraction_type} a user with the same or higher role as yourself")
-        raise InfractionGenerationError(f"Attempted nonperm {infraction_type}")
+        await message.channel.send(f"Cannot {i_type} a user with the same or higher role as yourself")
+        raise InfractionGenerationError(f"Attempted nonperm {i_type}")
 
     # Log infraction
-    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, infraction_type, infraction, ramfs)
+    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs)
 
     return (member, user, reason, infraction_id, dm_sent)
 
@@ -284,7 +288,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
 
 
 class NoMuteRole(Exception):
-    pass
+    __slots__ = ()
 
 
 async def grab_mute_role(message: discord.Message, ramfs: lexdpyk.ram_filesystem) -> discord.Role:
@@ -715,56 +719,124 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         return 1
 
 
+async def query_mutedb(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
+
+    # do page capture
+    if len(args) >= 2 and args[0] in ["-p", "--page"]:
+        try:
+            page = int(args[1]) - 1
+            if page < 0: raise ValueError
+        except ValueError:
+            await message.channel.send("ERROR: Invalid page")
+            return 1
+    else:
+        page = 0
+
+    per_page = 10
+
+    with db_hlapi(message.guild.id) as db:
+        table: List[Tuple[str, str, int]] = db.fetch_guild_mutes()
+
+    if not table:
+        await message.channel.send("No Muted users in database")
+        return 0
+
+    # Test if page is valid
+    if page > len(table) // per_page:
+        await message.channel.send("ERROR: Page does not exist")
+        return 1
+
+    fmt: List[str] = []
+
+    for i in sorted(table, key=lambda i: i[2])[page:page + per_page]:
+        ts = "No Unmute" if i[2] == 0 else format_duration(i[2] - datetime_now().timestamp())
+        fmt.append(f"{i[1]}, {i[0]}, {ts}"[:150])
+
+    LF = "\n"
+    await message.channel.send(f"Page {page+1} / {len(table)//per_page+1}, ({len(table)} mute{'s'*(len(table)!=1)})```css\nUid, InfractionID, Unmuted in\n{LF.join(fmt)}```")
+
+
+async def remove_mutedb(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+    if not message.guild:
+        return 1
+
+    try:
+        uid = int(args[0].strip("<@!>"))
+    except ValueError:
+        await message.channel.send("ERROR: Invalid user")
+        return 1
+    except IndexError:
+        await message.channel.send("ERROR: No user specified")
+        return 1
+
+    with db_hlapi(message.guild.id) as db:
+        if db.is_muted(userid=uid):
+            db.unmute_user(userid=uid)
+
+            await message.channel.send("Removed user from mute database")
+
+        else:
+            await message.channel.send("ERROR: User is not in mute database")
+            return 1
+
+
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
 
 commands = {
+    'remove-mute': {
+        'pretty_name': 'remove-mute <user>',
+        'description': 'Removes a user from the mute database. Does not unmute in guild',
+        'permission': 'administrator',
+        'execute': remove_mutedb,
+        },
+    'list-mutes': {
+        'pretty_name': 'list-mutes [-p PAGE]',
+        'description': 'List all mutes in the mute databse',
+        'permission': 'moderator',
+        'execute': query_mutedb,
+        },
     'warn': {
         'pretty_name': 'warn <uid> [reason]',
         'description': 'Warn a user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': warn_user
         },
     'note': {
         'pretty_name': 'note <uid> [note]',
         'description': 'Put a note into a users infraction log, does not dm user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': note_user
         },
     'kick': {
         'pretty_name': 'kick <uid> [reason]',
         'description': 'Kick a user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': kick_user
         },
     'ban': {
         'pretty_name': 'ban <uid> [reason]',
         'description': 'Ban a user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': ban_user
         },
     'unban': {
         'pretty_name': 'unban <uid>',
         'description': 'Unban a user, does not dm user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': unban_user
         },
     'mute': {
         'pretty_name': 'mute <uid> [time[h|m|S]] [reason]',
         'description': 'Mute a user, defaults to no unmute (0s)',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': mute_user
         },
     'unmute': {
         'pretty_name': 'unmute <uid>',
         'description': 'Unmute a user, does not dm user',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': unmute_user
         },
     'warnings': {
@@ -782,7 +854,6 @@ commands = {
             'description': 'Grab infractions of a user',
             'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
-            'cache': 'keep',
             'execute': search_infractions_by_user
             },
     'get-infraction': {
@@ -791,28 +862,24 @@ commands = {
     'grab-infraction': {
         'alias': 'infraction-details'
         },
-    'infraction-details':
-        {
-            'pretty_name': 'infraction-details <infractionID>',
-            'description': 'Grab details of an infractionID',
-            'permission': 'moderator',
-            'cache': 'keep',
-            'execute': get_detailed_infraction
-            },
+    'infraction-details': {
+        'pretty_name': 'infraction-details <infractionID>',
+        'description': 'Grab details of an infractionID',
+        'permission': 'moderator',
+        'execute': get_detailed_infraction
+        },
     'remove-infraction': {
         'alias': 'delete-infraction'
         },
     'rm-infraction': {
         'alias': 'delete-infraction'
         },
-    'delete-infraction':
-        {
-            'pretty_name': 'delete-infraction <infractionID>',
-            'description': 'Delete an infraction by infractionID',
-            'permission': 'administrator',
-            'cache': 'keep',
-            'execute': delete_infraction
-            },
+    'delete-infraction': {
+        'pretty_name': 'delete-infraction <infractionID>',
+        'description': 'Delete an infraction by infractionID',
+        'permission': 'administrator',
+        'execute': delete_infraction
+        },
     'get-message': {
         'alias': 'grab-message'
         },
@@ -820,7 +887,6 @@ commands = {
         'pretty_name': 'grab-message <message>',
         'description': 'Grab a message and show its contents',
         'permission': 'moderator',
-        'cache': 'keep',
         'execute': grab_guild_message
         },
     'purge':
@@ -829,9 +895,8 @@ commands = {
             'description': 'Purge messages from a given channel and optionally only from a specified user',
             'rich_description': 'Can only purge up to 100 messages at a time to prevent catastrophic errors',
             'permission': 'moderator',
-            'cache': 'keep',
             'execute': purge_cli
             }
     }
 
-version_info: str = "1.2.9"
+version_info: str = "1.2.10"

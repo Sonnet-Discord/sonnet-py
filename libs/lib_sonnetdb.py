@@ -3,7 +3,9 @@
 
 import importlib
 
-import threading, warnings, io
+import threading
+import warnings
+import io
 
 import lib_sonnetconfig
 
@@ -30,7 +32,7 @@ elif DB_TYPE == "sqlite3":
 
 
 class DATABASE_FATAL_CONNECTION_LOSS(Exception):
-    pass
+    __slots__ = ()
 
 
 try:
@@ -475,6 +477,12 @@ class db_hlapi:
             self._db.add_to_table(table_name, quer)
 
     def fetch_all_mutes(self) -> List[Tuple[str, str, str, int]]:
+        """
+        Fetches all mutes across all guilds
+        Not meant to be used in guild scope commands, only by startup routines
+
+        :returns: List[Tuple[str, str, str, int]] - Guild, InfractionID, UserId, Time to be unmuted
+        """
 
         # Grab list of tables
         tablelist = self._db.list_tables("%_mutes")
@@ -486,16 +494,35 @@ class db_hlapi:
         return mutetable
 
     def is_muted(self, userid: Optional[int] = None, infractionid: Optional[str] = None) -> bool:
+        """
+        Queries whether the userid or infractionid is in the mute database
+        Must specify either a userid or infractionid, or a TypeError will be raised
+
+        :returns: bool - Whether the user is muted or not
+        """
 
         try:
             if userid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["userID", userid]))
             elif infractionid is not None:
                 muted = bool(self._db.fetch_rows_from_table(f"{self.guild}_mutes", ["infractionID", infractionid]))
+            else:
+                raise TypeError("Must specify either a userid or infractionid")
         except db_error.OperationalError:
             muted = False
 
         return muted
+
+    def fetch_guild_mutes(self) -> List[Tuple[str, str, int]]:
+        """
+        Fetches all mutes in a guild
+        Used to query a guilds mute database
+
+        :returns: List[Tuple[str, str, int]] - InfractionID, UserId, Unmute Time
+        """
+        mutetable = list(self._db.fetch_table(f"{self.guild}_mutes"))
+
+        return mutetable
 
     def close(self) -> None:
         self._db.commit()

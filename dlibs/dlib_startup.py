@@ -52,14 +52,16 @@ async def on_ready(**kargs: Any) -> None:
 
         ts = datetime_now().timestamp()
 
-        if lost_mutes:
+        lost_mute_timers = [i for i in lost_mutes if 0 != i[3]]
 
-            print(f"Lost mutes: {len(lost_mutes)}")
-            for i in lost_mutes:
-                if 0 != i[3] < ts:
+        if lost_mute_timers:
+
+            print(f"Lost mutes: {len(lost_mute_timers)}")
+            for i in lost_mute_timers:
+                if i[3] < ts:
                     await attempt_unmute(Client, i)
 
-            lost_mute_timers = [i for i in lost_mutes if 0 != i[3] < ts]
+            lost_mute_timers = [i for i in lost_mute_timers if i[3] >= ts]
             if lost_mute_timers:
                 print(f"Mute timers to recover: {len(lost_mute_timers)}\nThis process will end in {round(lost_mutes[-1][3]-time.time())} seconds")
 
@@ -82,4 +84,4 @@ category_info: Dict[str, str] = {'name': 'Initializers'}
 
 commands: Dict[str, Callable[..., Any]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info: str = "1.2.7-2"
+version_info: str = "1.2.10"

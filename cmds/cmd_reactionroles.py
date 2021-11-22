@@ -24,7 +24,7 @@ from typing import List, Any
 
 
 class InvalidEmoji(Exception):
-    pass
+    __slots__ = ()
 
 
 async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Client) -> str:
@@ -49,7 +49,7 @@ async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Cli
 
 
 class RindexFailure(Exception):
-    pass
+    __slots__ = ()
 
 
 async def rindex_check(message: discord.Message, role: discord.Role) -> None:
@@ -67,7 +67,7 @@ async def rindex_check(message: discord.Message, role: discord.Role) -> None:
 
 
 class NoRoleError(Exception):
-    pass
+    __slots__ = ()
 
 
 async def get_exact_role(message: discord.Message, rolestr: str) -> discord.Role:
@@ -319,4 +319,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.10"

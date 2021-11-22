@@ -23,7 +23,7 @@ importlib.reload(lib_goparsers)
 from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import REGEX_VERSION
-from lib_parsers import parse_role, parse_boolean, parse_user_member
+from lib_parsers import parse_role, parse_boolean, parse_user_member, format_duration
 
 from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional
 from typing import Final  # pytype: disable=import-error
@@ -36,7 +36,7 @@ urlb_allowedrunes = string.ascii_lowercase + string.digits + "-,."
 
 
 class blacklist_input_error(Exception):
-    pass
+    __slots__ = ()
 
 
 async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True, allowed: Optional[str] = None) -> None:
@@ -385,11 +385,11 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     with db_hlapi(message.guild.id) as db:
         db.add_config("antispam-time", str(mutetime))
 
-    if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {mutetime} seconds")
+    if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {format_duration(mutetime)}")
 
 
 class NoGuildError(Exception):
-    pass
+    __slots__ = ()
 
 
 class joinrules:
@@ -487,7 +487,7 @@ class joinrules:
                 with db_hlapi(self.guild.id) as db:  # Add to db
                     db.add_config(cnf_name, str(jointime))
 
-                await self.m.channel.send(f"Updated new user notify time to <{jointime} seconds since creation")
+                await self.m.channel.send(f"Updated new user notify time to <{format_duration(jointime)} since creation")
                 return 0
 
             elif args[0] == "remove":  # Remove timestamp
@@ -505,7 +505,10 @@ class joinrules:
 
             with db_hlapi(self.guild.id) as db:
                 jointime_str = db.grab_config(cnf_name)
-            await self.m.channel.send(f"new user notify is set to {jointime_str} seconds")
+
+            fmt = format_duration(int(jointime_str)) if jointime_str else "None"
+
+            await self.m.channel.send(f"new user notify is set to {fmt}")
             return 0
 
     async def defaultpfpedit(self, args: List[str], client: discord.Client) -> int:
@@ -682,4 +685,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.9"
+version_info: str = "1.2.10"

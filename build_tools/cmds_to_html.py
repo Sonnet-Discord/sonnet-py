@@ -1,9 +1,11 @@
 # Tools to autogenerate documentation from sonnet source code
 # Ultrabear 2021
+if __name__ != "__main__": raise ImportError("This file is a script, do not import it.")
 
 import importlib
 import os
 import sys
+
 from typing import Dict, List, cast
 
 sys.path.insert(1, os.getcwd() + '/cmds')
@@ -11,6 +13,7 @@ sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
 
 import lib_lexdpyk_h as lexdpyx
+from lib_sonnetcommands import SonnetCommand
 
 command_modules: List[lexdpyx.cmd_module] = []
 command_modules_dict: lexdpyx.cmd_modules_dict = {}
@@ -31,20 +34,37 @@ for command in command_modules_dict:
     if "alias" in command_modules_dict[command]:
         continue
 
-    cache = command_modules_dict[command]["cache"]
+    sonnetcmd = SonnetCommand(command_modules_dict[command])
+
+    cache = sonnetcmd.cache
     if cache in ["purge", "regenerate", "keep"]:
         continue
 
     elif cache.startswith("direct:"):
         for i in cache[len('direct:'):].split(";"):
-            if i.startswith("(d)") or i.startswith("(f)"):
-                pass
-            else:
+            if not (i.startswith("(d)") or i.startswith("(f)")):
                 raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
         continue
 
-    raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
+    raise SyntaxError(f"ERROR IN [{sonnetcmd.execute.__module__} : {command}] CACHE BEHAVIOR ({cache})")
 
+# Test for valid permission definition
+for command in command_modules_dict:
+    if "alias" in command_modules_dict[command]:
+        continue
+
+    cmd = SonnetCommand(command_modules_dict[command])
+
+    if isinstance(cmd.permission, str):
+        if cmd.permission in ["everyone", "moderator", "administrator", "owner"]:
+            continue
+    elif isinstance(cmd.permission, (tuple, list)):
+        if isinstance(cmd.permission[0], str) and cmd.permission[1]:
+            continue
+
+    raise SyntaxError(f"ERROR IN [{cmd.execute.__module__} : {command}] PERMISSION TYPE({cmd.permission}) IS NOT VALID")
+
+# Test for aliases pointing to existing commands
 for command in command_modules_dict:
     if "alias" not in command_modules_dict[command]:
         continue
@@ -80,6 +100,10 @@ def escape(s: str) -> str:
     return s
 
 
+def titlecase(s: str) -> str:
+    return s[0].upper() + s[1:].lower()
+
+
 for module in sorted(command_modules, key=lambda a: a.category_info['name']):
 
     # Assert all these fields exist
@@ -103,13 +127,17 @@ for module in sorted(command_modules, key=lambda a: a.category_info['name']):
     outlist.append("\t</tr>")
 
     for i in filter(lambda i: "alias" not in module.commands[i], module.commands):
+        sonnetcmd = SonnetCommand(module.commands[i])
 
-        command_name = module.commands[i]["pretty_name"]
-        description = module.commands[i]["description"]
+        command_name = sonnetcmd.pretty_name
+        description = sonnetcmd.description
 
         aliases = ", ".join(aliasmap[i]) if i in aliasmap else "None"
 
-        command_perms = module.commands[i]['permission'][0].upper() + module.commands[i]['permission'][1:].lower()
+        if isinstance(sonnetcmd.permission, str):
+            command_perms = titlecase(sonnetcmd.permission)
+        else:
+            command_perms = titlecase(sonnetcmd.permission[0])
 
         outlist.append("\t<tr>")
         outlist.append(f"\t\t<td>{escape(command_name)}</td>")

@@ -23,7 +23,7 @@ dynamiclib_modules_dict: lexdpyk.dlib_modules_dict = {}
 
 # Define kernel syntax error
 class KernelSyntaxError(SyntaxError):
-    pass
+    __slots__ = ()
 
 
 def kernel_load_command_modules(*args: str) -> Any:

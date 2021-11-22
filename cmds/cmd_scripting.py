@@ -14,8 +14,12 @@ importlib.reload(lib_parsers)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
+import lib_sonnetcommands
+
+importlib.reload(lib_sonnetcommands)
 
 from lib_parsers import parse_permissions
+from lib_sonnetcommands import SonnetCommand
 
 from typing import List, Any, Tuple, Awaitable, Dict
 import lib_lexdpyk_h as lexdpyk
@@ -118,12 +122,14 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                 if "alias" in cmds_dict[command]:
                     command = cmds_dict[command]["alias"]
 
-                permission = await parse_permissions(message, kwargs["conf_cache"], cmds_dict[command]['permission'])
+                cmd = SonnetCommand(cmds_dict[command])
+
+                permission = await parse_permissions(message, kwargs["conf_cache"], cmd['permission'])
 
                 if permission:
 
                     suc = (
-                        await cmds_dict[command]['execute'](
+                        await cmd['execute'](
                             message,
                             arguments,
                             client,
@@ -147,7 +153,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                         return 1
 
                     # Regenerate cache
-                    cache_args.append(cmds_dict[command]['cache'])
+                    cache_args.append(cmd['cache'])
                 else:
                     return 1
 
@@ -167,10 +173,11 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
 
 class MapProcessError(Exception):
-    pass
+    __slots__ = ()
 
 
-async def map_preprocessor(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict, conf_cache: Dict[str, Any]) -> Tuple[List[str], int, str, List[str]]:
+async def map_preprocessor(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict,
+                           conf_cache: Dict[str, Any]) -> Tuple[List[str], int, SonnetCommand, str, List[str]]:
 
     try:
         targs: List[str] = shlex.split(" ".join(args))
@@ -202,14 +209,16 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
     if "alias" in cmds_dict[command]:
         command = cmds_dict[command]["alias"]
 
-    if not await parse_permissions(message, conf_cache, cmds_dict[command]['permission']):
+    cmd = SonnetCommand(cmds_dict[command])
+
+    if not await parse_permissions(message, conf_cache, cmd.permission):
         raise MapProcessError("ERRNO")
 
     if len(targs[targlen:]) > exec_lim:
         await message.channel.send(f"ERROR: Exceeded limit of {exec_lim} iterations")
         raise MapProcessError("ERR LIM EXEEDED")
 
-    return targs, targlen, command, endlargs
+    return targs, targlen, cmd, command, endlargs
 
 
 async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -220,7 +229,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
     cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
 
     try:
-        targs, targlen, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
+        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
     except MapProcessError:
         return 1
 
@@ -233,7 +242,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
             message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
 
             suc = (
-                await cmds_dict[command]['execute'](
+                await cmd['execute'](
                     message,
                     i.split() + endlargs,
                     client,
@@ -256,7 +265,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 return 1
 
         # Do cache sweep on command
-        do_cache_sweep(cmds_dict[command]['cache'], kwargs["ramfs"], message.guild)
+        do_cache_sweep(cmd['cache'], kwargs["ramfs"], message.guild)
 
         tend: int = time.monotonic_ns()
 
@@ -276,7 +285,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
     cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
 
     try:
-        targs, targlen, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
+        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
     except MapProcessError:
         return 1
 
@@ -291,7 +300,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
 
         promises.append(
             asyncio.create_task(
-                cmds_dict[command]['execute'](
+                cmd['execute'](
                     newmsg,
                     i.split() + endlargs,
                     client,
@@ -314,7 +323,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
         await p
 
     # Do a cache sweep after running
-    do_cache_sweep(cmds_dict[command]['cache'], kwargs["ramfs"], message.guild)
+    do_cache_sweep(cmd['cache'], kwargs["ramfs"], message.guild)
 
     tend: int = time.monotonic_ns()
 
@@ -361,4 +370,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.10"

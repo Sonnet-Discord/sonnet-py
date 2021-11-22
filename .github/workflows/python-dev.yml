@@ -44,4 +44,4 @@ jobs:
         python build_tools/ramfsassert.py
     - name: run mypy type checking
       run: |
-        mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable
+        mypy . --ignore-missing-imports --strict --warn-unreachable

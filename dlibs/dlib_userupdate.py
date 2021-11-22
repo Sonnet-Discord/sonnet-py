@@ -1,11 +1,12 @@
 # User update tracking
 # Ultrabear 2021
 
+import asyncio
 import importlib
-
-import discord, time, asyncio
+import time
 from datetime import datetime
 
+import discord
 import lib_loaders
 
 importlib.reload(lib_loaders)
@@ -15,12 +16,16 @@ importlib.reload(lib_lexdpyk_h)
 import lib_compatibility
 
 importlib.reload(lib_compatibility)
+import lib_db_obfuscator
 
-from lib_loaders import inc_statistics_better, load_embed_color, embed_colors, load_message_config, datetime_now
-from lib_compatibility import user_avatar_url, discord_datetime_now
+importlib.reload(lib_db_obfuscator)
 
-from typing import Any, Dict, Union, List, Optional
+from typing import Any, Dict, List, Optional, Union
+
 import lib_lexdpyk_h as lexdpyk
+from lib_compatibility import (discord_datetime_now, has_default_avatar, user_avatar_url)
+from lib_db_obfuscator import db_hlapi
+from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
 
 
 async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed) -> None:
@@ -81,18 +86,46 @@ async def notify_problem(member: discord.Member, ptype: List[str], log: str, cli
         notify_embed = discord.Embed(title=f"Notify on member join: {member}", description=f"Notifying for: {', '.join(ptype)}", color=load_embed_color(member.guild, embed_colors.primary, ramfs))
         notify_embed.set_footer(text=f"uid: {member.id}")
 
+        await catch_logging_error(channel, notify_embed)
+
+
+async def try_mute_on_rejoin(member: discord.Member, db: db_hlapi, client: discord.Client, log: str, ramfs: lexdpyk.ram_filesystem) -> None:
+
+    mute_role_id = db.grab_config("mute-role")
+    if mute_role_id and (mute_role := member.guild.get_role(int(mute_role_id))):
+
+        success: bool
+
         try:
-            await channel.send(embed=notify_embed)
+            await member.add_roles(mute_role)
+            success = True
         except discord.errors.Forbidden:
-            pass
+            success = False
+
+        stringcases = {
+            False: "was not able to be remuted (permissions error)",
+            True: "was remuted",
+            }
+
+        if log and (channel := client.get_channel(int(log))):
+            if isinstance(channel, discord.TextChannel):
+
+                muted_embed = discord.Embed(title=f"Notify on muted member join: {member}", description=f"This user has an entry in the mute database and {stringcases[success]}.")
+                muted_embed.color = load_embed_color(member.guild, embed_colors.primary, ramfs)
+                muted_embed.set_footer(text=f"uid: {member.id}")
+
+                await catch_logging_error(channel, muted_embed)
 
 
 # Handles join logs and regex joinnotifier
 async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
+    client: discord.Client = kargs["client"]
+    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
+
     inc_statistics_better(member.guild.id, "on-member-join", kargs["kernel_ramfs"])
 
-    notifier_cache = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_notifier)
+    notifier_cache = load_message_config(member.guild.id, ramfs, datatypes=join_notifier)
 
     issues: List[str] = []
 
@@ -101,18 +134,18 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
         issues.append("User")
     if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
         issues.append("Timestamp")
-    if int(notifier_cache["notifier-log-defaultpfp"]) and user_avatar_url(member) == str(member.default_avatar_url):
+    if int(notifier_cache["notifier-log-defaultpfp"]) and has_default_avatar(member):
         issues.append("Default pfp")
 
     if issues:
-        asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], kargs["client"], kargs["ramfs"]))
+        asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], client, ramfs))
 
-    joinlog = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_leave_user_logs)["join-log"]
+    joinlog = load_message_config(member.guild.id, ramfs, datatypes=join_leave_user_logs)["join-log"]
 
     # Handle join logs
-    if joinlog and (logging_channel := kargs["client"].get_channel(int(joinlog))):
+    if joinlog and (logging_channel := client.get_channel(int(joinlog))):
 
-        embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=load_embed_color(member.guild, embed_colors.creation, kargs["ramfs"]))
+        embed = discord.Embed(title=f"{member} joined.", description=f"*{member.mention} joined the server.*", color=load_embed_color(member.guild, embed_colors.creation, ramfs))
         embed.set_thumbnail(url=user_avatar_url(member))
 
         embed.timestamp = ts = datetime_now()
@@ -120,7 +153,12 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
         embed.add_field(name="Created", value=parsedate(member.created_at), inline=True)
 
-        await catch_logging_error(logging_channel, embed)
+        if isinstance(logging_channel, discord.TextChannel):
+            asyncio.create_task(catch_logging_error(logging_channel, embed))
+
+    with db_hlapi(member.guild.id) as db:
+        if db.is_muted(userid=member.id):
+            await try_mute_on_rejoin(member, db, client, notifier_cache["regex-notifier-log"], ramfs)
 
 
 # Handles member leave logging
@@ -158,4 +196,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.10"

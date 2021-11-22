@@ -45,7 +45,7 @@ jobs:
         python build_tools/ramfsassert.py
     - name: run mypy type checking
       run: |
-        mypy *.py */*.py --ignore-missing-imports --strict --warn-unreachable
+        mypy . --ignore-missing-imports --strict --warn-unreachable
     - name: yapf integrity check
       run: |
         yapf -drp .
@@ -56,7 +56,4 @@ jobs:
         python -m pip install mariadb
     - name: linting pass
       run: |
-        pylint ./libs ./cmds ./common ./dlibs ./build_tools -E
-    - name: run pytype
-      run: |
-        pytype .
+        pylint */ -E -j4

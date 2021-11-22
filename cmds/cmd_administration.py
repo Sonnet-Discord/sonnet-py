@@ -15,10 +15,14 @@ importlib.reload(lib_parsers)
 import lib_loaders
 
 importlib.reload(lib_loaders)
+import lib_sonnetconfig
+
+importlib.reload(lib_sonnetconfig)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
 from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
+from lib_sonnetconfig import BOT_NAME
 
 from typing import Any, List
 
@@ -94,8 +98,8 @@ class gdpr_functions:
         await message.channel.send(
             f"""Deleted database for guild {message.guild.id}
 Please note that when the bot receives a message from this guild it will generate a cache and statistics file again
-As we delete all data on this guild, there is no way Sonnet should be able to tell it is not supposed to be on this server
-To fully ensure sonnet does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"""
+As we delete all data on this guild, there is no way {BOT_NAME} should be able to tell it is not supposed to be on this server
+To fully ensure {BOT_NAME} does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"""
             )
 
     async def download(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
@@ -222,14 +226,12 @@ commands = {
             'pretty_name': 'message-edit-log <channel>',
             'description': 'Change message edit log, overloads message-log',
             'permission': 'administrator',
-            'cache': 'keep',
             'execute': message_edit_log_change
             },
     'message-log': {
         'pretty_name': 'message-log <channel>',
         'description': 'Change message log',
         'permission': 'administrator',
-        'cache': 'keep',
         'execute': msglog_change
         },
     'leave-log':
@@ -254,7 +256,6 @@ commands = {
         'pretty_name': 'infraction-log <channel>',
         'description': 'Change infraction log',
         'permission': 'administrator',
-        'cache': 'keep',
         'execute': inflog_change
         },
     'notifier-log': {
@@ -287,7 +288,6 @@ commands = {
             'pretty_name': 'set-viewinfractions <bool>',
             'description': 'Set whether members of the guild can view their own infraction count',
             'permission': 'administrator',
-            'cache': 'keep',
             'execute': set_view_infractions
             },
     'set-prefix': {
@@ -301,7 +301,6 @@ commands = {
         'pretty_name': 'set-muterole <role>',
         'description': 'Set the mute role',
         'permission': 'administrator',
-        'cache': 'keep',
         'execute': set_mute_role
         },
     'set-adminrole': {
@@ -320,4 +319,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.9"
+version_info: str = "1.2.10"
