@@ -15,7 +15,7 @@ print("Booting LeXdPyK")
 import os, importlib, sys, io, traceback
 
 # Import sub dependencies
-import glob, json, hashlib, logging, getpass, datetime
+import glob, json, hashlib, logging, getpass, datetime, argparse
 
 # Import typing support
 from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol
@@ -818,22 +818,43 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
         await event_call("on-member-unban", guild, user)
 
 
+def gentoken() -> str:
+
+    TOKEN = getpass.getpass("Enter TOKEN: ")
+
+    passwd = getpass.getpass("Enter TOKEN password: ")
+    if passwd != getpass.getpass("Confirm TOKEN password: "):
+        print("ERROR: passwords do not match")
+        raise ValueError
+
+    with open(".tokenfile", "wb") as tokenfile:
+        encryptor = miniflip(passwd)
+        tokenfile.write(encryptor.encrypt(TOKEN))
+
+    return TOKEN
+
+
 # Main function, handles userland startup
 def main(args: List[str]) -> int:
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--log-debug", action="store_true", help="Makes the logging module start in debug mode")
+    parser.add_argument("--generate-token", action="store_true", help="Discards the current token file if there is one, and generates a new encrypted tokenfile")
+    parsed = parser.parse_args()
+
     # Set Loglevel
-    loglevel = logging.DEBUG if "--log-debug" in args else logging.INFO
+    loglevel = logging.DEBUG if parsed.log_debug else logging.INFO
     logger.setLevel(loglevel)
 
     # Get token from environment variables.
     TOKEN: Optional[str] = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
 
     # Generate tokenfile
-    if len(sys.argv) >= 2 and "--generate-token" in args:
-        tokenfile = open(".tokenfile", "wb")
-        encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-        tokenfile.write(encryptor.encrypt(TOKEN := getpass.getpass("Enter TOKEN: ")))
-        tokenfile.close()
+    if parsed.generate_token:
+        try:
+            TOKEN = gentoken()
+        except ValueError:
+            return 1
 
     # Load token
     if TOKEN is None and os.path.isfile(".tokenfile"):
@@ -870,7 +891,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.7"
+version_info: str = "LeXdPyK 1.4.8"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
