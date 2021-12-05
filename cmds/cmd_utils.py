@@ -34,7 +34,7 @@ import lib_sonnetconfig
 importlib.reload(lib_sonnetconfig)
 
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_permissions, parse_boolean, parse_user_member
+from lib_parsers import parse_permissions, parse_boolean, parse_user_member_noexcept
 from lib_loaders import load_embed_color, embed_colors, datetime_now
 from lib_compatibility import user_avatar_url, discord_datetime_now
 from lib_sonnetcommands import SonnetCommand
@@ -88,10 +88,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     if not message.guild:
         return 1
 
-    try:
-        user, member = await parse_user_member(message, args, client, default_self=True)
-    except lib_parsers.errors.user_parse_error:
-        return 1
+    user, member = await parse_user_member_noexcept(message, args, client, default_self=True)
 
     # Status hashmap
     status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
@@ -118,18 +115,14 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
-        await message.channel.send(constants.sonnet.error_embed)
-        return 1
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
 async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
 
-    try:
-        user, _ = await parse_user_member(message, args, client, default_self=True)
-    except lib_parsers.errors.user_parse_error:
-        return 1
+    user, _ = await parse_user_member_noexcept(message, args, client, default_self=True)
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_image(url=user_avatar_url(user))
@@ -137,8 +130,7 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
-        await message.channel.send(constants.sonnet.error_embed)
-        return 1
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
 async def help_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -162,8 +154,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             elif len(args) > 2 and args[1] in ["-p", "--page"]:
                 page = int(args[2]) - 1
         except ValueError:
-            await message.channel.send("ERROR: Page not valid int")
-            return 1
+            raise lib_sonnetcommands.CommandError("ERROR: Page not valid int")
 
     if args:
 
@@ -188,8 +179,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
                 if page == 0:
                     await message.channel.send(embed=cmd_embed)
                     return 0
-                await message.channel.send(f"ERROR: No such page {page+1}")
-                return 1
+                raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
 
             for i in sorted(nonAliasCommands)[page * per_page:(page * per_page) + per_page]:
                 cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
@@ -197,8 +187,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             try:
                 await message.channel.send(embed=cmd_embed)
             except discord.errors.Forbidden:
-                await message.channel.send(constants.sonnet.error_embed)
-                return 1
+                raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
         # Per command help
         elif a in cmds_dict:
@@ -232,8 +221,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             try:
                 await message.channel.send(embed=cmd_embed)
             except discord.errors.Forbidden:
-                await message.channel.send(constants.sonnet.error_embed)
-                return 1
+                raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
         # Do not echo user input
         else:
@@ -257,8 +245,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     else:
 
         if page < 0 or page >= (len(cmds) + (per_page - 1)) // per_page:
-            await message.channel.send(f"ERROR: No such page {page+1}")
-            return 1
+            raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
 
         cmd_embed = discord.Embed(title=f"Category Listing (Page {page+1} / {(len(cmds) + (per_page-1))//per_page})", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
         cmd_embed.set_author(name=helpname)
@@ -280,8 +267,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         try:
             await message.channel.send(embed=cmd_embed)
         except discord.errors.Forbidden:
-            await message.channel.send(constants.sonnet.error_embed)
-            return 1
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
 async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -306,8 +292,7 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
     try:
         await message.channel.send(embed=guild_embed)
     except discord.errors.Forbidden:
-        await message.channel.send(constants.sonnet.error_embed)
-        return 1
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -316,11 +301,9 @@ async def initialise_poll(message: discord.Message, args: List[str], client: dis
         await message.add_reaction("👍")
         await message.add_reaction("👎")
     except discord.errors.Forbidden:
-        await message.channel.send("ERROR: The bot does not have permissions to add a reaction here")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: The bot does not have permissions to add a reaction here")
     except discord.errors.NotFound:
-        await message.channel.send("ERROR: Could not find the message [404]")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: Could not find the message [404]")
 
 
 async def coinflip(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -396,4 +379,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11-DEV"

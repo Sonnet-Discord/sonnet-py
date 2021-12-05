@@ -433,22 +433,28 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         try:
             stats["end"] = round(time.time() * 100000)
 
-            await cmd.execute(
-                message,
-                arguments,
-                client,
-                stats=stats,
-                cmds=command_modules,
-                ramfs=ramfs,
-                bot_start=bot_start_time,
-                dlibs=kargs["dynamiclib_modules"][0],
-                main_version=main_version_info,
-                kernel_ramfs=kargs["kernel_ramfs"],
-                conf_cache=mconf,
-                verbose=True,
-                cmds_dict=command_modules_dict,
-                automod=False
-                )
+            try:
+                await cmd.execute(
+                    message,
+                    arguments,
+                    client,
+                    stats=stats,
+                    cmds=command_modules,
+                    ramfs=ramfs,
+                    bot_start=bot_start_time,
+                    dlibs=kargs["dynamiclib_modules"][0],
+                    main_version=main_version_info,
+                    kernel_ramfs=kargs["kernel_ramfs"],
+                    conf_cache=mconf,
+                    verbose=True,
+                    cmds_dict=command_modules_dict,
+                    automod=False
+                    )
+            except lib_sonnetcommands.CommandError as ce:
+                try:
+                    await message.channel.send(ce)
+                except discord.errors.Forbidden:
+                    pass
 
             # Regenerate cache
             if cmd.cache in ["purge", "regenerate"]:
@@ -497,4 +503,4 @@ commands: Dict[str, Callable[..., Any]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11-DEV"

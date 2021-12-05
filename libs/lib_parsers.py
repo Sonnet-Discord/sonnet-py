@@ -19,6 +19,9 @@ importlib.reload(lib_sonnetconfig)
 import lib_constants
 
 importlib.reload(lib_constants)
+import lib_sonnetcommands
+
+importlib.reload(lib_sonnetcommands)
 
 from lib_sonnetconfig import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
@@ -476,17 +479,16 @@ async def parse_role(message: discord.Message, args: list[str], db_entry: str, v
 
 
 # Grab a message object from a link or message mention
-async def parse_channel_message(message: discord.Message, args: list[str], client: discord.Client) -> tuple[discord.Message, int]:
+async def parse_channel_message_noexcept(message: discord.Message, args: list[str], client: discord.Client) -> tuple[discord.Message, int]:
     """
     Parse a channel message from a url, #channel messageid, or channelid-messageid field
 
     :returns: Tuple[discord.Message, int] -- The message and the amount of args the message grabbing took
-    :raises: errors.message_parse_failure -- The message did not exist or the function had invalid inputs
+    :raises: lib_sonnetcommands.CommandError -- The message did not exist or the function had invalid inputs
     """
 
     if not message.guild:
-        await message.channel.send("ERROR: Not a guild message")
-        raise errors.message_parse_failure("ERROR: Not a guild message")
+        raise lib_sonnetcommands.CommandError("ERROR: Not a guild message")
 
     try:
         message_link = args[0].replace("-", "/").split("/")
@@ -499,69 +501,77 @@ async def parse_channel_message(message: discord.Message, args: list[str], clien
             message_id = args[1]
             nargs = 2
         except IndexError:
-            await message.channel.send(constants.sonnet.error_args.not_enough)
-            raise errors.message_parse_failure
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
 
     try:
         log_channel = int(log_channel)
     except ValueError:
-        await message.channel.send(constants.sonnet.error_channel.invalid)
-        raise errors.message_parse_failure
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
-        await message.channel.send(constants.sonnet.error_channel.invalid)
-        raise errors.message_parse_failure
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
 
     if not isinstance(discord_channel, discord.TextChannel):
-        await message.channel.send(constants.sonnet.error_channel.scope)
-        raise errors.message_parse_failure
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.scope)
 
     if discord_channel.guild.id != message.guild.id:
-        await message.channel.send(constants.sonnet.error_channel.scope)
-        raise errors.message_parse_failure
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.scope)
 
     try:
         discord_message = await discord_channel.fetch_message(int(message_id))
     except (ValueError, discord.errors.HTTPException):
-        await message.channel.send(constants.sonnet.error_message.invalid)
-        raise errors.message_parse_failure
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     if not discord_message:
-        await message.channel.send(constants.sonnet.error_message.invalid)
-        raise errors.message_parse_failure
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     return (discord_message, nargs)
 
 
-async def parse_user_member(message: discord.Message,
-                            args: list[str],
-                            client: discord.Client,
-                            argindex: int = 0,
-                            default_self: bool = False) -> tuple[discord.Member | discord.User, Optional[discord.Member]]:
+async def parse_channel_message(message: discord.Message, args: List[str], client: discord.Client) -> Tuple[discord.Message, int]:
+    """
+    Parse a channel message from a url, #channel messageid, or channelid-messageid field
+
+    :returns: Tuple[discord.Message, int] -- The message and the amount of args the message grabbing took
+    :raises: errors.message_parse_failure -- The message did not exist or the function had invalid inputs
+    """
+    try:
+        return await parse_channel_message_noexcept(message, args, client)
+    except lib_sonnetcommands.CommandError as ce:
+        await message.channel.send(ce)
+        raise errors.message_parse_failure(ce)
+
+
+UserInterface = Union[discord.User, discord.Member]
+
+
+async def parse_user_member_noexcept(message: discord.Message,
+                                     args: List[str],
+                                     client: discord.Client,
+                                     argindex: int = 0,
+                                     default_self: bool = False) -> Tuple[UserInterface, Optional[discord.Member]]:
     """
     Parse a user and member object from a potential user string
     Always returns a user, only returns member if the user is in the guild
     User returned might be a member, do not rely on this.
 
-    :returns: tuple[discord.User | discord.Member, Optional[discord.Member]] -- A discord user and optional member
-    :raises: errors.user_parse_error -- Could not find the user or input invalid
+    :returns: Tuple[Union[discord.User, discord.Member], Optional[discord.Member]] -- A discord user and optional member
+    :raises: lib_sonnetcommands.CommandError -- Could not find the user or input invalid
     """
 
     if not message.guild or not isinstance(message.author, discord.Member):
-        raise errors.user_parse_error("Not a guild message")
+        raise lib_sonnetcommands.CommandError("Not a guild message")
 
     try:
         uid = int(args[argindex].strip("<@!>"))
     except ValueError:
-        await message.channel.send("Invalid UserID")
-        raise errors.user_parse_error("Invalid User")
+        raise lib_sonnetcommands.CommandError("Invalid UserID")
     except IndexError:
         if default_self:
             return message.author, message.author
         else:
-            await message.channel.send("No user specified")
-            raise errors.user_parse_error("No user specified")
+            raise lib_sonnetcommands.CommandError("No user specified")
 
     member: Optional[discord.Member]
     user: Optional[discord.User | discord.Member]
@@ -571,10 +581,25 @@ async def parse_user_member(message: discord.Message,
         if not (user := client.get_user(uid)):
             user = await client.fetch_user(uid)
     except (discord.errors.NotFound, discord.errors.HTTPException):
-        await message.channel.send("User does not exist")
-        raise errors.user_parse_error("User does not exist")
+        raise lib_sonnetcommands.CommandError("User does not exist")
 
     return user, member
+
+
+async def parse_user_member(message: discord.Message, args: List[str], client: discord.Client, argindex: int = 0, default_self: bool = False) -> Tuple[UserInterface, Optional[discord.Member]]:
+    """
+    Parse a user and member object from a potential user string
+    Always returns a user, only returns member if the user is in the guild
+    User returned might be a member, do not rely on this.
+
+    :returns: tuple[discord.User | discord.Member, Optional[discord.Member]] -- A discord user and optional member
+    :raises: errors.user_parse_error -- Could not find the user or input invalid
+    """
+    try:
+        return await parse_user_member_noexcept(message, args, client, argindex=argindex, default_self=default_self)
+    except lib_sonnetcommands.CommandError as ce:
+        await message.channel.send(ce)
+        raise errors.user_parse_error(ce)
 
 
 def format_duration(durationSeconds: Union[int, float]) -> str:

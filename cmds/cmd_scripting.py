@@ -128,24 +128,28 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
                 if permission:
 
-                    suc = (
-                        await cmd['execute'](
-                            message,
-                            arguments,
-                            client,
-                            stats=kwargs["stats"],
-                            cmds=kwargs["cmds"],
-                            ramfs=kwargs["ramfs"],
-                            bot_start=kwargs["bot_start"],
-                            dlibs=kwargs["dlibs"],
-                            main_version=kwargs["main_version"],
-                            kernel_ramfs=kwargs["kernel_ramfs"],
-                            conf_cache=kwargs["conf_cache"],
-                            automod=kwargs["automod"],
-                            cmds_dict=cmds_dict,
-                            verbose=False,
-                            )
-                        ) or 0
+                    try:
+                        suc = (
+                            await cmd.execute(
+                                message,
+                                arguments,
+                                client,
+                                stats=kwargs["stats"],
+                                cmds=kwargs["cmds"],
+                                ramfs=kwargs["ramfs"],
+                                bot_start=kwargs["bot_start"],
+                                dlibs=kwargs["dlibs"],
+                                main_version=kwargs["main_version"],
+                                kernel_ramfs=kwargs["kernel_ramfs"],
+                                conf_cache=kwargs["conf_cache"],
+                                automod=kwargs["automod"],
+                                cmds_dict=cmds_dict,
+                                verbose=False,
+                                )
+                            ) or 0
+                    except lib_sonnetcommands.CommandError as ce:
+                        await message.channel.send(ce)
+                        suc = 1
 
                     # Stop processing if error
                     if suc != 0:
@@ -241,24 +245,28 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
             message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
 
-            suc = (
-                await cmd['execute'](
-                    message,
-                    i.split() + endlargs,
-                    client,
-                    stats=kwargs["stats"],
-                    cmds=kwargs["cmds"],
-                    ramfs=kwargs["ramfs"],
-                    bot_start=kwargs["bot_start"],
-                    dlibs=kwargs["dlibs"],
-                    main_version=kwargs["main_version"],
-                    kernel_ramfs=kwargs["kernel_ramfs"],
-                    conf_cache=kwargs["conf_cache"],
-                    automod=kwargs["automod"],
-                    cmds_dict=cmds_dict,
-                    verbose=False,
-                    )
-                ) or 0
+            try:
+                suc = (
+                    await cmd['execute'](
+                        message,
+                        i.split() + endlargs,
+                        client,
+                        stats=kwargs["stats"],
+                        cmds=kwargs["cmds"],
+                        ramfs=kwargs["ramfs"],
+                        bot_start=kwargs["bot_start"],
+                        dlibs=kwargs["dlibs"],
+                        main_version=kwargs["main_version"],
+                        kernel_ramfs=kwargs["kernel_ramfs"],
+                        conf_cache=kwargs["conf_cache"],
+                        automod=kwargs["automod"],
+                        cmds_dict=cmds_dict,
+                        verbose=False,
+                        )
+                    ) or 0
+            except lib_sonnetcommands.CommandError as ce:
+                await message.channel.send(ce)
+                suc = 1
 
             if suc != 0:
                 await message.channel.send(f"ERROR: command `{command}` exited with non success status")
@@ -275,6 +283,31 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
     finally:
         message.content = keepref
+
+
+async def wrapasyncerror(cmd: SonnetCommand, message: discord.Message, args: List[str], client: discord.Client, kwargs: Dict[str, Any]) -> None:
+    try:
+        await cmd.execute(
+            message,
+            args,
+            client,
+            stats=kwargs["stats"],
+            cmds=kwargs["cmds"],
+            ramfs=kwargs["ramfs"],
+            bot_start=kwargs["bot_start"],
+            dlibs=kwargs["dlibs"],
+            main_version=kwargs["main_version"],
+            kernel_ramfs=kwargs["kernel_ramfs"],
+            conf_cache=kwargs["conf_cache"],
+            automod=kwargs["automod"],
+            cmds_dict=kwargs["cmds_dict"],
+            verbose=False,
+            )
+    except lib_sonnetcommands.CommandError as ce:  # catch CommandError to print message
+        try:
+            await message.channel.send(ce)
+        except discord.errors.Forbidden:
+            pass
 
 
 async def sonnet_async_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -298,26 +331,8 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
         newmsg: discord.Message = pycopy.copy(message)
         newmsg.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
 
-        promises.append(
-            asyncio.create_task(
-                cmd['execute'](
-                    newmsg,
-                    i.split() + endlargs,
-                    client,
-                    stats=kwargs["stats"],
-                    cmds=kwargs["cmds"],
-                    ramfs=kwargs["ramfs"],
-                    bot_start=kwargs["bot_start"],
-                    dlibs=kwargs["dlibs"],
-                    main_version=kwargs["main_version"],
-                    kernel_ramfs=kwargs["kernel_ramfs"],
-                    conf_cache=kwargs["conf_cache"],
-                    automod=kwargs["automod"],
-                    cmds_dict=cmds_dict,
-                    verbose=False,
-                    )
-                )
-            )
+        # Call error handler over command to allow catching CommandError in async
+        promises.append(asyncio.create_task(wrapasyncerror(cmd, newmsg, i.split() + endlargs, client, kwargs)))
 
     for p in promises:
         await p
@@ -370,4 +385,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11-DEV"

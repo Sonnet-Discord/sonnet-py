@@ -19,6 +19,22 @@ _allowpool = {
     }
 
 
+class CommandError(Exception):
+    """
+    CommandError is an error that can be raised by a command
+
+    It is treated specially by the exception handler such that it
+    will print the error string to the current channel instead of raising to the kernel, and have the same effect as return != 1
+    it should be used for cleaner user error handling
+
+`   `await message.channel.send("error"); return 1`
+    may be replaced with
+    `raise CommandError("error")`
+    for the same effect
+    """
+    __slots__ = ()
+
+
 class SonnetCommand(dict):  # type: ignore[type-arg]
     __slots__ = ()
 
