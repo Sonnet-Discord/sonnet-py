@@ -30,7 +30,7 @@ importlib.reload(lib_sonnetconfig)
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member, format_duration
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message_noexcept, parse_user_member, format_duration
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME
 import lib_constants as constants
@@ -635,10 +635,7 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
     kernel_ramfs: lexdpyk.ram_filesystem = kwargs["kernel_ramfs"]
 
-    try:
-        discord_message, _ = await parse_channel_message(message, args, client)
-    except lib_parsers.errors.message_parse_failure:
-        return 1
+    discord_message, _ = await parse_channel_message_noexcept(message, args, client)
 
     if not discord_message.guild:
         await message.channel.send("ERROR: Message not in any guild")
