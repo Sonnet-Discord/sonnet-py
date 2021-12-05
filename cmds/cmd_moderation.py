@@ -44,9 +44,9 @@ async def catch_dm_error(user: Union[discord.User, discord.Member], contents: di
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
-        if log_channel:
+        if log_channel is not None:
             try:
-                await log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none())
+                asyncio.create_task(log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none()))
             except discord.errors.Forbidden:
                 pass
 
@@ -899,4 +899,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11-DEV"
