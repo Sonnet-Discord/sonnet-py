@@ -228,7 +228,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
                 await dm_sent  # Wait for dm to be sent before kicking
             await message.guild.kick((member), reason=reason[:512])
         except discord.errors.Forbidden:
-            await message.channel.send("The bot does not have permission to kick this user.")
+            await message.channel.send(f"{BOT_NAME} does not have permission to kick this user.")
             return 1
     else:
         await message.channel.send("User is not in this guild")
@@ -255,7 +255,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
             await dm_sent  # Wait for dm to be sent before banning
         await message.guild.ban(user, delete_message_days=0, reason=reason[:512])
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to ban this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to ban this user.")
         return 1
 
     if verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
@@ -278,7 +278,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
     try:
         await message.guild.unban(user, reason=reason[:512])
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to unban this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to unban this user.")
         return 1
     except discord.errors.NotFound:
         await message.channel.send("This user is not banned")
@@ -358,7 +358,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     try:
         await member.add_roles(mute_role)
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to mute this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to mute this user.")
         return 1
 
     if verbose and not mutetime:
@@ -408,7 +408,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
     try:
         await member.remove_roles(mute_role)
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to unmute this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to unmute this user.")
         return 1
 
     # Unmute in DB
