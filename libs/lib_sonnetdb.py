@@ -193,7 +193,7 @@ class db_hlapi:
             self.create_guild_db()
             self._db.add_to_table(f"{self.guild}_{name}", push)
 
-    def delete_enum(self, enumname: str, key: str) -> None:
+    def delete_enum(self, enumname: str, key: Union[str, int]) -> None:
         """
         Deletes a row in an enums table based on primary key
 
@@ -226,6 +226,12 @@ class db_hlapi:
             return cast(List[Union[str, int]], [i[0] for i in self._db.fetch_table(f"{self.guild}_{enumName}")])
         except db_error.OperationalError:
             return []
+
+    def enum_context(self, enumName: str) -> "_enum_context":
+        """
+        Returns a context manager to access db_enums functions in a safer and more concise way
+        """
+        return _enum_context(self, enumName)
 
     def create_guild_db(self) -> None:
         """
@@ -531,3 +537,39 @@ class db_hlapi:
         self._db.commit()
         if err_type:
             raise err_type(err_value)
+
+
+class _enum_context:
+    __slots__ = "_hlapi", "_name"
+
+    def __init__(self, hlapi: db_hlapi, enum_name: str) -> None:
+
+        self._hlapi: db_hlapi = hlapi
+        self._name: str = enum_name
+
+    def __enter__(self) -> "_enum_context":
+        return self
+
+    def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
+        if err_type:
+            raise err_type(err_value)
+
+    def grab(self, name: Union[str, int]) -> Optional[List[Union[str, int]]]:
+        self._hlapi.grab_enum.__doc__
+
+        return self._hlapi.grab_enum(self._name, name)
+
+    def set(self, cpush: List[Union[str, int]]) -> None:
+        self._hlapi.set_enum.__doc__
+
+        return self._hlapi.set_enum(self._name, cpush)
+
+    def delete(self, name: Union[str, int]) -> None:
+        self._hlapi.delete_enum.__doc__
+
+        return self._hlapi.delete_enum(self._name, name)
+
+    def list(self) -> List[Union[str, int]]:
+        self._hlapi.list_enum.__doc__
+
+        return self._hlapi.list_enum(self._name)
