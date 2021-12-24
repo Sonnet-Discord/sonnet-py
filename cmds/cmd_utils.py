@@ -41,7 +41,7 @@ from lib_sonnetcommands import SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 import lib_constants as constants
 
-from typing import List, Any, Optional, cast
+from typing import List, Any, Optional, Tuple, cast
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -144,6 +144,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
     page: int = 0
     per_page: int = 10
+    commandonly = '-c' in args
 
     # TODO(ultrabear): make this look less horrible, it works at least
     if len(args) > 1:
@@ -162,16 +163,24 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         PREFIX = kwargs["conf_cache"]["prefix"]
 
         # Per module help
-        if (a := args[0].lower()) in modules:
+        if (a := args[0].lower()) in modules and not commandonly:
 
             curmod = [mod for mod in cmds if mod.category_info["name"] == a][0]
             nonAliasCommands = list(filter(lambda c: "alias" not in curmod.commands[c], curmod.commands))
             pagecount = (len(nonAliasCommands) + (per_page - 1)) // per_page
+            description = curmod.category_info["description"]
+            override_commands: Optional[List[Tuple[str, str]]] = None
+
+            if (override := getattr(curmod, "__help_override__", None)) is not None:
+                newhelp: Optional[Tuple[str, List[Tuple[str, str]]]] = await override(message, args, client, **kwargs)
+
+                if newhelp is not None:
+                    description = newhelp[0]
+                    pagecount = (len(newhelp[1]) + (per_page - 1)) // per_page
+                    override_commands = newhelp[1]
 
             cmd_embed = discord.Embed(
-                title=f"{curmod.category_info['pretty_name']} (Page {page+1} / {pagecount})",
-                description=curmod.category_info["description"],
-                color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
+                title=f"{curmod.category_info['pretty_name']} (Page {page+1} / {pagecount})", description=description, color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
                 )
             cmd_embed.set_author(name=helpname)
 
@@ -181,8 +190,12 @@ async def help_function(message: discord.Message, args: List[str], client: disco
                     return 0
                 raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
 
-            for i in sorted(nonAliasCommands)[page * per_page:(page * per_page) + per_page]:
-                cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
+            if override_commands is None:
+                for i in sorted(nonAliasCommands)[page * per_page:(page * per_page) + per_page]:
+                    cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
+            else:
+                for name, desc in override_commands:
+                    cmd_embed.add_field(name=name, value=desc, inline=False)
 
             try:
                 await message.channel.send(embed=cmd_embed)
@@ -232,7 +245,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             except ValueError:
                 probably_tried_paging = False
 
-            no_command_text: str = "No command or command module with that name"
+            no_command_text: str = f"No command {'or command module '*(not commandonly)}with that name"
 
             if probably_tried_paging:
                 await message.channel.send(f"{no_command_text} (did you mean `{PREFIX}help -p {int(args[0])}`?)")
@@ -338,8 +351,8 @@ commands = {
         },
     'help':
         {
-            'pretty_name': 'help [category|command] [-p PAGE]',
-            'description': 'Print helptext',
+            'pretty_name': 'help [category|command] [-p PAGE] [-c]',
+            'description': 'Print helptext, `-c` designates to only look for a command',
             'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
             'execute': help_function
             },
