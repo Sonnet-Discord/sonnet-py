@@ -74,7 +74,7 @@ class db_hlapi:
         self.database = self._db  # Deprecated name
         self.guild: Optional[int] = guild_id
 
-        self.hlapi_version = (1, 2, 9)
+        self.hlapi_version = (1, 2, 11)
         self._sonnet_db_version = self._get_db_version()
 
         if lock is not None:
