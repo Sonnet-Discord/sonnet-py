@@ -184,17 +184,14 @@ async def help_function(message: discord.Message, args: List[str], client: disco
                 )
             cmd_embed.set_author(name=helpname)
 
-            if page < 0 or page >= pagecount:
-                if page == 0:
-                    await message.channel.send(embed=cmd_embed)
-                    return 0
+            if not (0 <= page < pagecount):
                 raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
 
             if override_commands is None:
                 for i in sorted(nonAliasCommands)[page * per_page:(page * per_page) + per_page]:
                     cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
             else:
-                for name, desc in override_commands:
+                for name, desc in override_commands[page * per_page:(page * per_page) + per_page]:
                     cmd_embed.add_field(name=name, value=desc, inline=False)
 
             try:
