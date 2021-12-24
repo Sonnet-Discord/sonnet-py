@@ -280,7 +280,7 @@ Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 
 # Parse user permissions to run a command
-async def parse_permissions(message: discord.Message, mconf: dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
+async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
     """
     Parse the permissions of the given member object to check if they meet the required permtype
     Verbosity can be set to not print if the perm check failed
