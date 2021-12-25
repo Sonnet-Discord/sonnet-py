@@ -433,7 +433,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     infraction_type: Optional[str] = None
     per_page: int = 20
     user_affected: Optional[int] = None
-    automod: bool = True
+    automod: Optional[bool] = None
     for index, item in enumerate(args):
         try:
             if item in ["-p", "--page"]:
@@ -448,6 +448,8 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
                 infraction_type = (args[index + 1])
             elif item == "--no-automod":
                 automod = False
+            elif item == "--automod":
+                automod = True
         except (ValueError, IndexError):
             await message.channel.send("Invalid flags supplied")
             return 1
@@ -465,13 +467,14 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     with db_hlapi(message.guild.id) as db:
         if user_affected or responsible_mod:
-            infractions = cast(List[Tuple[str, str, str, str, str, int]], db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod))
+            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
+            assert isinstance(infractions, list)
         else:
             await message.channel.send("Please specify a user or moderator")
             return 1
 
     # Sort newest first
-    infractions = sorted(infractions, reverse=True, key=lambda a: a[5])
+    infractions.sort(reverse=True, key=lambda a: a[5])
 
     # Return if no infractions, this is not an error as it returned a valid status
     if not infractions:
@@ -847,7 +850,7 @@ commands = {
         },
     'search-infractions':
         {
-            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--no-automod]',
+            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--[no-]automod]',
             'description': 'Grab infractions of a user',
             'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
