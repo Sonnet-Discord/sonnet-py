@@ -230,7 +230,18 @@ class db_hlapi:
     def enum_context(self, enumName: str) -> "_enum_context":
         """
         Returns a context manager to access db_enums functions in a safer and more concise way
+
+        :returns: _enum_context - An enum context manager
         """
+        return _enum_context(self, enumName)
+
+    def inject_enum_context(self, enumName: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> "_enum_context":
+        """
+        A combination of inject_enum and enum_context that returns an enum context of the just injected enum
+
+        :returns: _enum_context - An enum context manager
+        """
+        self.inject_enum(enumName, schema)
         return _enum_context(self, enumName)
 
     def create_guild_db(self) -> None:
@@ -301,7 +312,12 @@ class db_hlapi:
 
         return data
 
-    def grab_filter_infractions(self, user: Optional[int] = None, moderator: Optional[int] = None, itype: Optional[str] = None, automod: bool = True, count: bool = False) -> Union[InfractionT, int]:
+    def grab_filter_infractions(self,
+                                user: Optional[int] = None,
+                                moderator: Optional[int] = None,
+                                itype: Optional[str] = None,
+                                automod: Optional[bool] = None,
+                                count: bool = False) -> Union[List[InfractionT], int]:
 
         schm: List[List[str]] = []
         if user is not None:
@@ -310,21 +326,25 @@ class db_hlapi:
             schm.append(["moderatorID", str(moderator)])
         if itype is not None:
             schm.append(["type", itype])
-        if not automod:
-            schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
 
-        db_type = Union[InfractionT, int]
+        if automod is False:
+            schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
+        elif automod is True:
+            schm.append(["reason", "[AUTOMOD]%", "LIKE"])
+
+        db_type = Union[List[InfractionT], int]
+        data: db_type
 
         try:
             if self._db.TEXT_KEY:
                 self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
                 self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
             if count:
-                data = cast(db_type, self._db.multicount_rows_from_table(f"{self.guild}_infractions", schm))
+                data = self._db.multicount_rows_from_table(f"{self.guild}_infractions", schm)
             else:
-                data = cast(db_type, self._db.multifetch_rows_from_table(f"{self.guild}_infractions", schm))
+                data = cast(List[InfractionT], list(self._db.multifetch_rows_from_table(f"{self.guild}_infractions", schm)))
         except db_error.OperationalError:
-            data = cast(db_type, tuple()) if not count else 0
+            data = list() if not count else 0
 
         return data
 
