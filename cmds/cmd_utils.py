@@ -37,7 +37,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_permissions, parse_boolean, parse_user_member_noexcept
 from lib_loaders import load_embed_color, embed_colors, datetime_now
 from lib_compatibility import user_avatar_url, discord_datetime_now
-from lib_sonnetcommands import SonnetCommand
+from lib_sonnetcommands import SonnetCommand, CallKwargs
 from lib_sonnetconfig import BOT_NAME
 import lib_constants as constants
 
@@ -172,7 +172,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             override_commands: Optional[List[Tuple[str, str]]] = None
 
             if (override := getattr(curmod, "__help_override__", None)) is not None:
-                newhelp: Optional[Tuple[str, List[Tuple[str, str]]]] = await override(message, args, client, **kwargs)
+                newhelp: Optional[Tuple[str, List[Tuple[str, str]]]] = await CallKwargs(override)(message, args, client, **kwargs)
 
                 if newhelp is not None:
                     description = newhelp[0]
