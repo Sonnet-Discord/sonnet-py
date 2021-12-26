@@ -332,21 +332,16 @@ class db_hlapi:
         elif automod is True:
             schm.append(["reason", "[AUTOMOD]%", "LIKE"])
 
-        db_type = Union[List[InfractionT], int]
-        data: db_type
-
         try:
             if self._db.TEXT_KEY:
                 self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
                 self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
             if count:
-                data = self._db.multicount_rows_from_table(f"{self.guild}_infractions", schm)
+                return self._db.multicount_rows_from_table(f"{self.guild}_infractions", schm)
             else:
-                data = cast(List[InfractionT], list(self._db.multifetch_rows_from_table(f"{self.guild}_infractions", schm)))
+                return cast(List[InfractionT], list(self._db.multifetch_rows_from_table(f"{self.guild}_infractions", schm)))
         except db_error.OperationalError:
-            data = list() if not count else 0
-
-        return data
+            return 0 if count else list()
 
     # Check if a message is on the starboard already
     def in_starboard(self, message_id: int) -> bool:
