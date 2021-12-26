@@ -46,7 +46,9 @@ class CommandError(Exception):
 class CommandCtx:
     __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod"
 
-    def __init__(self, kwargdata: Dict[str, Any]) -> None:
+    def __init__(self, CtxToKwargdata: Dict[str, Any] = {}, **askwargs: Any) -> None:
+
+        kwargdata = askwargs if askwargs else CtxToKwargdata
 
         self.stats: Dict[str, int] = kwargdata["stats"]
         self.cmds: List[lexdpyk.cmd_module] = kwargdata["cmds"]
