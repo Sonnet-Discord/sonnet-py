@@ -233,28 +233,40 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def ban_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    if len(args) >= 3 and args[1] in ["-d", "--days"]:
+        try:
+            delete_days = int(args[2])
+            del args[2]
+            del args[1]
+        except ValueError:
+            delete_days = 0
+    else:
+        delete_days = 0
+
+    # bounds check (docs say 0 is min and 7 is max)
+    if delete_days > 7: delete_days = 7
+    elif delete_days < 0: delete_days = 0
 
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ramfs, automod=automod)
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod)
     except InfractionGenerationError:
         return 1
 
     try:
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.guild.ban(user, delete_message_days=0, reason=reason[:512])
+        await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
     except discord.errors.Forbidden:
         await message.channel.send(f"{BOT_NAME} does not have permission to ban this user.")
         return 1
 
-    if verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," * bool(delete_days)
+
+    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -804,8 +816,8 @@ commands = {
         'execute': kick_user
         },
     'ban': {
-        'pretty_name': 'ban <uid> [reason]',
-        'description': 'Ban a user',
+        'pretty_name': 'ban <uid> [-d DAYS] [reason]',
+        'description': 'Ban a user, optionally delete messages with -d',
         'permission': 'moderator',
         'execute': ban_user
         },
