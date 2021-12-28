@@ -172,7 +172,7 @@ class HelpHelper:
         else:
             perms = "NULL"
 
-        hasperm = await parse_permissions(self.message, self.ctx.conf_cache, perms, verbose=False)
+        hasperm = await parse_permissions(self.message, self.ctx.conf_cache, command.permission, verbose=False)
         permstr = f" (You {'do not '*(not hasperm)}have this perm)"
 
         cmd_embed.add_field(name="Permission level:", value=perms + permstr)
