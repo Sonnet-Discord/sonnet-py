@@ -1,15 +1,15 @@
 # Utility Commands
 # Funey, 2020
 
-# Predefined dictionaries.
+import importlib
+
+import discord
 
 import asyncio
-import importlib
 import random
 import time
 from datetime import datetime
 
-import discord
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
@@ -35,16 +35,16 @@ import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
 
-from typing import Any, List, Optional, Tuple, cast
-
-import lib_constants as constants
-import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import datetime_now, embed_colors, load_embed_color
 from lib_parsers import (parse_boolean, parse_permissions, parse_user_member_noexcept)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
+import lib_constants as constants
+import lib_lexdpyk_h as lexdpyk
+
+from typing import Any, List, Optional, Tuple, cast
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -258,8 +258,8 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         except ValueError:
             raise lib_sonnetcommands.CommandError("ERROR: Page not valid int")
 
-    PREFIX = ctx.conf_cache["prefix"]
-    help_helper = HelpHelper(message, message.guild, args, client, ctx, PREFIX, helpname)
+    prefix = ctx.conf_cache["prefix"]
+    help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname)
 
     if args:
 
@@ -306,11 +306,9 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             no_command_text: str = f"No command {'or command module '*(not commandonly)}with that name"
 
             if probably_tried_paging:
-                await message.channel.send(f"{no_command_text} (did you mean `{PREFIX}help -p {int(args[0])}`?)")
-            else:
-                await message.channel.send(no_command_text)
+                raise lib_sonnetcommands.CommandError(f"{no_command_text} (did you mean `{prefix}help -p {int(args[0])}`?)")
 
-            return 1
+            raise lib_sonnetcommands.CommandError(no_command_text)
 
     # Total help
     else:
