@@ -105,6 +105,7 @@ alive
 alternative
 always
 amazing
+among
 ampersand
 amplifier
 analog
@@ -122,6 +123,7 @@ archive
 area
 art
 asterisk
+asynchronous
 attribute
 audio
 autobiography
@@ -136,6 +138,7 @@ baker
 bakery
 balance
 ban
+banned
 bass
 bathroom
 battlegrounds
@@ -146,6 +149,7 @@ beats
 bedrock
 better
 bids
+big
 billion
 biography
 bioluminescent
@@ -177,6 +181,7 @@ cancelled
 cancelling
 candy
 cannon
+cannot
 cans
 capital
 car
@@ -189,11 +194,11 @@ casting
 cat
 changer
 channel
+char
 charisma
 chat
 chicken
 chilli
-cholerstorol
 chronicles
 class
 clay
@@ -260,6 +265,7 @@ destroys
 developer
 deviant
 diamond
+dictionary
 diet
 differentiaton
 difficult
@@ -339,6 +345,7 @@ eventuations
 evenwise
 evenworthy
 ever
+evergreen
 every
 everyone
 evil
@@ -522,6 +529,7 @@ hundred
 hundredth
 hyper
 if
+imposter
 in
 incredible
 information
@@ -530,6 +538,7 @@ insert
 inside
 instrument
 instrumental
+int
 integer
 integrated
 integration
@@ -612,8 +621,10 @@ mouse
 multiplication
 music
 mute
+muted
 nacho
 neckbeard
+necromancy
 negative
 neptune
 netbook
@@ -889,6 +900,7 @@ seventieth
 seventy
 shasta
 shift
+short
 showcase
 siding
 signaller
@@ -907,6 +919,7 @@ sled
 sledgehammer
 sleep
 sleeping
+slept
 slow
 slower
 slowest
@@ -975,7 +988,7 @@ tilde
 time
 times
 toast
-tomtoes
+tomatoes
 tower
 train
 tram
@@ -998,7 +1011,9 @@ twist
 two
 ultra
 underscore
+union
 unit
+unordered
 unreferenced
 unreferred
 unrefilled
@@ -1063,6 +1078,8 @@ vinyl
 vista
 volume
 wallet
+warn
+warned
 watch
 watching
 water
