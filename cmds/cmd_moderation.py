@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, time, asyncio, math, io
+import discord, time, asyncio, math, io, shlex
 
 import lib_db_obfuscator
 
@@ -35,12 +35,18 @@ from lib_loaders import generate_infractionid, load_embed_color, embed_colors, d
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import grab_files, generate_reply_field, parse_channel_message_noexcept, parse_user_member, format_duration
 from lib_compatibility import user_avatar_url
-from lib_sonnetconfig import BOT_NAME
+from lib_sonnetconfig import BOT_NAME, REGEX_VERSION
 from lib_sonnetcommands import CommandCtx
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
 import lib_lexdpyk_h as lexdpyk
+
+# Import re to trick type checker into using re stubs
+import re
+
+# Import into globals hashmap to ignore pyflakes redefinition errors
+globals()["re"] = importlib.import_module(REGEX_VERSION)
 
 
 # Catches error if the bot cannot message the user
@@ -433,7 +439,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     tstart = time.monotonic()
 
     # Reparse args
-    args = (" ".join(args)).replace("=", " ").split()
+    args = shlex.split(" ".join(args))
 
     # Parse flags
     selected_chunk: int = 0
@@ -442,6 +448,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     per_page: int = 20
     user_affected: Optional[int] = None
     automod: Optional[bool] = None
+    filtering: Optional[str] = None
     for index, item in enumerate(args):
         try:
             if item in ["-p", "--page"]:
@@ -454,6 +461,8 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
                 per_page = int(args[index + 1])
             elif item in ["-t", "--type"]:
                 infraction_type = (args[index + 1])
+            elif item in ["-f", "--filter"]:
+                filtering = args[index + 1]
             elif item == "--no-automod":
                 automod = False
             elif item == "--automod":
@@ -473,6 +482,16 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
         await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
         return 1
 
+    refilter: "Optional[re.Pattern[str]]"
+
+    if filtering is not None:
+        try:
+            refilter = re.compile(filtering)
+        except re.error:
+            raise lib_sonnetcommands.CommandError("ERROR: Filter regex is invalid")
+    else:
+        refilter = None
+
     with db_hlapi(message.guild.id) as db:
         if user_affected or responsible_mod:
             infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
@@ -480,6 +499,9 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
         else:
             await message.channel.send("Please specify a user or moderator")
             return 1
+
+    if refilter is not None:
+        infractions = [i for i in infractions if refilter.findall(i[4])]
 
     # Sort newest first
     infractions.sort(reverse=True, key=lambda a: a[5])
@@ -850,8 +872,8 @@ commands = {
         },
     'search-infractions':
         {
-            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--[no-]automod]',
-            'description': 'Grab infractions of a user',
+            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--[no-]automod] [-f FILTER]',
+            'description': 'Grab infractions of a user, -f uses regex',
             'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
             'execute': search_infractions_by_user
