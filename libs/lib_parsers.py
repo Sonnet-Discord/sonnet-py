@@ -28,10 +28,14 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, cast
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List
 import lib_lexdpyk_h as lexdpyk
 
-re: Any = importlib.import_module(REGEX_VERSION)
+# Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
+import re
+
+# Place this in the globals scope by hand to avoid pyflakes saying its a redefinition
+globals()["re"] = importlib.import_module(REGEX_VERSION)
 
 
 class errors:
@@ -62,6 +66,11 @@ _parse_blacklist_inputs = Tuple[discord.Message, Dict[str, Any], lexdpyk.ram_fil
 
 def _formatregexfind(gex: List[Any]) -> str:
     return ", ".join(i if isinstance(i, str) else "".join(i) for i in gex)
+
+
+# This exists because type checkers cant infer lambda return types or something
+def returnsNone() -> None:
+    ...
 
 
 # Run a blacklist pass over a messages content and files
@@ -104,7 +113,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
         if blacklist["url-blacklist"]:
             ramfs.create_f(f"{message.guild.id}/regex/url", f_type=re.compile, f_args=[_compileurl(blacklist["url-blacklist"])])
         else:
-            ramfs.create_f(f"{message.guild.id}/regex/url", f_type=cast(Any, lambda: None), f_args=[])
+            ramfs.create_f(f"{message.guild.id}/regex/url", f_type=returnsNone)
 
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]

@@ -24,6 +24,14 @@ class ram_filesystem(Protocol):
         ...
 
     @overload
+    def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Callable[[Any], Obj]] = None, f_args: Optional[List[Any]] = None) -> Obj:
+        ...
+
+    @overload
+    def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Callable[[], Obj]] = None) -> Obj:
+        ...
+
+    @overload
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Obj]] = None, f_args: Optional[List[Any]] = None) -> Obj:
         ...
 
