@@ -69,7 +69,7 @@ def user_avatar_url(user: Union[discord.User, discord.Member]) -> str:
     # 1.7: user.avatar_url -> Asset (supports __str__())
     # 2.0: user.display_avatar.url -> str
 
-    return _avatar_url_func(user)
+    return user.display_avatar.url
 
 
 def default_avatar_url(user: Union[discord.User, discord.Member]) -> str:
@@ -81,7 +81,7 @@ def default_avatar_url(user: Union[discord.User, discord.Member]) -> str:
     :raises: AttributeError - Failed to get the avatar url (programming error)
     """
 
-    return _default_avatar_url_func(user)
+    return user.default_avatar.url
 
 
 def has_default_avatar(user: Union[discord.User, discord.Member]) -> bool:
@@ -92,7 +92,7 @@ def has_default_avatar(user: Union[discord.User, discord.Member]) -> bool:
     :returns: bool - if the user has a default avatar
     """
 
-    return _default_avatar_url_func(user) == _avatar_url_func(user)
+    return user.avatar is None
 
 
 # Returns either an aware or unaware
@@ -108,4 +108,4 @@ def discord_datetime_now() -> datetime.datetime:
     # 1.7: datetime naive
     # 2.0: datetime aware
 
-    return _datetime_now_func()
+    return datetime.datetime.now(datetime.timezone.utc)
