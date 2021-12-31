@@ -1,4 +1,4 @@
-git+github.com/Pycord-Development/pycord
+git+https://github.com/Pycord-Development/pycord
 cryptography >= 36.0.1
 lz4 >= 3.1.10
 typing-extensions >= 3.7.4
