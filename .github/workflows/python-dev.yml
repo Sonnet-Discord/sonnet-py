@@ -5,7 +5,7 @@ name: Dev branch
 
 on:
   push:
-    branches: [ dev-unstable dev-2.0 ]
+    branches: [ dev-unstable, dev-2.0 ]
 
 
 
