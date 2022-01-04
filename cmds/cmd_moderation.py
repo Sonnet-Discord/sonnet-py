@@ -29,6 +29,9 @@ importlib.reload(lib_sonnetconfig)
 import lib_sonnetcommands
 
 importlib.reload(lib_sonnetcommands)
+import lib_tparse
+
+importlib.reload(lib_tparse)
 
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
@@ -37,6 +40,7 @@ from lib_parsers import grab_files, generate_reply_field, parse_channel_message_
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME, REGEX_VERSION
 from lib_sonnetcommands import CommandCtx
+from lib_tparse import Parser
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
@@ -432,6 +436,10 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
     if verbose: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
+def get_user_id(s: str) -> int:
+    return int(s.strip("<@!>"))
+
+
 async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
@@ -442,59 +450,50 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     args = shlex.split(" ".join(args))
 
     # Parse flags
-    selected_chunk: int = 0
-    responsible_mod: Optional[int] = None
-    infraction_type: Optional[str] = None
-    per_page: int = 20
-    user_affected: Optional[int] = None
-    automod: Optional[bool] = None
-    filtering: Optional[str] = None
-    for index, item in enumerate(args):
-        try:
-            if item in ["-p", "--page"]:
-                selected_chunk = int(args[index + 1]) - 1
-            elif item in ["-m", "--mod"]:
-                responsible_mod = int(args[index + 1].strip("<@!>"))
-            elif item in ["-u", "--user"]:
-                user_affected = int(args[index + 1].strip("<@!>"))
-            elif item in ["-i", "--infractioncount"]:
-                per_page = int(args[index + 1])
-            elif item in ["-t", "--type"]:
-                infraction_type = (args[index + 1])
-            elif item in ["-f", "--filter"]:
-                filtering = args[index + 1]
-            elif item == "--no-automod":
-                automod = False
-            elif item == "--automod":
-                automod = True
-        except (ValueError, IndexError):
-            await message.channel.send("Invalid flags supplied")
-            return 1
+    parser = Parser("search-infractions")
+
+    selected_chunk_f = parser.add_arg(["-p", "--page"], lambda s: int(s) - 1)
+    responsible_mod_f = parser.add_arg(["-m", "--mod"], get_user_id)
+    user_affected_f = parser.add_arg(["-u", "--user"], get_user_id)
+    per_page_f = parser.add_arg(["-i", "--infractioncount"], int)
+    infraction_type_f = parser.add_arg(["-t", "--type"], str)
+    filtering_f = parser.add_arg(["-f", "--filter"], str)
+    automod_f = lib_tparse.add_true_false_flag(parser, "automod")
+
+    try:
+        parser.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True)
+    except lib_tparse.ParseFailureError:
+        await message.channel.send("Failed to parse flags")
+        return 1
+
+    selected_chunk = selected_chunk_f.get(0)
+    per_page = per_page_f.get(20)
+    user_affected = user_affected_f.get()
 
     # Default to user if no user/mod flags are supplied
-    if None is responsible_mod is user_affected:
+    if None is responsible_mod_f.get() is user_affected:
         try:
-            user_affected = int(args[0].strip("<@!>"))
+            user_affected = get_user_id(args[0])
         except (IndexError, ValueError):
             pass
 
-    if not 5 <= per_page <= 40:
+    if not 5 <= per_page <= 40:  # pytype: disable=unsupported-operands
         await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
         return 1
 
     refilter: "Optional[re.Pattern[str]]"
 
-    if filtering is not None:
+    if (f := filtering_f.get()) is not None:
         try:
-            refilter = re.compile(filtering)
+            refilter = re.compile(f)
         except re.error:
             raise lib_sonnetcommands.CommandError("ERROR: Filter regex is invalid")
     else:
         refilter = None
 
     with db_hlapi(message.guild.id) as db:
-        if user_affected or responsible_mod:
-            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
+        if user_affected or responsible_mod_f.get():
+            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod_f.get(), itype=infraction_type_f.get(), automod=automod_f.get())
             assert isinstance(infractions, list)
         else:
             await message.channel.send("Please specify a user or moderator")
@@ -517,11 +516,11 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
         return 1
-    elif selected_chunk < -1:
+    elif selected_chunk < -1:  # pytype: disable=unsupported-operands
         selected_chunk %= cpagecount
         selected_chunk += 1
 
-    if not 0 <= selected_chunk < cpagecount:
+    if not 0 <= selected_chunk < cpagecount:  # pytype: disable=unsupported-operands
         await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
         return 1
 

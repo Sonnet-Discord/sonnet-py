@@ -8,6 +8,7 @@ import discord
 import asyncio
 import random
 import time
+import io
 from datetime import datetime
 
 import lib_db_obfuscator
@@ -34,6 +35,9 @@ importlib.reload(lib_sonnetcommands)
 import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
+import lib_tparse
+
+importlib.reload(lib_tparse)
 
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
@@ -41,6 +45,7 @@ from lib_loaders import datetime_now, embed_colors, load_embed_color
 from lib_parsers import (parse_boolean, parse_permissions, parse_user_member_noexcept)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
+from lib_tparse import Parser
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
 
@@ -239,24 +244,22 @@ async def help_function(message: discord.Message, args: List[str], client: disco
         return 1
 
     helpname: str = f"{BOT_NAME} Help"
+    per_page: int = 10
 
     cmds = ctx.cmds
     cmds_dict = ctx.cmds_dict
 
-    page: int = 0
-    per_page: int = 10
-    commandonly = '-c' in args
+    parser = Parser("help")
+    pageP = parser.add_arg(["-p", "--page"], lambda s: int(s) - 1)
+    commandonlyP = parser.add_arg("-c", lib_tparse.store_true, flag=True)
 
-    # TODO(ultrabear): make this look less horrible, it works at least
-    if len(args) > 1:
-        try:
-            if args[0] in ["-p", "--page"]:
-                page = int(args[1]) - 1
-                args = args[2:]
-            elif len(args) > 2 and args[1] in ["-p", "--page"]:
-                page = int(args[2]) - 1
-        except ValueError:
-            raise lib_sonnetcommands.CommandError("ERROR: Page not valid int")
+    try:
+        parser.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True, consume=True)
+    except lib_tparse.ParseFailureError:
+        raise lib_sonnetcommands.CommandError("Could not parse pagecount")
+
+    page = pageP.get(0)
+    commandonly = commandonlyP.get() is True
 
     prefix = ctx.conf_cache["prefix"]
     help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname)
@@ -276,7 +279,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
                 )
             cmd_embed.set_author(name=helpname)
 
-            if not (0 <= page < pagecount):
+            if not (0 <= page < pagecount):  # pytype: disable=unsupported-operands
                 raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
 
             for name, desc in commands[page * per_page:(page * per_page) + per_page]:
