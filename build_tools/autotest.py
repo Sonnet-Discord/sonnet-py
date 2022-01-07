@@ -62,7 +62,7 @@ def main() -> None:
         "pyflakes": "pyflakes .",
         "mypy": "mypy . --ignore-missing-imports --strict --warn-unreachable",
         "yapf": "yapf -drp .",
-        "pylint": Shell("pylint */ -E -j4"),
+        "pylint": Shell("pylint **/*.py -E -j4"),
         "pytype": "pytype .",
         }
 

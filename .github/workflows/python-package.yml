@@ -57,4 +57,4 @@ jobs:
         python -m pip install mariadb
     - name: linting pass
       run: |
-        pylint */ -E -j4
+        pylint **/*.py -E -j4
