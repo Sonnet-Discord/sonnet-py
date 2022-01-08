@@ -60,10 +60,10 @@ def main() -> None:
 
     tests: Dict[str, Union[str, Shell]] = {
         "pyflakes": "pyflakes .",
-        "mypy": "mypy . --ignore-missing-imports --strict --warn-unreachable",
+        "mypy": "mypy . --ignore-missing-imports --strict --warn-unreachable --python-version 3.8",
         "yapf": "yapf -drp .",
         "pylint": Shell("pylint **/*.py -E -j4"),
-        "pytype": "pytype .",
+        #"pytype": "pytype .",
         }
 
     nottest = set(sys.argv[1:])
