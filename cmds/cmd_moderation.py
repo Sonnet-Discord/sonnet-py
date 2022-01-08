@@ -914,12 +914,13 @@ commands = {
     'get-message': {
         'alias': 'grab-message'
         },
-    'grab-message': {
-        'pretty_name': 'grab-message <message> [-r]',
-        'description': 'Grab a message and show its contents, specify -r to get message content as a file',
-        'permission': 'moderator',
-        'execute': grab_guild_message
-        },
+    'grab-message':
+        {
+            'pretty_name': 'grab-message <message> [-r]',
+            'description': 'Grab a message and show its contents, specify -r to get message content as a file',
+            'permission': 'moderator',
+            'execute': grab_guild_message
+            },
     'purge':
         {
             'pretty_name': 'purge <limit> [user]',
