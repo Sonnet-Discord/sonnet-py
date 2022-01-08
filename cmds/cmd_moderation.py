@@ -659,11 +659,17 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     if not message.guild:
         return 1
 
-    discord_message, _ = await parse_channel_message_noexcept(message, args, client)
+    discord_message, nargs = await parse_channel_message_noexcept(message, args, client)
 
     if not discord_message.guild:
         await message.channel.send("ERROR: Message not in any guild")
         return 1
+
+    sendraw = False
+    for arg in args[nargs:]:
+        if arg in ["-r", "--raw"]:
+            sendraw = True
+            break
 
     # Generate replies
     message_content = generate_reply_field(discord_message)
@@ -681,6 +687,10 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     if not fileobjs:
         awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
         fileobjs = [await i for i in awaitobjs]
+
+    if sendraw:
+        file_content = io.BytesIO(discord_message.content.encode("utf8"))
+        fileobjs.append(discord.File(file_content, filename=f"{discord_message.id}.at.{int(datetime_now().timestamp())}.txt"))
 
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)
@@ -905,8 +915,8 @@ commands = {
         'alias': 'grab-message'
         },
     'grab-message': {
-        'pretty_name': 'grab-message <message>',
-        'description': 'Grab a message and show its contents',
+        'pretty_name': 'grab-message <message> [-r]',
+        'description': 'Grab a message and show its contents, specify -r to get message content as a file',
         'permission': 'moderator',
         'execute': grab_guild_message
         },
