@@ -522,4 +522,4 @@ commands: Dict[str, Callable[..., Any]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.11-DEV"
+version_info: str = "1.2.11"

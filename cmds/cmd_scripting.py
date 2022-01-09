@@ -345,4 +345,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.11-DEV"
+version_info: str = "1.2.11"
