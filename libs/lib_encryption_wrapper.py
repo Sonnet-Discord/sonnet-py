@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives import hashes, hmac
 
 import io
 
-from typing import Generator, Any, Union
+from typing import Generator, Any, Union, Protocol
 
 
 class errors:
@@ -23,18 +23,15 @@ class errors:
 
 # Never actually called
 class crypto_typing:
-    class encryptor_decryptor:
-        def __init__(self) -> None:
-            pass
-
+    class encryptor_decryptor(Protocol):
         def update(self, buf: Union[bytes, bytearray]) -> bytes:
-            return bytes()
+            ...
 
         def update_into(self, bufin: Union[bytes, bytearray], bufout: Union[bytes, bytearray]) -> None:
-            pass
+            ...
 
         def finalize(self) -> bytes:
-            return bytes()
+            ...
 
 
 def directBinNumber(inData: int, length: int) -> bytes:

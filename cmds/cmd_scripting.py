@@ -19,7 +19,7 @@ import lib_sonnetcommands
 importlib.reload(lib_sonnetcommands)
 
 from lib_parsers import parse_permissions
-from lib_sonnetcommands import SonnetCommand
+from lib_sonnetcommands import SonnetCommand, CommandCtx
 
 from typing import List, Any, Tuple, Awaitable, Dict
 import lib_lexdpyk_h as lexdpyk
@@ -53,15 +53,15 @@ def do_cache_sweep(cache: str, ramfs: lexdpyk.ram_filesystem, guild: discord.Gui
                 pass
 
 
-async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
     tstart: int = time.monotonic_ns()
     arguments: List[str] = message.content.split("\n")
 
-    verbose: bool = kwargs["verbose"]
-    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+    verbose = ctx.verbose
+    cmds_dict = ctx.cmds_dict
 
     try:
         shellargs = shlex.split(arguments[0])
@@ -69,7 +69,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
 
-    self_name: str = shellargs[0][len(kwargs["conf_cache"]["prefix"]):]
+    self_name: str = shellargs[0][len(ctx.conf_cache["prefix"]):]
 
     if verbose == False:
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
@@ -112,11 +112,14 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
         cache_args: List[str] = []
 
+        newctx = pycopy.copy(ctx)
+        newctx.verbose = False
+
         for totalcommand in commandsparse:
 
             command = totalcommand[0]
             arguments = totalcommand[1]
-            message.content = f'{kwargs["conf_cache"]["prefix"]}{totalcommand[0]} ' + " ".join(totalcommand[1])
+            message.content = f'{ctx.conf_cache["prefix"]}{totalcommand[0]} ' + " ".join(totalcommand[1])
 
             if command in cmds_dict:
                 if "alias" in cmds_dict[command]:
@@ -124,28 +127,15 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
                 cmd = SonnetCommand(cmds_dict[command])
 
-                permission = await parse_permissions(message, kwargs["conf_cache"], cmd['permission'])
+                permission = await parse_permissions(message, ctx.conf_cache, cmd['permission'])
 
                 if permission:
 
-                    suc = (
-                        await cmd['execute'](
-                            message,
-                            arguments,
-                            client,
-                            stats=kwargs["stats"],
-                            cmds=kwargs["cmds"],
-                            ramfs=kwargs["ramfs"],
-                            bot_start=kwargs["bot_start"],
-                            dlibs=kwargs["dlibs"],
-                            main_version=kwargs["main_version"],
-                            kernel_ramfs=kwargs["kernel_ramfs"],
-                            conf_cache=kwargs["conf_cache"],
-                            automod=kwargs["automod"],
-                            cmds_dict=cmds_dict,
-                            verbose=False,
-                            )
-                        ) or 0
+                    try:
+                        suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
+                    except lib_sonnetcommands.CommandError as ce:
+                        await message.channel.send(ce)
+                        suc = 1
 
                     # Stop processing if error
                     if suc != 0:
@@ -157,7 +147,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                 else:
                     return 1
 
-        ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
+        ramfs: lexdpyk.ram_filesystem = ctx.ramfs
 
         for i in cache_args:
             do_cache_sweep(i, ramfs, message.guild)
@@ -221,15 +211,15 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
     return targs, targlen, cmd, command, endlargs
 
 
-async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
     tstart: int = time.monotonic_ns()
-    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+    cmds_dict = ctx.cmds_dict
 
     try:
-        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
+        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
     except MapProcessError:
         return 1
 
@@ -237,99 +227,84 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
     keepref = message.content
     try:
 
+        newctx = pycopy.copy(ctx)
+        newctx.verbose = False
+
         for i in targs[targlen:]:
 
-            message.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
+            message.content = f'{ctx.conf_cache["prefix"]}{command} {i} {" ".join(endlargs)}'
 
-            suc = (
-                await cmd['execute'](
-                    message,
-                    i.split() + endlargs,
-                    client,
-                    stats=kwargs["stats"],
-                    cmds=kwargs["cmds"],
-                    ramfs=kwargs["ramfs"],
-                    bot_start=kwargs["bot_start"],
-                    dlibs=kwargs["dlibs"],
-                    main_version=kwargs["main_version"],
-                    kernel_ramfs=kwargs["kernel_ramfs"],
-                    conf_cache=kwargs["conf_cache"],
-                    automod=kwargs["automod"],
-                    cmds_dict=cmds_dict,
-                    verbose=False,
-                    )
-                ) or 0
+            try:
+                suc = (await cmd.execute_ctx(message, i.split() + endlargs, client, newctx)) or 0
+            except lib_sonnetcommands.CommandError as ce:
+                await message.channel.send(ce)
+                suc = 1
 
             if suc != 0:
                 await message.channel.send(f"ERROR: command `{command}` exited with non success status")
                 return 1
 
         # Do cache sweep on command
-        do_cache_sweep(cmd['cache'], kwargs["ramfs"], message.guild)
+        do_cache_sweep(cmd.cache, ctx.ramfs, message.guild)
 
         tend: int = time.monotonic_ns()
 
         fmttime: int = (tend - tstart) // 1000 // 1000
 
-        if kwargs["verbose"]: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
+        if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
 
     finally:
         message.content = keepref
 
 
-async def sonnet_async_map(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def wrapasyncerror(cmd: SonnetCommand, message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
+    try:
+        await cmd.execute_ctx(message, args, client, ctx)
+    except lib_sonnetcommands.CommandError as ce:  # catch CommandError to print message
+        try:
+            await message.channel.send(ce)
+        except discord.errors.Forbidden:
+            pass
+
+
+async def sonnet_async_map(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
     tstart: int = time.monotonic_ns()
-    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+    cmds_dict: lexdpyk.cmd_modules_dict = ctx.cmds_dict
 
     try:
-        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, kwargs["conf_cache"])
+        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
     except MapProcessError:
         return 1
 
     promises: List[Awaitable[Any]] = []
+
+    newctx = pycopy.copy(ctx)
+    newctx.verbose = False
 
     for i in targs[targlen:]:
 
         # We need to copy the message object to avoid race conditions since all the commands run at once
         # All attrs are readonly except for content which we modify the pointer to, so avoiding a deepcopy is possible
         newmsg: discord.Message = pycopy.copy(message)
-        newmsg.content = f'{kwargs["conf_cache"]["prefix"]}{command} {i} {" ".join(endlargs)}'
+        newmsg.content = f'{ctx.conf_cache["prefix"]}{command} {i} {" ".join(endlargs)}'
 
-        promises.append(
-            asyncio.create_task(
-                cmd['execute'](
-                    newmsg,
-                    i.split() + endlargs,
-                    client,
-                    stats=kwargs["stats"],
-                    cmds=kwargs["cmds"],
-                    ramfs=kwargs["ramfs"],
-                    bot_start=kwargs["bot_start"],
-                    dlibs=kwargs["dlibs"],
-                    main_version=kwargs["main_version"],
-                    kernel_ramfs=kwargs["kernel_ramfs"],
-                    conf_cache=kwargs["conf_cache"],
-                    automod=kwargs["automod"],
-                    cmds_dict=cmds_dict,
-                    verbose=False,
-                    )
-                )
-            )
+        # Call error handler over command to allow catching CommandError in async
+        promises.append(asyncio.create_task(wrapasyncerror(cmd, newmsg, i.split() + endlargs, client, newctx)))
 
     for p in promises:
         await p
 
     # Do a cache sweep after running
-    do_cache_sweep(cmd['cache'], kwargs["ramfs"], message.guild)
+    do_cache_sweep(cmd['cache'], ctx.ramfs, message.guild)
 
     tend: int = time.monotonic_ns()
 
     fmttime: int = (tend - tstart) // 1000 // 1000
 
-    if kwargs["verbose"]: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
+    if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
 
 
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
@@ -370,4 +345,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11"

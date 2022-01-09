@@ -29,7 +29,11 @@ from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional
 from typing import Final  # pytype: disable=import-error
 import lib_constants as constants
 
-re: Any = importlib.import_module(REGEX_VERSION)
+# Import re to trick type checker into using re stubs
+import re
+
+# Import into globals hashmap to ignore pyflakes redefinition errors
+globals()["re"] = importlib.import_module(REGEX_VERSION)
 
 wb_allowedrunes = string.ascii_lowercase + string.digits + ","
 urlb_allowedrunes = string.ascii_lowercase + string.digits + "-,."
@@ -685,4 +689,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11"

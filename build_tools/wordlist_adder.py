@@ -11,7 +11,7 @@ try:
         data = input("> ")
         if data in used:
             print("Already taken")
-        elif data and all([(o := ord(i)) >= ord('a') and o <= ord('z') for i in data]):
+        elif data and all('a' <= i <= 'z' for i in data):
             used.add(data)
         else:
             print("Nil input/contains non a-z")

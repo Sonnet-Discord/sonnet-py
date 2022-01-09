@@ -4,6 +4,10 @@ GOCMD=go
 GOversion=2.0.0-DEV.3
 compilefolder=./libs/compiled
 
+typecheck:
+	pyflakes .
+	mypy . --strict --ignore-missing-imports --warn-unreachable
+
 all: ${compilefolder} ./libs/sfdbcloader.c
 	${CC} -fPIC -shared -Wall -Wextra -Werror -O3 -o ${compilefolder}/sonnet.${version}.so ./libs/sfdbcloader.c
 

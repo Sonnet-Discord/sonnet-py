@@ -3,7 +3,8 @@
 
 import importlib
 
-import time, asyncio, os, hashlib, io
+import time, asyncio, os, hashlib
+import copy as pycopy
 
 import discord, lz4.frame
 
@@ -37,7 +38,7 @@ from lib_loaders import load_message_config, inc_statistics_better, read_vnum, w
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url, discord_datetime_now
-from lib_sonnetcommands import SonnetCommand
+from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx
 
 from typing import List, Any, Dict, Optional, Callable, Tuple
 import lib_lexdpyk_h as lexdpyk
@@ -192,9 +193,24 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
 
     if broke_blacklist:
+
+        command_ctx = CommandCtx(
+            stats={},
+            cmds=kargs["command_modules"][0],
+            ramfs=ramfs,
+            bot_start=kargs["bot_start"],
+            dlibs=kargs["dynamiclib_modules"][0],
+            main_version=kargs["kernel_version"],
+            kernel_ramfs=kernel_ramfs,
+            conf_cache={},
+            verbose=False,
+            cmds_dict=kargs["command_modules"][1],
+            automod=True
+            )
+
         asyncio.create_task(attempt_message_delete(message))
         execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await kargs["command_modules"][1][mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True)
+        await CallCtx(kargs["command_modules"][1][mconf["blacklist-action"]]['execute'])(message, execargs, client, command_ctx)
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kargs["ramfs"]))
@@ -328,14 +344,14 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
 
         ramfs_path = f"{message.guild.id}/files/{message.id}/{hashlib.sha256(fname).hexdigest()}"
 
-        namefile = kernel_ramfs.create_f(f"{ramfs_path}/name", f_type=io.BytesIO)
+        namefile = kernel_ramfs.create_f(f"{ramfs_path}/name")
         namefile.write(fname)
 
-        keyfile = kernel_ramfs.create_f(f"{ramfs_path}/key", f_type=io.BytesIO)
+        keyfile = kernel_ramfs.create_f(f"{ramfs_path}/key")
         keyfile.write(key := os.urandom(32))
         keyfile.write(iv := os.urandom(16))
 
-        pointerfile = kernel_ramfs.create_f(f"{ramfs_path}/pointer", f_type=io.BytesIO)
+        pointerfile = kernel_ramfs.create_f(f"{ramfs_path}/pointer")
         pointer = hashlib.sha256(fname + key + iv).hexdigest()
         file_loc = f"./datastore/{message.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
@@ -378,13 +394,31 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
     message_deleted: bool = False
 
+    command_ctx = CommandCtx(
+        stats=stats,
+        cmds=command_modules,
+        ramfs=ramfs,
+        bot_start=bot_start_time,
+        dlibs=kargs["dynamiclib_modules"][0],
+        main_version=main_version_info,
+        kernel_ramfs=kargs["kernel_ramfs"],
+        conf_cache=mconf,
+        verbose=True,
+        cmds_dict=command_modules_dict,
+        automod=False
+        )
+
+    automod_ctx = pycopy.copy(command_ctx)
+    automod_ctx.verbose = False
+    automod_ctx.automod = True
+
     # If blacklist broken generate infraction
     broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(command_modules_dict[mconf["blacklist-action"]]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True))
+        asyncio.create_task(CallCtx(command_modules_dict[mconf["blacklist-action"]]['execute'])(message, execargs, client, automod_ctx))
 
     if spammer:
         message_deleted = True
@@ -392,7 +426,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(command_modules_dict["mute"]['execute'](message, execargs, client, verbose=False, ramfs=ramfs, automod=True))
+                asyncio.create_task(CallCtx(command_modules_dict["mute"]["execute"])(message, execargs, client, automod_ctx))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
@@ -433,22 +467,13 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         try:
             stats["end"] = round(time.time() * 100000)
 
-            await cmd.execute(
-                message,
-                arguments,
-                client,
-                stats=stats,
-                cmds=command_modules,
-                ramfs=ramfs,
-                bot_start=bot_start_time,
-                dlibs=kargs["dynamiclib_modules"][0],
-                main_version=main_version_info,
-                kernel_ramfs=kargs["kernel_ramfs"],
-                conf_cache=mconf,
-                verbose=True,
-                cmds_dict=command_modules_dict,
-                automod=False
-                )
+            try:
+                await cmd.execute_ctx(message, arguments, client, command_ctx)
+            except lib_sonnetcommands.CommandError as ce:
+                try:
+                    await message.channel.send(ce)
+                except discord.errors.Forbidden:
+                    pass
 
             # Regenerate cache
             if cmd.cache in ["purge", "regenerate"]:
@@ -497,4 +522,4 @@ commands: Dict[str, Callable[..., Any]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11"

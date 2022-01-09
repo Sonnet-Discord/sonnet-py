@@ -3,14 +3,19 @@ if __name__ != "__main__":
     import warnings
     warnings.warn("LeXdPyK is not meant to be imported")
 
+# Measure boot time
+import time
+
+kernel_start = time.monotonic()
+
 # Intro
 print("Booting LeXdPyK")
 
 # Import core systems
-import os, importlib, sys, io, time, traceback
+import os, importlib, sys, io, traceback
 
 # Import sub dependencies
-import glob, json, hashlib, logging, getpass, datetime
+import glob, json, hashlib, logging, getpass, datetime, argparse
 
 # Import typing support
 from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol
@@ -18,16 +23,11 @@ from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol
 # Start Discord.py
 import discord, asyncio
 
-if __name__ == "__main__":
-    # Start Logging
-    logger = logging.getLogger('discord')
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-    logger.addHandler(handler)
-
-    # Get token from environment variables.
-    TOKEN: Optional[str] = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
+# Initialize logger
+logger = logging.getLogger('discord')
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 # Initialize kernel workspace
 sys.path.insert(1, os.getcwd() + '/cmds')
@@ -78,9 +78,7 @@ class miniflip:
 
     def encrypt(self, indata: str) -> bytes:
 
-        if type(indata) != str: raise TypeError(f"encrypt only accepts type 'str', not type `{type(indata).__name__}`")
-
-        data: bytes = indata.encode("utf8")
+        data = indata.encode("utf8")
 
         data = self._encrypt(data)[::-1]
         data = self._encrypt(data)
@@ -89,8 +87,6 @@ class miniflip:
         return data
 
     def decrypt(self, data: bytes) -> Optional[str]:
-
-        if type(data) != bytes: raise TypeError(f"decrypt only accepts type 'bytes', not type `{type(data).__name__}`")
 
         data = self._decrypt(data)[::-1]
         data = self._decrypt(data)
@@ -246,20 +242,19 @@ class ram_filesystem:
         return datamap
 
 
-if __name__ == "__main__":
-    # Import blacklist
-    try:
-        with open("common/blacklist.json", "r", encoding="utf-8") as blacklist_file:
-            blacklist = json.load(blacklist_file)
+# Import blacklist
+try:
+    with open("common/blacklist.json", "r", encoding="utf-8") as blacklist_file:
+        blacklist = json.load(blacklist_file)
 
-        # Ensures blacklist properly init
-        assert isinstance(blacklist["guild"], list)
-        assert isinstance(blacklist["user"], list)
+    # Ensures blacklist properly init
+    assert isinstance(blacklist["guild"], list)
+    assert isinstance(blacklist["user"], list)
 
-    except FileNotFoundError:
-        blacklist = {"guild": [], "user": []}
-        with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
-            json.dump(blacklist, blacklist_file)
+except FileNotFoundError:
+    blacklist = {"guild": [], "user": []}
+    with open("common/blacklist.json", "w", encoding="utf-8") as blacklist_file:
+        json.dump(blacklist, blacklist_file)
 
 # Define debug commands
 command_modules: List[Any] = []
@@ -492,28 +487,6 @@ debug_commands["debug-drop-kramfs"] = regenerate_kernel_ramfs
 debug_commands["debug-drop-modules"] = kernel_drop_dlibs
 debug_commands["debug-drop-commands"] = kernel_drop_cmds
 debug_commands["debug-toggle-logging"] = logging_toggle
-
-if __name__ == "__main__":
-    # Generate tokenfile
-    if len(sys.argv) >= 2 and "--generate-token" in sys.argv:
-        tokenfile = open(".tokenfile", "wb")
-        encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-        tokenfile.write(encryptor.encrypt(TOKEN := getpass.getpass("Enter TOKEN: ")))
-        tokenfile.close()
-
-    # Load token
-    if not TOKEN and os.path.isfile(".tokenfile"):
-        tokenfile = open(".tokenfile", "rb")
-        encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-        TOKEN = encryptor.decrypt(tokenfile.read())
-        tokenfile.close()
-        if not TOKEN:
-            print("Invalid TOKEN password")
-            sys.exit(1)
-
-    # Load command modules
-    if e := kernel_load_command_modules():
-        print(e[0])
 
 
 # A object used to pass error messages from the kernel callers to the event handlers
@@ -845,24 +818,82 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
         await event_call("on-member-unban", guild, user)
 
 
-# Define version info and start time
-version_info: str = "LeXdPyK 1.4.6"
-bot_start_time: float = time.time()
+def gentoken() -> str:
 
-if __name__ == "__main__":
+    TOKEN = getpass.getpass("Enter TOKEN: ")
+
+    passwd = getpass.getpass("Enter TOKEN password: ")
+    if passwd != getpass.getpass("Confirm TOKEN password: "):
+        print("ERROR: passwords do not match")
+        raise ValueError
+
+    with open(".tokenfile", "wb") as tokenfile:
+        encryptor = miniflip(passwd)
+        tokenfile.write(encryptor.encrypt(TOKEN))
+
+    return TOKEN
+
+
+# Main function, handles userland startup
+def main(args: List[str]) -> int:
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--log-debug", action="store_true", help="Makes the logging module start in debug mode")
+    parser.add_argument("--generate-token", action="store_true", help="Discards the current token file if there is one, and generates a new encrypted tokenfile")
+    parsed = parser.parse_args()
+
+    # Set Loglevel
+    loglevel = logging.DEBUG if parsed.log_debug else logging.INFO
+    logger.setLevel(loglevel)
+
+    # Get token from environment variables.
+    TOKEN: Optional[str] = os.environ.get('SONNET_TOKEN') or os.environ.get('RHEA_TOKEN')
+
+    # Generate tokenfile
+    if parsed.generate_token:
+        try:
+            TOKEN = gentoken()
+        except ValueError:
+            return 1
+
+    # Load token
+    if TOKEN is None and os.path.isfile(".tokenfile"):
+        tokenfile = open(".tokenfile", "rb")
+        encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+        TOKEN = encryptor.decrypt(tokenfile.read())
+        tokenfile.close()
+        if TOKEN is None:
+            print("Invalid TOKEN password")
+            return 1
+
+    # Load command modules
+    if e := kernel_load_command_modules():
+        print(e[0])
+
     # Start bot
     if TOKEN:
         try:
             Client.run(TOKEN, reconnect=True)
         except discord.errors.LoginFailure:
             print("Invalid token passed")
-            sys.exit(1)
+            return 1
     else:
         print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables, or a encrypted token in .tokenfile, to use sonnet")
-        sys.exit(1)
+        return 1
 
     # Clear cache at exit
     for i in glob.glob("datastore/*.cache.db"):
         os.remove(i)
 
     print("\rCache Cleared, Thank you for Using Sonnet")
+
+    return 0
+
+
+# Define version info and start time
+version_info: str = "LeXdPyK 1.4.8"
+bot_start_time: float = time.time()
+
+if __name__ == "__main__":
+    print(f"Booted kernel in {(time.monotonic()-kernel_start)*1000:.0f}ms")
+    sys.exit(main(sys.argv))

@@ -4,9 +4,9 @@
 import importlib
 
 import discord
-import sys
 import io
 import time
+import platform
 
 import lib_loaders
 
@@ -71,7 +71,7 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
     modules: List[lexdpyk.cmd_module] = kwargs["cmds"]
 
     base_versions = []
-    base_versions.append(["Python", sys.version.split(" ")[0]])
+    base_versions.append([platform.python_implementation(), platform.python_version()])
     base_versions.append(["Wrapper", discord.__version__])
     base_versions.append(["Kernel", kwargs['main_version']])
     base = "\n".join(prettyprint(base_versions))
@@ -184,4 +184,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.9"
+version_info: str = "1.2.11"

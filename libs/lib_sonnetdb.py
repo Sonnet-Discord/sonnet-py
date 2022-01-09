@@ -74,7 +74,7 @@ class db_hlapi:
         self.database = self._db  # Deprecated name
         self.guild: Optional[int] = guild_id
 
-        self.hlapi_version = (1, 2, 9)
+        self.hlapi_version = (1, 2, 11)
         self._sonnet_db_version = self._get_db_version()
 
         if lock is not None:
@@ -193,7 +193,7 @@ class db_hlapi:
             self.create_guild_db()
             self._db.add_to_table(f"{self.guild}_{name}", push)
 
-    def delete_enum(self, enumname: str, key: str) -> None:
+    def delete_enum(self, enumname: str, key: Union[str, int]) -> None:
         """
         Deletes a row in an enums table based on primary key
 
@@ -226,6 +226,23 @@ class db_hlapi:
             return cast(List[Union[str, int]], [i[0] for i in self._db.fetch_table(f"{self.guild}_{enumName}")])
         except db_error.OperationalError:
             return []
+
+    def enum_context(self, enumName: str) -> "_enum_context":
+        """
+        Returns a context manager to access db_enums functions in a safer and more concise way
+
+        :returns: _enum_context - An enum context manager
+        """
+        return _enum_context(self, enumName)
+
+    def inject_enum_context(self, enumName: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> "_enum_context":
+        """
+        A combination of inject_enum and enum_context that returns an enum context of the just injected enum
+
+        :returns: _enum_context - An enum context manager
+        """
+        self.inject_enum(enumName, schema)
+        return _enum_context(self, enumName)
 
     def create_guild_db(self) -> None:
         """
@@ -295,7 +312,12 @@ class db_hlapi:
 
         return data
 
-    def grab_filter_infractions(self, user: Optional[int] = None, moderator: Optional[int] = None, itype: Optional[str] = None, automod: bool = True, count: bool = False) -> Union[InfractionT, int]:
+    def grab_filter_infractions(self,
+                                user: Optional[int] = None,
+                                moderator: Optional[int] = None,
+                                itype: Optional[str] = None,
+                                automod: Optional[bool] = None,
+                                count: bool = False) -> Union[List[InfractionT], int]:
 
         schm: List[List[str]] = []
         if user is not None:
@@ -304,23 +326,22 @@ class db_hlapi:
             schm.append(["moderatorID", str(moderator)])
         if itype is not None:
             schm.append(["type", itype])
-        if not automod:
-            schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
 
-        db_type = Union[InfractionT, int]
+        if automod is False:
+            schm.append(["reason", "[AUTOMOD]%", "NOT LIKE"])
+        elif automod is True:
+            schm.append(["reason", "[AUTOMOD]%", "LIKE"])
 
         try:
             if self._db.TEXT_KEY:
                 self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_users", ["userID"])
                 self._db.make_new_index(f"{self.guild}_infractions", f"{self.guild}_infractions_moderators", ["moderatorID"])
             if count:
-                data = cast(db_type, self._db.multicount_rows_from_table(f"{self.guild}_infractions", schm))
+                return self._db.multicount_rows_from_table(f"{self.guild}_infractions", schm)
             else:
-                data = cast(db_type, self._db.multifetch_rows_from_table(f"{self.guild}_infractions", schm))
+                return cast(List[InfractionT], list(self._db.multifetch_rows_from_table(f"{self.guild}_infractions", schm)))
         except db_error.OperationalError:
-            data = cast(db_type, tuple()) if not count else 0
-
-        return data
+            return 0 if count else list()
 
     # Check if a message is on the starboard already
     def in_starboard(self, message_id: int) -> bool:
@@ -531,3 +552,39 @@ class db_hlapi:
         self._db.commit()
         if err_type:
             raise err_type(err_value)
+
+
+class _enum_context:
+    __slots__ = "_hlapi", "_name"
+
+    def __init__(self, hlapi: db_hlapi, enum_name: str) -> None:
+
+        self._hlapi: db_hlapi = hlapi
+        self._name: str = enum_name
+
+    def __enter__(self) -> "_enum_context":
+        return self
+
+    def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
+        if err_type:
+            raise err_type(err_value)
+
+    def grab(self, name: Union[str, int]) -> Optional[List[Union[str, int]]]:
+        self._hlapi.grab_enum.__doc__
+
+        return self._hlapi.grab_enum(self._name, name)
+
+    def set(self, cpush: List[Union[str, int]]) -> None:
+        self._hlapi.set_enum.__doc__
+
+        return self._hlapi.set_enum(self._name, cpush)
+
+    def delete(self, name: Union[str, int]) -> None:
+        self._hlapi.delete_enum.__doc__
+
+        return self._hlapi.delete_enum(self._name, name)
+
+    def list(self) -> List[Union[str, int]]:
+        self._hlapi.list_enum.__doc__
+
+        return self._hlapi.list_enum(self._name)

@@ -41,18 +41,16 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.User, **karg
         if (channel_id := mconf["starboard-channel"]) and (channel := client.get_channel(int(channel_id))) and isinstance(channel, discord.TextChannel):
 
             with db_hlapi(message.guild.id) as db:
-                db.inject_enum("starboard", [
-                    ("messageID", str),
-                    ])
-                if not (db.grab_enum("starboard", str(message.id))) and not (int(channel_id) == message.channel.id):
+                with db.inject_enum_context("starboard", [("messageID", str)]) as starboard:
+                    if not (starboard.grab(str(message.id))) and not (int(channel_id) == message.channel.id):
 
-                    # Add to starboard
-                    db.set_enum("starboard", [str(message.id)])
+                        # Add to starboard
+                        starboard.set([str(message.id)])
 
-                    try:
-                        await channel.send(embed=(await build_starboard_embed(message)))
-                    except discord.errors.Forbidden:
-                        pass
+                        try:
+                            await channel.send(embed=(await build_starboard_embed(message)))
+                        except discord.errors.Forbidden:
+                            pass
 
 
 category_info = {'name': 'Starboard'}
@@ -61,4 +59,4 @@ commands = {
     "on-reaction-add": on_reaction_add,
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.11"

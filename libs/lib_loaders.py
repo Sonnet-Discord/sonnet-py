@@ -25,7 +25,7 @@ from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
-from typing import Any, Tuple, Optional, Union, cast, Type, Dict
+from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -59,7 +59,7 @@ if CLIB_LOAD:
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
     except OSError:
         try:
-            if subprocess.run(["make"]).returncode == 0:
+            if subprocess.run(["make", "all"]).returncode == 0:
                 loader = DotHeaders(ctypes.CDLL(clib_name)).lib
             else:
                 clib_exists = False
@@ -85,13 +85,23 @@ defaultcache: dict[Union[str, int], Any] = {
     }
 
 
+class Reader(Protocol):
+    def read(self, size: int = -1) -> bytes:
+        ...
+
+
+class Writer(Protocol):
+    def write(self, data: bytes) -> int:
+        ...
+
+
 # Read a vnum from a file stream
-def read_vnum(fileobj: io.BufferedReader) -> int:
+def read_vnum(fileobj: Reader) -> int:
     return int.from_bytes(fileobj.read(int.from_bytes(fileobj.read(1), "little")), "little")
 
 
 # Write a vnum to a file stream
-def write_vnum(fileobj: io.BufferedWriter, number: int) -> None:
+def write_vnum(fileobj: Writer, number: int) -> None:
     vnum_count = (number.bit_length() + 7) // 8
     fileobj.write(bytes([vnum_count]))
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
@@ -109,9 +119,9 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
     try:
 
         # Loads fileio object
-        blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
+        blacklist_cache: io.BytesIO = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
         blacklist_cache.seek(0)
-        message_config: dict[str, Any] = {}
+        message_config: Dict[str, Any] = {}
 
         # Imports csv style data
         for i in datatypes["csv"]:

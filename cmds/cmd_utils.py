@@ -1,11 +1,14 @@
 # Utility Commands
 # Funey, 2020
 
-# Predefined dictionaries.
-
 import importlib
 
-import discord, time, asyncio, random
+import discord
+
+import asyncio
+import random
+import time
+import io
 from datetime import datetime
 
 import lib_db_obfuscator
@@ -32,17 +35,21 @@ importlib.reload(lib_sonnetcommands)
 import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
+import lib_tparse
 
+importlib.reload(lib_tparse)
+
+from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_permissions, parse_boolean, parse_user_member
-from lib_loaders import load_embed_color, embed_colors, datetime_now
-from lib_compatibility import user_avatar_url, discord_datetime_now
-from lib_sonnetcommands import SonnetCommand
+from lib_loaders import datetime_now, embed_colors, load_embed_color
+from lib_parsers import (parse_boolean, parse_permissions, parse_user_member_noexcept)
+from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
+from lib_tparse import Parser
 import lib_constants as constants
-
-from typing import List, Any, Optional, cast
 import lib_lexdpyk_h as lexdpyk
+
+from typing import Any, List, Optional, Tuple, cast
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -88,10 +95,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     if not message.guild:
         return 1
 
-    try:
-        user, member = await parse_user_member(message, args, client, default_self=True)
-    except lib_parsers.errors.user_parse_error:
-        return 1
+    user, member = await parse_user_member_noexcept(message, args, client, default_self=True)
 
     # Status hashmap
     status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
@@ -118,18 +122,14 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
-        await message.channel.send(constants.sonnet.error_embed)
-        return 1
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
 async def avatar_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
 
-    try:
-        user, _ = await parse_user_member(message, args, client, default_self=True)
-    except lib_parsers.errors.user_parse_error:
-        return 1
+    user, _ = await parse_user_member_noexcept(message, args, client, default_self=True)
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_image(url=user_avatar_url(user))
@@ -137,131 +137,90 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
-        await message.channel.send(constants.sonnet.error_embed)
-        return 1
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
-async def help_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-    if not message.guild:
-        return 1
+class HelpHelper:
+    __slots__ = "guild", "args", "client", "ctx", "prefix", "helpname", "message"
 
-    helpname: str = f"{BOT_NAME} Help"
+    def __init__(self, message: discord.Message, guild: discord.Guild, args: List[str], client: discord.Client, ctx: CommandCtx, prefix: str, helpname: str):
+        self.message = message
+        self.guild = guild
+        self.args = args
+        self.client = client
+        self.ctx = ctx
+        self.prefix = prefix
+        self.helpname = helpname
 
-    cmds: List[lexdpyk.cmd_module] = kwargs["cmds"]
-    cmds_dict: lexdpyk.cmd_modules_dict = kwargs["cmds_dict"]
+    # Builds a single command
+    async def single_command(self, cmd_name: str) -> discord.Embed:
 
-    page: int = 0
-    per_page: int = 10
+        cmds_dict = self.ctx.cmds_dict
 
-    # TODO(ultrabear): make this look less horrible, it works at least
-    if len(args) > 1:
-        try:
-            if args[0] in ["-p", "--page"]:
-                page = int(args[1]) - 1
-                args = args[2:]
-            elif len(args) > 2 and args[1] in ["-p", "--page"]:
-                page = int(args[2]) - 1
-        except ValueError:
-            await message.channel.send("ERROR: Page not valid int")
-            return 1
+        if "alias" in cmds_dict[cmd_name]:
+            cmd_name = cmds_dict[cmd_name]["alias"]
 
-    if args:
+        command = SonnetCommand(cmds_dict[cmd_name])
 
-        modules = {mod.category_info["name"] for mod in cmds}
-        PREFIX = kwargs["conf_cache"]["prefix"]
+        cmd_embed = discord.Embed(title=f'Command "{cmd_name}"', description=command.description, color=load_embed_color(self.guild, embed_colors.primary, self.ctx.ramfs))
+        cmd_embed.set_author(name=self.helpname)
 
-        # Per module help
-        if (a := args[0].lower()) in modules:
+        cmd_embed.add_field(name="Usage:", value=self.prefix + command.pretty_name, inline=False)
 
-            curmod = [mod for mod in cmds if mod.category_info["name"] == a][0]
-            nonAliasCommands = list(filter(lambda c: "alias" not in curmod.commands[c], curmod.commands))
-            pagecount = (len(nonAliasCommands) + (per_page - 1)) // per_page
+        if "rich_description" in command:
+            cmd_embed.add_field(name="Detailed information:", value=command.rich_description, inline=False)
 
-            cmd_embed = discord.Embed(
-                title=f"{curmod.category_info['pretty_name']} (Page {page+1} / {pagecount})",
-                description=curmod.category_info["description"],
-                color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"])
-                )
-            cmd_embed.set_author(name=helpname)
-
-            if page < 0 or page >= pagecount:
-                if page == 0:
-                    await message.channel.send(embed=cmd_embed)
-                    return 0
-                await message.channel.send(f"ERROR: No such page {page+1}")
-                return 1
-
-            for i in sorted(nonAliasCommands)[page * per_page:(page * per_page) + per_page]:
-                cmd_embed.add_field(name=PREFIX + curmod.commands[i]['pretty_name'], value=curmod.commands[i]['description'], inline=False)
-
-            try:
-                await message.channel.send(embed=cmd_embed)
-            except discord.errors.Forbidden:
-                await message.channel.send(constants.sonnet.error_embed)
-                return 1
-
-        # Per command help
-        elif a in cmds_dict:
-            if "alias" in cmds_dict[a]:
-                a = cmds_dict[a]["alias"]
-
-            cmd_name = a
-            command = SonnetCommand(cmds_dict[a])
-
-            cmd_embed = discord.Embed(title=f'Command "{cmd_name}"', description=command.description, color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-            cmd_embed.set_author(name=helpname)
-
-            cmd_embed.add_field(name="Usage:", value=PREFIX + command.pretty_name, inline=False)
-
-            if "rich_description" in command:
-                cmd_embed.add_field(name="Detailed information:", value=command.rich_description, inline=False)
-
-            if isinstance(command.permission, str):
-                perms = command.permission
-            elif isinstance(command["permission"], (tuple, list)):
-                perms = command.permission[0]
-            else:
-                perms = "NULL"
-
-            cmd_embed.add_field(name="Permission level:", value=perms)
-
-            aliases = ", ".join(filter(lambda c: "alias" in cmds_dict[c] and cmds_dict[c]["alias"] == a, cmds_dict))
-            if aliases:
-                cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
-
-            try:
-                await message.channel.send(embed=cmd_embed)
-            except discord.errors.Forbidden:
-                await message.channel.send(constants.sonnet.error_embed)
-                return 1
-
-        # Do not echo user input
+        if isinstance(command.permission, str):
+            perms = command.permission
+        elif isinstance(command["permission"], (tuple, list)):
+            perms = command.permission[0]
         else:
-            # lets check if they cant read documentation
-            probably_tried_paging: bool
-            try:
-                probably_tried_paging = int(args[0]) <= ((len(cmds) + (per_page - 1)) // per_page)
-            except ValueError:
-                probably_tried_paging = False
+            perms = "NULL"
 
-            no_command_text: str = "No command or command module with that name"
+        hasperm = await parse_permissions(self.message, self.ctx.conf_cache, command.permission, verbose=False)
+        permstr = f" (You {'do not '*(not hasperm)}have this perm)"
 
-            if probably_tried_paging:
-                await message.channel.send(f"{no_command_text} (did you mean `{PREFIX}help -p {int(args[0])}`?)")
-            else:
-                await message.channel.send(no_command_text)
+        cmd_embed.add_field(name="Permission level:", value=perms + permstr)
 
-            return 1
+        aliases = ", ".join(filter(lambda c: "alias" in cmds_dict[c] and cmds_dict[c]["alias"] == cmd_name, cmds_dict))
+        if aliases:
+            cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
 
-    # Total help
-    else:
+        return cmd_embed
 
-        if page < 0 or page >= (len(cmds) + (per_page - 1)) // per_page:
-            await message.channel.send(f"ERROR: No such page {page+1}")
-            return 1
+    # Builds help for a category
+    async def category_help(self, category_name: str) -> Tuple[str, List[Tuple[str, str]], lexdpyk.cmd_module]:
 
-        cmd_embed = discord.Embed(title=f"Category Listing (Page {page+1} / {(len(cmds) + (per_page-1))//per_page})", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-        cmd_embed.set_author(name=helpname)
+        curmod = next(mod for mod in self.ctx.cmds if mod.category_info["name"] == category_name)
+        nonAliasCommands = list(filter(lambda c: "alias" not in curmod.commands[c], curmod.commands))
+        description = curmod.category_info["description"]
+        override_commands: Optional[List[Tuple[str, str]]] = None
+
+        if (override := getattr(curmod, "__help_override__", None)) is not None:
+            newhelp: Optional[Tuple[str, List[Tuple[str, str]]]] = await CallCtx(override)(self.message, self.args, self.client, self.ctx)
+
+            if newhelp is not None:
+                description = newhelp[0]
+                override_commands = newhelp[1]
+
+        if override_commands is None:
+            normal_commands: List[Tuple[str, str]] = []
+            for i in sorted(nonAliasCommands):
+                normal_commands.append((self.prefix + curmod.commands[i]['pretty_name'], curmod.commands[i]['description']))
+            return description, normal_commands, curmod
+        else:
+            return description, override_commands, curmod
+
+    async def full_help(self, page: int, per_page: int) -> discord.Embed:
+
+        cmds = self.ctx.cmds
+        cmds_dict = self.ctx.cmds_dict
+
+        if page < 0 or page >= (len(self.ctx.cmds) + (per_page - 1)) // per_page:
+            raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
+
+        cmd_embed = discord.Embed(title=f"Category Listing (Page {page+1} / {(len(cmds) + (per_page-1))//per_page})", color=load_embed_color(self.guild, embed_colors.primary, self.ctx.ramfs))
+        cmd_embed.set_author(name=self.helpname)
 
         total = 0
         # Total counting is seperate due to pagination not counting all modules
@@ -277,11 +236,90 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
         cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)}")
 
+        return cmd_embed
+
+
+async def help_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+    if not message.guild:
+        return 1
+
+    helpname: str = f"{BOT_NAME} Help"
+    per_page: int = 10
+
+    cmds = ctx.cmds
+    cmds_dict = ctx.cmds_dict
+
+    parser = Parser("help")
+    pageP = parser.add_arg(["-p", "--page"], lambda s: int(s) - 1)
+    commandonlyP = parser.add_arg("-c", lib_tparse.store_true, flag=True)
+
+    try:
+        parser.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True, consume=True)
+    except lib_tparse.ParseFailureError:
+        raise lib_sonnetcommands.CommandError("Could not parse pagecount")
+
+    page = pageP.get(0)
+    commandonly = commandonlyP.get() is True
+
+    prefix = ctx.conf_cache["prefix"]
+    help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname)
+
+    if args:
+
+        modules = {mod.category_info["name"] for mod in cmds}
+
+        # Per module help
+        if (a := args[0].lower()) in modules and not commandonly:
+
+            description, commands, curmod = await help_helper.category_help(a)
+            pagecount = (len(commands) + (per_page - 1)) // per_page
+
+            cmd_embed = discord.Embed(
+                title=f"{curmod.category_info['pretty_name']} (Page {page+1} / {pagecount})", description=description, color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs)
+                )
+            cmd_embed.set_author(name=helpname)
+
+            if not (0 <= page < pagecount):  # pytype: disable=unsupported-operands
+                raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
+
+            for name, desc in commands[page * per_page:(page * per_page) + per_page]:
+                cmd_embed.add_field(name=name, value=desc, inline=False)
+
+            try:
+                await message.channel.send(embed=cmd_embed)
+            except discord.errors.Forbidden:
+                raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+
+        # Per command help
+        elif a in cmds_dict:
+            try:
+                await message.channel.send(embed=await help_helper.single_command(a))
+            except discord.errors.Forbidden:
+                raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+
+        # Do not echo user input
+        else:
+            # lets check if they cant read documentation
+            probably_tried_paging: bool
+            try:
+                probably_tried_paging = int(args[0]) <= ((len(cmds) + (per_page - 1)) // per_page)
+            except ValueError:
+                probably_tried_paging = False
+
+            no_command_text: str = f"No command {'or command module '*(not commandonly)}with that name"
+
+            if probably_tried_paging:
+                raise lib_sonnetcommands.CommandError(f"{no_command_text} (did you mean `{prefix}help -p {int(args[0])}`?)")
+
+            raise lib_sonnetcommands.CommandError(no_command_text)
+
+    # Total help
+    else:
+
         try:
-            await message.channel.send(embed=cmd_embed)
+            await message.channel.send(embed=await help_helper.full_help(page, per_page))
         except discord.errors.Forbidden:
-            await message.channel.send(constants.sonnet.error_embed)
-            return 1
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
 async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -306,8 +344,7 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
     try:
         await message.channel.send(embed=guild_embed)
     except discord.errors.Forbidden:
-        await message.channel.send(constants.sonnet.error_embed)
-        return 1
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -316,11 +353,9 @@ async def initialise_poll(message: discord.Message, args: List[str], client: dis
         await message.add_reaction("👍")
         await message.add_reaction("👎")
     except discord.errors.Forbidden:
-        await message.channel.send("ERROR: The bot does not have permissions to add a reaction here")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: The bot does not have permissions to add a reaction here")
     except discord.errors.NotFound:
-        await message.channel.send("ERROR: Could not find the message [404]")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: Could not find the message [404]")
 
 
 async def coinflip(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -355,8 +390,8 @@ commands = {
         },
     'help':
         {
-            'pretty_name': 'help [category|command] [-p PAGE]',
-            'description': 'Print helptext',
+            'pretty_name': 'help [category|command] [-p PAGE] [-c]',
+            'description': 'Print helptext, `-c` designates to only look for a command',
             'rich_description': 'Gives permission level, aliases (if any), and detailed information (if any) on specific command lookups',
             'execute': help_function
             },
@@ -396,4 +431,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11"

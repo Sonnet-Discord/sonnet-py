@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, time, asyncio, math, io
+import discord, time, asyncio, math, io, shlex
 
 import lib_db_obfuscator
 
@@ -26,17 +26,31 @@ importlib.reload(lib_compatibility)
 import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
+import lib_sonnetcommands
+
+importlib.reload(lib_sonnetcommands)
+import lib_tparse
+
+importlib.reload(lib_tparse)
 
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field, parse_channel_message, parse_user_member, format_duration
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message_noexcept, parse_user_member, format_duration
 from lib_compatibility import user_avatar_url
-from lib_sonnetconfig import BOT_NAME
+from lib_sonnetconfig import BOT_NAME, REGEX_VERSION
+from lib_sonnetcommands import CommandCtx
+from lib_tparse import Parser
 import lib_constants as constants
 
 from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
 import lib_lexdpyk_h as lexdpyk
+
+# Import re to trick type checker into using re stubs
+import re
+
+# Import into globals hashmap to ignore pyflakes redefinition errors
+globals()["re"] = importlib.import_module(REGEX_VERSION)
 
 
 # Catches error if the bot cannot message the user
@@ -44,9 +58,9 @@ async def catch_dm_error(user: Union[discord.User, discord.Member], contents: di
     try:
         await user.send(embed=contents)
     except (AttributeError, discord.errors.HTTPException):
-        if log_channel:
+        if log_channel is not None:
             try:
-                await log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none())
+                asyncio.create_task(log_channel.send(f"ERROR: {user.mention}:{user.id} Could not DM user", allowed_mentions=discord.AllowedMentions.none()))
             except discord.errors.Forbidden:
                 pass
 
@@ -172,36 +186,28 @@ async def process_infraction(
     return (member, user, reason, infraction_id, dm_sent)
 
 
-async def warn_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+async def warn_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ramfs, automod=automod)
+        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod)
     except InfractionGenerationError:
         return 1
 
-    if verbose and user:
+    if ctx.verbose and user:
         await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
         return 1
 
 
-async def note_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+async def note_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "note", ramfs, infraction=False, automod=automod)
+        _, user, reason, _, _ = await process_infraction(message, args, client, "note", ctx.ramfs, infraction=False, automod=ctx.automod)
     except InfractionGenerationError:
         return 1
 
-    if verbose and user:
+    if ctx.verbose and user:
         await message.channel.send(f"Put a note on {user.mention} with ID {user.id}: {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
@@ -228,7 +234,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
                 await dm_sent  # Wait for dm to be sent before kicking
             await message.guild.kick((member), reason=reason[:512])
         except discord.errors.Forbidden:
-            await message.channel.send("The bot does not have permission to kick this user.")
+            await message.channel.send(f"{BOT_NAME} does not have permission to kick this user.")
             return 1
     else:
         await message.channel.send("User is not in this guild")
@@ -237,28 +243,40 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def ban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def ban_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    if len(args) >= 3 and args[1] in ["-d", "--days"]:
+        try:
+            delete_days = int(args[2])
+            del args[2]
+            del args[1]
+        except ValueError:
+            delete_days = 0
+    else:
+        delete_days = 0
+
+    # bounds check (docs say 0 is min and 7 is max)
+    if delete_days > 7: delete_days = 7
+    elif delete_days < 0: delete_days = 0
 
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ramfs, automod=automod)
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod)
     except InfractionGenerationError:
         return 1
 
     try:
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.guild.ban(user, delete_message_days=0, reason=reason[:512])
+        await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to ban this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to ban this user.")
         return 1
 
-    if verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," * bool(delete_days)
+
+    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -278,7 +296,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
     try:
         await message.guild.unban(user, reason=reason[:512])
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to unban this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to unban this user.")
         return 1
     except discord.errors.NotFound:
         await message.channel.send("This user is not banned")
@@ -358,7 +376,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     try:
         await member.add_roles(mute_role)
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to mute this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to mute this user.")
         return 1
 
     if verbose and not mutetime:
@@ -408,7 +426,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
     try:
         await member.remove_roles(mute_role)
     except discord.errors.Forbidden:
-        await message.channel.send("The bot does not have permission to unmute this user.")
+        await message.channel.send(f"{BOT_NAME} does not have permission to unmute this user.")
         return 1
 
     # Unmute in DB
@@ -418,60 +436,74 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
     if verbose: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
 
-async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+def get_user_id(s: str) -> int:
+    return int(s.strip("<@!>"))
+
+
+async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
     tstart = time.monotonic()
 
     # Reparse args
-    args = (" ".join(args)).replace("=", " ").split()
+    args = shlex.split(" ".join(args))
 
     # Parse flags
-    selected_chunk: int = 0
-    responsible_mod: Optional[int] = None
-    infraction_type: Optional[str] = None
-    per_page: int = 20
-    user_affected: Optional[int] = None
-    automod: bool = True
-    for index, item in enumerate(args):
-        try:
-            if item in ["-p", "--page"]:
-                selected_chunk = int(args[index + 1]) - 1
-            elif item in ["-m", "--mod"]:
-                responsible_mod = int(args[index + 1].strip("<@!>"))
-            elif item in ["-u", "--user"]:
-                user_affected = int(args[index + 1].strip("<@!>"))
-            elif item in ["-i", "--infractioncount"]:
-                per_page = int(args[index + 1])
-            elif item in ["-t", "--type"]:
-                infraction_type = (args[index + 1])
-            elif item == "--no-automod":
-                automod = False
-        except (ValueError, IndexError):
-            await message.channel.send("Invalid flags supplied")
-            return 1
+    parser = Parser("search-infractions")
+
+    selected_chunk_f = parser.add_arg(["-p", "--page"], lambda s: int(s) - 1)
+    responsible_mod_f = parser.add_arg(["-m", "--mod"], get_user_id)
+    user_affected_f = parser.add_arg(["-u", "--user"], get_user_id)
+    per_page_f = parser.add_arg(["-i", "--infractioncount"], int)
+    infraction_type_f = parser.add_arg(["-t", "--type"], str)
+    filtering_f = parser.add_arg(["-f", "--filter"], str)
+    automod_f = lib_tparse.add_true_false_flag(parser, "automod")
+
+    try:
+        parser.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True)
+    except lib_tparse.ParseFailureError:
+        await message.channel.send("Failed to parse flags")
+        return 1
+
+    selected_chunk = selected_chunk_f.get(0)
+    per_page = per_page_f.get(20)
+    user_affected = user_affected_f.get()
 
     # Default to user if no user/mod flags are supplied
-    if None is responsible_mod is user_affected:
+    if None is responsible_mod_f.get() is user_affected:
         try:
-            user_affected = int(args[0].strip("<@!>"))
+            user_affected = get_user_id(args[0])
         except (IndexError, ValueError):
             pass
 
-    if not 5 <= per_page <= 40:
+    if not 5 <= per_page <= 40:  # pytype: disable=unsupported-operands
         await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
         return 1
 
+    refilter: "Optional[re.Pattern[str]]"
+
+    if (f := filtering_f.get()) is not None:
+        try:
+            refilter = re.compile(f)
+        except re.error:
+            raise lib_sonnetcommands.CommandError("ERROR: Filter regex is invalid")
+    else:
+        refilter = None
+
     with db_hlapi(message.guild.id) as db:
-        if user_affected or responsible_mod:
-            infractions = cast(List[Tuple[str, str, str, str, str, int]], db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod))
+        if user_affected or responsible_mod_f.get():
+            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod_f.get(), itype=infraction_type_f.get(), automod=automod_f.get())
+            assert isinstance(infractions, list)
         else:
             await message.channel.send("Please specify a user or moderator")
             return 1
 
+    if refilter is not None:
+        infractions = [i for i in infractions if refilter.findall(i[4])]
+
     # Sort newest first
-    infractions = sorted(infractions, reverse=True, key=lambda a: a[5])
+    infractions.sort(reverse=True, key=lambda a: a[5])
 
     # Return if no infractions, this is not an error as it returned a valid status
     if not infractions:
@@ -484,11 +516,11 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
         return 1
-    elif selected_chunk < -1:
+    elif selected_chunk < -1:  # pytype: disable=unsupported-operands
         selected_chunk %= cpagecount
         selected_chunk += 1
 
-    if not 0 <= selected_chunk < cpagecount:
+    if not 0 <= selected_chunk < cpagecount:  # pytype: disable=unsupported-operands
         await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
         return 1
 
@@ -550,11 +582,9 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infraction{'s'*(len(infractions)!=1)}) ({tprint:.1f}ms)\n```css\nID, Type, Reason\n{writer.getvalue()}```")
 
 
-async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
-
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -570,7 +600,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     # pylint: disable=E0633
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
-    infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.primary, ramfs))
+    infraction_embed = discord.Embed(title="Infraction Search", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
     infraction_embed.add_field(name="Infraction ID", value=infraction_id)
     infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
     infraction_embed.add_field(name="Type", value=infraction_type)
@@ -586,12 +616,9 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
         return 1
 
 
-async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
-
-    verbose: bool = kwargs["verbose"]
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
 
     if args:
         with db_hlapi(message.guild.id) as db:
@@ -605,13 +632,13 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
         await message.channel.send("ERROR: No argument supplied")
         return 1
 
-    if not verbose:
+    if not ctx.verbose:
         return
 
     # pylint: disable=E0633
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
 
-    infraction_embed = discord.Embed(title="Infraction Deleted", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.deletion, ramfs))
+    infraction_embed = discord.Embed(title="Infraction Deleted", description=f"Infraction for <@{user_id}>:", color=load_embed_color(message.guild, embed_colors.deletion, ctx.ramfs))
     infraction_embed.add_field(name="Infraction ID", value=infraction_id)
     infraction_embed.add_field(name="Moderator", value=f"<@{moderator_id}>")
     infraction_embed.add_field(name="Type", value=infraction_type)
@@ -628,38 +655,42 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
         return 1
 
 
-async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    kernel_ramfs: lexdpyk.ram_filesystem = kwargs["kernel_ramfs"]
-
-    try:
-        discord_message, _ = await parse_channel_message(message, args, client)
-    except lib_parsers.errors.message_parse_failure:
-        return 1
+    discord_message, nargs = await parse_channel_message_noexcept(message, args, client)
 
     if not discord_message.guild:
         await message.channel.send("ERROR: Message not in any guild")
         return 1
 
+    sendraw = False
+    for arg in args[nargs:]:
+        if arg in ["-r", "--raw"]:
+            sendraw = True
+            break
+
     # Generate replies
     message_content = generate_reply_field(discord_message)
 
     # Message has been grabbed, start generating embed
-    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, ramfs))
+    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
 
     message_embed.set_author(name=str(discord_message.author), icon_url=user_avatar_url(discord_message.author))
     message_embed.timestamp = discord_message.created_at
 
     # Grab files from cache
-    fileobjs = grab_files(discord_message.guild.id, discord_message.id, kernel_ramfs)
+    fileobjs = grab_files(discord_message.guild.id, discord_message.id, ctx.kernel_ramfs)
 
     # Grab files async if not in cache
     if not fileobjs:
         awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
         fileobjs = [await i for i in awaitobjs]
+
+    if sendraw:
+        file_content = io.BytesIO(discord_message.content.encode("utf8"))
+        fileobjs.append(discord.File(file_content, filename=f"{discord_message.id}.at.{int(datetime_now().timestamp())}.txt"))
 
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)
@@ -816,8 +847,8 @@ commands = {
         'execute': kick_user
         },
     'ban': {
-        'pretty_name': 'ban <uid> [reason]',
-        'description': 'Ban a user',
+        'pretty_name': 'ban <uid> [-d DAYS] [reason]',
+        'description': 'Ban a user, optionally delete messages with -d',
         'permission': 'moderator',
         'execute': ban_user
         },
@@ -850,8 +881,8 @@ commands = {
         },
     'search-infractions':
         {
-            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--no-automod]',
-            'description': 'Grab infractions of a user',
+            'pretty_name': 'search-infractions <-u USER | -m MOD> [-t TYPE] [-p PAGE] [-i INF PER PAGE] [--[no-]automod] [-f FILTER]',
+            'description': 'Grab infractions of a user, -f uses regex',
             'rich_description': 'Supports negative indexing in pager, flags are unix like',
             'permission': 'moderator',
             'execute': search_infractions_by_user
@@ -883,12 +914,13 @@ commands = {
     'get-message': {
         'alias': 'grab-message'
         },
-    'grab-message': {
-        'pretty_name': 'grab-message <message>',
-        'description': 'Grab a message and show its contents',
-        'permission': 'moderator',
-        'execute': grab_guild_message
-        },
+    'grab-message':
+        {
+            'pretty_name': 'grab-message <message> [-r]',
+            'description': 'Grab a message and show its contents, specify -r to get message content as a file',
+            'permission': 'moderator',
+            'execute': grab_guild_message
+            },
     'purge':
         {
             'pretty_name': 'purge <limit> [user]',
@@ -899,4 +931,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.11"
