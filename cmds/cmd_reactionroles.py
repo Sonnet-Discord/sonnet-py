@@ -20,7 +20,11 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_channel_message
 from lib_loaders import load_embed_color, embed_colors
 
-from typing import List, Any
+from typing import List, Any, Final
+
+# This is imposed due to the projected database failure beyond ~1500 reactionroles (due to a 65k char limit on configs)
+# This may be increased if predictions are improved or the db is upgraded
+REACTIONROLE_SANITY_LIMIT: Final = 750
 
 
 class InvalidEmoji(Exception):
@@ -111,6 +115,12 @@ async def add_reactionroles(message: discord.Message, args: List[str], client: d
 
     with db_hlapi(message.guild.id) as db:
         reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
+
+    rrcount = sum(len(v) for _, v in reactionroles.items())
+
+    if rrcount >= REACTIONROLE_SANITY_LIMIT:
+        await message.channel.send("ERROR: Reached sanity limit of {REACTIONROLE_SANITY_LIMIT} total reactionroles, if you wish to add more then remove others")
+        return 1
 
     if str(rr_message.id) in reactionroles:
         reactionroles[str(rr_message.id)][emoji] = role.id
@@ -319,4 +329,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.12-DEV"
