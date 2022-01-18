@@ -25,7 +25,7 @@ from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
-from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol
+from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol, Final, Literal
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -291,13 +291,13 @@ _colortypes_cache: dict[Any, Any] = {
 # I hate bugs more than I hate slow python
 class embed_colors:
     __slots__ = ()
-    primary: str = "primary"
-    creation: str = "creation"
-    edit: str = "edit"
-    deletion: str = "deletion"
+    primary: Final = "primary"
+    creation: Final = "creation"
+    edit: Final = "edit"
+    deletion: Final = "deletion"
 
 
-def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
+def load_embed_color(guild: discord.Guild, colortype: Literal["primary", "creation", "edit", "deletion"], ramfs: lexdpyk.ram_filesystem) -> int:
     """
     Load a named embed color for a discord.Embed, these can be configured per guild
 
