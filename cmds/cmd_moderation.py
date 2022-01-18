@@ -320,7 +320,7 @@ async def grab_mute_role(message: discord.Message, ramfs: lexdpyk.ram_filesystem
             return mute_role_obj
 
         else:
-            await message.channel.send("ERROR: no muterole set")
+            await message.channel.send("ERROR: no mute role set")
             raise NoMuteRole("No mute role")
 
 
@@ -339,13 +339,13 @@ async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infract
                 pass
 
 
-async def mute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def mute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
 
     # Grab mute time
     if len(args) >= 2:
@@ -404,13 +404,13 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
             db.mute_user(member.id, 0, infractionID)
 
 
-async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
