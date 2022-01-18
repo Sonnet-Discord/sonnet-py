@@ -58,7 +58,7 @@ def getdelta(past: Union[int, float]) -> str:
 
     hms = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-    # if days is 0 dont bother rendering it
+    # if days is 0 don't bother rendering it
     if days == 0: return hms
 
     return f"{days} Day{'s'*(days != 1)}, {hms}"
@@ -99,7 +99,7 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
     if len(content) <= 2000:
         await message.channel.send(content)
     else:
-        await message.channel.send("ERROR: Exeeded discord message length limits, tell a developer to stop being lazy about rendering this")
+        await message.channel.send("ERROR: Exceeded discord message length limits, tell a developer to stop being lazy about rendering this")
 
 
 async def uptime(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
@@ -184,4 +184,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.11"
+version_info: str = "1.2.12-DEV"

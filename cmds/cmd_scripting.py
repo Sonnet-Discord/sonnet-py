@@ -91,7 +91,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         # Check command exists and isint self
         if total[0] in cmds_dict and total[0] != self_name:
 
-            # Get arglist seperated from command
+            # Get arglist separated from command
             argout: List[str] = total[1:]
 
             # For each shell arg, if the arg in the command is a shellarg macro then expand it
@@ -103,7 +103,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
             # Add to command queue
             commandsparse.append((total[0], argout), )
         else:
-            await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatability\nAnd {self_name} is not runnable inside itself")
+            await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatibility\nAnd {self_name} is not runnable inside itself")
             return 1
 
     # Keep reference to original message content
@@ -345,4 +345,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.11"
+version_info: str = "1.2.12-DEV"

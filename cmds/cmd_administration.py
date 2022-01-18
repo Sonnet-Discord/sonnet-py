@@ -131,7 +131,7 @@ To fully ensure {BOT_NAME} does not store any data on this server, delete the db
             await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
         except discord.errors.HTTPException:
             await message.channel.send(
-                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords filesize limitation
+                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords file size limitation
 Please contact the bot owner directly to download your guilds database
 Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"""
                 )
@@ -319,4 +319,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.12-DEV"

@@ -647,7 +647,7 @@ commands = {
     'set-charantispam':
         {
             'pretty_name': 'set-charantispam <messages> <seconds> <chars>',
-            'description': 'Set how many messages in seconds exeeding total chars to trigger antispam automute',
+            'description': 'Set how many messages in seconds exceeding total chars to trigger antispam automute',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': char_antispam_set
@@ -689,4 +689,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.11"
+version_info: str = "1.2.12-DEV"

@@ -322,7 +322,7 @@ commands = {
         {
             'pretty_name': 'rr-addmany <message> (?:<emoji> <role>)+',
             'description': 'Add multiple reactionroles',
-            'rich_description': 'Multiple reactionroles can be space or newline seperated',
+            'rich_description': 'Multiple reactionroles can be space or newline separated',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': addmany_reactionroles

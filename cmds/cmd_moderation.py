@@ -527,13 +527,13 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     # Why can you never be happy :defeatcry:
     #
     # Implemented below is a microreallocator, every infraction in a page has
-    # a fixed maximum length, but if one infraction doesnt need that length we can
+    # a fixed maximum length, but if one infraction doesn't need that length we can
     # give it to other infractions, so we can do a first pass to get lengths of them all,
     # pool spare space, and give it when needed
     #
     # This is similar enough to the golang method of dual pass string operations that
-    # it is worth mentioning that it is infact inspired from the go strings stdlib
-    # (ultrabear) highly reccomends reading it, its really well written!
+    # it is worth mentioning that it is in fact inspired from the go strings stdlib
+    # (ultrabear) highly recommends reading it, its really well written!
 
     # Take slice once to avoid memcopies every iteration
     pageslice = infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]
@@ -555,7 +555,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     pooled = sum(arr)
 
-    # We write output using a string.Buil- wait this isint golang
+    # We write output using a string.Buil- wait this isn't golang
     # Whatever, this is efficient
     writer = io.StringIO()
 
@@ -574,7 +574,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
         for i in pageslice:
             # Cap at newmaxlen-1 and then add \n at the end
-            # this ensures we always have newline seperators
+            # this ensures we always have newline separators
             writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen-1]}\n")
 
     tprint = (time.monotonic() - tstart) * 1000
@@ -824,7 +824,7 @@ commands = {
         },
     'list-mutes': {
         'pretty_name': 'list-mutes [-p PAGE]',
-        'description': 'List all mutes in the mute databse',
+        'description': 'List all mutes in the mute database',
         'permission': 'moderator',
         'execute': query_mutedb,
         },
