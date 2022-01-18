@@ -478,7 +478,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
             pass
 
     if not 1 <= per_page <= 40:  # pytype: disable=unsupported-operands
-        await message.channel.send("ERROR: Cannot exeed range 1-40 infractions per page")
+        await message.channel.send("ERROR: Cannot exceed range 1-40 infractions per page")
         return 1
 
     refilter: "Optional[re.Pattern[str]]"
