@@ -1,4 +1,4 @@
-# Check to ensure we dont import this file
+# Check to ensure we don't import this file
 if __name__ != "__main__":
     import warnings
     warnings.warn("LeXdPyK is not meant to be imported")
@@ -42,7 +42,7 @@ intents.guilds = True
 intents.members = True
 intents.reactions = True
 
-# Initialise Discord Client.
+# Initialize Discord Client.
 Client = discord.Client(status=discord.Status.online, intents=intents)
 
 
@@ -128,7 +128,7 @@ class ram_filesystem:
         path: "ram_filesystem" = self
 
         for item in make_dir:
-            # If the current dir doesnt exist then create it
+            # If the current dir doesn't exist then create it
             try:
                 path = path.directory_table[item]
             except KeyError:
@@ -262,7 +262,7 @@ command_modules_dict: Dict[str, Any] = {}
 dynamiclib_modules: List[Any] = []
 dynamiclib_modules_dict: Dict[str, Any] = {}
 
-# Initalize ramfs, kernel ramfs
+# Initialize ramfs, kernel ramfs
 ramfs = ram_filesystem()
 kernel_ramfs = ram_filesystem()
 
@@ -506,7 +506,7 @@ class errtype:
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
 
-# KeyError sentinel so we dont catch KeyError
+# KeyError sentinel so we don't catch KeyError
 class KernelKeyError(KeyError):
     pass
 
@@ -537,7 +537,7 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
     try:
 
         # Do hash lookup with KeyError
-        # Seperate from running function so we do not catch a KeyError deeper in the stack
+        # Separate from running function so we do not catch a KeyError deeper in the stack
         try:
             func = dynamiclib_modules_dict[argtype]
         except KeyError:
@@ -891,7 +891,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.8"
+version_info: str = "LeXdPyK 1.4.9"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
