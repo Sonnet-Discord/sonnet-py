@@ -47,7 +47,7 @@ class encrypted_writer:
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
         self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()  # type: ignore[no-untyped-call]
 
-        # Initalize HMAC generator
+        # Initialize HMAC generator
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
 
         # Open rawfile and write headers

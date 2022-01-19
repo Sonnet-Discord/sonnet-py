@@ -107,7 +107,7 @@ def write_vnum(fileobj: Writer, number: int) -> None:
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
 
 
-# Load config from cache, or load from db if cache isn't existant
+# Load config from cache, or load from db if cache isn't existent
 def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[dict[Union[str, int], Any]] = None) -> dict[str, Any]:
 
     datatypes = defaultcache if datatypes is None else datatypes

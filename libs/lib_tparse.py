@@ -100,7 +100,7 @@ class Promise(Generic[_PT]):
 
     As such the argument parser returns typed promise objects per argument that will return data once it has completed parsing, but not before.
     You may also construct a Promise directly with Promise[T]() or with Promise(T) for py3.8 users, and pass it to add_arg(store=) to parse to for multi argument parsing.
-    Correct typing is not gauranteed at runtime, but by mypy type checking, code that fails mypy type checking will produce unpredictable runtime behavior.
+    Correct typing is not guaranteed at runtime, but by mypy type checking, code that fails mypy type checking will produce unpredictable runtime behavior.
     """
     __slots__ = "_parsed", "_data"
 

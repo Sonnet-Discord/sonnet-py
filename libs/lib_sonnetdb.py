@@ -431,7 +431,7 @@ class db_hlapi:
         full_download_guild_db downloads an entire database including custom enum tables
 
         Currently this function just calls download_guild_db() but it is planned to be replaced with a dynamic solution
-        New code should use this function so that they dont have to rename their functions later
+        New code should use this function so that they don't have to rename their functions later
 
         :returns: Dict[str, List[List[Union[str, int]]]] - A json safe export of a guilds tables
         """
