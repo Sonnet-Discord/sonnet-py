@@ -56,7 +56,13 @@ def _compileurl(urllist: List[str]) -> str:
 
     urllist = [_urlFilter.sub("", i).replace(".", r"\.") for i in urllist]
 
-    return "(https?://)(" + "|".join(urllist) + ")\W?"
+    # discord renders a preview even if the https and url span multiple lines so account for newline and dont capture it
+    # ex: https://website.domain/page would render a preview, but so would
+    #  https://
+    #  website.domain
+    #  /page
+    # and other variants
+    return f"(https?://)(?:\n)?({'|'.join(urllist)})"
 
 
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
@@ -95,6 +101,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
     try:
         ramfs.ls(f"{message.guild.id}/regex")
     except FileNotFoundError:
+        # Compiles regex blacklists if they are not precompiled
 
         with db_hlapi(message.guild.id) as db:
             reglist = {}
@@ -107,6 +114,8 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
         for regex_type in ["regex-blacklist", "regex-notifier"]:
             ramfs.mkdir(f"{message.guild.id}/regex/{regex_type}")
             for i in reglist[regex_type]:
+                # name ramfs file using sha256 hex and only take last 32 bytes to avoid directory name exploit
+                # (forward slash in regex would build a new directory)
                 regexname = hex(int.from_bytes(hashlib.sha256(i.encode("utf8")).digest(), "big"))[-32:]
                 ramfs.create_f(f"{message.guild.id}/regex/{regex_type}/{regexname}", f_type=re.compile, f_args=[i])
 
@@ -115,6 +124,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
         else:
             ramfs.create_f(f"{message.guild.id}/regex/url", f_type=returnsNone)
 
+    # Load blacklist from ramfs cache into temp conf_cache
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
     blacklist["url-blacklist_regex"] = ramfs.read_f(f"{message.guild.id}/regex/url")
@@ -131,23 +141,21 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
     LowerCaseContent = message.content.lower()
 
     # Check message against word blacklist
-    word_blacklist = blacklist["word-blacklist"]
-    if word_blacklist:
-        for i in text_to_blacklist.split(" "):
-            if i in word_blacklist:
-                broke_blacklist = True
-                infraction_type.append(f"Word({i})")
+    word_blacklist: List[str] = blacklist["word-blacklist"]
+    for i in text_to_blacklist.split(" "):
+        if i in word_blacklist:
+            broke_blacklist = True
+            infraction_type.append(f"Word({i})")
 
     # Check message against word in word blacklist
-    word_blacklist = blacklist["word-in-word-blacklist"]
-    if word_blacklist:
-        for i in word_blacklist:
-            if i in text_to_blacklist.replace(" ", ""):
-                broke_blacklist = True
-                infraction_type.append(f"WordInWord({i})")
+    word_in_word_blacklist: List[str] = blacklist["word-in-word-blacklist"]
+    for i in word_in_word_blacklist:
+        if i in text_to_blacklist.replace(" ", ""):
+            broke_blacklist = True
+            infraction_type.append(f"WordInWord({i})")
 
     # Check message against REGEXP blacklist
-    regex_blacklist = blacklist["regex-blacklist"]
+    regex_blacklist: List["re.Pattern[str]"] = blacklist["regex-blacklist"]
     for r in regex_blacklist:
         try:
             if broke := r.findall(LowerCaseContent):
@@ -157,13 +165,13 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
             pass  # GC for old regex
 
     # Check message against REGEXP notifier list
-    regex_blacklist = blacklist["regex-notifier"]
-    for r in regex_blacklist:
+    regex_notifier: List["re.Pattern[str]"] = blacklist["regex-notifier"]
+    for r in regex_notifier:
         if r.findall(LowerCaseContent):
             notifier = True
 
     # Check against filetype blacklist
-    filetype_blacklist = blacklist["filetype-blacklist"]
+    filetype_blacklist: List[str] = blacklist["filetype-blacklist"]
     if filetype_blacklist and message.attachments:
         for ft in message.attachments:
             for a in filetype_blacklist:
@@ -172,7 +180,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
                     infraction_type.append(f"FileType({a})")
 
     # Check url blacklist
-    url_blacklist: Any = blacklist["url-blacklist_regex"]
+    url_blacklist: Optional["re.Pattern[str]"] = blacklist["url-blacklist_regex"]
     if url_blacklist is not None:
         if broke := url_blacklist.findall(LowerCaseContent):
             broke_blacklist = True

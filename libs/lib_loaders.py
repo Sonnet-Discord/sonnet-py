@@ -124,7 +124,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         message_config: Dict[str, Any] = {}
 
         # Imports csv style data
-        for i in datatypes["csv"]:
+        for i in datatypes["csv"]:  # csv types are List[str]
             csvpre = blacklist_cache.read(read_vnum(blacklist_cache))
             if csvpre:
                 message_config[i[0]] = csvpre.decode("utf8").split(",")
@@ -132,7 +132,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
                 message_config[i[0]] = i[1].split(",") if i[1] else []
 
         # Imports text style data
-        for i in datatypes["text"]:
+        for i in datatypes["text"]:  # text types are str
             textpre = blacklist_cache.read(read_vnum(blacklist_cache))
             if textpre:
                 message_config[i[0]] = textpre.decode("utf8")
@@ -140,7 +140,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
                 message_config[i[0]] = i[1]
 
         # Imports JSON type data
-        for i in datatypes["json"]:
+        for i in datatypes["json"]:  # json types are Union[Dict[str, Any], List[Any]]
             jsonpre = blacklist_cache.read(read_vnum(blacklist_cache))
             if jsonpre:
                 message_config[i[0]] = pickle.loads(jsonpre)
@@ -150,7 +150,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         return message_config
 
     except FileNotFoundError:
-        message_config: dict[str, Any] = {}  #  type: ignore
+        message_config = {}  # type defined in try block
 
         # Loads base db
         with db_hlapi(guild_id) as db:
