@@ -3,7 +3,7 @@
 
 import importlib
 
-import time, asyncio, os, hashlib
+import time, asyncio, os, hashlib, string, io
 import copy as pycopy
 
 import discord, lz4.frame
@@ -45,7 +45,7 @@ import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
 
-async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]]) -> None:
+async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
     try:
         await channel.send(embed=contents, files=files)
     except discord.errors.Forbidden:
@@ -72,6 +72,13 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kernel_ramfs, delete=True)
 
+    # Change Optional[List[discord.File]] to List[discord.File]
+    files = files if files is not None else []
+
+    # Add logged_ prefix to make it impossible to namesnipe message content
+    for i in files:
+        i.filename = f"logged_{i.filename}"
+
     inc_statistics_better(message.guild.id, "on-message-delete", kernel_ramfs)
 
     # Add to log
@@ -90,6 +97,10 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     if not isinstance(log_channel, discord.TextChannel):
         return
+
+    allowed = set(string.ascii_letters + string.digits)
+    if any(i not in allowed for i in message.content):
+        files.append(discord.File(io.BytesIO(message.content.encode("utf8")), filename=f"{message.id}_content.txt"))
 
     message_embed = discord.Embed(
         title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, ramfs)
@@ -169,6 +180,17 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             if not isinstance(message_log, discord.TextChannel):
                 return
 
+            files: List[discord.File] = []
+
+            allowed = set(string.ascii_letters + string.digits)
+
+            def testplace(msg: discord.Message, name: str) -> None:
+                if any(i not in allowed for i in msg.content):
+                    files.append(discord.File(io.BytesIO(msg.content.encode("utf8")), filename=f"{msg.id}_{name}_content.txt"))
+
+            testplace(old_message, "old")
+            testplace(message, "new")
+
             lim: int = constants.embed.field.value
 
             message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, ramfs))
@@ -186,7 +208,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime_now()
-            asyncio.create_task(catch_logging_error(message_log, message_embed, None))
+            asyncio.create_task(catch_logging_error(message_log, message_embed, files))
 
     # Check against blacklist
     mconf = load_message_config(message.guild.id, ramfs)
@@ -522,4 +544,4 @@ commands: Dict[str, Callable[..., Any]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.11"
+version_info: str = "1.2.12-DEV"
