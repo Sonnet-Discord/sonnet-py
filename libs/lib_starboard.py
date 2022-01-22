@@ -57,8 +57,8 @@ async def build_starboard_embed(message: discord.Message) -> discord.Embed:
     # Generate embed
     starboard_embed = discord.Embed(title="Starred message", description=message_content, color=0xffa700)
 
-    if link := _urlregex.findall(message.content):
-        starboard_embed.set_image(url=''.join(link[0]))
+    if link := _urlregex.match(message.content):
+        starboard_embed.set_image(url=link.group())
 
     for i in message.attachments:
         if any(i.url.endswith(ext) for ext in _image_filetypes):
