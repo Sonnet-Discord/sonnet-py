@@ -660,14 +660,15 @@ async def on_message(message: discord.Message) -> None:
     args = message.content.split(" ")
 
     # If bot owner run a debug command
-    if len(args) >= 2 and args[0] in debug_commands and message.author.id in BOT_OWNER and args[1] == str(Client.user.id):
-        if e := debug_commands[args[0]](args[2:]):
-            await message.channel.send(e[0])
-            for i in e[1]:
-                errtype(i, "")
-        else:
-            await sendable_send(message.channel, "Debug command returned no error status")
-            return
+    if len(args) >= 2 and args[0] in debug_commands:
+        if message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
+            if e := debug_commands[args[0]](args[2:]):
+                await message.channel.send(e[0])
+                for i in e[1]:
+                    errtype(i, "")
+            else:
+                await sendable_send(message.channel, "Debug command returned no error status")
+                return
 
     if await safety_check(guild=message.guild, user=message.author):
         if err := await event_call("on-message", message):
@@ -838,9 +839,16 @@ def gentoken() -> str:
 def main(args: List[str]) -> int:
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--log-debug", action="store_true", help="Makes the logging module start in debug mode")
-    parser.add_argument("--generate-token", action="store_true", help="Discards the current token file if there is one, and generates a new encrypted tokenfile")
+    parser.add_argument("--log-debug", action="store_true", help="makes the logging module start in debug mode")
+    parser.add_argument("--generate-token", action="store_true", help="discards the current token file if there is one, and generates a new encrypted tokenfile")
+    parser.add_argument("--version", "-v", action="store_true", help="print version info and exit")
     parsed = parser.parse_args()
+
+    if parsed.version:
+        import platform
+        pyver = f"{platform.python_implementation()} {platform.python_version()}"
+        print(f"{version_info} @ {os.getcwd()}\n{pyver} @ {sys.executable}")
+        return 0
 
     # Set Loglevel
     loglevel = logging.DEBUG if parsed.log_debug else logging.INFO
@@ -891,7 +899,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.9"
+version_info: str = "LeXdPyK 1.4.10"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
