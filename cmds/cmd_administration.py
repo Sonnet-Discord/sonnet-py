@@ -244,6 +244,9 @@ async def set_filelog_behavior(message: discord.Message, args: List[str], client
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
+    'set-filelog-behaviour': {
+        'alias': 'set-filelog-behavior',
+        },
     'set-filelog-behavior':
         {
             'pretty_name': 'set-filelog-behavior [text|gzip|none]',
