@@ -3,7 +3,7 @@
 
 import importlib
 
-import time, asyncio, os, hashlib, string, io
+import time, asyncio, os, hashlib, string, io, gzip
 import copy as pycopy
 
 import discord, lz4.frame
@@ -40,9 +40,11 @@ from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url, discord_datetime_now
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx
 
-from typing import List, Any, Dict, Optional, Callable, Tuple
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
+
+ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!$%^&()/.,?[{}]")
 
 
 async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
@@ -56,6 +58,40 @@ async def catch_logging_error(channel: discord.TextChannel, contents: discord.Em
                 await channel.send("There were files attached but they exceeded the guild filesize limit", embed=contents)
         except discord.errors.Forbidden:
             pass
+
+
+def decide_to_file(msg: discord.Message, filename: str, behavior: Literal["none", "gzip", "text"]) -> Optional[discord.File]:
+    if any(i not in ALLOWED_CHARS for i in msg.content) and behavior != "none":
+
+        msgraw = msg.content.encode("utf8")
+
+        if behavior == "text":
+            buf = io.BytesIO(msgraw)
+            filename += "txt"
+
+        elif behavior == "gzip":
+            buf = io.BytesIO()
+            with gzip.GzipFile(filename + "txt", "wb", fileobj=buf) as txt:
+                txt.write(msgraw)
+            buf.seek(0)
+            filename += "gz"
+
+        return discord.File(buf, filename=filename)
+
+    return None
+
+
+def message_file_log_behavior(db: db_hlapi) -> Literal["text", "none", "gzip"]:
+    # file log state
+    tmp: Final = db.grab_config("message-to-file-behavior") or "text"
+    # Statically assert comparisons because mypy hates me
+    # (and hates promoting a Final[str] to a Final[Literal[V]] when Final[str] == V = True)
+    # Seriously how is that not a feature
+    if tmp == "text": return "text"
+    elif tmp == "gzip": return "gzip"
+    elif tmp == "none": return "none"
+
+    raise RuntimeError("Database entry for message-to-file-behavior is not text,gzip,none")
 
 
 async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
@@ -84,6 +120,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     # Add to log
     with db_hlapi(message.guild.id) as db:
         message_log = db.grab_config("message-log")
+        behavior = message_file_log_behavior(db)
 
     try:
         if not (message_log and (log_channel := client.get_channel(int(message_log)))):
@@ -98,9 +135,8 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     if not isinstance(log_channel, discord.TextChannel):
         return
 
-    allowed = set(string.ascii_letters + string.digits)
-    if any(i not in allowed for i in message.content):
-        files.append(discord.File(io.BytesIO(message.content.encode("utf8")), filename=f"{message.id}_content.txt"))
+    if v := decide_to_file(message, f"{message.id}_content.", behavior):
+        files.append(v)
 
     message_embed = discord.Embed(
         title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, ramfs)
@@ -172,24 +208,21 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     # Add to log
     with db_hlapi(message.guild.id) as db:
         message_log_str = db.grab_config("message-edit-log") or db.grab_config("message-log")
+        msgtofile_behavior = message_file_log_behavior(db)
 
-    # Skip logging if message is the same or mlog doesnt exist
+    # Skip logging if message is the same or mlog doesn't exist
     if message_log_str and not (old_message.content == message.content):
         if message_log := client.get_channel(int(message_log_str)):
 
             if not isinstance(message_log, discord.TextChannel):
                 return
 
-            files: List[discord.File] = []
-
-            allowed = set(string.ascii_letters + string.digits)
-
-            def testplace(msg: discord.Message, name: str) -> None:
-                if any(i not in allowed for i in msg.content):
-                    files.append(discord.File(io.BytesIO(msg.content.encode("utf8")), filename=f"{msg.id}_{name}_content.txt"))
-
-            testplace(old_message, "old")
-            testplace(message, "new")
+            files: List[discord.File] = list(
+                filter(None, (
+                    decide_to_file(old_message, f"{message.id}_old_content.", msgtofile_behavior),
+                    decide_to_file(message, f"{message.id}_new_content.", msgtofile_behavior),
+                    ))
+                )
 
             lim: int = constants.embed.field.value
 
