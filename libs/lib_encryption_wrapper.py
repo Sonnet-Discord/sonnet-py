@@ -50,7 +50,7 @@ class _WriteSeekCloser(Protocol):
 class encrypted_writer:
     __slots__ = "cipher", "encryptor_module", "HMACencrypt", "rawfile", "buf"
 
-    def __init__(self, filename: Union[str, _WriteSeekCloser], key: bytes, iv: bytes) -> None:
+    def __init__(self, filename: Union[bytes, str, _WriteSeekCloser], key: bytes, iv: bytes) -> None:
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
@@ -60,7 +60,7 @@ class encrypted_writer:
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
 
         # Open rawfile and write headers
-        if isinstance(filename, str):
+        if isinstance(filename, (bytes, str)):
             self.rawfile: _WriteSeekCloser = open(filename, "wb+")
         else:
             self.rawfile = filename
@@ -142,10 +142,10 @@ class _ReadSeekCloser(Protocol):
 class encrypted_reader:
     __slots__ = "rawfile", "cipher", "decryptor_module", "pointer", "cache"
 
-    def __init__(self, filename: Union[str, _ReadSeekCloser], key: bytes, iv: bytes) -> None:
+    def __init__(self, filename: Union[bytes, str, _ReadSeekCloser], key: bytes, iv: bytes) -> None:
 
         # Open rawfile
-        if isinstance(filename, str):
+        if isinstance(filename, (bytes, str)):
             self.rawfile: _ReadSeekCloser = open(filename, "rb+")
         else:
             self.rawfile = filename

@@ -371,16 +371,16 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
 
             try:
 
-                loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                loc: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
                 loc.seek(0)
                 pointer = loc.read()
 
-                keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                keys: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
                 keys.seek(0)
                 key = keys.read(32)
                 iv = keys.read(16)
 
-                name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                name: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
                 name.seek(0)
                 fname = name.read().decode("utf8")
 
