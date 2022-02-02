@@ -49,7 +49,7 @@ from lib_tparse import Parser
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
 
-from typing import Any, List, Optional, Tuple, cast
+from typing import Any, List, Optional, Tuple, Final, cast
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -98,9 +98,16 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     user, member = await parse_user_member_noexcept(message, args, client, default_self=True)
 
     # Status hashmap
-    status_map = {"online": "🟢 (online)", "offline": "⚫ (offline)", "idle": "🟡 (idle)", "dnd": "🔴 (dnd)", "do_not_disturb": "🔴 (dnd)", "invisible": "⚫ (offline)"}
+    status_map: Final = {
+        "online": "\U0001F7E2 (online)",
+        "offline": "\U000026AB (offline)",
+        "idle": "\U0001F7E1 (idle)",
+        "dnd": "\U0001F534 (dnd)",
+        "do_not_disturb": "\U0001F534 (dnd)",
+        "invisible": "\U000026AB (offline)"
+        }
 
-    embed = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_thumbnail(url=user_avatar_url(user))
     embed.add_field(name="Username", value=str(user), inline=True)
     embed.add_field(name="User ID", value=str(user.id), inline=True)
@@ -350,8 +357,8 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
 
     try:
-        await message.add_reaction("👍")
-        await message.add_reaction("👎")
+        await message.add_reaction("\U0001F44D")  # Thumbs up emoji
+        await message.add_reaction("\U0001F44E")  # Thumbs down emoji
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError("ERROR: The bot does not have permissions to add a reaction here")
     except discord.errors.NotFound:
@@ -431,4 +438,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.11"
+version_info: str = "1.2.12-DEV"
