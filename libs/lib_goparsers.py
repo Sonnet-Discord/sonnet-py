@@ -139,7 +139,7 @@ def ParseDuration(s: str) -> int:
     """
     Parses a Duration from a string using go stdlib
 
-    :raises: errors.NoBinaryError - ctypes could not load the go binary, no parsing occured
+    :raises: errors.NoBinaryError - ctypes could not load the go binary, no parsing occurred
     :raises: errors.ParseFailureError - Failed to parse time
     :returns: int - Time parsed in seconds
     """

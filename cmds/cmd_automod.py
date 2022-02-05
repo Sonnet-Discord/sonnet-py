@@ -58,12 +58,18 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
         await message.channel.send(f"Malformed {name}")
         raise blacklist_input_error(f"Malformed {name}")
 
-    if (allowed is not None) and not all(i in allowed for i in args[0]):
+    blacklist = args[0]
+
+    if (allowed is not None) and not all(i in allowed for i in blacklist):
         await message.channel.send(f"The {name} does not support characters used, only supports {allowed}")
         raise blacklist_input_error("Unsupported chars")
 
+    if not all(blacklist.split(",")):
+        await message.channel.send("ERROR: passed an empty item (the start/end of the message has a comma, or there are 2+ commas in a row)")
+        raise blacklist_input_error("Empty argument")
+
     with db_hlapi(message.guild.id) as db:
-        db.add_config(name, args[0])
+        db.add_config(name, blacklist)
 
     if verbose: await message.channel.send(f"Updated {name} successfully")
 
@@ -647,7 +653,7 @@ commands = {
     'set-charantispam':
         {
             'pretty_name': 'set-charantispam <messages> <seconds> <chars>',
-            'description': 'Set how many messages in seconds exeeding total chars to trigger antispam automute',
+            'description': 'Set how many messages in seconds exceeding total chars to trigger antispam automute',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': char_antispam_set
@@ -689,4 +695,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.11-DEV"
+version_info: str = "1.2.12-DEV"

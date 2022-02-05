@@ -29,6 +29,9 @@ importlib.reload(lib_sonnetconfig)
 import lib_sonnetcommands
 
 importlib.reload(lib_sonnetcommands)
+import lib_tparse
+
+importlib.reload(lib_tparse)
 
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
@@ -37,9 +40,10 @@ from lib_parsers import grab_files, generate_reply_field, parse_channel_message_
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME, REGEX_VERSION
 from lib_sonnetcommands import CommandCtx
+from lib_tparse import Parser
 import lib_constants as constants
 
-from typing import List, Tuple, Any, Awaitable, Optional, Callable, Union, cast
+from typing import List, Tuple, Awaitable, Optional, Callable, Union, cast
 import lib_lexdpyk_h as lexdpyk
 
 # Import re to trick type checker into using re stubs
@@ -182,7 +186,7 @@ async def process_infraction(
     return (member, user, reason, infraction_id, dm_sent)
 
 
-async def warn_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+async def warn_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod)
@@ -195,8 +199,10 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("User does not exist")
         return 1
 
+    return 0
 
-async def note_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+
+async def note_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "note", ctx.ramfs, infraction=False, automod=ctx.automod)
@@ -209,14 +215,16 @@ async def note_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("User does not exist")
         return 1
 
+    return 0
 
-async def kick_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+async def kick_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
 
     try:
         member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", ramfs, automod=automod)
@@ -237,9 +245,10 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
         return 1
 
     if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    return 0
 
 
-async def ban_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+async def ban_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -273,15 +282,16 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," * bool(delete_days)
 
     if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    return 0
 
 
-async def unban_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def unban_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
 
     try:
         _, user, reason, _, _ = await process_infraction(message, args, client, "unban", ramfs, infraction=False, automod=automod)
@@ -299,6 +309,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
         return 1
 
     if verbose: await message.channel.send(f"Unbanned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    return 0
 
 
 class NoMuteRole(Exception):
@@ -316,7 +327,7 @@ async def grab_mute_role(message: discord.Message, ramfs: lexdpyk.ram_filesystem
             return mute_role_obj
 
         else:
-            await message.channel.send("ERROR: no muterole set")
+            await message.channel.send("ERROR: no mute role set")
             raise NoMuteRole("No mute role")
 
 
@@ -335,13 +346,13 @@ async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infract
                 pass
 
 
-async def mute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def mute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
 
     # Grab mute time
     if len(args) >= 2:
@@ -399,14 +410,16 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
             db.unmute_user(userid=member.id)
             db.mute_user(member.id, 0, infractionID)
 
+    return 0
 
-async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+async def unmute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    ramfs: lexdpyk.ram_filesystem = kwargs["ramfs"]
-    automod: bool = kwargs["automod"]
-    verbose: bool = kwargs["verbose"]
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
@@ -430,9 +443,14 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
         db.unmute_user(userid=member.id)
 
     if verbose: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    return 0
 
 
-async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+def get_user_id(s: str) -> int:
+    return int(s.strip("<@!>"))
+
+
+async def search_infractions_by_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -442,59 +460,50 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     args = shlex.split(" ".join(args))
 
     # Parse flags
-    selected_chunk: int = 0
-    responsible_mod: Optional[int] = None
-    infraction_type: Optional[str] = None
-    per_page: int = 20
-    user_affected: Optional[int] = None
-    automod: Optional[bool] = None
-    filtering: Optional[str] = None
-    for index, item in enumerate(args):
-        try:
-            if item in ["-p", "--page"]:
-                selected_chunk = int(args[index + 1]) - 1
-            elif item in ["-m", "--mod"]:
-                responsible_mod = int(args[index + 1].strip("<@!>"))
-            elif item in ["-u", "--user"]:
-                user_affected = int(args[index + 1].strip("<@!>"))
-            elif item in ["-i", "--infractioncount"]:
-                per_page = int(args[index + 1])
-            elif item in ["-t", "--type"]:
-                infraction_type = (args[index + 1])
-            elif item in ["-f", "--filter"]:
-                filtering = args[index + 1]
-            elif item == "--no-automod":
-                automod = False
-            elif item == "--automod":
-                automod = True
-        except (ValueError, IndexError):
-            await message.channel.send("Invalid flags supplied")
-            return 1
+    parser = Parser("search-infractions")
+
+    selected_chunk_f = parser.add_arg(["-p", "--page"], lambda s: int(s) - 1)
+    responsible_mod_f = parser.add_arg(["-m", "--mod"], get_user_id)
+    user_affected_f = parser.add_arg(["-u", "--user"], get_user_id)
+    per_page_f = parser.add_arg(["-i", "--infractioncount"], int)
+    infraction_type_f = parser.add_arg(["-t", "--type"], str)
+    filtering_f = parser.add_arg(["-f", "--filter"], str)
+    automod_f = lib_tparse.add_true_false_flag(parser, "automod")
+
+    try:
+        parser.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True)
+    except lib_tparse.ParseFailureError:
+        await message.channel.send("Failed to parse flags")
+        return 1
+
+    selected_chunk = selected_chunk_f.get(0)
+    per_page = per_page_f.get(20)
+    user_affected = user_affected_f.get()
 
     # Default to user if no user/mod flags are supplied
-    if None is responsible_mod is user_affected:
+    if None is responsible_mod_f.get() is user_affected:
         try:
-            user_affected = int(args[0].strip("<@!>"))
+            user_affected = get_user_id(args[0])
         except (IndexError, ValueError):
             pass
 
-    if not 5 <= per_page <= 40:
-        await message.channel.send("ERROR: Cannot exeed range 5-40 infractions per page")
+    if not 1 <= per_page <= 40:  # pytype: disable=unsupported-operands
+        await message.channel.send("ERROR: Cannot exceed range 1-40 infractions per page")
         return 1
 
     refilter: "Optional[re.Pattern[str]]"
 
-    if filtering is not None:
+    if (f := filtering_f.get()) is not None:
         try:
-            refilter = re.compile(filtering)
+            refilter = re.compile(f)
         except re.error:
             raise lib_sonnetcommands.CommandError("ERROR: Filter regex is invalid")
     else:
         refilter = None
 
     with db_hlapi(message.guild.id) as db:
-        if user_affected or responsible_mod:
-            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod, itype=infraction_type, automod=automod)
+        if user_affected or responsible_mod_f.get():
+            infractions = db.grab_filter_infractions(user=user_affected, moderator=responsible_mod_f.get(), itype=infraction_type_f.get(), automod=automod_f.get())
             assert isinstance(infractions, list)
         else:
             await message.channel.send("Please specify a user or moderator")
@@ -517,24 +526,24 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
         await message.channel.send("ERROR: Cannot go to page 0")
         return 1
-    elif selected_chunk < -1:
+    elif selected_chunk < -1:  # pytype: disable=unsupported-operands
         selected_chunk %= cpagecount
         selected_chunk += 1
 
-    if not 0 <= selected_chunk < cpagecount:
+    if not 0 <= selected_chunk < cpagecount:  # pytype: disable=unsupported-operands
         await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
         return 1
 
     # Why can you never be happy :defeatcry:
     #
     # Implemented below is a microreallocator, every infraction in a page has
-    # a fixed maximum length, but if one infraction doesnt need that length we can
+    # a fixed maximum length, but if one infraction doesn't need that length we can
     # give it to other infractions, so we can do a first pass to get lengths of them all,
     # pool spare space, and give it when needed
     #
     # This is similar enough to the golang method of dual pass string operations that
-    # it is worth mentioning that it is infact inspired from the go strings stdlib
-    # (ultrabear) highly reccomends reading it, its really well written!
+    # it is worth mentioning that it is in fact inspired from the go strings stdlib
+    # (ultrabear) highly recommends reading it, its really well written!
 
     # Take slice once to avoid memcopies every iteration
     pageslice = infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]
@@ -556,7 +565,7 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     pooled = sum(arr)
 
-    # We write output using a string.Buil- wait this isint golang
+    # We write output using a string.Buil- wait this isn't golang
     # Whatever, this is efficient
     writer = io.StringIO()
 
@@ -575,15 +584,16 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
         for i in pageslice:
             # Cap at newmaxlen-1 and then add \n at the end
-            # this ensures we always have newline seperators
+            # this ensures we always have newline separators
             writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen-1]}\n")
 
     tprint = (time.monotonic() - tstart) * 1000
 
     await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infraction{'s'*(len(infractions)!=1)}) ({tprint:.1f}ms)\n```css\nID, Type, Reason\n{writer.getvalue()}```")
+    return 0
 
 
-async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+async def get_detailed_infraction(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -612,12 +622,13 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
 
     try:
         await message.channel.send(embed=infraction_embed)
+        return 0
     except discord.errors.Forbidden:
         await message.channel.send(constants.sonnet.error_embed)
         return 1
 
 
-async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+async def delete_infraction(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -634,7 +645,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
         return 1
 
     if not ctx.verbose:
-        return
+        return 0
 
     # pylint: disable=E0633
     infraction_id, user_id, moderator_id, infraction_type, reason, timestamp = infraction
@@ -651,20 +662,27 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
     try:
         await message.channel.send(embed=infraction_embed)
+        return 0
     except discord.errors.Forbidden:
         await message.channel.send(constants.sonnet.error_embed)
         return 1
 
 
-async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    discord_message, _ = await parse_channel_message_noexcept(message, args, client)
+    discord_message, nargs = await parse_channel_message_noexcept(message, args, client)
 
     if not discord_message.guild:
         await message.channel.send("ERROR: Message not in any guild")
         return 1
+
+    sendraw = False
+    for arg in args[nargs:]:
+        if arg in ["-r", "--raw"]:
+            sendraw = True
+            break
 
     # Generate replies
     message_content = generate_reply_field(discord_message)
@@ -683,6 +701,10 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
         awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
         fileobjs = [await i for i in awaitobjs]
 
+    if sendraw:
+        file_content = io.BytesIO(discord_message.content.encode("utf8"))
+        fileobjs.append(discord.File(file_content, filename=f"{discord_message.id}.at.{int(datetime_now().timestamp())}.txt"))
+
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)
     except discord.errors.HTTPException:
@@ -691,6 +713,8 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
         except discord.errors.Forbidden:
             await message.channel.send(constants.sonnet.error_embed)
             return 1
+
+    return 0
 
 
 class purger:
@@ -703,7 +727,7 @@ class purger:
         return bool(message.author.id == self.user_id)
 
 
-async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
 
     if args:
         try:
@@ -736,12 +760,13 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
 
     try:
         await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
+        return 0
     except discord.errors.Forbidden:
         await message.channel.send("ERROR: Bot lacks perms to purge")
         return 1
 
 
-async def query_mutedb(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def query_mutedb(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -778,9 +803,10 @@ async def query_mutedb(message: discord.Message, args: List[str], client: discor
 
     LF = "\n"
     await message.channel.send(f"Page {page+1} / {len(table)//per_page+1}, ({len(table)} mute{'s'*(len(table)!=1)})```css\nUid, InfractionID, Unmuted in\n{LF.join(fmt)}```")
+    return 0
 
 
-async def remove_mutedb(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def remove_mutedb(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -803,6 +829,8 @@ async def remove_mutedb(message: discord.Message, args: List[str], client: disco
             await message.channel.send("ERROR: User is not in mute database")
             return 1
 
+    return 0
+
 
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
 
@@ -815,7 +843,7 @@ commands = {
         },
     'list-mutes': {
         'pretty_name': 'list-mutes [-p PAGE]',
-        'description': 'List all mutes in the mute databse',
+        'description': 'List all mutes in the mute database',
         'permission': 'moderator',
         'execute': query_mutedb,
         },
@@ -905,12 +933,13 @@ commands = {
     'get-message': {
         'alias': 'grab-message'
         },
-    'grab-message': {
-        'pretty_name': 'grab-message <message>',
-        'description': 'Grab a message and show its contents',
-        'permission': 'moderator',
-        'execute': grab_guild_message
-        },
+    'grab-message':
+        {
+            'pretty_name': 'grab-message <message> [-r]',
+            'description': 'Grab a message and show its contents, specify -r to get message content as a file',
+            'permission': 'moderator',
+            'execute': grab_guild_message
+            },
     'purge':
         {
             'pretty_name': 'purge <limit> [user]',
@@ -921,4 +950,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.11-DEV"
+version_info: str = "1.2.12-DEV"

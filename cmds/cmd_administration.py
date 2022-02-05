@@ -18,11 +18,15 @@ importlib.reload(lib_loaders)
 import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
+import lib_sonnetcommands
+
+importlib.reload(lib_sonnetcommands)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
 from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import BOT_NAME
+from lib_sonnetcommands import CommandCtx
 
 from typing import Any, List
 
@@ -131,7 +135,7 @@ To fully ensure {BOT_NAME} does not store any data on this server, delete the db
             await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
         except discord.errors.HTTPException:
             await message.channel.send(
-                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords filesize limitation
+                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords file size limitation
 Please contact the bot owner directly to download your guilds database
 Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"""
                 )
@@ -218,9 +222,38 @@ async def set_moderator_role(message: discord.Message, args: List[str], client: 
     return await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
 
 
+async def set_filelog_behavior(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    if args:
+        if (state := args[0]) in ["none", "text", "gzip"]:
+            with db_hlapi(message.guild.id) as db:
+                db.add_config("message-to-file-behavior", state)
+            await message.channel.send(f"Message-to-file log status has been updated to {state}")
+        else:
+            raise lib_sonnetcommands.CommandError("ERROR: Passed behavior is not valid, only (text|gzip|none) are valid")
+    else:
+        with db_hlapi(message.guild.id) as db:
+            state = db.grab_config("message-to-file-behavior") or "text"
+        await message.channel.send(f"Message-to-file log status is currently {state}")
+
+    return 0
+
+
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
+    'set-filelog-behaviour': {
+        'alias': 'set-filelog-behavior',
+        },
+    'set-filelog-behavior':
+        {
+            'pretty_name': 'set-filelog-behavior [text|gzip|none]',
+            'description': 'Set the message to file log behavior to store text, gzip, or not store',
+            'permission': 'administrator',
+            'execute': set_filelog_behavior,
+            },
     'message-edit-log':
         {
             'pretty_name': 'message-edit-log <channel>',
@@ -319,4 +352,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.12-DEV"

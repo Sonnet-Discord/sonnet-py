@@ -3,7 +3,7 @@
 
 import importlib
 
-import time, asyncio, os, hashlib
+import time, asyncio, os, hashlib, string, io, gzip
 import copy as pycopy
 
 import discord, lz4.frame
@@ -40,12 +40,14 @@ from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url, discord_datetime_now
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx
 
-from typing import List, Any, Dict, Optional, Callable, Tuple
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
+ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!$%^&()/.,?[{}]")
 
-async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]]) -> None:
+
+async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
     try:
         await channel.send(embed=contents, files=files)
     except discord.errors.Forbidden:
@@ -58,11 +60,45 @@ async def catch_logging_error(channel: discord.TextChannel, contents: discord.Em
             pass
 
 
+def decide_to_file(msg: discord.Message, filename: str, behavior: Literal["none", "gzip", "text"]) -> Optional[discord.File]:
+    if any(i not in ALLOWED_CHARS for i in msg.content) and behavior != "none":
+
+        msgraw = msg.content.encode("utf8")
+
+        if behavior == "text":
+            buf = io.BytesIO(msgraw)
+            filename += "txt"
+
+        elif behavior == "gzip":
+            buf = io.BytesIO()
+            with gzip.GzipFile(filename + "txt", "wb", fileobj=buf) as txt:
+                txt.write(msgraw)
+            buf.seek(0)
+            filename += "gz"
+
+        return discord.File(buf, filename=filename)
+
+    return None
+
+
+def message_file_log_behavior(db: db_hlapi) -> Literal["text", "none", "gzip"]:
+    # file log state
+    tmp: Final = db.grab_config("message-to-file-behavior") or "text"
+    # Statically assert comparisons because mypy hates me
+    # (and hates promoting a Final[str] to a Final[Literal[V]] when Final[str] == V = True)
+    # Seriously how is that not a feature
+    if tmp == "text": return "text"
+    elif tmp == "gzip": return "gzip"
+    elif tmp == "none": return "none"
+
+    raise RuntimeError("Database entry for message-to-file-behavior is not text,gzip,none")
+
+
 async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
-    client: discord.Client = kargs["client"]
-    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
-    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
+    client: Final[discord.Client] = kargs["client"]
+    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
+    ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
 
     # Ignore bots
     if parse_skip_message(client, message):
@@ -72,11 +108,19 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     files: Optional[List[discord.File]] = grab_files(message.guild.id, message.id, kernel_ramfs, delete=True)
 
+    # Change Optional[List[discord.File]] to List[discord.File]
+    files = files if files is not None else []
+
+    # Add logged_ prefix to make it impossible to namesnipe message content
+    for i in files:
+        i.filename = f"logged_{i.filename}"
+
     inc_statistics_better(message.guild.id, "on-message-delete", kernel_ramfs)
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
         message_log = db.grab_config("message-log")
+        behavior = message_file_log_behavior(db)
 
     try:
         if not (message_log and (log_channel := client.get_channel(int(message_log)))):
@@ -91,17 +135,20 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     if not isinstance(log_channel, discord.TextChannel):
         return
 
-    message_embed = discord.Embed(
+    if v := decide_to_file(message, f"{message.id}_content.", behavior):
+        files.append(v)
+
+    message_embed: Final = discord.Embed(
         title=f"Message deleted in #{message.channel}", description=message.content[:constants.embed.description], color=load_embed_color(message.guild, embed_colors.deletion, ramfs)
         )
 
     # Parse for message lengths >2048 (discord now does 4000 hhhhhh)
     if len(message.content) > constants.embed.description:
-        limend = constants.embed.description + constants.embed.field.value
+        limend: Final = constants.embed.description + constants.embed.field.value
         message_embed.add_field(name="(Continued)", value=message.content[constants.embed.description:limend])
 
         if len(message.content) > limend:
-            flimend = limend + constants.embed.field.value
+            flimend: Final = limend + constants.embed.field.value
             message_embed.add_field(name="(Continued further)", value=message.content[limend:flimend])
 
     message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=user_avatar_url(message.author))
@@ -129,26 +176,26 @@ async def grab_an_adult(discord_message: discord.Message, guild: discord.Guild, 
         if not isinstance(notify_log, discord.TextChannel):
             return
 
-        message_content = generate_reply_field(discord_message)
+        message_content: Final = generate_reply_field(discord_message)
 
         # Message has been grabbed, start generating embed
-        message_embed = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(guild, embed_colors.primary, ramfs))
+        message_embed: Final = discord.Embed(title=f"Auto Flagged Message in #{discord_message.channel}", description=message_content, color=load_embed_color(guild, embed_colors.primary, ramfs))
 
         message_embed.set_author(name=str(discord_message.author), icon_url=user_avatar_url(discord_message.author))
         message_embed.timestamp = discord_message.created_at
 
         # Grab files async
-        awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
-        fileobjs = [await i for i in awaitobjs]
+        awaitobjs: Final = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
+        fileobjs: Final = [await i for i in awaitobjs]
 
         await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
 async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs: Any) -> None:
 
-    client: discord.Client = kargs["client"]
-    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
-    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
+    client: Final[discord.Client] = kargs["client"]
+    ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
+    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
 
     # Ignore bots
     if parse_skip_message(client, message):
@@ -160,41 +207,49 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     # Add to log
     with db_hlapi(message.guild.id) as db:
-        message_log_str = db.grab_config("message-edit-log") or db.grab_config("message-log")
+        message_log_str: Final = db.grab_config("message-edit-log") or db.grab_config("message-log")
+        msgtofile_behavior: Final = message_file_log_behavior(db)
 
-    # Skip logging if message is the same or mlog doesnt exist
+    # Skip logging if message is the same or mlog doesn't exist
     if message_log_str and not (old_message.content == message.content):
         if message_log := client.get_channel(int(message_log_str)):
 
             if not isinstance(message_log, discord.TextChannel):
                 return
 
-            lim: int = constants.embed.field.value
+            files: Final = list(
+                filter(None, (
+                    decide_to_file(old_message, f"{message.id}_old_content.", msgtofile_behavior),
+                    decide_to_file(message, f"{message.id}_new_content.", msgtofile_behavior),
+                    ))
+                )
 
-            message_embed = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, ramfs))
+            lim: Final[int] = constants.embed.field.value
+
+            message_embed: Final = discord.Embed(title=f"Message edited in #{message.channel}", color=load_embed_color(message.guild, embed_colors.edit, ramfs))
             message_embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=user_avatar_url(message.author))
 
-            old_msg = (old_message.content or "NULL")
+            old_msg: Final = (old_message.content or "NULL")
             message_embed.add_field(name="Old Message", value=(old_msg)[:lim], inline=False)
             if len(old_msg) > lim:
                 message_embed.add_field(name="(Continued)", value=(old_msg)[lim:lim * 2], inline=False)
 
-            msg = (message.content or "NULL")
+            msg: Final = (message.content or "NULL")
             message_embed.add_field(name="New Message", value=(msg)[:lim], inline=False)
             if len(msg) > lim:
                 message_embed.add_field(name="(Continued)", value=(msg)[lim:lim * 2], inline=False)
 
             message_embed.set_footer(text=f"Message ID: {message.id}")
             message_embed.timestamp = datetime_now()
-            asyncio.create_task(catch_logging_error(message_log, message_embed, None))
+            asyncio.create_task(catch_logging_error(message_log, message_embed, files))
 
     # Check against blacklist
-    mconf = load_message_config(message.guild.id, ramfs)
+    mconf: Final = load_message_config(message.guild.id, ramfs)
     broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
 
     if broke_blacklist:
 
-        command_ctx = CommandCtx(
+        command_ctx: Final = CommandCtx(
             stats={},
             cmds=kargs["command_modules"][0],
             ramfs=ramfs,
@@ -209,7 +264,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             )
 
         asyncio.create_task(attempt_message_delete(message))
-        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
         await CallCtx(kargs["command_modules"][1][mconf["blacklist-action"]]['execute'])(message, execargs, client, command_ctx)
 
     if notify:
@@ -223,8 +278,8 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
     # Wierd behavior(ultrabear): message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
     # Update(ultrabear): now that we use discord_datetime_now() we get an unaware dt or aware dt depending on dpy version
 
-    userid = message.author.id
-    sent_at: float = message.created_at.timestamp()
+    userid: Final = message.author.id
+    sent_at: Final[float] = message.created_at.timestamp()
 
     # Base antispam
     try:
@@ -327,9 +382,9 @@ async def download_file(nfile: discord.Attachment, compression: Any, encryption:
 
 def download_single_file(discord_file: discord.Attachment, filename: str, key: bytes, iv: bytes, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
 
-    encryption_fileobj = encrypted_writer(filename, key, iv)
+    encryption_fileobj: Final = encrypted_writer(filename, key, iv)
 
-    compression_fileobj = lz4.frame.LZ4FrameFile(filename=encryption_fileobj, mode="wb")
+    compression_fileobj: Final = lz4.frame.LZ4FrameFile(filename=encryption_fileobj, mode="wb")
 
     asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
 
@@ -361,11 +416,11 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
 
 async def on_message(message: discord.Message, **kargs: Any) -> None:
 
-    client: discord.Client = kargs["client"]
-    ramfs: lexdpyk.ram_filesystem = kargs["ramfs"]
-    kernel_ramfs: lexdpyk.ram_filesystem = kargs["kernel_ramfs"]
-    main_version_info: str = kargs["kernel_version"]
-    bot_start_time: float = kargs["bot_start"]
+    client: Final[discord.Client] = kargs["client"]
+    ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
+    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
+    main_version_info: Final[str] = kargs["kernel_version"]
+    bot_start_time: Final[float] = kargs["bot_start"]
 
     command_modules: List[lexdpyk.cmd_module]
     command_modules_dict: lexdpyk.cmd_modules_dict
@@ -373,7 +428,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     command_modules, command_modules_dict = kargs["command_modules"]
 
     # Statistics.
-    stats: Dict[str, int] = {"start": round(time.time() * 100000)}
+    stats: Final[Dict[str, int]] = {"start": round(time.time() * 100000)}
 
     if parse_skip_message(client, message):
         return
@@ -384,7 +439,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
-    mconf = load_message_config(message.guild.id, ramfs)
+    mconf: Final = load_message_config(message.guild.id, ramfs)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
     # Check message against automod
@@ -394,7 +449,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
     message_deleted: bool = False
 
-    command_ctx = CommandCtx(
+    command_ctx: Final = CommandCtx(
         stats=stats,
         cmds=command_modules,
         ramfs=ramfs,
@@ -408,7 +463,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         automod=False
         )
 
-    automod_ctx = pycopy.copy(command_ctx)
+    automod_ctx: Final = pycopy.copy(command_ctx)
     automod_ctx.verbose = False
     automod_ctx.automod = True
 
@@ -447,7 +502,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         return
 
     # Split into cmds and arguments.
-    arguments = message.content.split()
+    arguments: Final = message.content.split()
     command = arguments[0][len(mconf["prefix"]):]
 
     # Remove command from the arguments.
@@ -456,10 +511,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     # Process commands
     if command in command_modules_dict:
 
-        if "alias" in command_modules_dict[command]:  # Do alias mapping
-            command = command_modules_dict[command]["alias"]
-
-        cmd = SonnetCommand(command_modules_dict[command])
+        cmd: Final = SonnetCommand(command_modules_dict[command], command_modules_dict)
 
         if not await parse_permissions(message, mconf, cmd.permission):
             return  # Return on no perms
@@ -514,12 +566,12 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
             raise e
 
 
-category_info: Dict[str, str] = {'name': 'Messages'}
+category_info: Final[Dict[str, str]] = {'name': 'Messages'}
 
-commands: Dict[str, Callable[..., Any]] = {
+commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message": on_message,
     "on-message-edit": on_message_edit,
     "on-message-delete": on_message_delete,
     }
 
-version_info: str = "1.2.11-DEV"
+version_info: Final = "1.2.12-DEV"

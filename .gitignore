@@ -17,3 +17,6 @@ compiled
 
 # Remove blacklist file
 blacklist.json
+
+# Remove sonnet-modules tagging
+.modules.info

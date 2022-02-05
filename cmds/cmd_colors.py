@@ -15,7 +15,7 @@ importlib.reload(lib_loaders)
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_embed_color, embed_colors
 
-from typing import Any, List
+from typing import Any, List, Literal
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -24,7 +24,7 @@ def zpadhex(indata: int) -> str:
     return (6 - len(col)) * "0" + col
 
 
-async def set_embed_typec(message: discord.Message, args: List[str], typec: str, verbose: bool, ramfs: lexdpyk.ram_filesystem) -> int:
+async def set_embed_typec(message: discord.Message, args: List[str], typec: Literal["primary", "creation", "edit", "deletion"], verbose: bool, ramfs: lexdpyk.ram_filesystem) -> int:
     if not message.guild:
         return 1
 
@@ -129,4 +129,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.7"
+version_info: str = "1.2.12-DEV"

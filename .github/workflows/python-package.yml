@@ -29,6 +29,9 @@ jobs:
       run: |
         python -m pip install -r requirements.buildtime.txt # dont pin linter versions
         python -m pip install -r requirements.txt
+    - name: run unicode safety checker (ensures no malicious unicode codepoints)
+      run: |
+        python build_tools/unisafe.py
     - name: run pyflakes before running expensive tests
       run: |
         pyflakes .
@@ -57,4 +60,4 @@ jobs:
         python -m pip install mariadb
     - name: linting pass
       run: |
-        pylint */ -E -j4
+        pylint **/*.py -E -j4
