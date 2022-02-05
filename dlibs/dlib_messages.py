@@ -527,25 +527,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
                 except discord.errors.Forbidden:
                     pass
 
-            # Regenerate cache
-            if cmd.cache in ["purge", "regenerate"]:
-                for i in ["caches", "regex"]:
-                    try:
-                        ramfs.rmdir(f"{message.guild.id}/{i}")
-                    except FileNotFoundError:
-                        pass
-
-            elif cmd.cache.startswith("direct:"):
-                for i in cmd.cache[len('direct:'):].split(";"):
-                    try:
-                        if i.startswith("(d)"):
-                            ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
-                        elif i.startswith("(f)"):
-                            ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
-                        else:
-                            raise RuntimeError("Cache directive is invalid")
-                    except FileNotFoundError:
-                        pass
+            cmd.sweep_cache(ramfs, message.guild)
 
         except discord.errors.Forbidden as e:
 

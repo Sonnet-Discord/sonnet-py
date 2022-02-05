@@ -19,7 +19,7 @@ import lib_sonnetcommands
 importlib.reload(lib_sonnetcommands)
 
 from lib_parsers import parse_permissions
-from lib_sonnetcommands import SonnetCommand, CommandCtx
+from lib_sonnetcommands import SonnetCommand, CommandCtx, cache_sweep
 
 from typing import List, Any, Tuple, Awaitable, Dict
 import lib_lexdpyk_h as lexdpyk
@@ -29,28 +29,6 @@ import lib_lexdpyk_h as lexdpyk
 #
 # A limit of 1000 will reasonably never be reached by a normal user
 exec_lim = 1000
-
-
-def do_cache_sweep(cache: str, ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
-
-    if cache in ["purge", "regenerate"]:
-        for i in ["caches", "regex"]:
-            try:
-                ramfs.rmdir(f"{guild.id}/{i}")
-            except FileNotFoundError:
-                pass
-
-    elif cache.startswith("direct:"):
-        for i in cache[len('direct:'):].split(";"):
-            try:
-                if i.startswith("(d)"):
-                    ramfs.rmdir(f"{guild.id}/{i[3:]}")
-                elif i.startswith("(f)"):
-                    ramfs.remove_f(f"{guild.id}/{i[3:]}")
-                else:
-                    raise RuntimeError("Cache directive is invalid")
-            except FileNotFoundError:
-                pass
 
 
 async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
@@ -148,7 +126,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         ramfs: lexdpyk.ram_filesystem = ctx.ramfs
 
         for i in cache_args:
-            do_cache_sweep(i, ramfs, message.guild)
+            cache_sweep(i, ramfs, message.guild)
 
         tend: int = time.monotonic_ns()
 
@@ -240,7 +218,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 return 1
 
         # Do cache sweep on command
-        do_cache_sweep(cmd.cache, ctx.ramfs, message.guild)
+        cmd.sweep_cache(ctx.ramfs, message.guild)
 
         tend: int = time.monotonic_ns()
 
@@ -293,7 +271,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
         await p
 
     # Do a cache sweep after running
-    do_cache_sweep(cmd['cache'], ctx.ramfs, message.guild)
+    cmd.sweep_cache(ctx.ramfs, message.guild)
 
     tend: int = time.monotonic_ns()
 
