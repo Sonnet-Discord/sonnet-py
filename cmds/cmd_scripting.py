@@ -122,10 +122,8 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
             message.content = f'{ctx.conf_cache["prefix"]}{totalcommand[0]} ' + " ".join(totalcommand[1])
 
             if command in cmds_dict:
-                if "alias" in cmds_dict[command]:
-                    command = cmds_dict[command]["alias"]
 
-                cmd = SonnetCommand(cmds_dict[command])
+                cmd = SonnetCommand(cmds_dict[command], cmds_dict)
 
                 permission = await parse_permissions(message, ctx.conf_cache, cmd['permission'])
 
@@ -196,10 +194,7 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
         await message.channel.send("Invalid command")
         raise MapProcessError("ERRNO")
 
-    if "alias" in cmds_dict[command]:
-        command = cmds_dict[command]["alias"]
-
-    cmd = SonnetCommand(cmds_dict[command])
+    cmd = SonnetCommand(cmds_dict[command], cmds_dict)
 
     if not await parse_permissions(message, conf_cache, cmd.permission):
         raise MapProcessError("ERRNO")

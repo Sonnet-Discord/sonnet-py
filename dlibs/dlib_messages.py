@@ -511,10 +511,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     # Process commands
     if command in command_modules_dict:
 
-        if "alias" in command_modules_dict[command]:  # Do alias mapping
-            command = command_modules_dict[command]["alias"]
-
-        cmd: Final = SonnetCommand(command_modules_dict[command])
+        cmd: Final = SonnetCommand(command_modules_dict[command], command_modules_dict)
 
         if not await parse_permissions(message, mconf, cmd.permission):
             return  # Return on no perms
