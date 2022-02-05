@@ -78,6 +78,37 @@ class CommandCtx:
             }
 
 
+def cache_sweep(cdata: Union[str, "SonnetCommand"], ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
+    """
+    Runs a cache sweep with a given cache behavior or direct SonnetCommand
+    Useful for processing arbitrary commands and asserting proper cache handling
+    """
+
+    if isinstance(cdata, SonnetCommand):
+        cache = cdata.cache
+    else:
+        cache = cdata
+
+    if cache in ["purge", "regenerate"]:
+        for i in ["caches", "regex"]:
+            try:
+                ramfs.rmdir(f"{guild.id}/{i}")
+            except FileNotFoundError:
+                pass
+
+    elif cache.startswith("direct:"):
+        for i in cache[len('direct:'):].split(";"):
+            try:
+                if i.startswith("(d)"):
+                    ramfs.rmdir(f"{guild.id}/{i[3:]}")
+                elif i.startswith("(f)"):
+                    ramfs.remove_f(f"{guild.id}/{i[3:]}")
+                else:
+                    raise RuntimeError("Cache directive is invalid")
+            except FileNotFoundError:
+                pass
+
+
 def _iskwargcallable(func: Union[ExecutableT, ExecutableCtxT]) -> TypeGuard[ExecutableT]:
     spec = inspect.getfullargspec(func)
     return len(spec.args) == 3 and spec.varkw is not None
