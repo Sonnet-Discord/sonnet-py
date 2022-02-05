@@ -44,6 +44,9 @@ class CommandError(Exception):
 
 
 class CommandCtx:
+    """
+    A Context dataclass for a command, contains useful data to pull from for various running commands
+    """
     __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod"
 
     def __init__(self, CtxToKwargdata: Dict[str, Any] = {}, **askwargs: Any) -> None:
