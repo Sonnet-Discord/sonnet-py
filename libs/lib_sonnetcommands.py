@@ -186,6 +186,12 @@ class SonnetCommand(dict):  # type: ignore[type-arg]
         else:
             return super().__contains__(item)
 
+    def sweep_cache(self, ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
+        """
+        Helper method to call cache_sweep on the current SonnetCommand
+        """
+        cache_sweep(self, ramfs, guild)
+
     @property
     def execute(self) -> ExecutableT:
         return cast(ExecutableT, self["execute"])
