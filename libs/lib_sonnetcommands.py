@@ -87,10 +87,10 @@ def cache_sweep(cdata: Union[str, "SonnetCommand"], ramfs: lexdpyk.ram_filesyste
     Useful for processing arbitrary commands and asserting proper cache handling
     """
 
-    if isinstance(cdata, SonnetCommand):
-        cache = cdata.cache
-    else:
+    if isinstance(cdata, str):
         cache = cdata
+    else:
+        cache = cdata.cache
 
     if cache in ["purge", "regenerate"]:
         for i in ["caches", "regex"]:
