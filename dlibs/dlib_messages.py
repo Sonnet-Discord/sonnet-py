@@ -44,7 +44,7 @@ from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
-ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!$%^&()/.,?[{}]")
+ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]=")
 
 
 async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
