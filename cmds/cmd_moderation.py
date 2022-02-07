@@ -36,7 +36,7 @@ importlib.reload(lib_tparse)
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field, parse_channel_message_noexcept, parse_user_member, format_duration
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message_noexcept, parse_user_member, format_duration, paginate_noexcept
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME, REGEX_VERSION
 from lib_sonnetcommands import CommandCtx
@@ -523,73 +523,19 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     cpagecount = math.ceil(len(infractions) / per_page)
 
     # Test if valid page
-    if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
-        await message.channel.send("ERROR: Cannot go to page 0")
-        return 1
-    elif selected_chunk < -1:  # pytype: disable=unsupported-operands
-        selected_chunk %= cpagecount
-        selected_chunk += 1
+    if selected_chunk == -1:  # ik it says page 0 but it does -1 on user input so the user would have entered 0
+        raise lib_sonnetcommands.CommandError("ERROR: Cannot go to page 0")
+    elif selected_chunk < -1:
+        selected_chunk = (cpagecount + selected_chunk) + 1
 
-    if not 0 <= selected_chunk < cpagecount:  # pytype: disable=unsupported-operands
-        await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
-        return 1
+    def format_infraction(i: Tuple[str, str, str, str, str, int]) -> str:
+        return ', '.join([i[0], i[3], i[4]])
 
-    # Why can you never be happy :defeatcry:
-    #
-    # Implemented below is a microreallocator, every infraction in a page has
-    # a fixed maximum length, but if one infraction doesn't need that length we can
-    # give it to other infractions, so we can do a first pass to get lengths of them all,
-    # pool spare space, and give it when needed
-    #
-    # This is similar enough to the golang method of dual pass string operations that
-    # it is worth mentioning that it is in fact inspired from the go strings stdlib
-    # (ultrabear) highly recommends reading it, its really well written!
-
-    # Take slice once to avoid memcopies every iteration
-    pageslice = infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]
-
-    # This lets us store more on cases where there is less infracs than there should be, i/e eof
-    actual_per_page = len(pageslice)
-
-    maxlen = (1900 // actual_per_page)
-
-    # pooled will say how many spare chars we have left
-    # it is calculated as pooled = sum[(maxlen - lencurinfraction) for i in infractions]
-    # In this way, if pool is negative do not have enough space to not cut values off
-    # If it is positive we can loop with no size limit
-
-    arr: List[int] = []
-    for i in pageslice:
-        # +5 is added for len(", ")*2 + len("\n")
-        arr.append(maxlen - (len(i[0]) + len(i[3]) + len(i[4]) + 5))
-
-    pooled = sum(arr)
-
-    # We write output using a string.Buil- wait this isn't golang
-    # Whatever, this is efficient
-    writer = io.StringIO()
-
-    if pooled >= 0:
-        for i in pageslice:
-            writer.write(f"{', '.join([i[0], i[3], i[4]])}\n")
-    else:
-        # We need to go more complicated, by only using the positive pooled we can increase the infraction length cap a little
-        pospool = sum([i for i in arr if i > 0])  # Remove negatives
-        newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
-        # Technically impossible thanks to lim(5,40), but if i wanna make this lim(1,2000) this is needed
-        if newmaxlen <= 1:
-            await message.channel.send("ERROR: The amount of infractions to display overflows the discord message limit, set -i to a sane value")
-            # Fun fact, you need to set -i to >=951 to trigger this
-            return 1
-
-        for i in pageslice:
-            # Cap at newmaxlen-1 and then add \n at the end
-            # this ensures we always have newline separators
-            writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen-1]}\n")
+    page = paginate_noexcept(infractions, selected_chunk, per_page, 1900, fmtfunc=format_infraction)
 
     tprint = (time.monotonic() - tstart) * 1000
 
-    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infraction{'s'*(len(infractions)!=1)}) ({tprint:.1f}ms)\n```css\nID, Type, Reason\n{writer.getvalue()}```")
+    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infraction{'s'*(len(infractions)!=1)}) ({tprint:.1f}ms)\n```css\nID, Type, Reason\n{page}```")
     return 0
 
 
