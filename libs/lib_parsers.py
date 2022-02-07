@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import importlib
 
-import lz4.frame, discord, os, json, hashlib, io, warnings
+import lz4.frame, discord, os, json, hashlib, io, warnings, math
 
 import lib_db_obfuscator
 
@@ -28,7 +28,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar
 import lib_lexdpyk_h as lexdpyk
 
 # Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
@@ -648,3 +648,83 @@ def format_duration(durationSeconds: Union[int, float]) -> str:
     perfectround = int(rounded) if float(int(rounded)) == rounded else rounded
 
     return f"{perfectround} {base}{'s'*(perfectround!=1)}"
+
+
+_PT = TypeVar("_PT")
+
+
+def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfunc: Optional[Callable[[_PT], str]] = None) -> str:
+    """
+    Paginates a list of items while working around the bounds of a limit
+    Optionally format with fmtfunc, otherwise str will be called on each value
+    
+    params:
+        vals - list containing values to be appended to a single page
+        page - requested page of pagination
+        per_page - how many values to display per page
+        lim - max length that the returning string will be
+        fmtfunc - optional formatting function, otherwise str is called on _PT
+
+    :raises: lib_sonnetcommands.CommandError - not meant to be caught, goes directly to end user
+    """
+
+    if fmtfunc is None:
+        fmtfunc = lambda s: str(s)
+
+    cpagecount = math.ceil(len(vals) / per_page)
+
+    # Test if valid page
+    if not 0 <= page < cpagecount:
+        raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
+
+    # Why can you never be happy :defeatcry:
+    #
+    # Implemented below is a microreallocator, every item in a page has
+    # a fixed maximum length, but if one item doesn't need that length we can
+    # give it to other items, so we can do a first pass to get lengths of them all,
+    # pool spare space, and give it when needed
+    #
+    # This is similar enough to the golang method of dual pass string operations that
+    # it is worth mentioning that it is in fact inspired from the go strings stdlib
+    # (ultrabear) highly recommends reading it, its really well written!
+
+    # Take slice once to avoid memcopies every iteration
+    pageslice = vals[page * per_page:page * per_page + per_page]
+
+    # This lets us store more on cases where there is less items than there should be, i/e eof
+    actual_per_page = len(pageslice)
+
+    maxlen = (lim // actual_per_page)
+
+    # pooled will say how many spare chars we have left
+    # it is calculated as pooled = sum[(maxlen - lencuritem) for i in items]
+    # In this way, if pool is negative do not have enough space to not cut values off
+    # If it is positive we can loop with no size limit
+
+    itemstore = [fmtfunc(i) for i in pageslice]
+
+    # Add +1 for newline
+    lenarr = [len(i) + 1 for i in itemstore]
+
+    pooled = sum(lenarr)
+
+    # We write output using a string.Buil- wait this isn't golang
+    # Whatever, this is efficient
+    writer = io.StringIO()
+
+    if pooled >= 0:
+        for i in itemstore:
+            writer.write(i + "\n")
+    else:
+        # We need to go more complicated, by only using the positive pooled we can increase the item length cap a little
+        pospool = sum(i for i in lenarr if i > 0)  # Remove negatives
+        newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
+        if newmaxlen <= 1:
+            raise lib_sonnetcommands.CommandError("ERROR: The amount of items to display overflows the set possible limit with newline seperators")
+
+        for i in itemstore:
+            # Cap at newmaxlen-1 and then add \n at the end
+            # this ensures we always have newline separators
+            writer.write(i[:newmaxlen - 1] + "\n")
+
+    return writer.getvalue()
