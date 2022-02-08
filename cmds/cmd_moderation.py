@@ -446,8 +446,14 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     tstart = time.monotonic()
 
+    if not ctx.verbose:
+        raise lib_sonnetcommands.CommandError("ERROR: search-infractions only meant to be called directly")
+
     # Reparse args
-    args = shlex.split(" ".join(args))
+    try:
+        args = shlex.split(" ".join(args))
+    except ValueError:
+        raise lib_sonnetcommands.CommandError("ERROR: Shlex failed to parse arguments")
 
     # Parse flags
     parser = Parser("search-infractions")
@@ -931,4 +937,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.11"
+version_info: str = "1.2.11-1"
