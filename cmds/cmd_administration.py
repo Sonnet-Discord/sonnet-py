@@ -21,15 +21,76 @@ importlib.reload(lib_sonnetconfig)
 import lib_sonnetcommands
 
 importlib.reload(lib_sonnetcommands)
+import lib_constants
+
+importlib.reload(lib_constants)
 
 from lib_parsers import parse_boolean, update_log_channel, parse_role
 from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
+import lib_constants as constants
 
-from typing import List
+from typing import List, Dict, Tuple, Final
 import lib_lexdpyk_h as lexdpyk
+
+InfracModifierT = Dict[str, Tuple[str, str]]
+
+
+def maxlen(s: str, n: int, name: str) -> str:
+    if len(s) > n:
+        raise lib_sonnetcommands.CommandError(f"ERROR: {name} argument exceeds maxsize of {n}")
+    return s
+
+
+async def add_infrac_modifier(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    if len(args) >= 3:
+        key = maxlen(args[0], 64, "Key")
+        title = maxlen(args[1], 64, "Title")
+        value = maxlen(' '.join(args[2:]), 512, "Value")
+
+        with db_hlapi(message.guild.id) as db:
+            conf_name: Final = "infraction-modifiers"
+            data: InfracModifierT = json.loads(db.grab_config(conf_name) or "{}")
+
+            data[key] = (title, value)
+
+            db.add_config(conf_name, json.dumps(data))
+
+        await message.channel.send(f"Added new infraction modifier with key {key}")
+        return 0
+
+    else:
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
+
+
+async def delete_infrac_modifier(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    if args:
+        key = args[0]
+
+        with db_hlapi(message.guild.id) as db:
+            conf_name: Final = "infraction-modifiers"
+            data: InfracModifierT = json.loads(db.grab_config(conf_name) or "{}")
+
+            try:
+                del data[key]
+            except KeyError:
+                raise lib_sonnetcommands.CommandError("ERROR: No such infraction modifier key")
+
+            db.add_config(conf_name, json.dumps(data))
+
+        await message.channel.send(f"Deleted infraction modifier with key {key}")
+        return 0
+
+    else:
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
 
 
 async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -260,6 +321,20 @@ async def set_filelog_behavior(message: discord.Message, args: List[str], client
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
+    'rm-infraction-modifier':
+        {
+            'pretty_name': 'rm-infraction-modifier <key> <title> <value>',
+            'description': 'Delete an infraction modifier with the given key',
+            'permission': 'administrator',
+            'execute': delete_infrac_modifier,
+            },
+    'add-infraction-modifier':
+        {
+            'pretty_name': 'add-infraction-modifier <key> <title> <value>',
+            'description': 'Add a new infraction modifier with the given key, title, and value',
+            'permission': 'administrator',
+            'execute': add_infrac_modifier,
+            },
     'set-filelog-behaviour': {
         'alias': 'set-filelog-behavior',
         },
