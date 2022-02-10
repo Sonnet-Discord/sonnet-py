@@ -4,6 +4,7 @@
 import importlib
 
 import discord, time, asyncio, math, io, shlex
+from dataclasses import dataclass
 
 import lib_db_obfuscator
 
@@ -43,7 +44,7 @@ from lib_sonnetcommands import CommandCtx
 from lib_tparse import Parser
 import lib_constants as constants
 
-from typing import List, Tuple, Awaitable, Optional, Callable, Union, cast
+from typing import List, Tuple, Awaitable, Optional, Callable, Union, Final, cast
 import lib_lexdpyk_h as lexdpyk
 
 # Import re to trick type checker into using re stubs
@@ -84,9 +85,22 @@ class GuildScopeError(Exception):
 InterfacedUser = Union[discord.User, discord.Member]
 
 
+@dataclass
+class InfractionModifier:
+    __slots__ = "key", "title", "value"
+    key: str
+    title: str
+    value: str
+
+    def store_in(self, e: discord.Embed) -> None:
+        e.add_field(name=self.title, value=self.value)
+
+
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(message: discord.Message, client: discord.Client, user: InterfacedUser, moderator: InterfacedUser, i_reason: str, i_type: str, to_dm: bool,
-                         ramfs: lexdpyk.ram_filesystem) -> Tuple[str, Optional[Awaitable[None]]]:
+async def log_infraction(
+    message: discord.Message, client: discord.Client, user: InterfacedUser, moderator: InterfacedUser, i_reason: str, i_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem,
+    modifiers: List[InfractionModifier]
+    ) -> Tuple[str, Optional[Awaitable[None]]]:
     if not message.guild:
         raise GuildScopeError("How did we even get here")
 
@@ -124,6 +138,9 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
         log_embed.add_field(name="Type", value=i_type)
         log_embed.add_field(name="Reason", value=i_reason)
 
+        if modifiers:
+            log_embed.add_field(name="Modifiers", value=' '.join(f"+{m.key}" for m in modifiers))
+
         log_embed.set_footer(text=f"uid: {user.id}, unix: {int(timestamp.timestamp())}")
 
         asyncio.create_task(catch_logging_error(log_embed, log_channel))
@@ -136,6 +153,9 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=i_type)
     dm_embed.add_field(name="Reason", value=i_reason)
+
+    for i in modifiers:
+        i.store_in(dm_embed)
 
     dm_embed.timestamp = timestamp
 
@@ -153,7 +173,14 @@ InfractionInfo = Tuple[Optional[discord.Member], InterfacedUser, str, str, Optio
 
 # General processor for infractions
 async def process_infraction(
-    message: discord.Message, args: List[str], client: discord.Client, i_type: str, ramfs: lexdpyk.ram_filesystem, infraction: bool = True, automod: bool = False
+    message: discord.Message,
+    args: List[str],
+    client: discord.Client,
+    i_type: str,
+    ramfs: lexdpyk.ram_filesystem,
+    infraction: bool = True,
+    automod: bool = False,
+    modifiers: Optional[List[InfractionModifier]] = None
     ) -> InfractionInfo:
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
@@ -180,8 +207,16 @@ async def process_infraction(
         await message.channel.send(f"Cannot {i_type} a user with the same or higher role as yourself")
         raise InfractionGenerationError(f"Attempted nonperm {i_type}")
 
+    modifiers = [] if modifiers is None else modifiers
+
+    # bound modifiers to max of 3 (prevents embed size overflow)
+    modlimit: Final = 3
+    if len(modifiers) > modlimit:
+        await message.channel.send(f"Too many infraction modifiers passed (limit {modlimit}, given {len(modifiers)})")
+        raise InfractionGenerationError("Too many modifiers")
+
     # Log infraction
-    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs)
+    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs, modifiers)
 
     return (member, user, reason, infraction_id, dm_sent)
 
