@@ -752,21 +752,23 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: Bot lacks perms to purge")
         return 1
 
+def notneg(v: int) -> int:
+    if v < 0: raise ValueError
+    return v
 
 async def query_mutedb(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    # do page capture
-    if len(args) >= 2 and args[0] in ["-p", "--page"]:
-        try:
-            page = int(args[1]) - 1
-            if page < 0: raise ValueError
-        except ValueError:
-            await message.channel.send("ERROR: Invalid page")
-            return 1
-    else:
-        page = 0
+    parser = Parser("query_mutedb")
+    pageP = parser.add_arg(["-p", "--page"], lambda s: notneg(int(s) - 1))
+
+    try:
+        parser.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True)
+    except lib_tparse.ParseFailureError:
+        raise lib_sonnetcommands.CommandError("Failed to parse page")
+
+    page = pageP.get(0)
 
     per_page = 10
 
@@ -777,19 +779,13 @@ async def query_mutedb(message: discord.Message, args: List[str], client: discor
         await message.channel.send("No Muted users in database")
         return 0
 
-    # Test if page is valid
-    if page > len(table) // per_page:
-        await message.channel.send("ERROR: Page does not exist")
-        return 1
+    def fmtfunc(v: Tuple[str, str, int]) -> str:
+        ts = "No Unmute" if v[2] == 0 else format_duration(v[2] - datetime_now().timestamp())
+        return (f"{v[1]}, {v[0]}, {ts}")
 
-    fmt: List[str] = []
+    out = paginate_noexcept(sorted(table, key=lambda i: i[2]), page, per_page, 1500, fmtfunc)
 
-    for i in sorted(table, key=lambda i: i[2])[page:page + per_page]:
-        ts = "No Unmute" if i[2] == 0 else format_duration(i[2] - datetime_now().timestamp())
-        fmt.append(f"{i[1]}, {i[0]}, {ts}"[:150])
-
-    LF = "\n"
-    await message.channel.send(f"Page {page+1} / {len(table)//per_page+1}, ({len(table)} mute{'s'*(len(table)!=1)})```css\nUid, InfractionID, Unmuted in\n{LF.join(fmt)}```")
+    await message.channel.send(f"Page {page+1} / {len(table)//per_page+1}, ({len(table)} mute{'s'*(len(table)!=1)})```css\nUid, InfractionID, Unmuted in\n{out}```")
     return 0
 
 
