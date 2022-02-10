@@ -108,6 +108,10 @@ async def list_infrac_modifiers(message: discord.Message, args: List[str], clien
     with db_hlapi(message.guild.id) as db:
         data: InfracModifierT = json.loads(db.grab_config("infraction-modifiers") or "{}")
 
+    if not data:
+        await message.channel.send("No infraction modifiers in db")
+        return 0
+
     renderable = sorted(((i, v[0], v[1]) for i, v in data.items()), key=lambda v: v[0])
 
     def render(it: Tuple[str, str, str]) -> str:
