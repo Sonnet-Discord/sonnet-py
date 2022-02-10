@@ -28,54 +28,62 @@ from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
 
-from typing import Any, List
+from typing import List
+import lib_lexdpyk_h as lexdpyk
 
 
-async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
-        await update_log_channel(message, args, client, "join-log", verbose=kwargs["verbose"])
+        await update_log_channel(message, args, client, "join-log", verbose=ctx.verbose)
+        return 0
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def leave_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def leave_log_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
-        await update_log_channel(message, args, client, "leave-log", verbose=kwargs["verbose"])
+        await update_log_channel(message, args, client, "leave-log", verbose=ctx.verbose)
+        return 0
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def inflog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def inflog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
-        await update_log_channel(message, args, client, "infraction-log", verbose=kwargs["verbose"])
+        await update_log_channel(message, args, client, "infraction-log", verbose=ctx.verbose)
+        return 0
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def msglog_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def msglog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
-        await update_log_channel(message, args, client, "message-log", verbose=kwargs["verbose"])
+        await update_log_channel(message, args, client, "message-log", verbose=ctx.verbose)
+        return 0
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def message_edit_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def message_edit_log_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
-        await update_log_channel(message, args, client, "message-edit-log", verbose=kwargs["verbose"])
+        await update_log_channel(message, args, client, "message-edit-log", verbose=ctx.verbose)
+        return 0
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def notifier_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def notifier_log_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
-        await update_log_channel(message, args, client, "regex-notifier-log", verbose=kwargs["verbose"])
+        await update_log_channel(message, args, client, "regex-notifier-log", verbose=ctx.verbose)
+        return 0
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
 
-async def username_log_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def username_log_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
-        await update_log_channel(message, args, client, "username-log", verbose=kwargs["verbose"])
+        await update_log_channel(message, args, client, "username-log", verbose=ctx.verbose)
+        return 0
     except lib_parsers.errors.log_channel_update_error:
         return 1
 
@@ -86,7 +94,7 @@ class gdpr_functions:
     def __init__(self) -> None:
         self.commands = {"delete": self.delete, "download": self.download}
 
-    async def delete(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
+    async def delete(self, message: discord.Message, guild_id: int, ramfs: lexdpyk.ram_filesystem, kramfs: lexdpyk.ram_filesystem) -> None:
         if not message.guild:
             return
 
@@ -106,7 +114,7 @@ As we delete all data on this guild, there is no way {BOT_NAME} should be able t
 To fully ensure {BOT_NAME} does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"""
             )
 
-    async def download(self, message: discord.Message, guild_id: int, ramfs: Any, kramfs: Any) -> None:
+    async def download(self, message: discord.Message, guild_id: int, ramfs: lexdpyk.ram_filesystem, kramfs: lexdpyk.ram_filesystem) -> None:
 
         timestart = time.time()
 
@@ -141,11 +149,11 @@ Or if discord experienced a lag spike, consider retrying as the network may have
                 )
 
 
-async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def gdpr_database(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    ramfs = kwargs["ramfs"]
+    ramfs = ctx.ramfs
 
     if len(args) >= 2:
         command = args[0]
@@ -156,22 +164,24 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
     else:
         command = ""
 
-    PREFIX = kwargs["conf_cache"]["prefix"]
+    PREFIX = ctx.conf_cache["prefix"]
 
     gdprfunctions = gdpr_functions()
     if command and command in gdprfunctions.commands:
         if confirmation and confirmation == str(message.guild.id):
-            await gdprfunctions.commands[command](message, message.guild.id, ramfs, kwargs["kernel_ramfs"])
+            await gdprfunctions.commands[command](message, message.guild.id, ramfs, ctx.kernel_ramfs)
         else:
             await message.channel.send(f"Please provide the guild id to confirm\nEx: `{PREFIX}gdpr {command} {message.guild.id}`")
     else:
-        message_embed = discord.Embed(title="GDPR COMMANDS", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+        message_embed = discord.Embed(title="GDPR COMMANDS", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
         message_embed.add_field(name=f"{PREFIX}gdpr download <guild id>", value="Download the databases of this guild", inline=False)
         message_embed.add_field(name=f"{PREFIX}gdpr delete <guild id>", value="Delete the databases of this guild and clear cache", inline=False)
         await message.channel.send(embed=message_embed)
 
+    return 0
 
-async def set_view_infractions(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+
+async def set_view_infractions(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -179,21 +189,26 @@ async def set_view_infractions(message: discord.Message, args: List[str], client
 
     if args:
 
-        gate = pb if isinstance((pb := parse_boolean(args[0])), bool) else False
+        pb = parse_boolean(args[0])
+
+        if pb is None:
+            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
 
         with db_hlapi(message.guild.id) as db:
-            db.add_config("member-view-infractions", str(int(gate)))
+            db.add_config("member-view-infractions", str(int(pb)))
 
-        if kwargs["verbose"]: await message.channel.send(f"Set member view own infractions to {gate}")
+        if ctx.verbose: await message.channel.send(f"Set member view own infractions to {pb}")
 
     else:
         with db_hlapi(message.guild.id) as db:
             gate = bool(int(db.grab_config("member-view-infractions") or 0))
 
-        if kwargs["verbose"]: await message.channel.send(f"Member view own infractions is set to {gate}")
+        if ctx.verbose: await message.channel.send(f"Member view own infractions is set to {gate}")
+
+    return 0
 
 
-async def set_prefix(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def set_prefix(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
@@ -202,24 +217,25 @@ async def set_prefix(message: discord.Message, args: List[str], client: discord.
         with db_hlapi(message.guild.id) as database:
             database.add_config("prefix", prefix)
     else:
-        prefix = kwargs["conf_cache"]["prefix"]
+        prefix = ctx.conf_cache["prefix"]
 
-    if kwargs["verbose"]: await message.channel.send(f"Prefix set to `{prefix}`")
-
-
-async def set_mute_role(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-
-    return await parse_role(message, args, "mute-role", verbose=kwargs["verbose"])
+    if ctx.verbose: await message.channel.send(f"Prefix set to `{prefix}`")
+    return 0
 
 
-async def set_admin_role(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def set_mute_role(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
 
-    return await parse_role(message, args, "admin-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "mute-role", verbose=ctx.verbose)
 
 
-async def set_moderator_role(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def set_admin_role(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
 
-    return await parse_role(message, args, "moderator-role", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "admin-role", verbose=ctx.verbose)
+
+
+async def set_moderator_role(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await parse_role(message, args, "moderator-role", verbose=ctx.verbose)
 
 
 async def set_filelog_behavior(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
