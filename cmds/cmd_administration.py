@@ -4,7 +4,7 @@
 import importlib
 
 import discord, os, glob
-import json, gzip, io, time
+import json, gzip, io, time, math
 
 import lib_db_obfuscator
 
@@ -25,7 +25,7 @@ import lib_constants
 
 importlib.reload(lib_constants)
 
-from lib_parsers import parse_boolean, update_log_channel, parse_role
+from lib_parsers import parse_boolean, update_log_channel, parse_role, paginate_noexcept
 from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import BOT_NAME
@@ -56,6 +56,9 @@ async def add_infrac_modifier(message: discord.Message, args: List[str], client:
         with db_hlapi(message.guild.id) as db:
             conf_name: Final = "infraction-modifiers"
             data: InfracModifierT = json.loads(db.grab_config(conf_name) or "{}")
+
+            if len(data) >= 32:
+                raise lib_sonnetcommands.CommandError("ERROR: Cannot have more than 32 infraction modifiers")
 
             data[key] = (title, value)
 
@@ -91,6 +94,27 @@ async def delete_infrac_modifier(message: discord.Message, args: List[str], clie
 
     else:
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
+
+
+async def list_infrac_modifiers(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    try:
+        p = int(args[0]) - 1 if args else 0
+    except ValueError:
+        raise lib_sonnetcommands.CommandError("ERROR: Page parsing failed")
+
+    with db_hlapi(message.guild.id) as db:
+        data: InfracModifierT = json.loads(db.grab_config("infraction-modifiers") or "{}")
+
+    renderable = sorted(((i, v[0], v[1]) for i, v in data.items()), key=lambda v: v[0])
+
+    def render(it: Tuple[str, str, str]) -> str:
+        return " ".join(it)
+
+    await message.channel.send(f"Modifiers: {len(data)} (page {p+1} of {math.ceil(len(data)/16)})```{paginate_noexcept(renderable, p, 16, 1950, render)}```")
+    return 0
 
 
 async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -321,6 +345,12 @@ async def set_filelog_behavior(message: discord.Message, args: List[str], client
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
+    'list-infraction-modifiers': {
+        'pretty_name': 'list-infraction-modifiers [page]',
+        'description': 'list all infraction modifiers',
+        'permission': 'moderator',
+        'execute': list_infrac_modifiers,
+        },
     'rm-infraction-modifier':
         {
             'pretty_name': 'rm-infraction-modifier <key> <title> <value>',
