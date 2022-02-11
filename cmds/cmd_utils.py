@@ -162,7 +162,11 @@ class HelpHelper:
 
         cmds_dict = self.ctx.cmds_dict
 
-        command = SonnetCommand(cmds_dict[cmd_name], cmds_dict)
+        # relies on true name for alias grouping
+        if 'alias' in cmds_dict[cmd_name]:
+            cmd_name = cmds_dict[cmd_name]['alias']
+
+        command = SonnetCommand(cmds_dict[cmd_name])
 
         cmd_embed = discord.Embed(title=f'Command "{cmd_name}"', description=command.description, color=load_embed_color(self.guild, embed_colors.primary, self.ctx.ramfs))
         cmd_embed.set_author(name=self.helpname)
