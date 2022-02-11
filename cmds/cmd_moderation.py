@@ -3,7 +3,7 @@
 
 import importlib
 
-import discord, time, asyncio, math, io, shlex
+import discord, time, asyncio, math, io, shlex, json
 from dataclasses import dataclass
 
 import lib_db_obfuscator
@@ -44,7 +44,7 @@ from lib_sonnetcommands import CommandCtx
 from lib_tparse import Parser
 import lib_constants as constants
 
-from typing import List, Tuple, Awaitable, Optional, Callable, Union, Final, cast
+from typing import List, Tuple, Awaitable, Optional, Callable, Union, Final, Dict, cast
 import lib_lexdpyk_h as lexdpyk
 
 # Import re to trick type checker into using re stubs
@@ -221,10 +221,37 @@ async def process_infraction(
     return (member, user, reason, infraction_id, dm_sent)
 
 
+InfracModifierDBT = Dict[str, Tuple[str, str]]
+
+
+def parse_infraction_modifiers(guild: discord.Guild, args: List[str]) -> List[InfractionModifier]:
+
+    if len(args) >= 2 and args[0].startswith("+"):
+        modifiers = args.pop(0)[1:].split(',')
+
+        mlist: List[InfractionModifier] = []
+
+        with db_hlapi(guild.id) as db:
+            data: InfracModifierDBT = json.loads(db.grab_config("infraction-modifiers") or "{}")
+            for i in modifiers:
+                if i in data:
+                    mlist.append(InfractionModifier(i, data[i][0], data[i][1]))
+                else:
+                    raise lib_sonnetcommands.CommandError("ERROR: No infraction modifier with name specified")
+
+        return mlist
+
+    return []
+
+
 async def warn_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod)
+        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -261,8 +288,10 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     automod = ctx.automod
     verbose = ctx.verbose
 
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
     try:
-        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", ramfs, automod=automod)
+        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -287,6 +316,8 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     if not message.guild:
         return 1
 
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
     if len(args) >= 3 and args[1] in ["-d", "--days"]:
         try:
             delete_days = int(args[2])
@@ -302,7 +333,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     elif delete_days < 0: delete_days = 0
 
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod)
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -389,6 +420,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     automod = ctx.automod
     verbose = ctx.verbose
 
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
     # Grab mute time
     if len(args) >= 2:
         try:
@@ -405,7 +438,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", ramfs, automod=automod)
+        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers)
     except (NoMuteRole, InfractionGenerationError):
         return 1
 
@@ -752,9 +785,11 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: Bot lacks perms to purge")
         return 1
 
+
 def notneg(v: int) -> int:
     if v < 0: raise ValueError
     return v
+
 
 async def query_mutedb(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
@@ -831,7 +866,7 @@ commands = {
         'execute': query_mutedb,
         },
     'warn': {
-        'pretty_name': 'warn <uid> [reason]',
+        'pretty_name': 'warn [+modifiers] <uid> [reason]',
         'description': 'Warn a user',
         'permission': 'moderator',
         'execute': warn_user
@@ -843,13 +878,13 @@ commands = {
         'execute': note_user
         },
     'kick': {
-        'pretty_name': 'kick <uid> [reason]',
+        'pretty_name': 'kick [+modifiers] <uid> [reason]',
         'description': 'Kick a user',
         'permission': 'moderator',
         'execute': kick_user
         },
     'ban': {
-        'pretty_name': 'ban <uid> [-d DAYS] [reason]',
+        'pretty_name': 'ban [+modifiers] <uid> [-d DAYS] [reason]',
         'description': 'Ban a user, optionally delete messages with -d',
         'permission': 'moderator',
         'execute': ban_user
@@ -861,7 +896,7 @@ commands = {
         'execute': unban_user
         },
     'mute': {
-        'pretty_name': 'mute <uid> [time[h|m|S]] [reason]',
+        'pretty_name': 'mute [+modifiers] <uid> [time[h|m|S]] [reason]',
         'description': 'Mute a user, defaults to no unmute (0s)',
         'permission': 'moderator',
         'execute': mute_user
