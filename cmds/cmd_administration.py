@@ -121,6 +121,31 @@ async def list_infrac_modifiers(message: discord.Message, args: List[str], clien
     return 0
 
 
+async def set_show_mutetime(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    if args:
+
+        pb = parse_boolean(args[0])
+
+        if pb is None:
+            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
+
+        with db_hlapi(message.guild.id) as db:
+            db.add_config("show-mutetime", str(int(pb)))
+
+        await message.channel.send(f"Set show-mutetime to {pb}")
+
+    else:
+        with db_hlapi(message.guild.id) as db:
+            pb = parse_boolean(db.grab_config("show-mutetime") or "0")
+
+        await message.channel.send(f"show-mutetime is set to {pb}")
+
+    return 0
+
+
 async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     try:
         await update_log_channel(message, args, client, "join-log", verbose=ctx.verbose)
@@ -349,6 +374,13 @@ async def set_filelog_behavior(message: discord.Message, args: List[str], client
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
+    'set-show-mutetime':
+        {
+            'pretty_name': 'set-show-mutetime <bool>',
+            'description': 'Set whether to show the mute time to a user who has been muted',
+            'permission': 'administrator',
+            'execute': set_show_mutetime,
+            },
     'list-infraction-modifiers': {
         'pretty_name': 'list-infraction-modifiers [page]',
         'description': 'list all infraction modifiers',
