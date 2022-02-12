@@ -507,6 +507,11 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
     if not message.guild:
         raise lib_sonnetcommands.CommandError("ERROR: Not a guild message")
 
+    # Capture replies first, but only use on parse errors to preserve legacy behavior
+    reply_message: Optional[discord.Message] = None
+    if (r := message.reference) is not None and isinstance((rr := r.resolved), discord.Message):
+        reply_message = rr
+
     try:
         message_link = args[0].replace("-", "/").split("/")
         log_channel: Union[str, int] = message_link[-2]
@@ -518,12 +523,23 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
             message_id = args[1]
             nargs = 2
         except IndexError:
+            if reply_message is not None:
+                return reply_message, 0
             raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
 
     try:
         log_channel = int(log_channel)
     except ValueError:
+        if reply_message is not None:
+            return reply_message, 0
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
+
+    try:
+        message_id_int = int(message_id)
+    except ValueError:
+        if reply_message is not None:
+            return reply_message, 0
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
@@ -536,8 +552,8 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.scope)
 
     try:
-        discord_message = await discord_channel.fetch_message(int(message_id))
-    except (ValueError, discord.errors.HTTPException):
+        discord_message = await discord_channel.fetch_message(message_id_int)
+    except discord.errors.HTTPException:
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     if not discord_message:
