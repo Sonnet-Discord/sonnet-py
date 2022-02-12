@@ -720,7 +720,7 @@ def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfu
     itemstore = [fmtfunc(i) for i in pageslice]
 
     # Add +1 for newline
-    lenarr = [len(i) + 1 for i in itemstore]
+    lenarr = [maxlen - (len(i) + 1) for i in itemstore]
 
     pooled = sum(lenarr)
 
