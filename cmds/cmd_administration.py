@@ -117,7 +117,7 @@ async def list_infrac_modifiers(message: discord.Message, args: List[str], clien
     def render(it: Tuple[str, str, str]) -> str:
         return " ".join(it)
 
-    await message.channel.send(f"Modifiers: {len(data)} (page {p+1} of {math.ceil(len(data)/16)})```{paginate_noexcept(renderable, p, 16, 1950, render)}```")
+    await message.channel.send(f"Modifiers: {len(data)} (page {p+1} of {math.ceil(len(data)/16)})```\n{paginate_noexcept(renderable, p, 16, 1950, render)}```")
     return 0
 
 
