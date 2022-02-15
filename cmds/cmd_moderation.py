@@ -256,7 +256,8 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
         return 1
 
     if ctx.verbose and user:
-        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+        mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+        await message.channel.send(f"Warned {user.mention} with ID {user.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
         return 1
@@ -308,7 +309,9 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("User is not in this guild")
         return 1
 
-    if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+
+    if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     return 0
 
 
@@ -346,8 +349,9 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
         return 1
 
     delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," * bool(delete_days)
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     return 0
 
 
@@ -459,14 +463,18 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send(f"{BOT_NAME} does not have permission to mute this user.")
         return 1
 
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+
     if verbose and not mutetime:
-        await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     # if mutetime call db timed mute
     if mutetime:
 
         if verbose:
-            asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none()))
+            asyncio.create_task(
+                message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+                )
 
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
