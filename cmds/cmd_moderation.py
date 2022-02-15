@@ -438,8 +438,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     with db_hlapi(message.guild.id) as db:
         if bool(int(db.grab_config("show-mutetime") or "0")):
-            ts = "No Unmute" if mutetime == 0 else format_duration(mutetime)
-            modifiers.append(InfractionModifier("mutetime", "Mute Length", ts))
+            ts = "Infinite" if mutetime == 0 else format_duration(mutetime)
+            modifiers.append(InfractionModifier("mutelength", "Length", ts))
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
