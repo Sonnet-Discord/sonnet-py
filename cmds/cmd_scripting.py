@@ -143,7 +143,7 @@ class MapProcessError(Exception):
 
 
 async def map_preprocessor(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict,
-                           conf_cache: Dict[str, Any]) -> Tuple[List[str], int, SonnetCommand, str, List[str]]:
+                           conf_cache: Dict[str, Any]) -> Tuple[List[str], SonnetCommand, str, Tuple[List[str], List[str]]]:
 
     try:
         targs: List[str] = shlex.split(" ".join(args))
@@ -151,22 +151,28 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
         await message.channel.send("ERROR: shlex parser could not parse args")
         raise MapProcessError("ERRNO")
 
-    if targs:
-        if targs[0] == "-e":
-            if len(targs) >= 3:
-                endlargs = targs[1].split()
-                command = targs[2]
-                targlen = 3
-            else:
-                await message.channel.send("No command specified/-e specified but no input")
-                raise MapProcessError("ERRNO")
-        else:
-            endlargs = []
-            command = targs[0]
-            targlen = 1
-    else:
+    if not targs:
         await message.channel.send("No command specified")
         raise MapProcessError("ERRNO")
+
+    # parses instances of -startargs and -endargs
+    exargs: Tuple[List[str], List[str]] = ([], [])
+    while targs[0] in ['-s', '-e']:
+        try:
+            typ = targs.pop(0)
+            if typ == '-s':
+                exargs[0].extend(targs.pop(0).split())
+            else:
+                exargs[1].extend(targs.pop(0).split())
+        except IndexError:
+            await message.channel.send("-s/-e specified but no input")
+            raise MapProcessError("ERRNO")
+
+    if not targs:
+        await message.channel.send("No command specified")
+        raise MapProcessError("ERRNO")
+
+    command = targs.pop(0)
 
     if command not in cmds_dict:
         await message.channel.send("Invalid command")
@@ -177,11 +183,11 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
     if not await parse_permissions(message, conf_cache, cmd.permission):
         raise MapProcessError("ERRNO")
 
-    if len(targs[targlen:]) > exec_lim:
+    if len(targs) > exec_lim:
         await message.channel.send(f"ERROR: Exceeded limit of {exec_lim} iterations")
         raise MapProcessError("ERR LIM EXEEDED")
 
-    return targs, targlen, cmd, command, endlargs
+    return targs, cmd, command, exargs
 
 
 async def sonnet_map(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
@@ -192,7 +198,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
     cmds_dict = ctx.cmds_dict
 
     try:
-        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
+        targs, cmd, command, exargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
     except MapProcessError:
         return 1
 
@@ -203,12 +209,14 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
         newctx = pycopy.copy(ctx)
         newctx.verbose = False
 
-        for i in targs[targlen:]:
+        for i in targs:
 
-            message.content = f'{ctx.conf_cache["prefix"]}{command} {i} {" ".join(endlargs)}'
+            arguments = exargs[0] + i.split() + exargs[1]
+
+            message.content = f'{ctx.conf_cache["prefix"]}{command} {" ".join(arguments)}'
 
             try:
-                suc = (await cmd.execute_ctx(message, i.split() + endlargs, client, newctx)) or 0
+                suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
             except lib_sonnetcommands.CommandError as ce:
                 await message.channel.send(ce)
                 suc = 1
@@ -224,7 +232,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
         fmttime: int = (tend - tstart) // 1000 // 1000
 
-        if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
+        if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs)} instances of {command} in {fmttime}ms")
 
     finally:
         message.content = keepref
@@ -248,7 +256,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
     cmds_dict: lexdpyk.cmd_modules_dict = ctx.cmds_dict
 
     try:
-        targs, targlen, cmd, command, endlargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
+        targs, cmd, command, exargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
     except MapProcessError:
         return 1
 
@@ -257,15 +265,17 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
     newctx = pycopy.copy(ctx)
     newctx.verbose = False
 
-    for i in targs[targlen:]:
+    for i in targs:
+
+        arguments = exargs[0] + i.split() + exargs[1]
 
         # We need to copy the message object to avoid race conditions since all the commands run at once
         # All attrs are readonly except for content which we modify the pointer to, so avoiding a deepcopy is possible
         newmsg: discord.Message = pycopy.copy(message)
-        newmsg.content = f'{ctx.conf_cache["prefix"]}{command} {i} {" ".join(endlargs)}'
+        newmsg.content = f'{ctx.conf_cache["prefix"]}{command} {" ".join(arguments)}'
 
         # Call error handler over command to allow catching CommandError in async
-        promises.append(asyncio.create_task(wrapasyncerror(cmd, newmsg, i.split() + endlargs, client, newctx)))
+        promises.append(asyncio.create_task(wrapasyncerror(cmd, newmsg, arguments, client, newctx)))
 
     for p in promises:
         await p
@@ -277,7 +287,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
 
     fmttime: int = (tend - tstart) // 1000 // 1000
 
-    if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs[targlen:])} instances of {command} in {fmttime}ms")
+    if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs)} instances of {command} in {fmttime}ms")
 
 
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
@@ -295,11 +305,11 @@ commands = {
     'map':
         {
             'pretty_name':
-                'map [-e args] <command> (<args>)+',
+                'map [-s args] [-e args] <command> (<args>)+',
             'description':
                 'Map a single command with multiple arguments',
             'rich_description':
-                '''Use -e to append those args to the end of every run of the command
+                '''Use -e to append those args to the end of every run of the command, and -s to append args to the start of every command
 For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 users for raiding and spam''',
             'permission':
                 'moderator',
@@ -310,7 +320,7 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             },
     'amap':
         {
-            'pretty_name': 'amap [-e args] <command> (<args>)+',
+            'pretty_name': 'amap [-s args] [-e args] <command> (<args>)+',
             'description': 'Like map, but processes asynchronously, meaning it ignores errors',
             'permission': 'moderator',
             'cache': 'keep',
