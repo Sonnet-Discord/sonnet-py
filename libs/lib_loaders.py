@@ -25,7 +25,7 @@ from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
 
-from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol
+from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol, Final, Literal
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -107,7 +107,7 @@ def write_vnum(fileobj: Writer, number: int) -> None:
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
 
 
-# Load config from cache, or load from db if cache isn't existant
+# Load config from cache, or load from db if cache isn't existent
 def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[dict[Union[str, int], Any]] = None) -> dict[str, Any]:
 
     datatypes = defaultcache if datatypes is None else datatypes
@@ -124,7 +124,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         message_config: Dict[str, Any] = {}
 
         # Imports csv style data
-        for i in datatypes["csv"]:
+        for i in datatypes["csv"]:  # csv types are List[str]
             csvpre = blacklist_cache.read(read_vnum(blacklist_cache))
             if csvpre:
                 message_config[i[0]] = csvpre.decode("utf8").split(",")
@@ -132,7 +132,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
                 message_config[i[0]] = i[1].split(",") if i[1] else []
 
         # Imports text style data
-        for i in datatypes["text"]:
+        for i in datatypes["text"]:  # text types are str
             textpre = blacklist_cache.read(read_vnum(blacklist_cache))
             if textpre:
                 message_config[i[0]] = textpre.decode("utf8")
@@ -140,7 +140,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
                 message_config[i[0]] = i[1]
 
         # Imports JSON type data
-        for i in datatypes["json"]:
+        for i in datatypes["json"]:  # json types are Union[Dict[str, Any], List[Any]]
             jsonpre = blacklist_cache.read(read_vnum(blacklist_cache))
             if jsonpre:
                 message_config[i[0]] = pickle.loads(jsonpre)
@@ -150,7 +150,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
         return message_config
 
     except FileNotFoundError:
-        message_config: dict[str, Any] = {}  #  type: ignore
+        message_config = {}  # type defined in try block
 
         # Loads base db
         with db_hlapi(guild_id) as db:
@@ -291,13 +291,13 @@ _colortypes_cache: dict[Any, Any] = {
 # I hate bugs more than I hate slow python
 class embed_colors:
     __slots__ = ()
-    primary: str = "primary"
-    creation: str = "creation"
-    edit: str = "edit"
-    deletion: str = "deletion"
+    primary: Final = "primary"
+    creation: Final = "creation"
+    edit: Final = "edit"
+    deletion: Final = "deletion"
 
 
-def load_embed_color(guild: discord.Guild, colortype: str, ramfs: lexdpyk.ram_filesystem) -> int:
+def load_embed_color(guild: discord.Guild, colortype: Literal["primary", "creation", "edit", "deletion"], ramfs: lexdpyk.ram_filesystem) -> int:
     """
     Load a named embed color for a discord.Embed, these can be configured per guild
 

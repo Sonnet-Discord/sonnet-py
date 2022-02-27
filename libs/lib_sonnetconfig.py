@@ -3,6 +3,8 @@
 
 import importlib
 
+import warnings
+
 import sonnet_cfg
 
 importlib.reload(sonnet_cfg)
@@ -40,13 +42,24 @@ def _load_cfg(attr: str, default: Typ, typ: Type[Typ], testfunc: Optional[Callab
     return conf
 
 
+# Prints a warning if not using re2
+def _assertre2(s: str) -> bool:
+    if not s in {"re", "re2"}:
+        return False
+
+    if s == "re":
+        warnings.warn("Not using google-re2 (instead using stdlib re), moderator+ users are capable of crashing bot in this configuration", UserWarning)
+
+    return True
+
+
 GLOBAL_PREFIX = _load_cfg("GLOBAL_PREFIX", "!", str, lambda s: " " not in s, "Prefix contains whitespace")
 BLACKLIST_ACTION = _load_cfg("BLACKLIST_ACTION", "warn", str, lambda s: s in {"warn", "kick", "mute", "ban"}, "Blacklist action not valid")
 STARBOARD_EMOJI = _load_cfg("STARBOARD_EMOJI", "⭐", str)
 STARBOARD_COUNT = _load_cfg("STARBOARD_COUNT", "5", str, lambda s: s.isdigit(), "Starboard Count is not digit")
 DB_TYPE = _load_cfg("DB_TYPE", "mariadb", str, lambda s: s in {"mariadb", "sqlite3"}, "Database type not valid")
 SQLITE3_LOCATION = _load_cfg("SQLITE3_LOCATION", "datastore/sonnetdb.db", str)
-REGEX_VERSION = _load_cfg("REGEX_VERSION", "re2", str, lambda s: s in {"re", "re2"}, "RegEx ver is not re or re2")
+REGEX_VERSION = _load_cfg("REGEX_VERSION", "re2", str, _assertre2, "RegEx ver is not re or re2")
 CLIB_LOAD = _load_cfg("CLIB_LOAD", True, bool)
 GOLIB_LOAD = _load_cfg("GOLIB_LOAD", True, bool)
 GOLIB_VERSION = _load_cfg("GOLIB_VERSION", "go", str)

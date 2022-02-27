@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import importlib
 
-import lz4.frame, discord, os, json, hashlib, io, warnings
+import lz4.frame, discord, os, json, hashlib, io, warnings, math
 
 import lib_db_obfuscator
 
@@ -28,7 +28,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar
 import lib_lexdpyk_h as lexdpyk
 
 # Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
@@ -56,7 +56,13 @@ def _compileurl(urllist: List[str]) -> str:
 
     urllist = [_urlFilter.sub("", i).replace(".", r"\.") for i in urllist]
 
-    return "(https?://)(" + "|".join(urllist) + ")\W?"
+    # discord renders a preview even if the https and url span multiple lines so account for newline and dont capture it
+    # ex: https://website.domain/page would render a preview, but so would
+    #  https://
+    #  website.domain
+    #  /page
+    # and other variants
+    return f"(https?://)(?:\n)?({'|'.join(urllist)})"
 
 
 unicodeFilter = re.compile(r'[^a-z0-9 ]+')
@@ -95,6 +101,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
     try:
         ramfs.ls(f"{message.guild.id}/regex")
     except FileNotFoundError:
+        # Compiles regex blacklists if they are not precompiled
 
         with db_hlapi(message.guild.id) as db:
             reglist = {}
@@ -107,6 +114,8 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
         for regex_type in ["regex-blacklist", "regex-notifier"]:
             ramfs.mkdir(f"{message.guild.id}/regex/{regex_type}")
             for i in reglist[regex_type]:
+                # name ramfs file using sha256 hex and only take last 32 bytes to avoid directory name exploit
+                # (forward slash in regex would build a new directory)
                 regexname = hex(int.from_bytes(hashlib.sha256(i.encode("utf8")).digest(), "big"))[-32:]
                 ramfs.create_f(f"{message.guild.id}/regex/{regex_type}/{regexname}", f_type=re.compile, f_args=[i])
 
@@ -115,6 +124,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
         else:
             ramfs.create_f(f"{message.guild.id}/regex/url", f_type=returnsNone)
 
+    # Load blacklist from ramfs cache into temp conf_cache
     blacklist["regex-blacklist"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-blacklist/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-blacklist")[0]]
     blacklist["regex-notifier"] = [ramfs.read_f(f"{message.guild.id}/regex/regex-notifier/{i}") for i in ramfs.ls(f"{message.guild.id}/regex/regex-notifier")[0]]
     blacklist["url-blacklist_regex"] = ramfs.read_f(f"{message.guild.id}/regex/url")
@@ -131,23 +141,21 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
     LowerCaseContent = message.content.lower()
 
     # Check message against word blacklist
-    word_blacklist = blacklist["word-blacklist"]
-    if word_blacklist:
-        for i in text_to_blacklist.split(" "):
-            if i in word_blacklist:
-                broke_blacklist = True
-                infraction_type.append(f"Word({i})")
+    word_blacklist: List[str] = blacklist["word-blacklist"]
+    for i in text_to_blacklist.split(" "):
+        if i in word_blacklist:
+            broke_blacklist = True
+            infraction_type.append(f"Word({i})")
 
     # Check message against word in word blacklist
-    word_blacklist = blacklist["word-in-word-blacklist"]
-    if word_blacklist:
-        for i in word_blacklist:
-            if i in text_to_blacklist.replace(" ", ""):
-                broke_blacklist = True
-                infraction_type.append(f"WordInWord({i})")
+    word_in_word_blacklist: List[str] = blacklist["word-in-word-blacklist"]
+    for i in word_in_word_blacklist:
+        if i in text_to_blacklist.replace(" ", ""):
+            broke_blacklist = True
+            infraction_type.append(f"WordInWord({i})")
 
     # Check message against REGEXP blacklist
-    regex_blacklist = blacklist["regex-blacklist"]
+    regex_blacklist: List["re.Pattern[str]"] = blacklist["regex-blacklist"]
     for r in regex_blacklist:
         try:
             if broke := r.findall(LowerCaseContent):
@@ -157,13 +165,13 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
             pass  # GC for old regex
 
     # Check message against REGEXP notifier list
-    regex_blacklist = blacklist["regex-notifier"]
-    for r in regex_blacklist:
+    regex_notifier: List["re.Pattern[str]"] = blacklist["regex-notifier"]
+    for r in regex_notifier:
         if r.findall(LowerCaseContent):
             notifier = True
 
     # Check against filetype blacklist
-    filetype_blacklist = blacklist["filetype-blacklist"]
+    filetype_blacklist: List[str] = blacklist["filetype-blacklist"]
     if filetype_blacklist and message.attachments:
         for ft in message.attachments:
             for a in filetype_blacklist:
@@ -172,7 +180,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
                     infraction_type.append(f"FileType({a})")
 
     # Check url blacklist
-    url_blacklist: Any = blacklist["url-blacklist_regex"]
+    url_blacklist: Optional["re.Pattern[str]"] = blacklist["url-blacklist_regex"]
     if url_blacklist is not None:
         if broke := url_blacklist.findall(LowerCaseContent):
             broke_blacklist = True
@@ -363,16 +371,16 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
 
             try:
 
-                loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                loc: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
                 loc.seek(0)
                 pointer = loc.read()
 
-                keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                keys: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
                 keys.seek(0)
                 key = keys.read(32)
                 iv = keys.read(16)
 
-                name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                name: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
                 name.seek(0)
                 fname = name.read().decode("utf8")
 
@@ -499,6 +507,11 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
     if not message.guild:
         raise lib_sonnetcommands.CommandError("ERROR: Not a guild message")
 
+    # Capture replies first, but only use on parse errors to preserve legacy behavior
+    reply_message: Optional[discord.Message] = None
+    if (r := message.reference) is not None and isinstance((rr := r.resolved), discord.Message):
+        reply_message = rr
+
     try:
         message_link = args[0].replace("-", "/").split("/")
         log_channel: Union[str, int] = message_link[-2]
@@ -510,12 +523,23 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
             message_id = args[1]
             nargs = 2
         except IndexError:
+            if reply_message is not None:
+                return reply_message, 0
             raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
 
     try:
         log_channel = int(log_channel)
     except ValueError:
+        if reply_message is not None:
+            return reply_message, 0
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
+
+    try:
+        message_id_int = int(message_id)
+    except ValueError:
+        if reply_message is not None:
+            return reply_message, 0
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
@@ -528,8 +552,8 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.scope)
 
     try:
-        discord_message = await discord_channel.fetch_message(int(message_id))
-    except (ValueError, discord.errors.HTTPException):
+        discord_message = await discord_channel.fetch_message(message_id_int)
+    except discord.errors.HTTPException:
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     if not discord_message:
@@ -640,3 +664,83 @@ def format_duration(durationSeconds: Union[int, float]) -> str:
     perfectround = int(rounded) if float(int(rounded)) == rounded else rounded
 
     return f"{perfectround} {base}{'s'*(perfectround!=1)}"
+
+
+_PT = TypeVar("_PT")
+
+
+def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfunc: Optional[Callable[[_PT], str]] = None) -> str:
+    """
+    Paginates a list of items while working around the bounds of a limit
+    Optionally format with fmtfunc, otherwise str will be called on each value
+    
+    params:
+        vals - list containing values to be appended to a single page
+        page - requested page of pagination
+        per_page - how many values to display per page
+        lim - max length that the returning string will be
+        fmtfunc - optional formatting function, otherwise str is called on _PT
+
+    :raises: lib_sonnetcommands.CommandError - not meant to be caught, goes directly to end user
+    """
+
+    if fmtfunc is None:
+        fmtfunc = lambda s: str(s)
+
+    cpagecount = math.ceil(len(vals) / per_page)
+
+    # Test if valid page
+    if not 0 <= page < cpagecount:
+        raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
+
+    # Why can you never be happy :defeatcry:
+    #
+    # Implemented below is a microreallocator, every item in a page has
+    # a fixed maximum length, but if one item doesn't need that length we can
+    # give it to other items, so we can do a first pass to get lengths of them all,
+    # pool spare space, and give it when needed
+    #
+    # This is similar enough to the golang method of dual pass string operations that
+    # it is worth mentioning that it is in fact inspired from the go strings stdlib
+    # (ultrabear) highly recommends reading it, its really well written!
+
+    # Take slice once to avoid memcopies every iteration
+    pageslice = vals[page * per_page:page * per_page + per_page]
+
+    # This lets us store more on cases where there is less items than there should be, i/e eof
+    actual_per_page = len(pageslice)
+
+    maxlen = (lim // actual_per_page)
+
+    # pooled will say how many spare chars we have left
+    # it is calculated as pooled = sum[(maxlen - lencuritem) for i in items]
+    # In this way, if pool is negative do not have enough space to not cut values off
+    # If it is positive we can loop with no size limit
+
+    itemstore = [fmtfunc(i) for i in pageslice]
+
+    # Add +1 for newline
+    lenarr = [maxlen - (len(i) + 1) for i in itemstore]
+
+    pooled = sum(lenarr)
+
+    # We write output using a string.Buil- wait this isn't golang
+    # Whatever, this is efficient
+    writer = io.StringIO()
+
+    if pooled >= 0:
+        for i in itemstore:
+            writer.write(i + "\n")
+    else:
+        # We need to go more complicated, by only using the positive pooled we can increase the item length cap a little
+        pospool = sum(i for i in lenarr if i > 0)  # Remove negatives
+        newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
+        if newmaxlen <= 1:
+            raise lib_sonnetcommands.CommandError("ERROR: The amount of items to display overflows the set possible limit with newline seperators")
+
+        for i in itemstore:
+            # Cap at newmaxlen-1 and then add \n at the end
+            # this ensures we always have newline separators
+            writer.write(i[:newmaxlen - 1] + "\n")
+
+    return writer.getvalue()

@@ -6,9 +6,7 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import hashes, hmac
 
-import io
-
-from typing import Generator, Any, Union, Protocol
+from typing import Generator, Union, Protocol
 
 
 class errors:
@@ -38,23 +36,34 @@ def directBinNumber(inData: int, length: int) -> bytes:
     return bytes((inData >> (8 * i) & 0xff) for i in range(length))
 
 
+class _WriteSeekCloser(Protocol):
+    def write(self, buf: bytes) -> int:
+        ...
+
+    def seek(self, cookie: int, whence: int = 0) -> int:
+        ...
+
+    def close(self) -> None:
+        ...
+
+
 class encrypted_writer:
     __slots__ = "cipher", "encryptor_module", "HMACencrypt", "rawfile", "buf"
 
-    def __init__(self, filename: Any, key: bytes, iv: bytes) -> None:
+    def __init__(self, filename: Union[bytes, str, _WriteSeekCloser], key: bytes, iv: bytes) -> None:
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
         self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()  # type: ignore[no-untyped-call]
 
-        # Initalize HMAC generator
+        # Initialize HMAC generator
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
 
         # Open rawfile and write headers
-        if isinstance(filename, io.BytesIO):
-            self.rawfile = filename
+        if isinstance(filename, (bytes, str)):
+            self.rawfile: _WriteSeekCloser = open(filename, "wb+")
         else:
-            self.rawfile = open(filename, "wb+")  # type: ignore[assignment]
+            self.rawfile = filename
         self.rawfile.write(b"SONNETAES\x01")
         self.rawfile.write(bytes(64))
 
@@ -119,16 +128,27 @@ class encrypted_writer:
         raise TypeError(f"{self} object does not allow reading")
 
 
+class _ReadSeekCloser(Protocol):
+    def read(self, amnt: int) -> bytes:
+        ...
+
+    def seek(self, cookie: int, whence: int = 0) -> int:
+        ...
+
+    def close(self) -> None:
+        ...
+
+
 class encrypted_reader:
     __slots__ = "rawfile", "cipher", "decryptor_module", "pointer", "cache"
 
-    def __init__(self, filename: Any, key: bytes, iv: bytes) -> None:
+    def __init__(self, filename: Union[bytes, str, _ReadSeekCloser], key: bytes, iv: bytes) -> None:
 
         # Open rawfile
-        if isinstance(filename, io.BytesIO):
-            self.rawfile = filename
+        if isinstance(filename, (bytes, str)):
+            self.rawfile: _ReadSeekCloser = open(filename, "rb+")
         else:
-            self.rawfile = open(filename, "rb+")  # type: ignore[assignment]
+            self.rawfile = filename
 
         # Make decryptor instance
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))

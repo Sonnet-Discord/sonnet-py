@@ -2,6 +2,7 @@
 # Ultrabear 2022
 
 import sys
+from dataclasses import dataclass
 
 # Python types
 from typing import List, Dict, Tuple, Type
@@ -99,7 +100,7 @@ class Promise(Generic[_PT]):
 
     As such the argument parser returns typed promise objects per argument that will return data once it has completed parsing, but not before.
     You may also construct a Promise directly with Promise[T]() or with Promise(T) for py3.8 users, and pass it to add_arg(store=) to parse to for multi argument parsing.
-    Correct typing is not gauranteed at runtime, but by mypy type checking, code that fails mypy type checking will produce unpredictable runtime behavior.
+    Correct typing is not guaranteed at runtime, but by mypy type checking, code that fails mypy type checking will produce unpredictable runtime behavior.
     """
     __slots__ = "_parsed", "_data"
 
@@ -122,15 +123,15 @@ class Promise(Generic[_PT]):
         return default if self._data is None else self._data
 
 
+# Dataclasses go brr
+@dataclass
 class _ParserArgument(Generic[_PAT]):
     __slots__ = "names", "func", "flag", "store", "helpstr"
-
-    def __init__(self, names: Union[str, List[str]], func: Callable[[str], _PAT], flag: bool, store: Promise[_PAT], helpstr: Optional[str]) -> None:
-        self.names = names
-        self.func = func
-        self.flag = flag
-        self.store = store
-        self.helpstr = helpstr
+    names: Union[str, List[str]]
+    func: Callable[[str], _PAT]
+    flag: bool
+    store: Promise[_PAT]
+    helpstr: Optional[str]
 
 
 class Parser:

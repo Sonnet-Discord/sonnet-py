@@ -1,4 +1,4 @@
-# Check to ensure we dont import this file
+# Check to ensure we don't import this file
 if __name__ != "__main__":
     import warnings
     warnings.warn("LeXdPyK is not meant to be imported")
@@ -42,7 +42,7 @@ intents.guilds = True
 intents.members = True
 intents.reactions = True
 
-# Initialise Discord Client.
+# Initialize Discord Client.
 Client = discord.Client(status=discord.Status.online, intents=intents)
 
 
@@ -128,7 +128,7 @@ class ram_filesystem:
         path: "ram_filesystem" = self
 
         for item in make_dir:
-            # If the current dir doesnt exist then create it
+            # If the current dir doesn't exist then create it
             try:
                 path = path.directory_table[item]
             except KeyError:
@@ -262,7 +262,7 @@ command_modules_dict: Dict[str, Any] = {}
 dynamiclib_modules: List[Any] = []
 dynamiclib_modules_dict: Dict[str, Any] = {}
 
-# Initalize ramfs, kernel ramfs
+# Initialize ramfs, kernel ramfs
 ramfs = ram_filesystem()
 kernel_ramfs = ram_filesystem()
 
@@ -506,7 +506,7 @@ class errtype:
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
 
-# KeyError sentinel so we dont catch KeyError
+# KeyError sentinel so we don't catch KeyError
 class KernelKeyError(KeyError):
     pass
 
@@ -537,7 +537,7 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
     try:
 
         # Do hash lookup with KeyError
-        # Seperate from running function so we do not catch a KeyError deeper in the stack
+        # Separate from running function so we do not catch a KeyError deeper in the stack
         try:
             func = dynamiclib_modules_dict[argtype]
         except KeyError:
@@ -660,14 +660,15 @@ async def on_message(message: discord.Message) -> None:
     args = message.content.split(" ")
 
     # If bot owner run a debug command
-    if len(args) >= 2 and args[0] in debug_commands and message.author.id in BOT_OWNER and args[1] == str(Client.user.id):
-        if e := debug_commands[args[0]](args[2:]):
-            await message.channel.send(e[0])
-            for i in e[1]:
-                errtype(i, "")
-        else:
-            await sendable_send(message.channel, "Debug command returned no error status")
-            return
+    if len(args) >= 2 and args[0] in debug_commands:
+        if message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
+            if e := debug_commands[args[0]](args[2:]):
+                await message.channel.send(e[0])
+                for i in e[1]:
+                    errtype(i, "")
+            else:
+                await sendable_send(message.channel, "Debug command returned no error status")
+                return
 
     if await safety_check(guild=message.guild, user=message.author):
         if err := await event_call("on-message", message):
@@ -838,9 +839,16 @@ def gentoken() -> str:
 def main(args: List[str]) -> int:
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--log-debug", action="store_true", help="Makes the logging module start in debug mode")
-    parser.add_argument("--generate-token", action="store_true", help="Discards the current token file if there is one, and generates a new encrypted tokenfile")
+    parser.add_argument("--log-debug", action="store_true", help="makes the logging module start in debug mode")
+    parser.add_argument("--generate-token", action="store_true", help="discards the current token file if there is one, and generates a new encrypted tokenfile")
+    parser.add_argument("--version", "-v", action="store_true", help="print version info and exit")
     parsed = parser.parse_args()
+
+    if parsed.version:
+        import platform
+        pyver = f"{platform.python_implementation()} {platform.python_version()}"
+        print(f"{version_info} @ {os.getcwd()}\n{pyver} @ {sys.executable}")
+        return 0
 
     # Set Loglevel
     loglevel = logging.DEBUG if parsed.log_debug else logging.INFO
@@ -891,7 +899,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.8"
+version_info: str = "LeXdPyK 1.4.10"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
