@@ -97,6 +97,8 @@ def _get_highest_perm(message: discord.Message, member: discord.Member, conf_cac
     for i in ["moderator", "administrator", "owner"]:
         if parse_core_permissions(message.channel, member, conf_cache, i):
             highest = i
+        else:
+            break
 
     return highest
 
@@ -509,4 +511,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13-DEV"
