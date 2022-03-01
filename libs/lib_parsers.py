@@ -608,6 +608,39 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
 UserInterface = Union[discord.User, discord.Member]
 
 
+# should return a union of many types but for now only handle discord.Message
+async def _guess_id_type(message: discord.Message, mystery_id: int) -> Optional[Union[discord.Message, discord.Role, discord.TextChannel]]:
+
+    # hot path current channel id
+    if message.channel.id == mystery_id and isinstance(message.channel, discord.TextChannel):
+        return message.channel
+
+    # asserts guild
+    if not message.guild:
+        return None
+
+    # requires guild
+    if (role := message.guild.get_role(mystery_id)) is not None:
+        return role
+
+    if (chan := message.guild.get_channel(mystery_id)) is not None:
+        if isinstance(chan, discord.TextChannel):
+            return chan
+
+    # asserts channel
+    if not isinstance(message.channel, discord.TextChannel):
+        return None
+
+    # requires channel
+    try:
+        if (discord_message := await message.channel.fetch_message(mystery_id)) is not None:
+            return discord_message
+    except discord.errors.HTTPException:
+        pass
+
+    return None
+
+
 async def parse_user_member_noexcept(message: discord.Message,
                                      args: List[str],
                                      client: discord.Client,
@@ -643,6 +676,17 @@ async def parse_user_member_noexcept(message: discord.Message,
         if not (user := client.get_user(uid)):
             user = await client.fetch_user(uid)
     except (discord.errors.NotFound, discord.errors.HTTPException):
+        if (pot := await _guess_id_type(message, uid)) is not None:
+            errappend = "Note: While this ID is not a valid user ID, it is "
+            if isinstance(pot, discord.TextChannel):
+                errappend += f"a valid channel ID: <#{pot.id}>"
+            elif isinstance(pot, discord.Message):
+                errappend += f"a valid message by a user with ID {pot.author.id}\n(did you mean to select this user?)"
+            elif isinstance(pot, discord.Role):
+                errappend += "a valid role"
+
+            raise lib_sonnetcommands.CommandError(f"User does not exist\n{errappend}")
+
         raise lib_sonnetcommands.CommandError("User does not exist")
 
     return user, member
