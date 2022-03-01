@@ -37,14 +37,14 @@ import lib_tparse
 
 importlib.reload(lib_tparse)
 
-from typing import Any, Final, List, Optional, Tuple, cast
+from typing import Any, Final, List, Optional, Tuple, Dict, cast
 
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import datetime_now, embed_colors, load_embed_color
-from lib_parsers import (parse_boolean, parse_permissions, parse_user_member_noexcept)
+from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 from lib_tparse import Parser
@@ -89,7 +89,19 @@ def parsedate(indata: Optional[datetime]) -> str:
         return "ERROR: Could not fetch this date"
 
 
-async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+def _get_highest_perm(message: discord.Message, member: discord.Member, conf_cache: Dict[str, Any]) -> str:
+    if not isinstance(message.channel, discord.TextChannel):
+        return "everyone"
+
+    highest = "everyone"
+    for i in ["moderator", "administrator", "owner"]:
+        if parse_core_permissions(message.channel, member, conf_cache, i):
+            highest = i
+
+    return highest
+
+
+async def profile_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
@@ -105,7 +117,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
         "invisible": "\U000026AB (offline)"
         }
 
-    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
     embed.set_thumbnail(url=user_avatar_url(user))
     embed.add_field(name="Username", value=str(user), inline=True)
     embed.add_field(name="User ID", value=str(user.id), inline=True)
@@ -115,11 +127,12 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     embed.add_field(name="Created", value=parsedate(user.created_at), inline=True)
     if member:
         embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
+        embed.add_field(name="Guild Perm Level", value=_get_highest_perm(message, member, ctx.conf_cache))
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
         viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
-        moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
+        moderator = await parse_permissions(message, ctx.conf_cache, "moderator", verbose=False)
         if moderator or (viewinfs and user.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
 
