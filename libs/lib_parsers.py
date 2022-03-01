@@ -28,7 +28,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload
 import lib_lexdpyk_h as lexdpyk
 
 # Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
@@ -296,10 +296,51 @@ def _parse_role_perms(author: discord.Member, permrole: str) -> bool:
 Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["everyone"]) -> Literal[True]:
+    ...
+
+
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["moderator", "administrator", "owner"]) -> bool:
+    ...
+
+
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+    ...
+
+
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+    """
+    Parse permissions of a given TextChannel and Member, only parses core permissions (everyone,moderator,administrator,owner) and does not have verbosity
+    This is a lightweight alternative to parse_permissions for parsing simple permissions, while not sufficient for full command permission parsing.
+
+    :returns: Optional[bool] - Has permission, or None if the perm name was not one of the core permissions
+    """
+
+    if perms == "everyone":
+        return True
+    elif perms == "moderator":
+        default_t = channel.permissions_for(member)
+        default = default_t.ban_members or default_t.administrator
+        modperm = (member, mconf["moderator-role"])
+        adminperm = (member, mconf["admin-role"])
+        return bool(default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm))
+    elif perms == "administrator":
+        default = channel.permissions_for(member).administrator
+        adminperm = (member, mconf["admin-role"])
+        return bool(default or _parse_role_perms(*adminperm))
+    elif perms == "owner":
+        return bool(channel.guild.owner and member.id == channel.guild.owner.id)
+
+    return None
+
+
 # Parse user permissions to run a command
 async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
     """
-    Parse the permissions of the given member object to check if they meet the required permtype
+    Parse the permissions of the given message object to check if they meet the required permtype
     Verbosity can be set to not print if the perm check failed
 
     :returns: bool
@@ -317,24 +358,12 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
         return False
 
     you_shall_pass = False
-    if perms == "everyone":
-        you_shall_pass = True
-    elif perms == "moderator":
-        default = message.channel.permissions_for(message.author).ban_members
-        modperm = (message.author, mconf["moderator-role"])
-        adminperm = (message.author, mconf["admin-role"])
-        you_shall_pass = default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm)
-    elif perms == "administrator":
-        default = message.channel.permissions_for(message.author).administrator
-        adminperm = (message.author, mconf["admin-role"])
-        you_shall_pass = default or _parse_role_perms(*adminperm)
-    elif perms == "owner":
-        # If we cant check the owner then skip it
-        if message.guild and message.guild.owner:
-            you_shall_pass = message.author.id == message.guild.owner.id
-    elif isinstance(perms, (tuple, list)):
+    if isinstance(perms, (tuple, list)):
         you_shall_pass = perms[1](message)
         perms = perms[0]
+    else:
+        # Cast None to False (previous behavior of parse_permissions)
+        you_shall_pass = parse_core_permissions(message.channel, message.author, mconf, perms) or False
 
     if you_shall_pass:
         return True
