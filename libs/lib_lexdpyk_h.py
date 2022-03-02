@@ -1,6 +1,8 @@
 # Headers for the kernel ramfs
 
 import io
+import discord
+from dataclasses import dataclass
 
 from typing import Optional, List, Any, Tuple, Dict, Callable, Coroutine, Type, TypeVar, Protocol, overload
 
@@ -64,3 +66,32 @@ class dlib_module(Protocol):
 
 
 dlib_modules_dict = Dict[str, Callable[..., Coroutine[Any, Any, None]]]
+
+
+@dataclass
+class KernelArgs:
+    """
+    A wrapper around a kernels passed kwargs
+    """
+    __slots__ = "kernel_version", "bot_start", "client", "ramfs", "kernel_ramfs", "command_modules", "dynamiclib_modules"
+    kernel_version: str
+    bot_start: float
+    client: discord.Client
+    ramfs: ram_filesystem
+    kernel_ramfs: ram_filesystem
+    command_modules: Tuple[List[cmd_module], cmd_modules_dict]
+    dynamiclib_modules: Tuple[List[dlib_module], dlib_modules_dict]
+
+
+_FuncType = Callable[..., Coroutine[Any, Any, Any]]
+
+
+def ToKernelArgs(f: _FuncType) -> _FuncType:
+    """
+    A decorator to convert kwargs to KernelArgs for a kernel event handler
+    """
+    def newfunc(*args: Any, **kwargs: Any) -> Coroutine[Any, Any, Any]:
+        nargs = (*args, KernelArgs(**kwargs))
+        return f(*nargs)
+
+    return newfunc
