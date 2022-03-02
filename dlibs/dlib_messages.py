@@ -414,18 +414,13 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
         download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.guild.id, message.id])
 
 
-async def on_message(message: discord.Message, **kargs: Any) -> None:
+@lexdpyk.ToKernelArgs
+async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
 
-    client: Final[discord.Client] = kargs["client"]
-    ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
-    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
-    main_version_info: Final[str] = kargs["kernel_version"]
-    bot_start_time: Final[float] = kargs["bot_start"]
+    client: Final = kernel_args.client
+    ramfs: Final = kernel_args.ramfs
 
-    command_modules: List[lexdpyk.cmd_module]
-    command_modules_dict: lexdpyk.cmd_modules_dict
-
-    command_modules, command_modules_dict = kargs["command_modules"]
+    command_modules, command_modules_dict = kernel_args.command_modules
 
     # Statistics.
     stats: Final[Dict[str, int]] = {"start": round(time.time() * 100000)}
@@ -435,7 +430,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     elif not message.guild:
         return
 
-    inc_statistics_better(message.guild.id, "on-message", kernel_ramfs)
+    inc_statistics_better(message.guild.id, "on-message", kernel_args.kernel_ramfs)
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
@@ -453,10 +448,10 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         stats=stats,
         cmds=command_modules,
         ramfs=ramfs,
-        bot_start=bot_start_time,
-        dlibs=kargs["dynamiclib_modules"][0],
-        main_version=main_version_info,
-        kernel_ramfs=kargs["kernel_ramfs"],
+        bot_start=kernel_args.bot_start,
+        dlibs=kernel_args.dynamiclib_modules[0],
+        main_version=kernel_args.kernel_version,
+        kernel_ramfs=kernel_args.kernel_ramfs,
         conf_cache=mconf,
         verbose=True,
         cmds_dict=command_modules_dict,
@@ -490,7 +485,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
     # Log files if not deleted
     if not message_deleted:
-        asyncio.create_task(log_message_files(message, kernel_ramfs))
+        asyncio.create_task(log_message_files(message, kernel_args.kernel_ramfs))
 
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
@@ -556,4 +551,4 @@ commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: Final = "1.2.12"
+version_info: Final = "1.2.13-DEV"
