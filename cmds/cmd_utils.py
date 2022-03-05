@@ -1,16 +1,14 @@
 # Utility Commands
 # Funey, 2020
 
-import importlib
-
-import discord
-
 import asyncio
+import importlib
+import io
 import random
 import time
-import io
 from datetime import datetime
 
+import discord
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
@@ -39,17 +37,17 @@ import lib_tparse
 
 importlib.reload(lib_tparse)
 
+from typing import Any, Final, List, Optional, Tuple, Dict, cast
+
+import lib_constants as constants
+import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import datetime_now, embed_colors, load_embed_color
-from lib_parsers import (parse_boolean, parse_permissions, parse_user_member_noexcept)
+from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 from lib_tparse import Parser
-import lib_constants as constants
-import lib_lexdpyk_h as lexdpyk
-
-from typing import Any, List, Optional, Tuple, Final, cast
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -91,7 +89,21 @@ def parsedate(indata: Optional[datetime]) -> str:
         return "ERROR: Could not fetch this date"
 
 
-async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+def _get_highest_perm(message: discord.Message, member: discord.Member, conf_cache: Dict[str, Any]) -> str:
+    if not isinstance(message.channel, discord.TextChannel):
+        return "everyone"
+
+    highest = "everyone"
+    for i in ["moderator", "administrator", "owner"]:
+        if parse_core_permissions(message.channel, member, conf_cache, i):
+            highest = i
+        else:
+            break
+
+    return highest
+
+
+async def profile_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
@@ -107,7 +119,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
         "invisible": "\U000026AB (offline)"
         }
 
-    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
     embed.set_thumbnail(url=user_avatar_url(user))
     embed.add_field(name="Username", value=str(user), inline=True)
     embed.add_field(name="User ID", value=str(user.id), inline=True)
@@ -117,11 +129,12 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     embed.add_field(name="Created", value=parsedate(user.created_at), inline=True)
     if member:
         embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
+        embed.add_field(name="Guild Perm Level", value=_get_highest_perm(message, member, ctx.conf_cache))
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
         viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
-        moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
+        moderator = await parse_permissions(message, ctx.conf_cache, "moderator", verbose=False)
         if moderator or (viewinfs and user.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
 
@@ -164,7 +177,11 @@ class HelpHelper:
 
         cmds_dict = self.ctx.cmds_dict
 
-        command = SonnetCommand(cmds_dict[cmd_name], cmds_dict)
+        # relies on true name for alias grouping
+        if 'alias' in cmds_dict[cmd_name]:
+            cmd_name = cmds_dict[cmd_name]['alias']
+
+        command = SonnetCommand(cmds_dict[cmd_name])
 
         cmd_embed = discord.Embed(title=f'Command "{cmd_name}"', description=command.description, color=load_embed_color(self.guild, embed_colors.primary, self.ctx.ramfs))
         cmd_embed.set_author(name=self.helpname)
@@ -351,7 +368,50 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
-async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+def perms_to_str(p: discord.Permissions) -> str:
+    values: List[str] = []
+    for i, v in constants.permission.name_offsets.items():
+        if (1 << i & p.value) == 1 << i:
+            values.append(v)
+
+    values.sort()
+
+    return f"`{'` `'.join(values)}`"
+
+
+async def grab_role_info(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    if not args:
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
+
+    try:
+        role_id = int(args[0].strip("<@&>"))
+    except ValueError:
+        raise lib_sonnetcommands.CommandError("ERROR: Could not parse role id")
+
+    if (role := message.guild.get_role(role_id)) is not None:
+
+        r_embed = discord.Embed(title="Role Info", description=f"Information on {role.mention}", color=load_embed_color(message.guild, "primary", ctx.ramfs))
+        r_embed.add_field(name="User Count", value=str(len(role.members)), inline=False)
+        r_embed.add_field(name=f"Permissions ({role.permissions.value})", value=perms_to_str(role.permissions))
+
+        r_embed.set_footer(text=f"id: {role.id}")
+        r_embed.timestamp = datetime_now()
+
+        try:
+            await message.channel.send(embed=r_embed)
+        except discord.errors.Forbidden:
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+
+        return 0
+
+    else:
+        raise lib_sonnetcommands.CommandError("ERROR: Could not grab role from this guild")
+
+
+async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
 
     try:
         await message.add_reaction("\U0001F44D")  # Thumbs up emoji
@@ -362,16 +422,32 @@ async def initialise_poll(message: discord.Message, args: List[str], client: dis
         raise lib_sonnetcommands.CommandError("ERROR: Could not find the message [404]")
 
 
-async def coinflip(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def coinflip(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
 
-    mobj = await message.channel.send("Flipping a coin...")
-    await asyncio.sleep(random.randint(500, 1000) / 1000)
-    await mobj.edit(content=f"Flipping a coin... {random.choice(['Heads!','Tails!'])}")
+    # take the answer first to instill disappointment that nothing is truly random
+    out = f"Flipping a coin... {random.choice(['Heads!','Tails!'])}"
+
+    if ctx.verbose:
+        mobj = await message.channel.send("Flipping a coin...")
+        await asyncio.sleep(random.randint(500, 1000) / 1000)
+        await mobj.edit(content=out)
+    else:
+        # dont bother with sleeps if we are being called as a subcommand
+        await message.channel.send(out)
 
 
 category_info = {'name': 'utilities', 'pretty_name': 'Utilities', 'description': 'Utility commands.'}
 
 commands = {
+    'roleinfo': {
+        'alias': 'role-info'
+        },
+    'role-info': {
+        'pretty_name': 'role-info <role>',
+        'description': 'Get information on a role',
+        'permission': 'everyone',
+        'execute': grab_role_info,
+        },
     'ping': {
         'pretty_name': 'ping',
         'description': 'Test connection to bot',
@@ -435,4 +511,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.12-DEV"
+version_info: str = "1.2.13-DEV"

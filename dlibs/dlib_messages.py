@@ -44,7 +44,7 @@ from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
-ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!$%^&()/.,?[{}]")
+ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]=")
 
 
 async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
@@ -275,10 +275,10 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
     if not message.guild:
         raise RuntimeError("How did we end up here? Basically antispam_check was called on a dm message, oops")
 
-    # Wierd behavior(ultrabear): message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
+    # Weird behavior(ultrabear): message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
     # Update(ultrabear): now that we use discord_datetime_now() we get an unaware dt or aware dt depending on dpy version
 
-    userid: Final = message.author.id
+    userid: Final[int] = message.author.id
     sent_at: Final[float] = message.created_at.timestamp()
 
     # Base antispam
@@ -362,7 +362,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
     return (False, "")
 
 
-async def download_file(nfile: discord.Attachment, compression: Any, encryption: Any, filename: str, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
+async def download_file(nfile: discord.Attachment, compression: Any, encryption: encrypted_writer, filename: str, ramfs: lexdpyk.ram_filesystem, guild_id: int, message_id: int) -> None:
 
     await nfile.save(compression, seek_begin=False)
     compression.close()
@@ -375,18 +375,9 @@ async def download_file(nfile: discord.Attachment, compression: Any, encryption:
     except FileNotFoundError:
         pass
     try:
-        ramfs.rmdir(f"{mgid[0]}/files/{mgid[1]}")
+        ramfs.rmdir(f"{guild_id}/files/{message_id}")
     except FileNotFoundError:
         pass
-
-
-def download_single_file(discord_file: discord.Attachment, filename: str, key: bytes, iv: bytes, ramfs: lexdpyk.ram_filesystem, mgid: List[int]) -> None:
-
-    encryption_fileobj: Final = encrypted_writer(filename, key, iv)
-
-    compression_fileobj: Final = lz4.frame.LZ4FrameFile(filename=encryption_fileobj, mode="wb")
-
-    asyncio.create_task(download_file(discord_file, compression_fileobj, encryption_fileobj, filename, ramfs, mgid))
 
 
 async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
@@ -411,21 +402,21 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
         file_loc = f"./datastore/{message.guild.id}-{pointer}.cache.db"
         pointerfile.write(file_loc.encode("utf8"))
 
-        download_single_file(i, file_loc, key, iv, kernel_ramfs, [message.guild.id, message.id])
+        # Create encryption and compression wrappers (raw -> compressed -> encrypted -> disk)
+        encryption_fileobj = encrypted_writer(file_loc, key, iv)
+        compression_fileobj = lz4.frame.LZ4FrameFile(filename=encryption_fileobj, mode="wb")
+
+        # Do file downloading in async
+        asyncio.create_task(download_file(i, compression_fileobj, encryption_fileobj, file_loc, kernel_ramfs, message.guild.id, message.id))
 
 
-async def on_message(message: discord.Message, **kargs: Any) -> None:
+@lexdpyk.ToKernelArgs
+async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
 
-    client: Final[discord.Client] = kargs["client"]
-    ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
-    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
-    main_version_info: Final[str] = kargs["kernel_version"]
-    bot_start_time: Final[float] = kargs["bot_start"]
+    client: Final = kernel_args.client
+    ramfs: Final = kernel_args.ramfs
 
-    command_modules: List[lexdpyk.cmd_module]
-    command_modules_dict: lexdpyk.cmd_modules_dict
-
-    command_modules, command_modules_dict = kargs["command_modules"]
+    command_modules, command_modules_dict = kernel_args.command_modules
 
     # Statistics.
     stats: Final[Dict[str, int]] = {"start": round(time.time() * 100000)}
@@ -435,7 +426,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
     elif not message.guild:
         return
 
-    inc_statistics_better(message.guild.id, "on-message", kernel_ramfs)
+    inc_statistics_better(message.guild.id, "on-message", kernel_args.kernel_ramfs)
 
     # Load message conf
     stats["start-load-blacklist"] = round(time.time() * 100000)
@@ -453,10 +444,10 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
         stats=stats,
         cmds=command_modules,
         ramfs=ramfs,
-        bot_start=bot_start_time,
-        dlibs=kargs["dynamiclib_modules"][0],
-        main_version=main_version_info,
-        kernel_ramfs=kargs["kernel_ramfs"],
+        bot_start=kernel_args.bot_start,
+        dlibs=kernel_args.dynamiclib_modules[0],
+        main_version=kernel_args.kernel_version,
+        kernel_ramfs=kernel_args.kernel_ramfs,
         conf_cache=mconf,
         verbose=True,
         cmds_dict=command_modules_dict,
@@ -490,7 +481,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
 
     # Log files if not deleted
     if not message_deleted:
-        asyncio.create_task(log_message_files(message, kernel_ramfs))
+        asyncio.create_task(log_message_files(message, kernel_args.kernel_ramfs))
 
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
@@ -527,25 +518,7 @@ async def on_message(message: discord.Message, **kargs: Any) -> None:
                 except discord.errors.Forbidden:
                     pass
 
-            # Regenerate cache
-            if cmd.cache in ["purge", "regenerate"]:
-                for i in ["caches", "regex"]:
-                    try:
-                        ramfs.rmdir(f"{message.guild.id}/{i}")
-                    except FileNotFoundError:
-                        pass
-
-            elif cmd.cache.startswith("direct:"):
-                for i in cmd.cache[len('direct:'):].split(";"):
-                    try:
-                        if i.startswith("(d)"):
-                            ramfs.rmdir(f"{message.guild.id}/{i[3:]}")
-                        elif i.startswith("(f)"):
-                            ramfs.remove_f(f"{message.guild.id}/{i[3:]}")
-                        else:
-                            raise RuntimeError("Cache directive is invalid")
-                    except FileNotFoundError:
-                        pass
+            cmd.sweep_cache(ramfs, message.guild)
 
         except discord.errors.Forbidden as e:
 
@@ -574,4 +547,4 @@ commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: Final = "1.2.12-DEV"
+version_info: Final = "1.2.13-DEV"

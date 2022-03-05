@@ -44,6 +44,9 @@ class CommandError(Exception):
 
 
 class CommandCtx:
+    """
+    A Context dataclass for a command, contains useful data to pull from for various running commands
+    """
     __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod"
 
     def __init__(self, CtxToKwargdata: Dict[str, Any] = {}, **askwargs: Any) -> None:
@@ -76,6 +79,37 @@ class CommandCtx:
             "cmds_dict": self.cmds_dict,
             "automod": self.automod,
             }
+
+
+def cache_sweep(cdata: Union[str, "SonnetCommand"], ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
+    """
+    Runs a cache sweep with a given cache behavior or direct SonnetCommand
+    Useful for processing arbitrary commands and asserting proper cache handling
+    """
+
+    if isinstance(cdata, str):
+        cache = cdata
+    else:
+        cache = cdata.cache
+
+    if cache in ["purge", "regenerate"]:
+        for i in ["caches", "regex"]:
+            try:
+                ramfs.rmdir(f"{guild.id}/{i}")
+            except FileNotFoundError:
+                pass
+
+    elif cache.startswith("direct:"):
+        for i in cache[len('direct:'):].split(";"):
+            try:
+                if i.startswith("(d)"):
+                    ramfs.rmdir(f"{guild.id}/{i[3:]}")
+                elif i.startswith("(f)"):
+                    ramfs.remove_f(f"{guild.id}/{i[3:]}")
+                else:
+                    raise RuntimeError("Cache directive is invalid")
+            except FileNotFoundError:
+                pass
 
 
 def _iskwargcallable(func: Union[ExecutableT, ExecutableCtxT]) -> TypeGuard[ExecutableT]:
@@ -154,6 +188,12 @@ class SonnetCommand(dict):  # type: ignore[type-arg]
             return True
         else:
             return super().__contains__(item)
+
+    def sweep_cache(self, ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
+        """
+        Helper method to call cache_sweep on the current SonnetCommand
+        """
+        cache_sweep(self, ramfs, guild)
 
     @property
     def execute(self) -> ExecutableT:

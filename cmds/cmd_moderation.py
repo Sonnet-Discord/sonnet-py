@@ -3,7 +3,8 @@
 
 import importlib
 
-import discord, time, asyncio, math, io, shlex
+import discord, time, asyncio, math, io, shlex, json
+from dataclasses import dataclass
 
 import lib_db_obfuscator
 
@@ -36,14 +37,14 @@ importlib.reload(lib_tparse)
 from lib_goparsers import MustParseDuration
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now, datetime_unix
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import grab_files, generate_reply_field, parse_channel_message_noexcept, parse_user_member, format_duration
+from lib_parsers import grab_files, generate_reply_field, parse_channel_message_noexcept, parse_user_member, format_duration, paginate_noexcept
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME, REGEX_VERSION
 from lib_sonnetcommands import CommandCtx
 from lib_tparse import Parser
 import lib_constants as constants
 
-from typing import List, Tuple, Awaitable, Optional, Callable, Union, cast
+from typing import List, Tuple, Awaitable, Optional, Callable, Union, Final, Dict, cast
 import lib_lexdpyk_h as lexdpyk
 
 # Import re to trick type checker into using re stubs
@@ -84,9 +85,22 @@ class GuildScopeError(Exception):
 InterfacedUser = Union[discord.User, discord.Member]
 
 
+@dataclass
+class InfractionModifier:
+    __slots__ = "key", "title", "value"
+    key: str
+    title: str
+    value: str
+
+    def store_in(self, e: discord.Embed) -> None:
+        e.add_field(name=self.title, value=self.value)
+
+
 # Sends an infraction to database and log channels if user exists
-async def log_infraction(message: discord.Message, client: discord.Client, user: InterfacedUser, moderator: InterfacedUser, i_reason: str, i_type: str, to_dm: bool,
-                         ramfs: lexdpyk.ram_filesystem) -> Tuple[str, Optional[Awaitable[None]]]:
+async def log_infraction(
+    message: discord.Message, client: discord.Client, user: InterfacedUser, moderator: InterfacedUser, i_reason: str, i_type: str, to_dm: bool, ramfs: lexdpyk.ram_filesystem,
+    modifiers: List[InfractionModifier]
+    ) -> Tuple[str, Optional[Awaitable[None]]]:
     if not message.guild:
         raise GuildScopeError("How did we even get here")
 
@@ -124,6 +138,9 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
         log_embed.add_field(name="Type", value=i_type)
         log_embed.add_field(name="Reason", value=i_reason)
 
+        if modifiers:
+            log_embed.add_field(name="Modifiers", value=' '.join(f"+{m.key}" for m in modifiers))
+
         log_embed.set_footer(text=f"uid: {user.id}, unix: {int(timestamp.timestamp())}")
 
         asyncio.create_task(catch_logging_error(log_embed, log_channel))
@@ -136,6 +153,9 @@ async def log_infraction(message: discord.Message, client: discord.Client, user:
     dm_embed.add_field(name="Infraction ID", value=str(generated_id))
     dm_embed.add_field(name="Type", value=i_type)
     dm_embed.add_field(name="Reason", value=i_reason)
+
+    for i in modifiers:
+        i.store_in(dm_embed)
 
     dm_embed.timestamp = timestamp
 
@@ -153,7 +173,14 @@ InfractionInfo = Tuple[Optional[discord.Member], InterfacedUser, str, str, Optio
 
 # General processor for infractions
 async def process_infraction(
-    message: discord.Message, args: List[str], client: discord.Client, i_type: str, ramfs: lexdpyk.ram_filesystem, infraction: bool = True, automod: bool = False
+    message: discord.Message,
+    args: List[str],
+    client: discord.Client,
+    i_type: str,
+    ramfs: lexdpyk.ram_filesystem,
+    infraction: bool = True,
+    automod: bool = False,
+    modifiers: Optional[List[InfractionModifier]] = None
     ) -> InfractionInfo:
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
@@ -180,21 +207,57 @@ async def process_infraction(
         await message.channel.send(f"Cannot {i_type} a user with the same or higher role as yourself")
         raise InfractionGenerationError(f"Attempted nonperm {i_type}")
 
+    modifiers = [] if modifiers is None else modifiers
+
+    # bound modifiers to max of 3 (prevents embed size overflow)
+    modlimit: Final = 3
+    if len(modifiers) > modlimit:
+        await message.channel.send(f"Too many infraction modifiers passed (limit {modlimit}, given {len(modifiers)})")
+        raise InfractionGenerationError("Too many modifiers")
+
     # Log infraction
-    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs)
+    infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs, modifiers)
 
     return (member, user, reason, infraction_id, dm_sent)
 
 
+InfracModifierDBT = Dict[str, Tuple[str, str]]
+
+
+def parse_infraction_modifiers(guild: discord.Guild, args: List[str]) -> List[InfractionModifier]:
+
+    if len(args) >= 2 and args[0].startswith("+"):
+        modifiers = args.pop(0)[1:].split(',')
+
+        mlist: List[InfractionModifier] = []
+
+        with db_hlapi(guild.id) as db:
+            data: InfracModifierDBT = json.loads(db.grab_config("infraction-modifiers") or "{}")
+            for i in modifiers:
+                if i in data:
+                    mlist.append(InfractionModifier(i, data[i][0], data[i][1]))
+                else:
+                    raise lib_sonnetcommands.CommandError("ERROR: No infraction modifier with name specified")
+
+        return mlist
+
+    return []
+
+
 async def warn_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod)
+        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
     if ctx.verbose and user:
-        await message.channel.send(f"Warned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+        mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+        await message.channel.send(f"Warned {user.mention} with ID {user.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     elif not user:
         await message.channel.send("User does not exist")
         return 1
@@ -226,8 +289,10 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     automod = ctx.automod
     verbose = ctx.verbose
 
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
     try:
-        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", ramfs, automod=automod)
+        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -244,13 +309,17 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("User is not in this guild")
         return 1
 
-    if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+
+    if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     return 0
 
 
 async def ban_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
 
     if len(args) >= 3 and args[1] in ["-d", "--days"]:
         try:
@@ -267,7 +336,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     elif delete_days < 0: delete_days = 0
 
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod)
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -280,8 +349,9 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
         return 1
 
     delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," * bool(delete_days)
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     return 0
 
 
@@ -354,6 +424,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     automod = ctx.automod
     verbose = ctx.verbose
 
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
     # Grab mute time
     if len(args) >= 2:
         try:
@@ -368,9 +440,15 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     if not 0 <= mutetime < 60 * 60 * 256:
         mutetime = 0
 
+    with db_hlapi(message.guild.id) as db:
+        if bool(int(db.grab_config("show-mutetime") or "0")):
+            ts = "Infinite" if mutetime == 0 else format_duration(mutetime)
+            length = f"mutelength({ts})"
+            modifiers.append(InfractionModifier(length, "Length", ts))
+
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", ramfs, automod=automod)
+        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers)
     except (NoMuteRole, InfractionGenerationError):
         return 1
 
@@ -386,14 +464,18 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send(f"{BOT_NAME} does not have permission to mute this user.")
         return 1
 
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+
     if verbose and not mutetime:
-        await message.channel.send(f"Muted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     # if mutetime call db timed mute
     if mutetime:
 
         if verbose:
-            asyncio.create_task(message.channel.send(f"Muted {member.mention} with ID {member.id} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none()))
+            asyncio.create_task(
+                message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+                )
 
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
@@ -456,8 +538,14 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
 
     tstart = time.monotonic()
 
+    if not ctx.verbose:
+        raise lib_sonnetcommands.CommandError("ERROR: search-infractions only meant to be called directly")
+
     # Reparse args
-    args = shlex.split(" ".join(args))
+    try:
+        args = shlex.split(" ".join(args))
+    except ValueError:
+        raise lib_sonnetcommands.CommandError("ERROR: Shlex failed to parse arguments")
 
     # Parse flags
     parser = Parser("search-infractions")
@@ -523,73 +611,19 @@ async def search_infractions_by_user(message: discord.Message, args: List[str], 
     cpagecount = math.ceil(len(infractions) / per_page)
 
     # Test if valid page
-    if selected_chunk == -1:  # ik it says page 0 but it does -1 on it up above so the user would have entered 0
-        await message.channel.send("ERROR: Cannot go to page 0")
-        return 1
-    elif selected_chunk < -1:  # pytype: disable=unsupported-operands
-        selected_chunk %= cpagecount
-        selected_chunk += 1
+    if selected_chunk == -1:  # ik it says page 0 but it does -1 on user input so the user would have entered 0
+        raise lib_sonnetcommands.CommandError("ERROR: Cannot go to page 0")
+    elif selected_chunk < -1:
+        selected_chunk = (cpagecount + selected_chunk) + 1
 
-    if not 0 <= selected_chunk < cpagecount:  # pytype: disable=unsupported-operands
-        await message.channel.send(f"ERROR: No such page {selected_chunk+1}")
-        return 1
+    def format_infraction(i: Tuple[str, str, str, str, str, int]) -> str:
+        return ', '.join([i[0], i[3], i[4]])
 
-    # Why can you never be happy :defeatcry:
-    #
-    # Implemented below is a microreallocator, every infraction in a page has
-    # a fixed maximum length, but if one infraction doesn't need that length we can
-    # give it to other infractions, so we can do a first pass to get lengths of them all,
-    # pool spare space, and give it when needed
-    #
-    # This is similar enough to the golang method of dual pass string operations that
-    # it is worth mentioning that it is in fact inspired from the go strings stdlib
-    # (ultrabear) highly recommends reading it, its really well written!
-
-    # Take slice once to avoid memcopies every iteration
-    pageslice = infractions[selected_chunk * per_page:selected_chunk * per_page + per_page]
-
-    # This lets us store more on cases where there is less infracs than there should be, i/e eof
-    actual_per_page = len(pageslice)
-
-    maxlen = (1900 // actual_per_page)
-
-    # pooled will say how many spare chars we have left
-    # it is calculated as pooled = sum[(maxlen - lencurinfraction) for i in infractions]
-    # In this way, if pool is negative do not have enough space to not cut values off
-    # If it is positive we can loop with no size limit
-
-    arr: List[int] = []
-    for i in pageslice:
-        # +5 is added for len(", ")*2 + len("\n")
-        arr.append(maxlen - (len(i[0]) + len(i[3]) + len(i[4]) + 5))
-
-    pooled = sum(arr)
-
-    # We write output using a string.Buil- wait this isn't golang
-    # Whatever, this is efficient
-    writer = io.StringIO()
-
-    if pooled >= 0:
-        for i in pageslice:
-            writer.write(f"{', '.join([i[0], i[3], i[4]])}\n")
-    else:
-        # We need to go more complicated, by only using the positive pooled we can increase the infraction length cap a little
-        pospool = sum([i for i in arr if i > 0])  # Remove negatives
-        newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
-        # Technically impossible thanks to lim(5,40), but if i wanna make this lim(1,2000) this is needed
-        if newmaxlen <= 1:
-            await message.channel.send("ERROR: The amount of infractions to display overflows the discord message limit, set -i to a sane value")
-            # Fun fact, you need to set -i to >=951 to trigger this
-            return 1
-
-        for i in pageslice:
-            # Cap at newmaxlen-1 and then add \n at the end
-            # this ensures we always have newline separators
-            writer.write(f"{', '.join([i[0], i[3], i[4]])[:newmaxlen-1]}\n")
+    page = paginate_noexcept(infractions, selected_chunk, per_page, 1900, fmtfunc=format_infraction)
 
     tprint = (time.monotonic() - tstart) * 1000
 
-    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infraction{'s'*(len(infractions)!=1)}) ({tprint:.1f}ms)\n```css\nID, Type, Reason\n{writer.getvalue()}```")
+    await message.channel.send(f"Page {selected_chunk+1} / {cpagecount} ({len(infractions)} infraction{'s'*(len(infractions)!=1)}) ({tprint:.1f}ms)\n```css\nID, Type, Reason\n{page}```")
     return 0
 
 
@@ -766,20 +800,24 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         return 1
 
 
+def notneg(v: int) -> int:
+    if v < 0: raise ValueError
+    return v
+
+
 async def query_mutedb(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
 
-    # do page capture
-    if len(args) >= 2 and args[0] in ["-p", "--page"]:
-        try:
-            page = int(args[1]) - 1
-            if page < 0: raise ValueError
-        except ValueError:
-            await message.channel.send("ERROR: Invalid page")
-            return 1
-    else:
-        page = 0
+    parser = Parser("query_mutedb")
+    pageP = parser.add_arg(["-p", "--page"], lambda s: notneg(int(s) - 1))
+
+    try:
+        parser.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True)
+    except lib_tparse.ParseFailureError:
+        raise lib_sonnetcommands.CommandError("Failed to parse page")
+
+    page = pageP.get(0)
 
     per_page = 10
 
@@ -790,19 +828,13 @@ async def query_mutedb(message: discord.Message, args: List[str], client: discor
         await message.channel.send("No Muted users in database")
         return 0
 
-    # Test if page is valid
-    if page > len(table) // per_page:
-        await message.channel.send("ERROR: Page does not exist")
-        return 1
+    def fmtfunc(v: Tuple[str, str, int]) -> str:
+        ts = "No Unmute" if v[2] == 0 else format_duration(v[2] - datetime_now().timestamp())
+        return (f"{v[1]}, {v[0]}, {ts}")
 
-    fmt: List[str] = []
+    out = paginate_noexcept(sorted(table, key=lambda i: i[2]), page, per_page, 1500, fmtfunc)
 
-    for i in sorted(table, key=lambda i: i[2])[page:page + per_page]:
-        ts = "No Unmute" if i[2] == 0 else format_duration(i[2] - datetime_now().timestamp())
-        fmt.append(f"{i[1]}, {i[0]}, {ts}"[:150])
-
-    LF = "\n"
-    await message.channel.send(f"Page {page+1} / {len(table)//per_page+1}, ({len(table)} mute{'s'*(len(table)!=1)})```css\nUid, InfractionID, Unmuted in\n{LF.join(fmt)}```")
+    await message.channel.send(f"Page {page+1} / {len(table)//per_page+1}, ({len(table)} mute{'s'*(len(table)!=1)})```css\nUid, InfractionID, Unmuted in\n{out}```")
     return 0
 
 
@@ -848,7 +880,7 @@ commands = {
         'execute': query_mutedb,
         },
     'warn': {
-        'pretty_name': 'warn <uid> [reason]',
+        'pretty_name': 'warn [+modifiers] <uid> [reason]',
         'description': 'Warn a user',
         'permission': 'moderator',
         'execute': warn_user
@@ -860,13 +892,13 @@ commands = {
         'execute': note_user
         },
     'kick': {
-        'pretty_name': 'kick <uid> [reason]',
+        'pretty_name': 'kick [+modifiers] <uid> [reason]',
         'description': 'Kick a user',
         'permission': 'moderator',
         'execute': kick_user
         },
     'ban': {
-        'pretty_name': 'ban <uid> [-d DAYS] [reason]',
+        'pretty_name': 'ban [+modifiers] <uid> [-d DAYS] [reason]',
         'description': 'Ban a user, optionally delete messages with -d',
         'permission': 'moderator',
         'execute': ban_user
@@ -878,7 +910,7 @@ commands = {
         'execute': unban_user
         },
     'mute': {
-        'pretty_name': 'mute <uid> [time[h|m|S]] [reason]',
+        'pretty_name': 'mute [+modifiers] <uid> [time[h|m|S]] [reason]',
         'description': 'Mute a user, defaults to no unmute (0s)',
         'permission': 'moderator',
         'execute': mute_user
@@ -950,4 +982,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.12-DEV"
+version_info: str = "1.2.12"

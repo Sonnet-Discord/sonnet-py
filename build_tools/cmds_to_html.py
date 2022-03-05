@@ -47,7 +47,10 @@ for command in command_modules_dict:
                 raise SyntaxError(f"ERROR IN {command} CACHE BEHAVIOR ({cache})")
         continue
 
-    raise SyntaxError(f"ERROR IN [{sonnetcmd.execute.__module__} : {command}] CACHE BEHAVIOR ({cache})")
+    # sonnetcmd.execute might point to lib_sonnetcommands if it builds a closure for backwards compat, so get the raw value
+    execmodule: str = command_modules_dict[command]['execute'].__module__
+
+    raise SyntaxError(f"ERROR IN [{execmodule} : {command}] CACHE BEHAVIOR ({cache})")
 
 # Test for valid permission definition
 for command in command_modules_dict:
@@ -55,6 +58,8 @@ for command in command_modules_dict:
         continue
 
     cmd = SonnetCommand(command_modules_dict[command])
+    # cmd.execute might point to lib_sonnetcommands if it builds a closure for backwards compat, so get the raw value
+    execmodule = command_modules_dict[command]['execute'].__module__
 
     if isinstance(cmd.permission, str):
         if cmd.permission in ["everyone", "moderator", "administrator", "owner"]:
@@ -63,10 +68,10 @@ for command in command_modules_dict:
         if isinstance(cmd.permission[0], str) and callable(cmd.permission[1]):
             spec = inspect.getfullargspec(cmd.permission[1])
             if len(spec.args) > 2:  # Support for object instances with self first argument
-                raise SyntaxError(f"ERROR IN [{cmd.execute.__module__} : {command}] PERMISSION FUNCTION({cmd.permission[1]}) IS NOT VALID (EXPECTED ONE ARGUMENT)")
+                raise SyntaxError(f"ERROR IN [{execmodule} : {command}] PERMISSION FUNCTION({cmd.permission[1]}) IS NOT VALID (EXPECTED ONE ARGUMENT)")
             continue
 
-    raise SyntaxError(f"ERROR IN [{cmd.execute.__module__} : {command}] PERMISSION TYPE({cmd.permission}) IS NOT VALID")
+    raise SyntaxError(f"ERROR IN [{execmodule} : {command}] PERMISSION TYPE({cmd.permission}) IS NOT VALID")
 
 # Test for aliases pointing to existing commands
 for command in command_modules_dict:

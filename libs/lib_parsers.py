@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import importlib
 
-import lz4.frame, discord, os, json, hashlib, io, warnings
+import lz4.frame, discord, os, json, hashlib, io, warnings, math
 
 import lib_db_obfuscator
 
@@ -28,7 +28,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload
 import lib_lexdpyk_h as lexdpyk
 
 # Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
@@ -296,10 +296,51 @@ def _parse_role_perms(author: discord.Member, permrole: str) -> bool:
 Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["everyone"]) -> Literal[True]:
+    ...
+
+
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["moderator", "administrator", "owner"]) -> bool:
+    ...
+
+
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+    ...
+
+
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+    """
+    Parse permissions of a given TextChannel and Member, only parses core permissions (everyone,moderator,administrator,owner) and does not have verbosity
+    This is a lightweight alternative to parse_permissions for parsing simple permissions, while not sufficient for full command permission parsing.
+
+    :returns: Optional[bool] - Has permission, or None if the perm name was not one of the core permissions
+    """
+
+    if perms == "everyone":
+        return True
+    elif perms == "moderator":
+        default_t = channel.permissions_for(member)
+        default = default_t.ban_members or default_t.administrator
+        modperm = (member, mconf["moderator-role"])
+        adminperm = (member, mconf["admin-role"])
+        return bool(default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm))
+    elif perms == "administrator":
+        default = channel.permissions_for(member).administrator
+        adminperm = (member, mconf["admin-role"])
+        return bool(default or _parse_role_perms(*adminperm))
+    elif perms == "owner":
+        return bool(channel.guild.owner and member.id == channel.guild.owner.id)
+
+    return None
+
+
 # Parse user permissions to run a command
 async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
     """
-    Parse the permissions of the given member object to check if they meet the required permtype
+    Parse the permissions of the given message object to check if they meet the required permtype
     Verbosity can be set to not print if the perm check failed
 
     :returns: bool
@@ -317,24 +358,12 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
         return False
 
     you_shall_pass = False
-    if perms == "everyone":
-        you_shall_pass = True
-    elif perms == "moderator":
-        default = message.channel.permissions_for(message.author).ban_members
-        modperm = (message.author, mconf["moderator-role"])
-        adminperm = (message.author, mconf["admin-role"])
-        you_shall_pass = default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm)
-    elif perms == "administrator":
-        default = message.channel.permissions_for(message.author).administrator
-        adminperm = (message.author, mconf["admin-role"])
-        you_shall_pass = default or _parse_role_perms(*adminperm)
-    elif perms == "owner":
-        # If we cant check the owner then skip it
-        if message.guild and message.guild.owner:
-            you_shall_pass = message.author.id == message.guild.owner.id
-    elif isinstance(perms, (tuple, list)):
+    if isinstance(perms, (tuple, list)):
         you_shall_pass = perms[1](message)
         perms = perms[0]
+    else:
+        # Cast None to False (previous behavior of parse_permissions)
+        you_shall_pass = parse_core_permissions(message.channel, message.author, mconf, perms) or False
 
     if you_shall_pass:
         return True
@@ -507,6 +536,11 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
     if not message.guild:
         raise lib_sonnetcommands.CommandError("ERROR: Not a guild message")
 
+    # Capture replies first, but only use on parse errors to preserve legacy behavior
+    reply_message: Optional[discord.Message] = None
+    if (r := message.reference) is not None and isinstance((rr := r.resolved), discord.Message):
+        reply_message = rr
+
     try:
         message_link = args[0].replace("-", "/").split("/")
         log_channel: Union[str, int] = message_link[-2]
@@ -518,12 +552,23 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
             message_id = args[1]
             nargs = 2
         except IndexError:
+            if reply_message is not None:
+                return reply_message, 0
             raise lib_sonnetcommands.CommandError(constants.sonnet.error_args.not_enough)
 
     try:
         log_channel = int(log_channel)
     except ValueError:
+        if reply_message is not None:
+            return reply_message, 0
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
+
+    try:
+        message_id_int = int(message_id)
+    except ValueError:
+        if reply_message is not None:
+            return reply_message, 0
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
@@ -536,8 +581,8 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.scope)
 
     try:
-        discord_message = await discord_channel.fetch_message(int(message_id))
-    except (ValueError, discord.errors.HTTPException):
+        discord_message = await discord_channel.fetch_message(message_id_int)
+    except discord.errors.HTTPException:
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
 
     if not discord_message:
@@ -561,6 +606,39 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
 
 
 UserInterface = Union[discord.User, discord.Member]
+
+
+# should return a union of many types but for now only handle discord.Message
+async def _guess_id_type(message: discord.Message, mystery_id: int) -> Optional[Union[discord.Message, discord.Role, discord.TextChannel]]:
+
+    # hot path current channel id
+    if message.channel.id == mystery_id and isinstance(message.channel, discord.TextChannel):
+        return message.channel
+
+    # asserts guild
+    if not message.guild:
+        return None
+
+    # requires guild
+    if (role := message.guild.get_role(mystery_id)) is not None:
+        return role
+
+    if (chan := message.guild.get_channel(mystery_id)) is not None:
+        if isinstance(chan, discord.TextChannel):
+            return chan
+
+    # asserts channel
+    if not isinstance(message.channel, discord.TextChannel):
+        return None
+
+    # requires channel
+    try:
+        if (discord_message := await message.channel.fetch_message(mystery_id)) is not None:
+            return discord_message
+    except discord.errors.HTTPException:
+        pass
+
+    return None
 
 
 async def parse_user_member_noexcept(message: discord.Message,
@@ -598,6 +676,17 @@ async def parse_user_member_noexcept(message: discord.Message,
         if not (user := client.get_user(uid)):
             user = await client.fetch_user(uid)
     except (discord.errors.NotFound, discord.errors.HTTPException):
+        if (pot := await _guess_id_type(message, uid)) is not None:
+            errappend = "Note: While this ID is not a valid user ID, it is "
+            if isinstance(pot, discord.TextChannel):
+                errappend += f"a valid channel ID: <#{pot.id}>"
+            elif isinstance(pot, discord.Message):
+                errappend += f"a valid message by a user with ID {pot.author.id}\n(did you mean to select this user?)"
+            elif isinstance(pot, discord.Role):
+                errappend += "a valid role"
+
+            raise lib_sonnetcommands.CommandError(f"User does not exist\n{errappend}")
+
         raise lib_sonnetcommands.CommandError("User does not exist")
 
     return user, member
@@ -648,3 +737,83 @@ def format_duration(durationSeconds: Union[int, float]) -> str:
     perfectround = int(rounded) if float(int(rounded)) == rounded else rounded
 
     return f"{perfectround} {base}{'s'*(perfectround!=1)}"
+
+
+_PT = TypeVar("_PT")
+
+
+def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfunc: Optional[Callable[[_PT], str]] = None) -> str:
+    """
+    Paginates a list of items while working around the bounds of a limit
+    Optionally format with fmtfunc, otherwise str will be called on each value
+    
+    params:
+        vals - list containing values to be appended to a single page
+        page - requested page of pagination
+        per_page - how many values to display per page
+        lim - max length that the returning string will be
+        fmtfunc - optional formatting function, otherwise str is called on _PT
+
+    :raises: lib_sonnetcommands.CommandError - not meant to be caught, goes directly to end user
+    """
+
+    if fmtfunc is None:
+        fmtfunc = lambda s: str(s)
+
+    cpagecount = math.ceil(len(vals) / per_page)
+
+    # Test if valid page
+    if not 0 <= page < cpagecount:
+        raise lib_sonnetcommands.CommandError(f"ERROR: No such page {page+1}")
+
+    # Why can you never be happy :defeatcry:
+    #
+    # Implemented below is a microreallocator, every item in a page has
+    # a fixed maximum length, but if one item doesn't need that length we can
+    # give it to other items, so we can do a first pass to get lengths of them all,
+    # pool spare space, and give it when needed
+    #
+    # This is similar enough to the golang method of dual pass string operations that
+    # it is worth mentioning that it is in fact inspired from the go strings stdlib
+    # (ultrabear) highly recommends reading it, its really well written!
+
+    # Take slice once to avoid memcopies every iteration
+    pageslice = vals[page * per_page:page * per_page + per_page]
+
+    # This lets us store more on cases where there is less items than there should be, i/e eof
+    actual_per_page = len(pageslice)
+
+    maxlen = (lim // actual_per_page)
+
+    # pooled will say how many spare chars we have left
+    # it is calculated as pooled = sum[(maxlen - lencuritem) for i in items]
+    # In this way, if pool is negative do not have enough space to not cut values off
+    # If it is positive we can loop with no size limit
+
+    itemstore = [fmtfunc(i) for i in pageslice]
+
+    # Add +1 for newline
+    lenarr = [maxlen - (len(i) + 1) for i in itemstore]
+
+    pooled = sum(lenarr)
+
+    # We write output using a string.Buil- wait this isn't golang
+    # Whatever, this is efficient
+    writer = io.StringIO()
+
+    if pooled >= 0:
+        for i in itemstore:
+            writer.write(i + "\n")
+    else:
+        # We need to go more complicated, by only using the positive pooled we can increase the item length cap a little
+        pospool = sum(i for i in lenarr if i > 0)  # Remove negatives
+        newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
+        if newmaxlen <= 1:
+            raise lib_sonnetcommands.CommandError("ERROR: The amount of items to display overflows the set possible limit with newline seperators")
+
+        for i in itemstore:
+            # Cap at newmaxlen-1 and then add \n at the end
+            # this ensures we always have newline separators
+            writer.write(i[:newmaxlen - 1] + "\n")
+
+    return writer.getvalue()
