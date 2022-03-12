@@ -923,4 +923,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13-DEV"
