@@ -44,7 +44,7 @@ import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import datetime_now, embed_colors, load_embed_color
-from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept)
+from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 from lib_tparse import Parser
@@ -411,6 +411,62 @@ async def grab_role_info(message: discord.Message, args: List[str], client: disc
         raise lib_sonnetcommands.CommandError("ERROR: Could not grab role from this guild")
 
 
+async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    discord_message: discord.Message
+
+    discord_message, nargs = await parse_channel_message_noexcept(message, args, client)
+
+    if not discord_message.guild or isinstance(discord_message.channel, (discord.DMChannel, discord.GroupChannel)):
+        raise lib_sonnetcommands.CommandError("ERROR: Message not in any guild")
+
+    if not isinstance(message.author, discord.Member):
+        raise lib_sonnetcommands.CommandError("ERROR: The user that ran this command is no longer in the guild?")
+
+    # do extra validation that they can see this message
+    if not discord_message.channel.permissions_for(message.author).read_messages:
+        raise lib_sonnetcommands.CommandError("ERROR: You do not have permission to view this message")
+
+    sendraw = False
+    for arg in args[nargs:]:
+        if arg in ["-r", "--raw"]:
+            sendraw = True
+            break
+
+    # Generate replies
+    message_content = generate_reply_field(discord_message)
+
+    # Message has been grabbed, start generating embed
+    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
+
+    message_embed.set_author(name=str(discord_message.author), icon_url=user_avatar_url(discord_message.author))
+    message_embed.timestamp = discord_message.created_at
+
+    # Grab files from cache
+    fileobjs = grab_files(discord_message.guild.id, discord_message.id, ctx.kernel_ramfs)
+
+    # Grab files async if not in cache
+    if fileobjs is None:
+        awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
+        fileobjs = [await i for i in awaitobjs]
+
+    if sendraw:
+        file_content = io.BytesIO(discord_message.content.encode("utf8"))
+        fileobjs.append(discord.File(file_content, filename=f"{discord_message.id}.at.{int(datetime_now().timestamp())}.txt"))
+
+    try:
+        await message.channel.send(embed=message_embed, files=fileobjs)
+    except discord.errors.HTTPException:
+        try:
+            await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
+        except discord.errors.Forbidden:
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+
+    return 0
+
+
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
 
     try:
@@ -494,6 +550,14 @@ commands = {
         'permission': 'everyone',
         'cache': 'keep',
         'execute': grab_guild_info
+        },
+    'get-message': {
+        'alias': 'grab-message'
+        },
+    'grab-message': {
+        'pretty_name': 'grab-message <message> [-r]',
+        'description': 'Grab a message and show its contents, specify -r to get message content as a file',
+        'execute': grab_guild_message
         },
     'poll': {
         'pretty_name': 'poll',
