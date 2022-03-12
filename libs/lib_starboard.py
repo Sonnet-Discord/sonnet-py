@@ -30,7 +30,7 @@ import re
 globals()["re"] = importlib.import_module(REGEX_VERSION)
 
 _image_filetypes = [".png", ".bmp", ".jpg", ".jpeg", ".gif", ".webp"]
-_url_chars = "[a-zA-Z0-9\.\-]"
+_url_chars = "[a-zA-Z0-9\.\-_]"
 
 # match https?://
 # match optional newline
