@@ -706,11 +706,19 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     if not message.guild:
         return 1
 
+    discord_message: discord.Message
+
     discord_message, nargs = await parse_channel_message_noexcept(message, args, client)
 
-    if not discord_message.guild:
-        await message.channel.send("ERROR: Message not in any guild")
-        return 1
+    if not discord_message.guild or isinstance(discord_message.channel, (discord.DMChannel, discord.GroupChannel)):
+        raise lib_sonnetcommands.CommandError("ERROR: Message not in any guild")
+
+    if not isinstance(message.author, discord.Member):
+        raise lib_sonnetcommands.CommandError("ERROR: The user that ran this command is no longer in the guild?")
+
+    # do extra validation that they can see this message
+    if not discord_message.channel.permissions_for(message.author).read_messages:
+        raise lib_sonnetcommands.CommandError("ERROR: You do not have permission to view this message")
 
     sendraw = False
     for arg in args[nargs:]:
@@ -731,7 +739,7 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
     fileobjs = grab_files(discord_message.guild.id, discord_message.id, ctx.kernel_ramfs)
 
     # Grab files async if not in cache
-    if not fileobjs:
+    if fileobjs is None:
         awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
         fileobjs = [await i for i in awaitobjs]
 
@@ -745,8 +753,7 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
         try:
             await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
         except discord.errors.Forbidden:
-            await message.channel.send(constants.sonnet.error_embed)
-            return 1
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
     return 0
 
@@ -965,13 +972,11 @@ commands = {
     'get-message': {
         'alias': 'grab-message'
         },
-    'grab-message':
-        {
-            'pretty_name': 'grab-message <message> [-r]',
-            'description': 'Grab a message and show its contents, specify -r to get message content as a file',
-            'permission': 'moderator',
-            'execute': grab_guild_message
-            },
+    'grab-message': {
+        'pretty_name': 'grab-message <message> [-r]',
+        'description': 'Grab a message and show its contents, specify -r to get message content as a file',
+        'execute': grab_guild_message
+        },
     'purge':
         {
             'pretty_name': 'purge <limit> [user]',
