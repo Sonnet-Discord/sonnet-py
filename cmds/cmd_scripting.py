@@ -290,6 +290,31 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
     if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs)} instances of {command} in {fmttime}ms")
 
 
+async def run_as_subcommand(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+
+    # command check, perm check, run
+
+    if args:
+        command = args[0]
+
+        if command not in ctx.cmds_dict:
+            raise lib_sonnetcommands.CommandError("ERROR: Command does not exist")
+
+        sonnetc = SonnetCommand(ctx.cmds_dict[command], ctx.cmds_dict)
+
+        if not await parse_permissions(message, ctx.conf_cache, sonnetc.permission):
+            return 1
+
+        # set to subcommand
+        newctx = pycopy.copy(ctx)
+        newctx.verbose = False
+
+        return await sonnetc.execute_ctx(message, args[1:], client, newctx)
+
+    else:
+        raise lib_sonnetcommands.CommandError("ERROR: No command specified")
+
+
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
 
 commands = {
@@ -325,7 +350,12 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             'permission': 'moderator',
             'cache': 'keep',
             'execute': sonnet_async_map
-            }
+            },
+    'sub': {
+        'pretty_name': 'sub <command> [args]+',
+        'description': 'runs a command as a subcommand',
+        'execute': run_as_subcommand,
+        }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13-DEV"
