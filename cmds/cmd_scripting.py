@@ -142,18 +142,16 @@ class MapProcessError(Exception):
     __slots__ = ()
 
 
-async def map_preprocessor(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict,
-                           conf_cache: Dict[str, Any]) -> Tuple[List[str], SonnetCommand, str, Tuple[List[str], List[str]]]:
+async def map_preprocessor_someexcept(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict, conf_cache: Dict[str, Any],
+                                      cname: str) -> Tuple[List[str], SonnetCommand, str, Tuple[List[str], List[str]]]:
 
     try:
         targs: List[str] = shlex.split(" ".join(args))
     except ValueError:
-        await message.channel.send("ERROR: shlex parser could not parse args")
-        raise MapProcessError("ERRNO")
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): shlex parser could not parse args")
 
     if not targs:
-        await message.channel.send("ERROR: No command specified")
-        raise MapProcessError("ERRNO")
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): No command specified")
 
     # parses instances of -startargs and -endargs
     exargs: Tuple[List[str], List[str]] = ([], [])
@@ -165,27 +163,26 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
             else:
                 exargs[1].extend(targs.pop(0).split())
         except IndexError:
-            await message.channel.send("ERROR: -s/-e specified but no input")
-            raise MapProcessError("ERRNO")
+            raise lib_sonnetcommands.CommandError(f"ERROR({cname}): -s/-e specified but no input")
 
     if not targs:
-        await message.channel.send("ERROR: No command specified")
-        raise MapProcessError("ERRNO")
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): No command specified")
 
     command = targs.pop(0)
 
     if command not in cmds_dict:
-        await message.channel.send("ERROR: Command not found")
-        raise MapProcessError("ERRNO")
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found")
 
     cmd = SonnetCommand(cmds_dict[command], cmds_dict)
 
     if not await parse_permissions(message, conf_cache, cmd.permission):
         raise MapProcessError("ERRNO")
 
+    if cmd.execute_ctx == sonnet_map or cmd.execute_ctx == sonnet_async_map:
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Cannot call map/amap from {cname}")
+
     if len(targs) > exec_lim:
-        await message.channel.send(f"ERROR: Exceeded limit of {exec_lim} iterations")
-        raise MapProcessError("ERR LIM EXEEDED")
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Exceeded limit of {exec_lim} iterations")
 
     return targs, cmd, command, exargs
 
@@ -198,7 +195,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
     cmds_dict = ctx.cmds_dict
 
     try:
-        targs, cmd, command, exargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
+        targs, cmd, command, exargs = await map_preprocessor_someexcept(message, args, client, cmds_dict, ctx.conf_cache, "map")
     except MapProcessError:
         return 1
 
@@ -222,7 +219,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
                 suc = 1
 
             if suc != 0:
-                await message.channel.send(f"ERROR: command `{command}` exited with non success status")
+                await message.channel.send(f"ERROR(map): command `{command}` exited with non success status")
                 return 1
 
         # Do cache sweep on command
@@ -256,7 +253,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
     cmds_dict: lexdpyk.cmd_modules_dict = ctx.cmds_dict
 
     try:
-        targs, cmd, command, exargs = await map_preprocessor(message, args, client, cmds_dict, ctx.conf_cache)
+        targs, cmd, command, exargs = await map_preprocessor_someexcept(message, args, client, cmds_dict, ctx.conf_cache, "amap")
     except MapProcessError:
         return 1
 
@@ -298,9 +295,12 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         command = args[0]
 
         if command not in ctx.cmds_dict:
-            raise lib_sonnetcommands.CommandError("ERROR: Command does not exist")
+            raise lib_sonnetcommands.CommandError("ERROR(sub): Command does not exist")
 
         sonnetc = SonnetCommand(ctx.cmds_dict[command], ctx.cmds_dict)
+
+        if sonnetc.execute_ctx == run_as_subcommand:
+            raise lib_sonnetcommands.CommandError("ERROR(sub): Cannot call sub from sub")
 
         if not await parse_permissions(message, ctx.conf_cache, sonnetc.permission):
             return 1
@@ -312,23 +312,23 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         return await sonnetc.execute_ctx(message, args[1:], client, newctx)
 
     else:
-        raise lib_sonnetcommands.CommandError("ERROR: No command specified")
+        raise lib_sonnetcommands.CommandError("ERROR(sub): No command specified")
 
 
 async def sleep_for(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
 
     if ctx.verbose:
-        raise lib_sonnetcommands.CommandError("ERROR: Can only run sleep as a subcommand")
+        raise lib_sonnetcommands.CommandError("ERROR(sleep): Can only run sleep as a subcommand")
 
     try:
         sleep_time = float(args[0])
     except IndexError:
-        raise lib_sonnetcommands.CommandError("ERROR: No sleep time specified")
+        raise lib_sonnetcommands.CommandError("ERROR(sleep): No sleep time specified")
     except ValueError:
-        raise lib_sonnetcommands.CommandError("ERROR: Could not parse sleep duration")
+        raise lib_sonnetcommands.CommandError("ERROR(sleep): Could not parse sleep duration")
 
     if not (0 <= sleep_time <= 30):
-        raise lib_sonnetcommands.CommandError("ERROR: Cannot sleep for more than 30 seconds or less than 0 seconds")
+        raise lib_sonnetcommands.CommandError("ERROR(sleep): Cannot sleep for more than 30 seconds or less than 0 seconds")
 
     await asyncio.sleep(sleep_time)
 
