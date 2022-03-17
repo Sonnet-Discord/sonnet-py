@@ -315,6 +315,24 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         raise lib_sonnetcommands.CommandError("ERROR: No command specified")
 
 
+async def sleep_for(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
+
+    if ctx.verbose:
+        raise lib_sonnetcommands.CommandError("ERROR: Can only run sleep as a subcommand")
+
+    try:
+        sleep_time = float(args[0])
+    except IndexError:
+        raise lib_sonnetcommands.CommandError("ERROR: No sleep time specified")
+    except ValueError:
+        raise lib_sonnetcommands.CommandError("ERROR: Could not parse sleep duration")
+
+    if not (0 <= sleep_time <= 30):
+        raise lib_sonnetcommands.CommandError("ERROR: Cannot sleep for more than 30 seconds or less than 0 seconds")
+
+    await asyncio.sleep(sleep_time)
+
+
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
 
 commands = {
@@ -355,7 +373,13 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
         'pretty_name': 'sub <command> [args]+',
         'description': 'runs a command as a subcommand',
         'execute': run_as_subcommand,
-        }
+        },
+    'sleep': {
+        'pretty_name': 'sleep <seconds>',
+        'description': 'Suspends execution for up to 30 seconds, for use in map/sonnetsh',
+        'permission': 'moderator',
+        'execute': sleep_for,
+        },
     }
 
 version_info: str = "1.2.13-DEV"
