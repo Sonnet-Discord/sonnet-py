@@ -152,7 +152,7 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
         raise MapProcessError("ERRNO")
 
     if not targs:
-        await message.channel.send("No command specified")
+        await message.channel.send("ERROR: No command specified")
         raise MapProcessError("ERRNO")
 
     # parses instances of -startargs and -endargs
@@ -165,17 +165,17 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
             else:
                 exargs[1].extend(targs.pop(0).split())
         except IndexError:
-            await message.channel.send("-s/-e specified but no input")
+            await message.channel.send("ERROR: -s/-e specified but no input")
             raise MapProcessError("ERRNO")
 
     if not targs:
-        await message.channel.send("No command specified")
+        await message.channel.send("ERROR: No command specified")
         raise MapProcessError("ERRNO")
 
     command = targs.pop(0)
 
     if command not in cmds_dict:
-        await message.channel.send("Invalid command")
+        await message.channel.send("ERROR: Command not found")
         raise MapProcessError("ERRNO")
 
     cmd = SonnetCommand(cmds_dict[command], cmds_dict)
