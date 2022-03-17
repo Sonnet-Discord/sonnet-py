@@ -348,7 +348,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
         await message.channel.send(f"{BOT_NAME} does not have permission to ban this user.")
         return 1
 
-    delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," * bool(delete_days)
+    delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
     if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
@@ -375,10 +375,57 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
         await message.channel.send(f"{BOT_NAME} does not have permission to unban this user.")
         return 1
     except discord.errors.NotFound:
-        await message.channel.send("This user is not banned")
+        await message.channel.send("This user is not banned.")
         return 1
 
     if verbose: await message.channel.send(f"Unbanned {user.mention} with ID {user.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    return 0
+
+
+# bans and unbans a user, idk
+async def softban_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
+    if len(args) >= 3 and args[1] in ["-d", "--days"]:
+        try:
+            delete_days = int(args[2])
+            del args[2]
+            del args[1]
+        except ValueError:
+            delete_days = 0
+    else:
+        delete_days = 0
+
+    # bounds check (docs say 0 is min and 7 is max)
+    if delete_days > 7: delete_days = 7
+    elif delete_days < 0: delete_days = 0
+
+    try:
+        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "softban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
+    except InfractionGenerationError:
+        return 1
+
+    try:
+        if member and dm_sent:
+            await dm_sent  # Wait for dm to be sent before banning
+        await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
+    except discord.errors.Forbidden:
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
+
+    try:
+        await message.guild.unban(user, reason=reason[:512])
+    except discord.errors.Forbidden:
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to unban this user.")
+    except discord.errors.NotFound:
+        raise lib_sonnetcommands.CommandError(f"Unbanning failed: User is not banned.\n(Maybe user was unbanned before {BOT_NAME} could?)\n(Maybe discord did not register the ban properly?)")
+
+    delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+
+    if ctx.verbose: await message.channel.send(f"Softbanned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     return 0
 
 
@@ -860,6 +907,13 @@ commands = {
         'permission': 'moderator',
         'execute': unban_user
         },
+    'softban':
+        {
+            'pretty_name': 'softban [+modifiers] <uid> [-d DAYS] [reason]',
+            'description': 'Softban (ban and then immediately unban) a user, optionally delete messages with -d',
+            'permission': 'moderator',
+            'execute': softban_user,
+            },
     'mute': {
         'pretty_name': 'mute [+modifiers] <uid> [time[h|m|S]] [reason]',
         'description': 'Mute a user, defaults to no unmute (0s)',
