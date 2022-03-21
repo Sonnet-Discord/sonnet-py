@@ -306,6 +306,8 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             for name, desc in commands[page * per_page:(page * per_page) + per_page]:
                 cmd_embed.add_field(name=name, value=desc, inline=False)
 
+            cmd_embed.set_footer(text=f"Module Version: {curmod.version_info}")
+
             try:
                 await message.channel.send(embed=cmd_embed)
             except discord.errors.Forbidden:
