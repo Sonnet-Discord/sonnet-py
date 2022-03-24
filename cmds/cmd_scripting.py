@@ -340,8 +340,10 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         # set to subcommand
         newctx = pycopy.copy(ctx)
         newctx.verbose = False
+        newmsg = pycopy.copy(message)
+        newmsg.content = ctx.conf_cache["prefix"] + " ".join(args)
 
-        return await sonnetc.execute_ctx(message, args[1:], client, newctx)
+        return await sonnetc.execute_ctx(newmsg, args[1:], client, newctx)
 
     else:
         raise lib_sonnetcommands.CommandError("ERROR(sub): No command specified")
