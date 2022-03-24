@@ -155,7 +155,7 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
 
     # parses instances of -startargs and -endargs
     exargs: Tuple[List[str], List[str]] = ([], [])
-    while targs[0] in ['-s', '-e']:
+    while targs and targs[0] in ['-s', '-e']:
         try:
             typ = targs.pop(0)
             if typ == '-s':
