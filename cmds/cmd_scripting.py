@@ -5,7 +5,7 @@
 
 import importlib
 
-import shlex, discord, time, asyncio
+import shlex, discord, time, asyncio, io
 import copy as pycopy
 
 import lib_parsers
@@ -287,6 +287,38 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
     if ctx.verbose: await message.channel.send(f"Completed execution of {len(targs)} instances of {command} in {fmttime}ms")
 
 
+async def sonnet_map_expansion(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    try:
+        targs, _, command, exargs = await map_preprocessor_someexcept(message, args, client, ctx.cmds_dict, ctx.conf_cache, "map-expand")
+    except MapProcessError:
+        return 1
+
+    out = io.StringIO()
+
+    cheader = ctx.conf_cache["prefix"] + command
+
+    for i in targs:
+
+        arguments = exargs[0] + i.split() + exargs[1]
+
+        out.write(f'{cheader} {" ".join(arguments)}\n')
+
+    data = out.getvalue()
+
+    if len(data) <= 2000:
+        await message.channel.send(f"Expression expands to:\n```\n{data}```")
+
+    else:
+        fp = discord.File(io.BytesIO(data.encode("utf8")), filename="map-expand.txt")
+
+        await message.channel.send("Expansion too large to preview, sent as file:", files=[fp])
+
+    return 0
+
+
 async def run_as_subcommand(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     # command check, perm check, run
@@ -368,6 +400,13 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             'permission': 'moderator',
             'cache': 'keep',
             'execute': sonnet_async_map
+            },
+    'map-expand':
+        {
+            'pretty_name': 'map-expand [-s args] [-e args] <command> (<args>)+',
+            'description': 'Show what a map expression will expand to without actually running it',
+            'permission': 'moderator',
+            'execute': sonnet_map_expansion,
             },
     'sub': {
         'pretty_name': 'sub <command> [args]+',
