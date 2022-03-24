@@ -157,7 +157,7 @@ async def map_preprocessor(message: discord.Message, args: List[str], client: di
 
     # parses instances of -startargs and -endargs
     exargs: Tuple[List[str], List[str]] = ([], [])
-    while targs[0] in ['-s', '-e']:
+    while targs and targs[0] in ['-s', '-e']:
         try:
             typ = targs.pop(0)
             if typ == '-s':
@@ -328,4 +328,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.12-1"
