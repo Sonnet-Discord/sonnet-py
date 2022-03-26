@@ -173,6 +173,13 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
     if command not in cmds_dict:
         raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found")
 
+    # get total length of -s and -e arguments multiplied by iteration count, projected memory use
+    memory_size = sum(len(item) for arglist in exargs for item in arglist) * len(targs)
+
+    # disallow really large expansions
+    if memory_size >= 1 << 16:
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Total expansion size of arguments exceeds 64kb (projected at least {memory_size//1024} kbytes)")
+
     cmd = SonnetCommand(cmds_dict[command], cmds_dict)
 
     if not await parse_permissions(message, conf_cache, cmd.permission):
