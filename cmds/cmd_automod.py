@@ -19,13 +19,17 @@ importlib.reload(lib_constants)
 import lib_goparsers
 
 importlib.reload(lib_goparsers)
+import lib_sonnetcommands
+
+importlib.reload(lib_sonnetcommands)
 
 from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import REGEX_VERSION
 from lib_parsers import parse_role, parse_boolean, parse_user_member, format_duration
+from lib_sonnetcommands import CommandCtx
 
-from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional
+from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional, Literal
 from typing import Final  # pytype: disable=import-error
 import lib_constants as constants
 
@@ -74,36 +78,34 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
     if verbose: await message.channel.send(f"Updated {name} successfully")
 
 
-async def wb_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def wb_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
-        await update_csv_blacklist(message, args, "word-blacklist", verbose=kwargs["verbose"], allowed=wb_allowedrunes)
+        await update_csv_blacklist(message, args, "word-blacklist", verbose=ctx.verbose, allowed=wb_allowedrunes)
     except blacklist_input_error:
         return 1
 
 
-async def word_in_word_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def word_in_word_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
-        await update_csv_blacklist(message, args, "word-in-word-blacklist", verbose=kwargs["verbose"], allowed=wb_allowedrunes)
+        await update_csv_blacklist(message, args, "word-in-word-blacklist", verbose=ctx.verbose, allowed=wb_allowedrunes)
     except blacklist_input_error:
         return 1
 
 
-async def ftb_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def ftb_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
-        await update_csv_blacklist(message, args, "filetype-blacklist", verbose=kwargs["verbose"])
+        await update_csv_blacklist(message, args, "filetype-blacklist", verbose=ctx.verbose)
     except blacklist_input_error:
         return 1
 
 
-async def urlblacklist_change(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-
-    verbose: bool = kwargs["verbose"]
+async def urlblacklist_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
-        await update_csv_blacklist(message, args, "url-blacklist", verbose=verbose, allowed=urlb_allowedrunes)
+        await update_csv_blacklist(message, args, "url-blacklist", verbose=ctx.verbose, allowed=urlb_allowedrunes)
     except blacklist_input_error:
         return 1
 
@@ -190,37 +192,37 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
     if verbose: await message.channel.send("Successfully Updated RegEx")
 
 
-async def regexblacklist_add(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def regexblacklist_add(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
-        await add_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
+        await add_regex_type(message, args, "regex-blacklist", verbose=ctx.verbose)
     except blacklist_input_error:
         return 1
 
 
-async def regexblacklist_remove(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def regexblacklist_remove(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
-        await remove_regex_type(message, args, "regex-blacklist", verbose=kwargs["verbose"])
+        await remove_regex_type(message, args, "regex-blacklist", verbose=ctx.verbose)
     except blacklist_input_error:
         return 1
 
 
-async def regex_notifier_add(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def regex_notifier_add(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
-        await add_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
+        await add_regex_type(message, args, "regex-notifier", verbose=ctx.verbose)
     except blacklist_input_error:
         return 1
 
 
-async def regex_notifier_remove(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def regex_notifier_remove(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
-        await remove_regex_type(message, args, "regex-notifier", verbose=kwargs["verbose"])
+        await remove_regex_type(message, args, "regex-notifier", verbose=ctx.verbose)
     except blacklist_input_error:
         return 1
 
 
-async def list_blacklist(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def list_blacklist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
-    mconf: Dict[str, Any] = kwargs["conf_cache"]
+    mconf: Dict[str, Any] = ctx.conf_cache
 
     raw = False
     if args and args[0] in ["--raw", "-r"]:
@@ -262,14 +264,14 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
         await message.channel.send(errmsg, file=fileobj)
 
 
-async def set_blacklist_infraction_level(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def set_blacklist_infraction_level(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
     if args:
         action = args[0].lower()
     else:
-        await message.channel.send(f"blacklist action is `{kwargs['conf_cache']['blacklist-action']}`")
+        await message.channel.send(f"blacklist action is `{ctx.conf_cache['blacklist-action']}`")
         return
 
     if not action in ["warn", "kick", "mute", "ban"]:
@@ -279,68 +281,59 @@ async def set_blacklist_infraction_level(message: discord.Message, args: List[st
     with db_hlapi(message.guild.id) as database:
         database.add_config("blacklist-action", action)
 
-    if kwargs["verbose"]: await message.channel.send(f"Updated blacklist action to `{action}`")
+    if ctx.verbose: await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
-async def change_rolewhitelist(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def change_rolewhitelist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
-    return await parse_role(message, args, "blacklist-whitelist", verbose=kwargs["verbose"])
+    return await parse_role(message, args, "blacklist-whitelist", verbose=ctx.verbose)
 
 
-async def antispam_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def antispam_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
-
-    if not args:
-        antispam = kwargs["conf_cache"]["antispam"]
-        await message.channel.send(f"Antispam timings are M:{antispam[0]},S:{antispam[1]}")
-        return
 
     if len(args) == 1:
         try:
             messages, seconds = [float(i) for i in args[0].split(",")]
         except ValueError:
-            await message.channel.send("ERROR: Incorrect args supplied")
-            return 1
+            raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
 
     elif len(args) > 1:
         try:
             messages = float(args[0])
             seconds = float(args[1])
         except ValueError:
-            await message.channel.send("ERROR: Incorrect args supplied")
-            return 1
+            raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
+
+    else:
+        antispam = ctx.conf_cache["antispam"]
+        await message.channel.send(f"Antispam timings are M:{antispam[0]},S:{antispam[1]}")
+        return 0
 
     # Prevent bullshit
     outside_range = "ERROR: Cannot go outside range"
     if not (2 <= messages <= 64):
-        await message.channel.send(f"{outside_range} 2-64 messages")
-        return 1
+        raise lib_sonnetcommands.CommandError(f"{outside_range} 2-64 messages")
     elif not (0 <= seconds <= 10):
-        await message.channel.send(f"{outside_range} 0-10 seconds")
-        return 1
+        raise lib_sonnetcommands.CommandError(f"{outside_range} 0-10 seconds")
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{int(messages)},{seconds}")
 
-    if kwargs["verbose"]: await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
+    if ctx.verbose: await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
+    return 0
 
 
-async def char_antispam_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def char_antispam_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Optional[Literal[0, 1]]:
     if not message.guild:
         return 1
-
-    if not args:
-        antispam = kwargs["conf_cache"]["char-antispam"]
-        await message.channel.send(f"CharAntispam timings are M:{antispam[0]},S:{antispam[1]},C:{antispam[2]}")
-        return
 
     if len(args) == 1:
         try:
             messages, seconds, chars = [float(i) for i in args[0].split(",")]
         except ValueError:
-            await message.channel.send("ERROR: Incorrect args supplied")
-            return 1
+            raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
 
     elif len(args) > 1:
         try:
@@ -348,28 +341,30 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
             seconds = float(args[1])
             chars = float(args[2])
         except ValueError:
-            await message.channel.send("ERROR: Incorrect args supplied")
-            return 1
+            raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
+
+    else:
+        antispam = ctx.conf_cache["char-antispam"]
+        await message.channel.send(f"CharAntispam timings are M:{antispam[0]},S:{antispam[1]},C:{antispam[2]}")
+        return 0
 
     # Prevent bullshit
     outside_range = "ERROR: Cannot go outside range"
     if not (2 <= messages <= 64):
-        await message.channel.send(f"{outside_range} 2-64 messages")
-        return 1
+        raise lib_sonnetcommands.CommandError(f"{outside_range} 2-64 messages")
     elif not (0 <= seconds <= 10):
-        await message.channel.send(f"{outside_range} 0-10 seconds")
-        return 1
+        raise lib_sonnetcommands.CommandError(f"{outside_range} 0-10 seconds")
     elif not (128 <= chars <= 2**16):
-        await message.channel.send(f"{outside_range} 128-{2**16} chars")
-        return 1
+        raise lib_sonnetcommands.CommandError(f"{outside_range} 128-{2**16} chars")
 
     with db_hlapi(message.guild.id) as database:
         database.add_config("char-antispam", f"{int(messages)},{seconds},{int(chars)}")
 
-    if kwargs["verbose"]: await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
+    if ctx.verbose: await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
+    return 0
 
 
-async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
@@ -380,7 +375,7 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
             await message.channel.send("ERROR: Invalid time format")
             return 1
     else:
-        mutetime = int(kwargs["conf_cache"]["antispam-time"])
+        mutetime = int(ctx.conf_cache["antispam-time"])
         await message.channel.send(f"Antispam mute time is {mutetime} seconds")
         return 0
 
@@ -395,7 +390,7 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
     with db_hlapi(message.guild.id) as db:
         db.add_config("antispam-time", str(mutetime))
 
-    if kwargs["verbose"]: await message.channel.send(f"Set antispam mute time to {format_duration(mutetime)}")
+    if ctx.verbose: await message.channel.send(f"Set antispam mute time to {format_duration(mutetime)}")
 
 
 class NoGuildError(Exception):
@@ -410,7 +405,7 @@ class joinrules:
             raise NoGuildError(f"{message}: contains no guild")
 
         self.m: Final[discord.Message] = message
-        self.guild = message.guild
+        self.guild: Final = message.guild
 
         self.ops: Dict[str, Tuple[Callable[[List[str], discord.Client], Coroutine[Any, Any, int]], str]] = {  # pytype: disable=annotation-type-mismatch
             "user": (self.useredit, "add|remove <id> 'Add or remove a userid from the watchlist'"),
@@ -536,7 +531,7 @@ class joinrules:
         return 0
 
 
-async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
         rules = joinrules(message)
@@ -695,4 +690,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13-DEV"
