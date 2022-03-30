@@ -172,7 +172,9 @@ class ram_filesystem:
 
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Any]] = None, f_args: Optional[List[Any]] = None) -> Any:
 
-        f_type = io.BytesIO if f_type is None else f_type
+        if f_type is None:
+            f_type = io.BytesIO
+
         f_args = [] if f_args is None else f_args
 
         file_to_write = self._parsedirlist(dirstr, dirlist)
@@ -899,7 +901,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.10"
+version_info: str = "LeXdPyK 1.4.11"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
