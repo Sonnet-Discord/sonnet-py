@@ -50,6 +50,9 @@ jobs:
     - name: run mypy type checking
       run: |
         mypy . --ignore-missing-imports --strict --warn-unreachable
+    - name: run pyright type checking
+      run: |
+        pyright
     - name: yapf integrity check
       run: |
         yapf -drp .

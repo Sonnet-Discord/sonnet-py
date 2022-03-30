@@ -74,6 +74,7 @@ def main() -> None:
         "mypy": "mypy . --ignore-missing-imports --strict --warn-unreachable --python-version 3.8",
         "yapf": "yapf -drp .",
         "pylint": Shell("pylint **/*.py -E -j4 --py-version=3.8"),
+        "pyright": "pyright",
         #"pytype": "pytype .",
         }
 
