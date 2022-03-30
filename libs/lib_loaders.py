@@ -91,7 +91,7 @@ class Reader(Protocol):
 
 
 class Writer(Protocol):
-    def write(self, data: bytes) -> int:
+    def write(self, data: bytes, /) -> int:
         ...
 
 

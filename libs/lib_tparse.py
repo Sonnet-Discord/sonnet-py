@@ -28,7 +28,7 @@ class StringWriter(Protocol):
     """
     A StringWriter is an interface for any object (T) containing a T.write(s: str) -> int method
     """
-    def write(self, s: str) -> int:
+    def write(self, s: str, /) -> int:
         ...
 
 
