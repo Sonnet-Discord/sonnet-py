@@ -277,6 +277,7 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
         confirmation = ""
     else:
         command = ""
+        confirmation = ""
 
     PREFIX = ctx.conf_cache["prefix"]
 
@@ -509,4 +510,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13-DEV"
