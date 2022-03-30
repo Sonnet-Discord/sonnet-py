@@ -131,7 +131,6 @@ class db_hlapi:
         else:
             raise TypeError("Invalid schema passed")
 
-
         cols: List[Any] = [pks]
         # Inject rest of table
         for col in schema[1:]:
