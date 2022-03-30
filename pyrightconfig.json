@@ -1,0 +1,5 @@
+{
+  "extraPaths": ["libs/", "common/"],
+  "pythonVersion": "3.8",
+  "pythonPlatform": "Linux"
+}
