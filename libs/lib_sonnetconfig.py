@@ -33,12 +33,16 @@ def _load_cfg(attr: str, default: Typ, typ: Type[Typ], testfunc: Optional[Callab
 
     conf: Union[Any, Typ] = getattr(sonnet_cfg, attr, default)
 
+    # Asserts that conf is of type Typ if false
     if not isinstance(conf, typ):
         raise TypeError(f"Sonnet Config {attr} is not type {typ.__name__}")
 
     if testfunc is not None and not testfunc(conf):
         raise TypeError(f"Sonnet Config {attr}: {errmsg}")
 
+    # pyright thinks that it can still be Any despite isinstance check
+    # This applies to the whole file but mypy interferes with type: ignore syntax ;-;
+    # pyright: reportGeneralTypeIssues=false
     return conf
 
 

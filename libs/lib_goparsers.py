@@ -15,7 +15,7 @@ import importlib
 import ctypes as _ctypes
 import subprocess as _subprocess
 
-from typing import cast
+from typing import cast, Optional
 
 import lib_sonnetconfig
 
@@ -34,8 +34,8 @@ class _ParseDurationRet(_ctypes.Structure):
     _fields_ = [("ret", _ctypes.c_longlong), ("err", _ctypes.c_int)]
 
 
-hascompiled = True
 _version = "2.0.0-DEV.3"
+_gotools: Optional[_ctypes.CDLL]
 if GOLIB_LOAD:
     try:
         _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
@@ -44,13 +44,15 @@ if GOLIB_LOAD:
             if _subprocess.run(["make", "gotools", f"GOCMD={GOLIB_VERSION}"]).returncode == 0:
                 _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
             else:
-                hascompiled = False
+                _gotools = None
         except OSError:
-            hascompiled = False
+            _gotools = None
 else:
-    hascompiled = False
+    _gotools = None
 
-if hascompiled:
+hascompiled = _gotools is not None
+
+if _gotools is not None:
     _gotools.ParseDuration.argtypes = [_GoString]
     _gotools.ParseDuration.restype = _ParseDurationRet
     _gotools.GenerateCacheFile.argtypes = [_GoString, _GoString]
@@ -106,7 +108,7 @@ def GenerateCacheFile(fin: str, fout: str) -> None:
     :raises: FileNotFoundError - infile does not exist
     """
 
-    if hascompiled:
+    if _gotools is not None:
 
         ret = _gotools.GenerateCacheFile(_FromString(fin), _FromString(fout))
 
@@ -144,7 +146,7 @@ def ParseDuration(s: str) -> int:
     :returns: int - Time parsed in seconds
     """
 
-    if not hascompiled:
+    if _gotools is None:
         raise errors.NoBinaryError("ParseDuration: No binary found")
 
     # Special case to default to seconds
@@ -172,7 +174,7 @@ def MustParseDuration(s: str) -> int:
     :returns: int - Time parsed in seconds
     """
 
-    if hascompiled:
+    if _gotools is not None:
 
         return ParseDuration(s)
 

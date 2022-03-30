@@ -22,13 +22,16 @@ if DB_TYPE == "mariadb":
     import json
     from lib_mdb_handler import db_handler, db_error
     with open(".login-info.txt", encoding="utf-8") as login_info_file:  # Grab login data
-        db_connection_parameters = json.load(login_info_file)
+        db_connection_parameters: Any = json.load(login_info_file)
 
 elif DB_TYPE == "sqlite3":
     import lib_sql_handler
     importlib.reload(lib_sql_handler)
     from lib_sql_handler import db_handler, db_error  # type: ignore[misc]
     db_connection_parameters = SQLITE3_LOCATION
+
+else:
+    raise RuntimeError("Could not load database backend (non valid specifier)")
 
 
 class DATABASE_FATAL_CONNECTION_LOSS(Exception):
@@ -125,6 +128,9 @@ class db_hlapi:
             pks: Any = (PK, tuple, 1)
         elif T == int:
             pks = (PK, int(64), 1)
+        else:
+            raise TypeError("Invalid schema passed")
+
 
         cols: List[Any] = [pks]
         # Inject rest of table
