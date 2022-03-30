@@ -37,10 +37,10 @@ def directBinNumber(inData: int, length: int) -> bytes:
 
 
 class _WriteSeekCloser(Protocol):
-    def write(self, buf: bytes) -> int:
+    def write(self, buf: bytes, /) -> int:
         ...
 
-    def seek(self, cookie: int, whence: int = 0) -> int:
+    def seek(self, cookie: int, whence: int = 0, /) -> int:
         ...
 
     def close(self) -> None:
@@ -132,7 +132,7 @@ class _ReadSeekCloser(Protocol):
     def read(self, amnt: int) -> bytes:
         ...
 
-    def seek(self, cookie: int, whence: int = 0) -> int:
+    def seek(self, cookie: int, whence: int = 0, /) -> int:
         ...
 
     def close(self) -> None:
