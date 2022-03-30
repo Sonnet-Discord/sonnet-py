@@ -26,7 +26,7 @@ jobs:
         cache: 'pip'
     - name: Install base deps
       run: |
-        python -m pip install pyflakes mypy pyright
+        python -m pip install pyflakes mypy
         python -m pip install -r requirements.txt
     - name: run unicode safety checker (ensures no malicious unicode codepoints)
       run: |
@@ -49,6 +49,3 @@ jobs:
     - name: run mypy type checking
       run: |
         mypy . --ignore-missing-imports --strict --warn-unreachable
-    - name: run pyright type checking
-      run: |
-        pyright

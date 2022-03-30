@@ -50,9 +50,6 @@ jobs:
     - name: run mypy type checking
       run: |
         mypy . --ignore-missing-imports --strict --warn-unreachable
-    - name: run pyright type checking
-      run: |
-        pyright
     - name: yapf integrity check
       run: |
         yapf -drp .
@@ -61,6 +58,9 @@ jobs:
         sudo apt update
         sudo apt install libmariadb-dev-compat
         python -m pip install mariadb
+    - name: run pyright type checking
+      run: |
+        pyright
     - name: linting pass
       run: |
         pylint **/*.py -E -j4
