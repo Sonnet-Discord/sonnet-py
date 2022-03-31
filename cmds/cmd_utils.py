@@ -160,10 +160,37 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
-class HelpHelper:
-    __slots__ = "guild", "args", "client", "ctx", "prefix", "helpname", "message"
+class Duration(int):
+    """
+    A duration represented as nanoseconds with helper methods for conversions
+    """
+    def micro(self) -> int:
+        return self // 1000
 
-    def __init__(self, message: discord.Message, guild: discord.Guild, args: List[str], client: discord.Client, ctx: CommandCtx, prefix: str, helpname: str):
+    def milli(self) -> int:
+        return self // 1000 // 1000
+
+    def milli_f(self) -> float:
+        return self / 1000 / 1000
+
+    def sec(self) -> int:
+        return self // 1000 // 1000 // 1000
+
+
+# based on rusts std::time::Instant api
+class Instant(int):
+    @staticmethod
+    def now() -> "Instant":
+        return Instant(time.monotonic_ns())
+
+    def elapsed(self) -> Duration:
+        return Duration(time.monotonic_ns() - self)
+
+
+class HelpHelper:
+    __slots__ = "guild", "args", "client", "ctx", "prefix", "helpname", "message", "start_time"
+
+    def __init__(self, message: discord.Message, guild: discord.Guild, args: List[str], client: discord.Client, ctx: CommandCtx, prefix: str, helpname: str, start_time: Instant):
         self.message = message
         self.guild = guild
         self.args = args
@@ -171,6 +198,7 @@ class HelpHelper:
         self.ctx = ctx
         self.prefix = prefix
         self.helpname = helpname
+        self.start_time = start_time
 
     # Builds a single command
     async def single_command(self, cmd_name: str) -> discord.Embed:
@@ -206,6 +234,8 @@ class HelpHelper:
         aliases = ", ".join(filter(lambda c: "alias" in cmds_dict[c] and cmds_dict[c]["alias"] == cmd_name, cmds_dict))
         if aliases:
             cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
+
+        cmd_embed.set_footer(text=f"Took: {self.start_time.elapsed().milli_f():.1f}ms")
 
         return cmd_embed
 
@@ -255,7 +285,7 @@ class HelpHelper:
             helptext = ', '.join(sorted(mnames)) if mnames else module.category_info['description']
             cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
 
-        cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)}")
+        cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)} | Took: {self.start_time.elapsed().milli_f():.1f}ms")
 
         return cmd_embed
 
@@ -263,6 +293,8 @@ class HelpHelper:
 async def help_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
+
+    start_time = Instant.now()
 
     helpname: str = f"{BOT_NAME} Help"
     per_page: int = 10
@@ -283,7 +315,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     commandonly = commandonlyP.get() is True
 
     prefix = ctx.conf_cache["prefix"]
-    help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname)
+    help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname, start_time)
 
     if args:
 
@@ -306,7 +338,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             for name, desc in commands[page * per_page:(page * per_page) + per_page]:
                 cmd_embed.add_field(name=name, value=desc, inline=False)
 
-            cmd_embed.set_footer(text=f"Module Version: {curmod.version_info}")
+            cmd_embed.set_footer(text=f"Module Version: {curmod.version_info} | Took {start_time.elapsed().milli_f():.1f}ms")
 
             try:
                 await message.channel.send(embed=cmd_embed)
