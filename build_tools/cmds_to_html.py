@@ -73,12 +73,14 @@ for command in command_modules_dict:
 
     raise SyntaxError(f"ERROR IN [{execmodule} : {command}] PERMISSION TYPE({cmd.permission}) IS NOT VALID")
 
-# Test for aliases pointing to existing commands
+# Test for aliases pointing to existing commands that are not aliases
 for command in command_modules_dict:
     if "alias" not in command_modules_dict[command]:
         continue
 
-    if command_modules_dict[command]['alias'] in command_modules_dict:
+    if (cname := command_modules_dict[command]['alias']) in command_modules_dict:
+        if 'alias' in command_modules_dict[cname]:
+            raise SyntaxError(f"ERROR IN ALIAS:{command}, POINTING TOWARDS COMMAND THAT IS ALSO ALIAS: {cname}\n(EXPECTED NON ALIAS ENTRY)")
         continue
 
     raise SyntaxError(f"ERROR IN ALIAS:{command}, NO SUCH COMMAND {command_modules_dict[command]['alias']}")
