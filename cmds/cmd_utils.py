@@ -235,7 +235,9 @@ class HelpHelper:
         if aliases:
             cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
 
-        cmd_embed.set_footer(text=f"Took: {self.start_time.elapsed().milli_f():.1f}ms")
+        module: lexdpyk.cmd_module = next(i for i in self.ctx.cmds if cmd_name in i.commands)
+
+        cmd_embed.set_footer(text=f"Module: {module.category_info['pretty_name']} | Took: {self.start_time.elapsed().milli_f():.1f}ms")
 
         return cmd_embed
 
