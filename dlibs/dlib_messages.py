@@ -483,6 +483,8 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     if not message_deleted:
         asyncio.create_task(log_message_files(message, kernel_args.kernel_ramfs))
 
+    mention_prefix: Final = message.content.startswith(f"<@{client.user.id}>") or message.content.startswith(f"<@!{client.user.id}>")
+
     # Check if this is meant for us.
     if not (message.content.startswith(mconf["prefix"])) or message_deleted:
         if client.user.mentioned_in(message) and str(client.user.id) == message.content.strip("<@!>"):
@@ -490,11 +492,21 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
                 await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
             except discord.errors.Forbidden:
                 pass  # Nothing we can do if we lack perms to speak
-        return
+            return
+        elif not mention_prefix:
+            return
 
     # Split into cmds and arguments.
     arguments: Final = message.content.split()
-    command = arguments[0][len(mconf["prefix"]):]
+    if mention_prefix:
+        try:
+            # delete mention
+            del arguments[0]
+            command = arguments[0]
+        except IndexError:
+            return
+    else:
+        command = arguments[0][len(mconf["prefix"]):]
 
     # Remove command from the arguments.
     del arguments[0]
