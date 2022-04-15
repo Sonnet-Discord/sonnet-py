@@ -412,7 +412,10 @@ def perms_to_str(p: discord.Permissions) -> str:
 
     values.sort()
 
-    return f"`{'` `'.join(values)}`"
+    if values:
+        return f"`{'` `'.join(values)}`"
+    else:
+        return "None"
 
 
 async def grab_role_info(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
