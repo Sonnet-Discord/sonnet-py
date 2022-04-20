@@ -511,13 +511,17 @@ class db_hlapi:
         """
 
         # Grab list of tables
-        tablelist = self._db.list_tables("%_mutes")
+        guild_list: Tuple[List[str], ...] = self._db.list_tables("%_mutes")
 
-        mutetable: List[Tuple[str, str, str, int]] = []
-        for i in tablelist:
-            mutetable.extend([(i[0][:-6], ) + tuple(a) for a in self._db.fetch_table(i[0])])  # type: ignore[misc]
+        mute_table: List[Tuple[str, str, str, int]] = []
+        for i in guild_list:
+            guild_id = str(i[0][:-6])
+            for row in self._db.fetch_table(guild_id):
+                # assert types at runtime
+                infraction_id, user_id, unmute_time = str(row[0]), str(row[1]), int(row[2])
+                mute_table.append((guild_id, infraction_id, user_id, unmute_time))
 
-        return mutetable
+        return mute_table
 
     def is_muted(self, userid: Optional[int] = None, infractionid: Optional[str] = None) -> bool:
         """
