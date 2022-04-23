@@ -465,11 +465,9 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     # Grab mute time
     if len(args) >= 2:
-        try:
-            mutetime = ParseDurationSuper(args[1])
+        mutetime = ParseDurationSuper(args[1])
+        if mutetime is not None:
             del args[1]
-        except lib_goparsers.errors.ParseFailureError:
-            mutetime = None
     else:
         mutetime = None
 
