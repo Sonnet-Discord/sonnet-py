@@ -31,7 +31,7 @@ import lib_sonnetcommands
 
 importlib.reload(lib_sonnetcommands)
 
-from lib_goparsers import MustParseDuration, ParseDurationSuper
+from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_user_member, format_duration
