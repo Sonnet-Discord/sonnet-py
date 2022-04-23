@@ -31,7 +31,7 @@ import lib_sonnetcommands
 
 importlib.reload(lib_sonnetcommands)
 
-from lib_goparsers import MustParseDuration
+from lib_goparsers import MustParseDuration, ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_user_member, format_duration
@@ -466,11 +466,21 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     # Grab mute time
     if len(args) >= 2:
         try:
-            mutetime = MustParseDuration(args[1])
+            mutetime = ParseDurationSuper(args[1])
             del args[1]
         except lib_goparsers.errors.ParseFailureError:
-            mutetime = 0
+            mutetime = None
     else:
+        mutetime = None
+
+    misplaced_duration: Optional[str] = None
+    if mutetime is None:
+        for i in args[1:]:
+            if ParseDurationSuper(i) is not None:
+                misplaced_duration = i
+                break
+
+    if mutetime is None:
         mutetime = 0
 
     # This ones for you, curl
@@ -502,9 +512,10 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         return 1
 
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+    duration_str = f"\n(No mute length was specified, but one of the reason items `{misplaced_duration}` is a valid duration, did you mean to mute for this length?)" if misplaced_duration is not None else ""
 
     if verbose and not mutetime:
-        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}{duration_str}", allowed_mentions=discord.AllowedMentions.none())
 
     # if mutetime call db timed mute
     if mutetime:
