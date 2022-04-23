@@ -6,6 +6,7 @@ __all__ = [
     "hascompiled",
     "ParseDuration",
     "MustParseDuration",
+    "ParseDurationSuper",
     "GenerateCacheFile",
     "GetVersion",
     ]
