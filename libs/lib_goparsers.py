@@ -18,7 +18,7 @@ import subprocess as _subprocess
 from dataclasses import dataclass
 import string
 
-from typing import Optional, Dict, NamedTuple, List, Literal, Set, Any
+from typing import Optional, Dict, List, Literal, Set, Any, Union
 
 import lib_sonnetconfig
 
@@ -199,20 +199,48 @@ _super_table: Dict[str, int] = {
 _suffix_table: Dict[str, int] = dict([("weeks", 60 * 60 * 24 * 7), ("days", 60 * 60 * 24), ("hours", 60 * 60), ("minutes", 60), ("seconds", 1)] + list(_super_table.items()))
 
 _alpha_chars = set(char for word in _suffix_table for char in word)
-_digit_chars = set(string.digits + ".")
+_digit_chars = set(string.digits + "./")
 _allowed_chars: Set[str] = _alpha_chars.union(_digit_chars)
 
 
-class _SuffixedNumber(NamedTuple):
-    number: float
+@dataclass
+class _Fraction:
+    __slots__ = "numerator", "denominator"
+    numerator: float
+    denominator: float
+
+
+@dataclass
+class _SuffixedNumber:
+    __slots__ = "number", "suffix"
+    number: Union[float, _Fraction]
     suffix: str
+
+    def value(self, multiplier_table: Dict[str, int]) -> Optional[int]:
+
+        multiplier = multiplier_table.get(self.suffix)
+
+        if multiplier is None:
+            return None
+
+        if isinstance(self.number, (float, int)):
+            try:
+                return int(multiplier * self.number)
+            except ValueError:
+                return None
+
+        else:
+            try:
+                return int((multiplier * self.number.numerator) // self.number.denominator)
+            except (ValueError, ZeroDivisionError):
+                return None
 
 
 @dataclass
 class _TypedStr:
-    __slots__ = "s", "t"
-    s: str
-    t: Literal["digit", "suffix"]
+    __slots__ = "val", "typ"
+    val: str
+    typ: Literal["digit", "suffix"]
 
 
 class _idx_ptr:
@@ -230,6 +258,39 @@ class _idx_ptr:
 
     def __exit__(self, *ignore: Any) -> None:
         self.idx += 1
+
+
+def _float_or_int(s: str) -> float:
+    """
+    Raises ValueError on failure
+    """
+    if "." in s:
+        f = float(s)
+        if f.is_integer():
+            return int(f)
+        else:
+            return f
+    else:
+        return int(s)
+
+
+def _num_from_typedstr(v: _TypedStr) -> Optional[Union[float, _Fraction]]:
+    if v.typ == "digit":
+        try:
+            if "/" in v.val:
+                if v.val.count("/") != 1:
+                    return None
+
+                num, denom = v.val.split("/")
+
+                return _Fraction(_float_or_int(num), _float_or_int(denom))
+
+            else:
+                return _float_or_int(v.val)
+        except ValueError:
+            return None
+    else:
+        return None
 
 
 def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
@@ -261,24 +322,18 @@ def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
         return None
 
     if len(tree) == 1:
-        if tree[0].t == "digit":
-            try:
-                if "." in tree[0].s:
-                    return [_SuffixedNumber(float(tree[0].s), "s")]
-                else:
-                    return [_SuffixedNumber(int(tree[0].s), "s")]
-            except ValueError:
-                return None
+        if tree[0].typ == "digit" and (n := _num_from_typedstr(tree[0])) is not None:
+            return [_SuffixedNumber(n, "s")]
         else:
             return None
 
     # assert len(tree) > 1
 
     # Cant start on a suffix
-    if tree[0].t == "suffix":
+    if tree[0].typ == "suffix":
         return None
 
-    if tree[-1].t == "digit":
+    if tree[-1].typ == "digit":
         return None
 
     # Assert that lengths are correct, should be asserted by previous logic
@@ -289,18 +344,16 @@ def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
 
     # alternating digit and suffix starting with digit and ending on suffix
     for i in range(0, len(tree), 2):
-        try:
-            if '.' in tree[i].s:
-                digit = float(tree[i].s)
-            else:
-                digit = int(tree[i].s)
-        except ValueError:
+
+        digit = _num_from_typedstr(tree[i])
+
+        if digit is None:
             return None
 
-        if tree[i + 1].s not in _suffix_table:
+        if tree[i + 1].val not in _suffix_table:
             return None
 
-        out.append(_SuffixedNumber(digit, tree[i + 1].s))
+        out.append(_SuffixedNumber(digit, tree[i + 1].val))
 
     return out
 
@@ -308,9 +361,13 @@ def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
 def ParseDurationSuper(s: str) -> Optional[int]:
     """
     Parses a duration in pure python
-    Allows ({float}{suffix})+ where suffix is weeks|days|hours|minutes|seconds or singular or single char shorthands
-    Parses {float} => seconds
+    Where number is a float or float/float fraction
+    Allows ({number}{suffix})+ where suffix is weeks|days|hours|minutes|seconds or singular or single char shorthands
+    Parses {number} => seconds
     Parses {singular|single char} suffix => 1 of suffix type (day => 1day)
+
+    Numbers are kept as integer values when possible, floating point values are subject to IEEE-754 64 bit limitations.
+    Fraction numerators are multiplied by their suffix multiplier before being divided by their denominator, with floating point math starting where the first float is present
 
     :returns: Optional[int] - Return value, None if it could not be parsed
     """
@@ -333,7 +390,11 @@ def ParseDurationSuper(s: str) -> Optional[int]:
 
     for i in tree:
         try:
-            out += int(i.number * _suffix_table[i.suffix])
+            v: Optional[int]
+            if (v := i.value(_suffix_table)) is not None:
+                out += v
+            else:
+                return None
         except ValueError:
             return None
 

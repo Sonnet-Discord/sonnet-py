@@ -64,6 +64,13 @@ def test_parse_duration() -> Optional[Iterable[Exception]]:
             ("3.5d7.3m", 3 * DAY + 12 * HOUR + 7 * MINUTE + (3 * MINUTE // 10)),
             # Test for fp parse rejection
             ("5.6.34seconds", None),
+            # Test fractions
+            ("3/6days", 12 * HOUR),
+            ("1/0", None),
+            ("0/0", None),
+            ("17/60m", 17 * SECOND),
+            ("13/24d1/0w", None),
+            (f"{(1<<54)+2}/2d", (((1 << 54) + 2) * DAY) // 2),
             ]
         )
     out = []
