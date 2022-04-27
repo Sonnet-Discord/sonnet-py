@@ -1,10 +1,10 @@
 import sys
 import os
+import traceback
 
 sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
-
-from lib_goparsers import ParseDurationSuper
+sys.path.insert(1, os.getcwd())
 
 from typing import Callable, TypeVar, List, Optional, Final, Iterable
 
@@ -17,6 +17,9 @@ def test_func_io(func: Callable[[T], O], arg: T, expect: O) -> None:
 
 
 def test_parse_duration() -> Optional[Iterable[Exception]]:
+
+    from lib_goparsers import ParseDurationSuper
+
     WEEK: Final = 7 * 24 * 60 * 60
     DAY: Final = 24 * 60 * 60
     HOUR: Final = 60 * 60
@@ -86,7 +89,59 @@ def test_parse_duration() -> Optional[Iterable[Exception]]:
         return None
 
 
-testfuncs: List[Callable[[], Optional[Iterable[Exception]]]] = [test_parse_duration]
+def test_ramfs() -> Optional[Iterable[Exception]]:
+
+    from contextlib import redirect_stdout, redirect_stderr
+
+    sink = open("/dev/null", "w")
+
+    # Reroute stderr and stdout to ignore import warnings from main
+    with redirect_stdout(sink):
+        with redirect_stderr(sink):
+            from main import ram_filesystem  # pylint: disable=E0401
+
+    testfs = ram_filesystem()
+    errs = []
+
+    def assertdir(files: List[str], directory: List[str]) -> None:
+        try:
+            assert testfs.ls() == (files, directory), f"{testfs.ls()=} != {(files, directory)=}"
+        except AssertionError as e:
+            errs.append(e)
+
+    testfs.mkdir("abcde")
+
+    assertdir([], ["abcde"])
+
+    testfs.rmdir("abcde")
+
+    assertdir([], [])
+
+    testfs.create_f("dir/file", f_type=bytes, f_args=[64])
+
+    try:
+        assert isinstance(testfs.read_f("dir/file"), bytes) and len(testfs.read_f("dir/file")) == 64
+    except AssertionError as e:
+        errs.append(e)
+
+    assertdir([], ["dir"])
+
+    testfs.remove_f("dir/file")
+
+    try:
+        assert testfs.ls("dir") == ([], [])
+    except AssertionError as e:
+        errs.append(e)
+
+    testfs.rmdir("dir")
+
+    assertdir([], [])
+
+    if errs: return errs
+    else: return None
+
+
+testfuncs: List[Callable[[], Optional[Iterable[Exception]]]] = [test_parse_duration, test_ramfs]
 
 
 def main_tests() -> None:
@@ -99,7 +154,7 @@ def main_tests() -> None:
             failure = True
             print(i)
             for e in errs:
-                print(e)
+                traceback.print_exception(type(e), e, e.__traceback__)
 
     if failure:
         sys.exit(1)
