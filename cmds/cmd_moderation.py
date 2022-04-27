@@ -102,9 +102,15 @@ async def log_infraction(
 
     with db_hlapi(message.guild.id) as db:
 
+        iterations: int = 0
+        iter_limit: Final[int] = 10_000
         # Infraction id collision test
         while db.grab_infraction(generated_id := generate_infractionid()):
-            continue
+            iterations += 1
+            if iterations > iter_limit:
+                raise lib_sonnetcommands.CommandError(
+                    "ERROR: Failed to generate a unique infraction ID after {iter_limit} attempts\n(Do you have too many infractions/too small of a wordlist installed?)"
+                    )
 
         # Grab log channel
         try:
