@@ -17,6 +17,7 @@ import ctypes as _ctypes
 import subprocess as _subprocess
 from dataclasses import dataclass
 import string
+from functools import lru_cache
 
 from typing import Optional, Dict, List, Literal, Set, Any, Union
 
@@ -358,6 +359,7 @@ def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
     return out
 
 
+@lru_cache(maxsize=500)
 def ParseDurationSuper(s: str) -> Optional[int]:
     """
     Parses a duration in pure python
