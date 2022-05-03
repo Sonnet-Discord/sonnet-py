@@ -16,6 +16,17 @@ def test_func_io(func: Callable[[T], O], arg: T, expect: O) -> None:
     assert func(arg) == expect, f"func({arg=})={func(arg)} != {expect=}"
 
 
+def try_or_return(func: Callable[[], Optional[Iterable[Exception]]]) -> Callable[[], Optional[Iterable[Exception]]]:
+    def wrapped() -> Optional[Iterable[Exception]]:
+        try:
+            return func()
+        except Exception as e:
+            return [e]
+
+    return wrapped
+
+
+@try_or_return
 def test_parse_duration() -> Optional[Iterable[Exception]]:
 
     from lib_goparsers import ParseDurationSuper
@@ -89,6 +100,7 @@ def test_parse_duration() -> Optional[Iterable[Exception]]:
         return None
 
 
+@try_or_return
 def test_ramfs() -> Optional[Iterable[Exception]]:
 
     from contextlib import redirect_stdout, redirect_stderr
