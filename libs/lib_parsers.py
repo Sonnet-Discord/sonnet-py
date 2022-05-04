@@ -74,7 +74,7 @@ def _formatregexfind(gex: List[Any]) -> str:
     return ", ".join(i if isinstance(i, str) else "".join(i) for i in gex)
 
 
-# This exists because type checkers cant infer lambda return types or something
+# This exists because type checkers can't infer lambda return types or something
 def returnsNone() -> None:
     ...
 
@@ -85,7 +85,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
     Deprecated, this should be in dlib_messages.py
     Parse the blacklist over a message object
 
-    :returns: Tuple[bool, bool, List[str]] -- broke blacklist, broke notifer list, list of strings of infraction messages
+    :returns: Tuple[bool, bool, List[str]] -- broke blacklist, broke notifier list, list of strings of infraction messages
     """
     message, blacklist, ramfs = indata
 
@@ -809,7 +809,7 @@ def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfu
         pospool = sum(i for i in lenarr if i > 0)  # Remove negatives
         newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
         if newmaxlen <= 1:
-            raise lib_sonnetcommands.CommandError("ERROR: The amount of items to display overflows the set possible limit with newline seperators")
+            raise lib_sonnetcommands.CommandError("ERROR: The amount of items to display overflows the set possible limit with newline separators")
 
         for i in itemstore:
             # Cap at newmaxlen-1 and then add \n at the end

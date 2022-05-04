@@ -137,7 +137,7 @@ async def print_stats(message: discord.Message, args: List[str], client: discord
     for i in global_statistics_file:
         outputmap.append([i, global_statistics_file[i]])
 
-    # Declare here cause fstrings cant have \ in it 草
+    # Declare here cause fstrings can't have \ in it 草
     newline = "\n"
 
     writer = io.StringIO()
@@ -184,4 +184,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13-DEV"
