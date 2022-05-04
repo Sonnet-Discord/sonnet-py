@@ -1,6 +1,7 @@
 import sys
 import os
 import traceback
+import io
 
 sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
@@ -105,7 +106,7 @@ def test_ramfs() -> Optional[Iterable[Exception]]:
 
     from contextlib import redirect_stdout, redirect_stderr
 
-    sink = open("/dev/null", "w")
+    sink = io.StringIO()
 
     # Reroute stderr and stdout to ignore import warnings from main
     with redirect_stdout(sink):
