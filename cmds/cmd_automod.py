@@ -242,7 +242,7 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
         if blacklist[i]:
             blacklist[i] = [blacklist[i]]
 
-    # If not existant then get rid of it
+    # If not existent then get rid of it
     for i in list(blacklist.keys()):
         if not blacklist[i]:
             del blacklist[i]

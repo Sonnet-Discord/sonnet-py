@@ -330,7 +330,7 @@ def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
 
     # assert len(tree) > 1
 
-    # Cant start on a suffix
+    # Can't start on a suffix
     if tree[0].typ == "suffix":
         return None
 

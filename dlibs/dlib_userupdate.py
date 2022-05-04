@@ -129,7 +129,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
     issues: List[str] = []
 
-    # Handle notifer logging
+    # Handle notifier logging
     if member.id in notifier_cache["notifier-log-users"]:
         issues.append("User")
     if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
@@ -196,4 +196,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.13-DEV"
