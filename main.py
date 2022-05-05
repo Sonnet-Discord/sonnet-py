@@ -581,6 +581,7 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
 
     if guild: guild_id = guild.id
     if user: user_id = user.id
+    non_null_guild: discord.Guild
 
     if user_id and user_id in blacklist["user"] and guild_id:
 
@@ -590,17 +591,17 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
             return False
 
         try:
-            guild = await Client.fetch_guild(guild_id)
+            non_null_guild = await Client.fetch_guild(guild_id)
         except discord.errors.HTTPException:
             return False
 
         try:
-            await guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
+            await non_null_guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
         except discord.errors.Forbidden:
 
             blacklist["guild"].append(guild_id)
             try:
-                await guild.leave()
+                await non_null_guild.leave()
                 return False
             except discord.errors.HTTPException:
                 pass
@@ -613,12 +614,12 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
     if guild_id and guild_id in blacklist["guild"]:
 
         try:
-            guild = await Client.fetch_guild(guild_id)
+            non_null_guild = await Client.fetch_guild(guild_id)
         except discord.errors.HTTPException:
             return False
 
         try:
-            await guild.leave()
+            await non_null_guild.leave()
             return False
         except discord.errors.HTTPException:
             pass
@@ -901,7 +902,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.11"
+version_info: str = "LeXdPyK 1.4.12"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
