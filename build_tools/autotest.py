@@ -29,6 +29,7 @@ class RunningProc:
     stdout: bytes
     stderr: bytes
     duration_ns: int
+    returncode: int
 
 
 def into_str(args: Union[List[str], str]) -> str:
@@ -43,7 +44,7 @@ def run(args: Union[List[str], str], shell: bool, q: "Queue[RunningProc]") -> No
     start = time.monotonic_ns()
     ret = subprocess.run(args, shell=shell, capture_output=True)
 
-    q.put(RunningProc(into_str(args), ret.stdout, ret.stderr, time.monotonic_ns() - start))
+    q.put(RunningProc(into_str(args), ret.stdout, ret.stderr, time.monotonic_ns() - start, ret.returncode))
 
 
 def initjobs(tests: Dict[str, Union[str, Shell]]) -> "Queue[RunningProc]":
@@ -67,7 +68,9 @@ def lim_yield(q: "Queue[RunningProc]", lim: int) -> Iterator[RunningProc]:
         yield q.get()
 
 
-def finishjobs(testout: "Queue[RunningProc]", tests_c: int) -> None:
+def finishjobs(testout: "Queue[RunningProc]", tests_c: int) -> int:
+
+    errno = 0
 
     for v in lim_yield(testout, tests_c):
 
@@ -79,8 +82,13 @@ def finishjobs(testout: "Queue[RunningProc]", tests_c: int) -> None:
         print(isshell + cmdfmt)
         if err: print(err, end="")
 
+        if v.returncode != 0:
+            errno = 1
 
-def main() -> None:
+    return errno
+
+
+def main() -> int:
 
     tests: Dict[str, Union[str, Shell]] = {
         "pyflakes": "pyflakes .",
@@ -97,8 +105,8 @@ def main() -> None:
         if i in nottest:
             del tests[i]
 
-    finishjobs(initjobs(tests), len(tests))
+    return finishjobs(initjobs(tests), len(tests))
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
