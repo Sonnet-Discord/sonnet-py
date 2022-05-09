@@ -41,9 +41,7 @@ def _load_cfg(attr: str, default: Typ, typ: Type[Typ], testfunc: Optional[Callab
         raise TypeError(f"Sonnet Config {attr}: {errmsg}")
 
     # pyright thinks that it can still be Any despite isinstance check
-    # This applies to the whole file but mypy interferes with type: ignore syntax ;-;
-    # pyright: reportGeneralTypeIssues=false
-    return conf
+    return conf  # pyright: ignore[reportGeneralTypeIssues]
 
 
 # Prints a warning if not using re2
