@@ -324,7 +324,10 @@ def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
 
     if len(tree) == 1:
         if tree[0].typ == "digit" and (n := _num_from_typedstr(tree[0])) is not None:
-            return [_SuffixedNumber(n, "s")]
+            # disallow fractions as non prefixed numbers
+            if not isinstance(n, _Fraction):
+                return [_SuffixedNumber(n, "s")]
+            return None
         else:
             return None
 
