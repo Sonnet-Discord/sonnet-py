@@ -511,7 +511,7 @@ class db_hlapi:
         """
 
         # Grab list of tables
-        guild_list: Tuple[List[str], ...] = self._db.list_tables("%_mutes")
+        guild_list: Tuple[Tuple[str], ...] = self._db.list_tables("%_mutes")
 
         mute_table: List[Tuple[str, str, str, int]] = []
         for i in guild_list:
