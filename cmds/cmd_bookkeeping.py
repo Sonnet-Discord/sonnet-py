@@ -26,13 +26,17 @@ importlib.reload(lib_sonnetcommands)
 import lib_tparse
 
 importlib.reload(lib_tparse)
+import lib_datetimeplus
 
-from lib_loaders import load_embed_color, embed_colors, datetime_now, datetime_unix
+importlib.reload(lib_datetimeplus)
+
+from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import format_duration, paginate_noexcept
 from lib_sonnetconfig import REGEX_VERSION
 from lib_sonnetcommands import CommandCtx
 from lib_tparse import Parser
+from lib_datetimeplus import Time
 import lib_constants as constants
 
 from typing import List, Tuple, Optional
@@ -168,7 +172,7 @@ async def get_detailed_infraction(message: discord.Message, args: List[str], cli
     infraction_embed.add_field(name="Reason", value=reason)
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
-    infraction_embed.timestamp = datetime_unix(int(timestamp))
+    infraction_embed.timestamp = Time(unix=int(timestamp)).as_datetime()
 
     try:
         await message.channel.send(embed=infraction_embed)
@@ -208,7 +212,7 @@ async def delete_infraction(message: discord.Message, args: List[str], client: d
 
     infraction_embed.set_footer(text=f"uid: {user_id}, unix: {timestamp}")
 
-    infraction_embed.timestamp = datetime_unix(int(timestamp))
+    infraction_embed.timestamp = Time(unix=int(timestamp)).as_datetime()
 
     try:
         await message.channel.send(embed=infraction_embed)
@@ -247,7 +251,7 @@ async def query_mutedb(message: discord.Message, args: List[str], client: discor
         return 0
 
     def fmtfunc(v: Tuple[str, str, int]) -> str:
-        ts = "No Unmute" if v[2] == 0 else format_duration(v[2] - datetime_now().timestamp())
+        ts = "No Unmute" if v[2] == 0 else format_duration(v[2] - Time.now().unix())
         return (f"{v[1]}, {v[0]}, {ts}")
 
     out = paginate_noexcept(sorted(table, key=lambda i: i[2]), page, per_page, 1500, fmtfunc)

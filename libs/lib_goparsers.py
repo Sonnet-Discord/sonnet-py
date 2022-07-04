@@ -15,17 +15,19 @@ import importlib
 
 import ctypes as _ctypes
 import subprocess as _subprocess
-from dataclasses import dataclass
-import string
 from functools import lru_cache
 
-from typing import Optional, Dict, List, Literal, Set, Any, Union
+from typing import Optional
 
 import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
+import lib_datetimeplus
+
+importlib.reload(lib_datetimeplus)
 
 from lib_sonnetconfig import GOLIB_LOAD, GOLIB_VERSION
+from lib_datetimeplus import Duration as _Duration
 
 
 class _GoString(_ctypes.Structure):
@@ -184,184 +186,6 @@ def MustParseDuration(s: str) -> int:
         return ret
 
 
-_super_table: Dict[str, int] = {
-    "week": 60 * 60 * 24 * 7,
-    "w": 60 * 60 * 24 * 7,
-    "day": 60 * 60 * 24,
-    "d": 60 * 60 * 24,
-    "hour": 60 * 60,
-    "h": 60 * 60,
-    "minute": 60,
-    "m": 60,
-    "second": 1,
-    "s": 1,
-    }
-
-_suffix_table: Dict[str, int] = dict([("weeks", 60 * 60 * 24 * 7), ("days", 60 * 60 * 24), ("hours", 60 * 60), ("minutes", 60), ("seconds", 1)] + list(_super_table.items()))
-
-_alpha_chars = set(char for word in _suffix_table for char in word)
-_digit_chars = set(string.digits + "./")
-_allowed_chars: Set[str] = _alpha_chars.union(_digit_chars)
-
-
-@dataclass
-class _Fraction:
-    __slots__ = "numerator", "denominator"
-    numerator: float
-    denominator: float
-
-
-@dataclass
-class _SuffixedNumber:
-    __slots__ = "number", "suffix"
-    number: Union[float, _Fraction]
-    suffix: str
-
-    def value(self, multiplier_table: Dict[str, int]) -> Optional[int]:
-
-        multiplier = multiplier_table.get(self.suffix)
-
-        if multiplier is None:
-            return None
-
-        if isinstance(self.number, (float, int)):
-            try:
-                return int(multiplier * self.number)
-            except ValueError:
-                return None
-
-        else:
-            try:
-                return int((multiplier * self.number.numerator) // self.number.denominator)
-            except (ValueError, ZeroDivisionError):
-                return None
-
-
-@dataclass
-class _TypedStr:
-    __slots__ = "val", "typ"
-    val: str
-    typ: Literal["digit", "suffix"]
-
-
-class _idx_ptr:
-    __slots__ = "idx",
-
-    def __init__(self, idx: int):
-        self.idx = idx
-
-    def inc(self) -> "_idx_ptr":
-        self.idx += 1
-        return self
-
-    def __enter__(self) -> "_idx_ptr":
-        return self
-
-    def __exit__(self, *ignore: Any) -> None:
-        self.idx += 1
-
-
-def _float_or_int(s: str) -> float:
-    """
-    Raises ValueError on failure
-    """
-    if "." in s:
-        f = float(s)
-        if f.is_integer():
-            return int(f)
-        else:
-            return f
-    else:
-        return int(s)
-
-
-def _num_from_typedstr(v: _TypedStr) -> Optional[Union[float, _Fraction]]:
-    if v.typ == "digit":
-        try:
-            if "/" in v.val:
-                if v.val.count("/") != 1:
-                    return None
-
-                num, denom = v.val.split("/")
-
-                return _Fraction(_float_or_int(num), _float_or_int(denom))
-
-            else:
-                return _float_or_int(v.val)
-        except ValueError:
-            return None
-    else:
-        return None
-
-
-def _str_to_tree(s: str) -> Optional[List[_SuffixedNumber]]:
-
-    tree: List[_TypedStr] = []
-
-    idx = _idx_ptr(0)
-
-    while idx.idx < len(s):
-        with idx:
-            if s[idx.idx] in _digit_chars:
-                cache = [s[idx.idx]]
-                while len(s) > idx.idx + 1 and s[idx.idx + 1] in _digit_chars:
-                    cache.append(s[idx.inc().idx])
-
-                tree.append(_TypedStr("".join(cache), "digit"))
-            elif s[idx.idx] in _alpha_chars:
-
-                cache = [s[idx.idx]]
-                while len(s) > idx.idx + 1 and s[idx.idx + 1] in _alpha_chars:
-                    cache.append(s[idx.inc().idx])
-
-                tree.append(_TypedStr("".join(cache), "suffix"))
-
-            else:
-                return None
-
-    if not tree:
-        return None
-
-    if len(tree) == 1:
-        if tree[0].typ == "digit" and (n := _num_from_typedstr(tree[0])) is not None:
-            # disallow fractions as non prefixed numbers
-            if not isinstance(n, _Fraction):
-                return [_SuffixedNumber(n, "s")]
-            return None
-        else:
-            return None
-
-    # assert len(tree) > 1
-
-    # Can't start on a suffix
-    if tree[0].typ == "suffix":
-        return None
-
-    if tree[-1].typ == "digit":
-        return None
-
-    # Assert that lengths are correct, should be asserted by previous logic
-    if not len(tree) % 2 == 0:
-        return None
-
-    out: List[_SuffixedNumber] = []
-
-    # alternating digit and suffix starting with digit and ending on suffix
-    for i in range(0, len(tree), 2):
-
-        digit = _num_from_typedstr(tree[i])
-
-        if digit is None:
-            return None
-
-        if tree[i + 1].val not in _suffix_table:
-            return None
-
-        out.append(_SuffixedNumber(digit, tree[i + 1].val))
-
-    return out
-
-
 @lru_cache(maxsize=500)
 def ParseDurationSuper(s: str) -> Optional[int]:
     """
@@ -377,30 +201,8 @@ def ParseDurationSuper(s: str) -> Optional[int]:
     :returns: Optional[int] - Return value, None if it could not be parsed
     """
 
-    # Check if in supertable
-    try:
-        return _super_table[s]
-    except KeyError:
-        pass
-
-    # Quick reject anything not in allowed set
-    if not all(ch in _allowed_chars for ch in s):
+    # Call into Duration.parse, replaces codebase of ParseDurationSuper
+    if (v := _Duration.parse(s)) is not None:
+        return v.seconds()
+    else:
         return None
-
-    tree = _str_to_tree(s)
-
-    if tree is None: return None
-
-    out = 0
-
-    for i in tree:
-        try:
-            v: Optional[int]
-            if (v := i.value(_suffix_table)) is not None:
-                out += v
-            else:
-                return None
-        except ValueError:
-            return None
-
-    return out
