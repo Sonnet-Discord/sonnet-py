@@ -3,7 +3,6 @@
 
 import asyncio
 import importlib
-import time
 from datetime import datetime
 
 import discord
@@ -61,7 +60,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
-        basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
+        basetime = format(indata, '%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:

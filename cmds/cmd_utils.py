@@ -36,6 +36,9 @@ importlib.reload(lib_sonnetconfig)
 import lib_tparse
 
 importlib.reload(lib_tparse)
+import lib_datetimeplus
+
+importlib.reload(lib_datetimeplus)
 
 from typing import Any, Final, List, Optional, Tuple, Dict, cast
 
@@ -43,11 +46,12 @@ import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import datetime_now, embed_colors, load_embed_color
+from lib_loaders import embed_colors, load_embed_color
 from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 from lib_tparse import Parser
+from lib_datetimeplus import Time
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -80,9 +84,10 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
     await sent_message.edit(embed=ping_embed)
 
 
+# Must use datetime due to discord.py being naive
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
-        basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
+        basetime = format(indata, ':%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
@@ -138,7 +143,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
         if moderator or (viewinfs and user.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
 
-    embed.timestamp = datetime_now()
+    embed.timestamp = Time.now().as_datetime()
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
@@ -153,7 +158,7 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_image(url=user_avatar_url(user))
-    embed.timestamp = datetime_now()
+    embed.timestamp = Time.now().as_datetime()
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
@@ -437,7 +442,7 @@ async def grab_role_info(message: discord.Message, args: List[str], client: disc
         r_embed.add_field(name=f"Permissions ({role.permissions.value})", value=perms_to_str(role.permissions))
 
         r_embed.set_footer(text=f"id: {role.id}")
-        r_embed.timestamp = datetime_now()
+        r_embed.timestamp = Time.now().as_datetime()
 
         try:
             await message.channel.send(embed=r_embed)
@@ -493,7 +498,7 @@ async def grab_guild_message(message: discord.Message, args: List[str], client: 
 
     if sendraw:
         file_content = io.BytesIO(discord_message.content.encode("utf8"))
-        fileobjs.append(discord.File(file_content, filename=f"{discord_message.id}.at.{int(datetime_now().timestamp())}.txt"))
+        fileobjs.append(discord.File(file_content, filename=f"{discord_message.id}.at.{Time.now().unix()}.txt"))
 
     try:
         await message.channel.send(embed=message_embed, files=fileobjs)

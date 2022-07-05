@@ -5,7 +5,6 @@ import importlib
 
 import discord
 import io
-import time
 import platform
 
 import lib_loaders
@@ -17,8 +16,12 @@ importlib.reload(lib_goparsers)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
+import lib_datetimeplus
 
-from lib_loaders import clib_exists, DotHeaders, datetime_unix
+importlib.reload(lib_datetimeplus)
+
+from lib_loaders import clib_exists, DotHeaders
+from lib_datetimeplus import Time
 
 from typing import List, Any, Union
 import lib_lexdpyk_h as lexdpyk
@@ -49,14 +52,11 @@ def getdelta(past: Union[int, float]) -> str:
     Formats a delta between a past time and now to be human readable
     """
 
-    trunning = (datetime_unix(int(time.time())) - datetime_unix(int(past)))
+    clock = (Time.now() - Time(unix=int(past))).clock()
 
-    seconds = trunning.seconds % 60
-    minutes = ((trunning.seconds) // 60 % 60)
-    hours = ((trunning.seconds) // (60 * 60))
-    days = trunning.days
+    days, hours = divmod(clock.hours, 24)
 
-    hms = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    hms = f"{hours:02d}:{clock.minutes:02d}:{clock.seconds:02d}"
 
     # if days is 0 don't bother rendering it
     if days == 0: return hms
