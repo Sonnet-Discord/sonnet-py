@@ -8,7 +8,7 @@ import copy as pycopy
 from dataclasses import dataclass
 import string
 
-from typing import Optional, Final, List, Any, Union, Literal, Set, Dict
+from typing import Optional, Final, List, Any, Union, Literal, Set, Dict, TypeVar
 
 __all__ = [
     "Time",
@@ -20,6 +20,21 @@ __all__ = [
 _NANOS_PER_SECOND: Final = 1000 * 1000 * 1000
 _NANOS_PER_MILLI: Final = 1000 * 1000
 _NANOS_PER_MICRO: Final = 1000
+
+_T = TypeVar("_T")
+
+
+def _unwrap(v: Optional[_T]) -> _T:
+    if v is None:
+        raise RuntimeError("Unwrapped value was None variant")
+    return v
+
+
+# I don't want to talk about it
+# basically calling astimezone with no arguments will make a datetime use local time, and then grabbing tzinfo off of that gives us a local timezone
+# cursed
+# awful
+_LOCAL_TIMEZONE = _unwrap(datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo)
 
 # parse method data
 _super_table: Final[Dict[str, int]] = {
@@ -244,6 +259,12 @@ class Date:
 
 
 class Duration(int):
+    def __repr__(self) -> str:
+
+        c = self.clock()
+
+        return f"Duration({c.hours}:{c.minutes}:{c.seconds}.{c.nanoseconds:09})"
+
     def nanos(self) -> int:
         """
         Returns duration as nanoseconds
@@ -363,6 +384,8 @@ class Time:
     """
     __slots__ = "_unix", "_monotonic", "_tz", "__dt_ptr"
 
+    LOCAL_TZ: datetime.tzinfo = _LOCAL_TIMEZONE
+
     def __init__(self, *, unix: Optional[int] = None, tz: Optional[datetime.tzinfo] = None) -> None:
         """
         Default constructor, generates a Time from unix seconds and a timezone
@@ -439,9 +462,11 @@ class Time:
 
     def local(self) -> "Time":
         """
-        Returns an instance of Time with the timezone changed to the local timezone set by the system
+        Returns an instance of Time with the timezone changed to the local timezone set by the system.
+        
+        Preserves monotonic clock, as this operation does not change the time itself
         """
-        return self.from_datetime(self.as_datetime().astimezone())
+        return self.in_timezone(self.LOCAL_TZ)
 
     def in_timezone(self, tz: datetime.tzinfo) -> "Time":
         """
@@ -453,6 +478,12 @@ class Time:
         copy.__dt_ptr = None
         copy._tz = tz
         return copy
+
+    def timezone(self) -> datetime.tzinfo:
+        """
+        Returns the timezone this Time object contains
+        """
+        return self._tz if self._tz is not None else datetime.timezone.utc
 
     def add_days(self, days: int) -> "Time":
         """
@@ -578,6 +609,10 @@ class Time:
         """
         if self.__dt_ptr is None:
             dt = datetime.datetime.fromtimestamp(self.unix()).astimezone(datetime.timezone.utc)
+
+            # add microseconds accuracy
+            dt = dt + datetime.timedelta(microseconds=(self.unix_micro() % (1000 * 1000)))
+
             self.__dt_ptr = dt.astimezone(self._tz if self._tz is not None else datetime.timezone.utc)
 
         # shallow copy ensures __dt_ptr remains immutable
@@ -594,7 +629,7 @@ class Time:
         else:
             tz = None
 
-        nanos = int(dt.timestamp() * _NANOS_PER_SECOND)
+        nanos = int(dt.timestamp()) * _NANOS_PER_SECOND
         nanos += dt.microsecond * _NANOS_PER_MICRO
 
         self = cls.from_nanos(nanos, tz=tz)
@@ -604,3 +639,11 @@ class Time:
             self.__dt_ptr = pycopy.copy(dt)
 
         return self
+
+    @classmethod
+    def from_date(cls, date: Date, /, *, tz: Optional[datetime.tzinfo] = None) -> "Time":
+
+        if tz is None:
+            tz = datetime.timezone.utc
+
+        return cls.from_datetime(datetime.datetime(date.years, date.months, date.days).astimezone(tz))
