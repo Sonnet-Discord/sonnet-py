@@ -57,7 +57,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install libmariadb-dev-compat
-        python -m pip install "mariadb>=1.0.11,<2"
+        python -m pip install "mariadb>=1.0.11,<1.1"
     - name: run pyright type checking
       run: |
         pyright
