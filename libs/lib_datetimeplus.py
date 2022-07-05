@@ -388,9 +388,9 @@ class Time:
 
     def __format__(self, format_str: str) -> str:
         """
-        Formats time using datetime strftime syntax
+        Formats time using datetime supported syntax
         """
-        return self.as_datetime().strftime(format_str)
+        return format(self.as_datetime(), format_str)
 
     def __eq__(self, other: object) -> bool:
         """
@@ -430,6 +430,17 @@ class Time:
 
         new_unix = self._unix + other.nanos()
         return self.from_nanos(new_unix, tz=self._tz)
+
+    def in_timezone(self, tz: datetime.tzinfo) -> "Time":
+        """
+        Returns a new Time object with the timezone set to the new timezone specified.
+
+        Preserves monotonic clock, as this operation does not change the time itself
+        """
+        copy = pycopy.copy(self)
+        copy.__dt_ptr = None
+        copy._tz = tz
+        return copy
 
     def add_days(self, days: int) -> "Time":
         """
