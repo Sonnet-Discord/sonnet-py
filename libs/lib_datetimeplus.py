@@ -22,7 +22,7 @@ _NANOS_PER_MILLI: Final = 1000 * 1000
 _NANOS_PER_MICRO: Final = 1000
 
 # parse method data
-_super_table: Dict[str, int] = {
+_super_table: Final[Dict[str, int]] = {
     "week": 60 * 60 * 24 * 7,
     "w": 60 * 60 * 24 * 7,
     "day": 60 * 60 * 24,
@@ -386,6 +386,12 @@ class Time:
         # _unix and _tz must be frozen after __dt_ptr is set to preserve datetime accuracy, so disallow _unix and _tz editing
         self.__dt_ptr: Optional[datetime.datetime] = None
 
+    def __repr__(self) -> str:
+
+        tz = self._tz if self._tz is not None else datetime.timezone.utc
+
+        return f"Time(time={self.as_datetime().isoformat('T')}, tz={tz})"
+
     def __format__(self, format_str: str) -> str:
         """
         Formats time using datetime supported syntax
@@ -430,6 +436,12 @@ class Time:
 
         new_unix = self._unix + other.nanos()
         return self.from_nanos(new_unix, tz=self._tz)
+
+    def local(self) -> "Time":
+        """
+        Returns an instance of Time with the timezone changed to the local timezone set by the system
+        """
+        return self.from_datetime(self.as_datetime().astimezone())
 
     def in_timezone(self, tz: datetime.tzinfo) -> "Time":
         """
