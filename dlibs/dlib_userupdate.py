@@ -3,7 +3,6 @@
 
 import asyncio
 import importlib
-import time
 from datetime import datetime
 
 import discord
@@ -61,7 +60,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
-        basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
+        basetime = format(indata, '%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
@@ -129,7 +128,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
     issues: List[str] = []
 
-    # Handle notifer logging
+    # Handle notifier logging
     if member.id in notifier_cache["notifier-log-users"]:
         issues.append("User")
     if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
@@ -196,4 +195,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.13"

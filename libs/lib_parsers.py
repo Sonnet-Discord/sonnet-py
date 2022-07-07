@@ -28,7 +28,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload
 import lib_lexdpyk_h as lexdpyk
 
 # Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
@@ -74,7 +74,7 @@ def _formatregexfind(gex: List[Any]) -> str:
     return ", ".join(i if isinstance(i, str) else "".join(i) for i in gex)
 
 
-# This exists because type checkers cant infer lambda return types or something
+# This exists because type checkers can't infer lambda return types or something
 def returnsNone() -> None:
     ...
 
@@ -85,7 +85,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
     Deprecated, this should be in dlib_messages.py
     Parse the blacklist over a message object
 
-    :returns: Tuple[bool, bool, List[str]] -- broke blacklist, broke notifer list, list of strings of infraction messages
+    :returns: Tuple[bool, bool, List[str]] -- broke blacklist, broke notifier list, list of strings of infraction messages
     """
     message, blacklist, ramfs = indata
 
@@ -296,10 +296,51 @@ def _parse_role_perms(author: discord.Member, permrole: str) -> bool:
 Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["everyone"]) -> Literal[True]:
+    ...
+
+
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["moderator", "administrator", "owner"]) -> bool:
+    ...
+
+
+@overload
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+    ...
+
+
+def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+    """
+    Parse permissions of a given TextChannel and Member, only parses core permissions (everyone,moderator,administrator,owner) and does not have verbosity
+    This is a lightweight alternative to parse_permissions for parsing simple permissions, while not sufficient for full command permission parsing.
+
+    :returns: Optional[bool] - Has permission, or None if the perm name was not one of the core permissions
+    """
+
+    if perms == "everyone":
+        return True
+    elif perms == "moderator":
+        default_t = channel.permissions_for(member)
+        default = default_t.ban_members or default_t.administrator
+        modperm = (member, mconf["moderator-role"])
+        adminperm = (member, mconf["admin-role"])
+        return bool(default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm))
+    elif perms == "administrator":
+        default = channel.permissions_for(member).administrator
+        adminperm = (member, mconf["admin-role"])
+        return bool(default or _parse_role_perms(*adminperm))
+    elif perms == "owner":
+        return bool(channel.guild.owner and member.id == channel.guild.owner.id)
+
+    return None
+
+
 # Parse user permissions to run a command
 async def parse_permissions(message: discord.Message, mconf: Dict[str, str], perms: Permtype, verbose: bool = True) -> bool:
     """
-    Parse the permissions of the given member object to check if they meet the required permtype
+    Parse the permissions of the given message object to check if they meet the required permtype
     Verbosity can be set to not print if the perm check failed
 
     :returns: bool
@@ -317,24 +358,12 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
         return False
 
     you_shall_pass = False
-    if perms == "everyone":
-        you_shall_pass = True
-    elif perms == "moderator":
-        default = message.channel.permissions_for(message.author).ban_members
-        modperm = (message.author, mconf["moderator-role"])
-        adminperm = (message.author, mconf["admin-role"])
-        you_shall_pass = default or _parse_role_perms(*modperm) or _parse_role_perms(*adminperm)
-    elif perms == "administrator":
-        default = message.channel.permissions_for(message.author).administrator
-        adminperm = (message.author, mconf["admin-role"])
-        you_shall_pass = default or _parse_role_perms(*adminperm)
-    elif perms == "owner":
-        # If we cant check the owner then skip it
-        if message.guild and message.guild.owner:
-            you_shall_pass = message.author.id == message.guild.owner.id
-    elif isinstance(perms, (tuple, list)):
+    if isinstance(perms, (tuple, list)):
         you_shall_pass = perms[1](message)
         perms = perms[0]
+    else:
+        # Cast None to False (previous behavior of parse_permissions)
+        you_shall_pass = parse_core_permissions(message.channel, message.author, mconf, perms) or False
 
     if you_shall_pass:
         return True
@@ -579,6 +608,39 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
 UserInterface = Union[discord.User, discord.Member]
 
 
+# should return a union of many types but for now only handle discord.Message
+async def _guess_id_type(message: discord.Message, mystery_id: int) -> Optional[Union[discord.Message, discord.Role, discord.TextChannel]]:
+
+    # hot path current channel id
+    if message.channel.id == mystery_id and isinstance(message.channel, discord.TextChannel):
+        return message.channel
+
+    # asserts guild
+    if not message.guild:
+        return None
+
+    # requires guild
+    if (role := message.guild.get_role(mystery_id)) is not None:
+        return role
+
+    if (chan := message.guild.get_channel(mystery_id)) is not None:
+        if isinstance(chan, discord.TextChannel):
+            return chan
+
+    # asserts channel
+    if not isinstance(message.channel, discord.TextChannel):
+        return None
+
+    # requires channel
+    try:
+        if (discord_message := await message.channel.fetch_message(mystery_id)) is not None:
+            return discord_message
+    except discord.errors.HTTPException:
+        pass
+
+    return None
+
+
 async def parse_user_member_noexcept(message: discord.Message,
                                      args: List[str],
                                      client: discord.Client,
@@ -614,6 +676,17 @@ async def parse_user_member_noexcept(message: discord.Message,
         if not (user := client.get_user(uid)):
             user = await client.fetch_user(uid)
     except (discord.errors.NotFound, discord.errors.HTTPException):
+        if (pot := await _guess_id_type(message, uid)) is not None:
+            errappend = "Note: While this ID is not a valid user ID, it is "
+            if isinstance(pot, discord.TextChannel):
+                errappend += f"a valid channel ID: <#{pot.id}>"
+            elif isinstance(pot, discord.Message):
+                errappend += f"a valid message by a user with ID {pot.author.id}\n(did you mean to select this user?)"
+            elif isinstance(pot, discord.Role):
+                errappend += "a valid role"
+
+            raise lib_sonnetcommands.CommandError(f"User does not exist\n{errappend}")
+
         raise lib_sonnetcommands.CommandError("User does not exist")
 
     return user, member
@@ -736,7 +809,7 @@ def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfu
         pospool = sum(i for i in lenarr if i > 0)  # Remove negatives
         newmaxlen = maxlen + (pospool // actual_per_page)  # Account for per item in our new pospool
         if newmaxlen <= 1:
-            raise lib_sonnetcommands.CommandError("ERROR: The amount of items to display overflows the set possible limit with newline seperators")
+            raise lib_sonnetcommands.CommandError("ERROR: The amount of items to display overflows the set possible limit with newline separators")
 
         for i in itemstore:
             # Cap at newmaxlen-1 and then add \n at the end

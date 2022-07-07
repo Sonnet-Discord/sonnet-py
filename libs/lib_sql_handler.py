@@ -199,7 +199,7 @@ class db_handler:
         # Send data
         return tuple(self.cur.fetchall())
 
-    def list_tables(self, searchterm: str) -> Tuple[str, ...]:
+    def list_tables(self, searchterm: str) -> Tuple[Tuple[str], ...]:
 
         self.cur.execute("SELECT name FROM sqlite_master WHERE name LIKE ?;", (searchterm, ))
 

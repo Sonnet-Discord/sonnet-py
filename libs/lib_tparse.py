@@ -28,7 +28,7 @@ class StringWriter(Protocol):
     """
     A StringWriter is an interface for any object (T) containing a T.write(s: str) -> int method
     """
-    def write(self, s: str) -> int:
+    def write(self, s: str, /) -> int:
         ...
 
 
@@ -213,7 +213,7 @@ class Parser:
                         self._error(f"Failed to parse argument {val}; ValueError: {ve}", exit_on_fail, stderr)
 
             elif not lazy:
-                self._error("Recieved garbage argument", exit_on_fail, stderr)
+                self._error("Received garbage argument", exit_on_fail, stderr)
 
         if consume:
             garbage.reverse()

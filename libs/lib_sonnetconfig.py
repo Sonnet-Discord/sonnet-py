@@ -33,13 +33,15 @@ def _load_cfg(attr: str, default: Typ, typ: Type[Typ], testfunc: Optional[Callab
 
     conf: Union[Any, Typ] = getattr(sonnet_cfg, attr, default)
 
+    # Asserts that conf is of type Typ if false
     if not isinstance(conf, typ):
         raise TypeError(f"Sonnet Config {attr} is not type {typ.__name__}")
 
     if testfunc is not None and not testfunc(conf):
         raise TypeError(f"Sonnet Config {attr}: {errmsg}")
 
-    return conf
+    # pyright thinks that it can still be Any despite isinstance check
+    return conf  # pyright: ignore[reportGeneralTypeIssues]
 
 
 # Prints a warning if not using re2

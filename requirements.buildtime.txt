@@ -1,4 +1,4 @@
-pytype
+pyright
 pylint
 yapf
 mypy

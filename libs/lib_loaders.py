@@ -91,7 +91,7 @@ class Reader(Protocol):
 
 
 class Writer(Protocol):
-    def write(self, data: bytes) -> int:
+    def write(self, data: bytes, /) -> int:
         ...
 
 
@@ -291,10 +291,10 @@ _colortypes_cache: dict[Any, Any] = {
 # I hate bugs more than I hate slow python
 class embed_colors:
     __slots__ = ()
-    primary: Final = "primary"
-    creation: Final = "creation"
-    edit: Final = "edit"
-    deletion: Final = "deletion"
+    primary: Final[Literal["primary"]] = "primary"
+    creation: Final[Literal["creation"]] = "creation"
+    edit: Final[Literal["edit"]] = "edit"
+    deletion: Final[Literal["deletion"]] = "deletion"
 
 
 def load_embed_color(guild: discord.Guild, colortype: Literal["primary", "creation", "edit", "deletion"], ramfs: lexdpyk.ram_filesystem) -> int:

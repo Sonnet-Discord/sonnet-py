@@ -162,7 +162,7 @@ class SonnetCommand(dict):  # type: ignore[type-arg]
     def __init__(self, vals: Dict[str, Any], aliasmap: Optional[Dict[str, Dict[str, Any]]] = None) -> None:
         """
         Init a new sonnetcommand instance.
-        If an aliasmap is passed, the command will be checked for if it has an alias and inheret it into itself if it does
+        If an aliasmap is passed, the command will be checked for if it has an alias and inherit it into itself if it does
         """
         if aliasmap is not None and 'alias' in vals:
             vals = aliasmap[vals['alias']]

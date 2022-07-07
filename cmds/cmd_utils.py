@@ -36,18 +36,22 @@ importlib.reload(lib_sonnetconfig)
 import lib_tparse
 
 importlib.reload(lib_tparse)
+import lib_datetimeplus
 
-from typing import Any, Final, List, Optional, Tuple, cast
+importlib.reload(lib_datetimeplus)
+
+from typing import Any, Final, List, Optional, Tuple, Dict, cast
 
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import datetime_now, embed_colors, load_embed_color
-from lib_parsers import (parse_boolean, parse_permissions, parse_user_member_noexcept)
+from lib_loaders import embed_colors, load_embed_color
+from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 from lib_tparse import Parser
+from lib_datetimeplus import Time
 
 
 def add_timestamp(embed: discord.Embed, name: str, start: int, end: int) -> None:
@@ -80,16 +84,31 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
     await sent_message.edit(embed=ping_embed)
 
 
+# Must use datetime due to discord.py being naive
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
-        basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
+        basetime = format(indata, ':%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
         return "ERROR: Could not fetch this date"
 
 
-async def profile_function(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
+def _get_highest_perm(message: discord.Message, member: discord.Member, conf_cache: Dict[str, Any]) -> str:
+    if not isinstance(message.channel, discord.TextChannel):
+        return "everyone"
+
+    highest = "everyone"
+    for i in ["moderator", "administrator", "owner"]:
+        if parse_core_permissions(message.channel, member, conf_cache, i):
+            highest = i
+        else:
+            break
+
+    return highest
+
+
+async def profile_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
 
@@ -105,7 +124,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
         "invisible": "\U000026AB (offline)"
         }
 
-    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
+    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
     embed.set_thumbnail(url=user_avatar_url(user))
     embed.add_field(name="Username", value=str(user), inline=True)
     embed.add_field(name="User ID", value=str(user.id), inline=True)
@@ -115,15 +134,16 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     embed.add_field(name="Created", value=parsedate(user.created_at), inline=True)
     if member:
         embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
+        embed.add_field(name="Guild Perm Level", value=_get_highest_perm(message, member, ctx.conf_cache))
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
         viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
-        moderator = await parse_permissions(message, kwargs["conf_cache"], "moderator", verbose=False)
+        moderator = await parse_permissions(message, ctx.conf_cache, "moderator", verbose=False)
         if moderator or (viewinfs and user.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
 
-    embed.timestamp = datetime_now()
+    embed.timestamp = Time.now().as_datetime()
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
@@ -138,17 +158,44 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
     embed.set_image(url=user_avatar_url(user))
-    embed.timestamp = datetime_now()
+    embed.timestamp = Time.now().as_datetime()
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
-class HelpHelper:
-    __slots__ = "guild", "args", "client", "ctx", "prefix", "helpname", "message"
+class Duration(int):
+    """
+    A duration represented as nanoseconds with helper methods for conversions
+    """
+    def micro(self) -> int:
+        return self // 1000
 
-    def __init__(self, message: discord.Message, guild: discord.Guild, args: List[str], client: discord.Client, ctx: CommandCtx, prefix: str, helpname: str):
+    def milli(self) -> int:
+        return self // 1000 // 1000
+
+    def milli_f(self) -> float:
+        return self / 1000 / 1000
+
+    def sec(self) -> int:
+        return self // 1000 // 1000 // 1000
+
+
+# based on rusts std::time::Instant api
+class Instant(int):
+    @staticmethod
+    def now() -> "Instant":
+        return Instant(time.monotonic_ns())
+
+    def elapsed(self) -> Duration:
+        return Duration(time.monotonic_ns() - self)
+
+
+class HelpHelper:
+    __slots__ = "guild", "args", "client", "ctx", "prefix", "helpname", "message", "start_time"
+
+    def __init__(self, message: discord.Message, guild: discord.Guild, args: List[str], client: discord.Client, ctx: CommandCtx, prefix: str, helpname: str, start_time: Instant):
         self.message = message
         self.guild = guild
         self.args = args
@@ -156,6 +203,7 @@ class HelpHelper:
         self.ctx = ctx
         self.prefix = prefix
         self.helpname = helpname
+        self.start_time = start_time
 
     # Builds a single command
     async def single_command(self, cmd_name: str) -> discord.Embed:
@@ -191,6 +239,10 @@ class HelpHelper:
         aliases = ", ".join(filter(lambda c: "alias" in cmds_dict[c] and cmds_dict[c]["alias"] == cmd_name, cmds_dict))
         if aliases:
             cmd_embed.add_field(name="Aliases:", value=aliases, inline=False)
+
+        module: lexdpyk.cmd_module = next(i for i in self.ctx.cmds if cmd_name in i.commands)
+
+        cmd_embed.set_footer(text=f"Module: {module.category_info['pretty_name']} | Took: {self.start_time.elapsed().milli_f():.1f}ms")
 
         return cmd_embed
 
@@ -229,7 +281,7 @@ class HelpHelper:
         cmd_embed.set_author(name=self.helpname)
 
         total = 0
-        # Total counting is seperate due to pagination not counting all modules
+        # Total counting is separate due to pagination not counting all modules
         for cmd in cmds_dict:
             if 'alias' not in cmds_dict[cmd]:
                 total += 1
@@ -237,10 +289,10 @@ class HelpHelper:
         for module in sorted(cmds, key=lambda m: m.category_info['pretty_name'])[(page * per_page):(page * per_page) + per_page]:
             mnames = [f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]]
 
-            helptext = ', '.join(mnames) if mnames else module.category_info['description']
+            helptext = ', '.join(sorted(mnames)) if mnames else module.category_info['description']
             cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
 
-        cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)}")
+        cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)} | Took: {self.start_time.elapsed().milli_f():.1f}ms")
 
         return cmd_embed
 
@@ -248,6 +300,8 @@ class HelpHelper:
 async def help_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
+
+    start_time = Instant.now()
 
     helpname: str = f"{BOT_NAME} Help"
     per_page: int = 10
@@ -268,7 +322,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     commandonly = commandonlyP.get() is True
 
     prefix = ctx.conf_cache["prefix"]
-    help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname)
+    help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname, start_time)
 
     if args:
 
@@ -291,6 +345,8 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             for name, desc in commands[page * per_page:(page * per_page) + per_page]:
                 cmd_embed.add_field(name=name, value=desc, inline=False)
 
+            cmd_embed.set_footer(text=f"Module Version: {curmod.version_info} | Took {start_time.elapsed().milli_f():.1f}ms")
+
             try:
                 await message.channel.send(embed=cmd_embed)
             except discord.errors.Forbidden:
@@ -305,7 +361,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
 
         # Do not echo user input
         else:
-            # lets check if they cant read documentation
+            # lets check if they can't read documentation
             probably_tried_paging: bool
             try:
                 probably_tried_paging = int(args[0]) <= ((len(cmds) + (per_page - 1)) // per_page)
@@ -361,7 +417,10 @@ def perms_to_str(p: discord.Permissions) -> str:
 
     values.sort()
 
-    return f"`{'` `'.join(values)}`"
+    if values:
+        return f"`{'` `'.join(values)}`"
+    else:
+        return "None"
 
 
 async def grab_role_info(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -383,7 +442,7 @@ async def grab_role_info(message: discord.Message, args: List[str], client: disc
         r_embed.add_field(name=f"Permissions ({role.permissions.value})", value=perms_to_str(role.permissions))
 
         r_embed.set_footer(text=f"id: {role.id}")
-        r_embed.timestamp = datetime_now()
+        r_embed.timestamp = Time.now().as_datetime()
 
         try:
             await message.channel.send(embed=r_embed)
@@ -394,6 +453,62 @@ async def grab_role_info(message: discord.Message, args: List[str], client: disc
 
     else:
         raise lib_sonnetcommands.CommandError("ERROR: Could not grab role from this guild")
+
+
+async def grab_guild_message(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    discord_message: discord.Message
+
+    discord_message, nargs = await parse_channel_message_noexcept(message, args, client)
+
+    if not discord_message.guild or isinstance(discord_message.channel, (discord.DMChannel, discord.GroupChannel)):
+        raise lib_sonnetcommands.CommandError("ERROR: Message not in any guild")
+
+    if not isinstance(message.author, discord.Member):
+        raise lib_sonnetcommands.CommandError("ERROR: The user that ran this command is no longer in the guild?")
+
+    # do extra validation that they can see this message
+    if not discord_message.channel.permissions_for(message.author).read_messages:
+        raise lib_sonnetcommands.CommandError("ERROR: You do not have permission to view this message")
+
+    sendraw = False
+    for arg in args[nargs:]:
+        if arg in ["-r", "--raw"]:
+            sendraw = True
+            break
+
+    # Generate replies
+    message_content = generate_reply_field(discord_message)
+
+    # Message has been grabbed, start generating embed
+    message_embed = discord.Embed(title=f"Message in #{discord_message.channel}", description=message_content, color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
+
+    message_embed.set_author(name=str(discord_message.author), icon_url=user_avatar_url(discord_message.author))
+    message_embed.timestamp = discord_message.created_at
+
+    # Grab files from cache
+    fileobjs = grab_files(discord_message.guild.id, discord_message.id, ctx.kernel_ramfs)
+
+    # Grab files async if not in cache
+    if fileobjs is None:
+        awaitobjs = [asyncio.create_task(i.to_file()) for i in discord_message.attachments]
+        fileobjs = [await i for i in awaitobjs]
+
+    if sendraw:
+        file_content = io.BytesIO(discord_message.content.encode("utf8"))
+        fileobjs.append(discord.File(file_content, filename=f"{discord_message.id}.at.{Time.now().unix()}.txt"))
+
+    try:
+        await message.channel.send(embed=message_embed, files=fileobjs)
+    except discord.errors.HTTPException:
+        try:
+            await message.channel.send("There were files attached but they exceeded the guild filesize limit", embed=message_embed)
+        except discord.errors.Forbidden:
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+
+    return 0
 
 
 async def initialise_poll(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
@@ -480,6 +595,14 @@ commands = {
         'cache': 'keep',
         'execute': grab_guild_info
         },
+    'get-message': {
+        'alias': 'grab-message'
+        },
+    'grab-message': {
+        'pretty_name': 'grab-message <message> [-r]',
+        'description': 'Grab a message and show its contents, specify -r to get message content as a file',
+        'execute': grab_guild_message
+        },
     'poll': {
         'pretty_name': 'poll',
         'description': 'Start a reaction based poll on the message',
@@ -496,4 +619,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13"

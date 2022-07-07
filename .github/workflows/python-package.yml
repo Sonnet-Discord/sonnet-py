@@ -13,7 +13,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-version: [3.8]
@@ -44,9 +44,9 @@ jobs:
     - name: check syntax integrity
       run: |
         python build_tools/testimport.py
-    - name: check ramfs integrity
+    - name: check manual tests
       run: |
-        python build_tools/ramfsassert.py
+        python build_tools/manualtest.py
     - name: run mypy type checking
       run: |
         mypy . --ignore-missing-imports --strict --warn-unreachable
@@ -57,7 +57,10 @@ jobs:
       run: |
         sudo apt update
         sudo apt install libmariadb-dev-compat
-        python -m pip install mariadb
+        python -m pip install "mariadb>=1.0.11,<1.1"
+    - name: run pyright type checking
+      run: |
+        pyright
     - name: linting pass
       run: |
         pylint **/*.py -E -j4
