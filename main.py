@@ -476,19 +476,20 @@ class DebugCallable(Protocol):
 
 
 # Generate debug command subset
-debug_commands: Dict[str, DebugCallable] = {}
-debug_commands["debug-add-guild-blacklist"] = kernel_blacklist_guild
-debug_commands["debug-add-user-blacklist"] = kernel_blacklist_user
-debug_commands["debug-remove-guild-blacklist"] = kernel_unblacklist_guild
-debug_commands["debug-remove-user-blacklist"] = kernel_unblacklist_user
-debug_commands["debug-modules-load"] = kernel_load_command_modules
-debug_commands["debug-modules-reload"] = kernel_reload_command_modules
-debug_commands["debug-logout-system"] = kernel_logout
-debug_commands["debug-drop-ramfs"] = regenerate_ramfs
-debug_commands["debug-drop-kramfs"] = regenerate_kernel_ramfs
-debug_commands["debug-drop-modules"] = kernel_drop_dlibs
-debug_commands["debug-drop-commands"] = kernel_drop_cmds
-debug_commands["debug-toggle-logging"] = logging_toggle
+debug_commands: Dict[str, DebugCallable] = {
+    "debug-add-guild-blacklist": kernel_blacklist_guild,
+    "debug-add-user-blacklist": kernel_blacklist_user,
+    "debug-remove-guild-blacklist": kernel_unblacklist_guild,
+    "debug-remove-user-blacklist": kernel_unblacklist_user,
+    "debug-modules-load": kernel_load_command_modules,
+    "debug-modules-reload": kernel_reload_command_modules,
+    "debug-logout-system": kernel_logout,
+    "debug-drop-ramfs": regenerate_ramfs,
+    "debug-drop-kramfs": regenerate_kernel_ramfs,
+    "debug-drop-modules": kernel_drop_dlibs,
+    "debug-drop-commands": kernel_drop_cmds,
+    "debug-toggle-logging": logging_toggle,
+    }
 
 
 # A object used to pass error messages from the kernel callers to the event handlers
@@ -499,12 +500,16 @@ class errtype:
 
         self.err = err
         owner: str = f"<@!{BOT_OWNER[0]}>" if BOT_OWNER else "BOT OWNER"
-        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nErr: `{type(err).__name__}: {err}`"
+        # truncate to 1k chars to clip message to reasonable length, this makes message print to discord even if it is oversize
+        # the alternative is messages too large not being accepted by discord and causing a error in kernel handling code
+        # full error message can be obtained from err.log/stderr so this should be fine
+        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nErr: `{type(err).__name__}: {err}`"[:1000]
 
         traceback.print_exception(type(self.err), self.err, self.err.__traceback__)
 
+        # accept penalty of fopen syscall because errors should not be frequent and deleting/moving logs may be needed
         with open("err.log", "a+", encoding="utf-8") as logfile:
-            logfile.write(f"AT {time.strftime('%a, %d %b %Y %H:%M:%S', datetime.datetime.now(datetime.timezone.utc).utctimetuple())}:\n")
+            logfile.write(f"AT {datetime.datetime.now(datetime.timezone.utc:%a, %d %b %Y %H:%M:%S}:\n")
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
 
@@ -533,6 +538,7 @@ async def do_event(event: Any, args: Tuple[Any, ...]) -> None:
 
 
 async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
+    # TODO(ultrabear): refactor to use undefined dispatch loop (on-message-0 will not call after on-message/may call at same time etc, module dispatches automatically namespaced)
 
     etypes = []
 
