@@ -104,7 +104,7 @@ class ram_filesystem:
 
     def __init__(self) -> None:
         self.directory_table: Dict[str, "ram_filesystem"] = {}
-        self.data_table: Dict[str, Any] = {}
+        self.data_table: Dict[str, object] = {}
 
     def __enter__(self) -> "ram_filesystem":
         return self
@@ -509,7 +509,7 @@ class errtype:
 
         # accept penalty of fopen syscall because errors should not be frequent and deleting/moving logs may be needed
         with open("err.log", "a+", encoding="utf-8") as logfile:
-            logfile.write(f"AT {datetime.datetime.now(datetime.timezone.utc:%a, %d %b %Y %H:%M:%S}:\n")
+            logfile.write(f"AT {datetime.datetime.now(datetime.timezone.utc):%a, %d %b %Y %H:%M:%S}:\n")
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
 
@@ -605,7 +605,9 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
             await non_null_guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
         except discord.errors.Forbidden:
 
-            blacklist["guild"].append(guild_id)
+            # call kernel_blacklist_guild to add to json db, blacklist guild
+            # because it must be controlled by user that is blacklisted if there are no perms
+            kernel_blacklist_guild([str(guild_id)])
             try:
                 await non_null_guild.leave()
                 return False
@@ -635,7 +637,7 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
     return True
 
 
-async def sendable_send(sendable: Any, message: str) -> None:
+async def sendable_send(sendable: object, message: str) -> None:
     if isinstance(sendable, (discord.TextChannel, discord.DMChannel)):
         try:
             await sendable.send(message)
@@ -908,7 +910,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.12"
+version_info: str = "LeXdPyK 1.4.13"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
