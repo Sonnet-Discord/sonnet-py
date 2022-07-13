@@ -87,7 +87,7 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
 # Must use datetime due to discord.py being naive
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
-        basetime = format(indata, ':%a, %d %b %Y %H:%M:%S')
+        basetime = format(indata, '%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
@@ -619,4 +619,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.13"
+version_info: str = "1.2.13-1"
