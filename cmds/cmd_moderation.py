@@ -581,52 +581,53 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
 
 class purger:
-    __slots__ = "user_id",
+    __slots__ = "user_id", "message_id"
 
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: Optional[int], message: discord.Message):
         self.user_id = user_id
+        self.message_id = message.id
 
     def check(self, message: discord.Message) -> bool:
+        if message.id == self.message_id:
+            return False
+
+        if self.user_id is None:
+            return True
+
         return bool(message.author.id == self.user_id)
 
 
-async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
 
     if args:
         try:
             limit = int(args[0])
         except ValueError:
-            await message.channel.send("ERROR: Limit is not valid int")
-            return 1
+            raise lib_sonnetcommands.CommandError("ERROR: Limit is not valid int")
     else:
-        await message.channel.send("ERROR: No limit specified")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: No limit specified")
 
     if limit > 100 or limit <= 0:
-        await message.channel.send("ERROR: Cannot purge more than 100 messages or less than 1 message")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: Cannot purge more than 100 messages or less than 1 message")
 
-    ucheck: Optional[Callable[[discord.Message], bool]]
+    ucheck: Callable[[discord.Message], bool]
 
     try:
         if not (user := client.get_user(int(args[1].strip("<@!>")))):
             user = await client.fetch_user(int(args[1].strip("<@!>")))
-        ucheck = purger(user.id).check
+        ucheck = purger(user.id, message).check
     except ValueError:
-        await message.channel.send("Invalid UserID")
-        return 1
+        raise lib_sonnetcommands.CommandError("Invalid UserID")
     except IndexError:
-        ucheck = None
+        ucheck = purger(None, message).check
     except (discord.errors.NotFound, discord.errors.HTTPException):
-        await message.channel.send("User does not exist")
-        return 1
+        raise lib_sonnetcommands.CommandError("User does not exist")
 
     try:
-        await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
-        return 0
+        purged = await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
+        await message.channel.send(f"Purged {len(purged)} message{'s' * (len(purged)!=1)}, initiated by {message.author.mention}", allowed_mentions=discord.AllowedMentions.none())
     except discord.errors.Forbidden:
-        await message.channel.send("ERROR: Bot lacks perms to purge")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: Bot lacks perms to purge")
 
 
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
@@ -684,11 +685,13 @@ commands = {
     'purge':
         {
             'pretty_name': 'purge <limit> [user]',
-            'description': 'Purge messages from a given channel and optionally only from a specified user',
-            'rich_description': 'Can only purge up to 100 messages at a time to prevent catastrophic errors',
+            'description': 'Purge messages from a given channel and optionally only from a specified user, this will not purge the command invocation',
+            'rich_description':
+                ('Can only purge up to 100 messages at a time to prevent catastrophic errors, '
+                 'will print a success message indicating how many messages were purged and who invoked the command'),
             'permission': 'moderator',
             'execute': purge_cli
             }
     }
 
-version_info: str = "1.2.13"
+version_info: str = "1.2.14-DEV"
