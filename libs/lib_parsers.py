@@ -190,22 +190,25 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
 
 
 # Parse if we skip a message due to X reasons
-def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool:
+def parse_skip_message(Client: discord.Client, message: discord.Message, *, allow_bots: bool = False) -> bool:
     """
-    Parse to skip a message based on the author being a bot, itself, or not in a guild
+    Parse to skip a message based on the author being a bot, itself, or not in a guild.
+    The additional allow_bots flag will remove checking if the user is a bot if it is set to True
 
     :returns: bool -- Whether or not to skip the message, True being to skip
     """
 
     # Make sure we don't start a feedback loop.
-    if message.author == Client.user:
+    if message.author.id == Client.user.id:
         return True
 
-    # Ignore message if author is a bot
-    if message.author.bot:
-        return True
+    # only check if we are not allowing bots
+    if not allow_bots:
+        # Ignore message if author is a bot
+        if message.author.bot:
+            return True
 
-    # Ignore dmmessage
+    # Ignore messages that do not originate from a guild
     if not message.guild:
         return True
 
