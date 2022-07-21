@@ -101,7 +101,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
 
     # Ignore bots
-    if parse_skip_message(client, message):
+    if parse_skip_message(client, message, allow_bots=True):
         return
     elif not message.guild:
         return
@@ -198,7 +198,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
 
     # Ignore bots
-    if parse_skip_message(client, message):
+    if parse_skip_message(client, message, allow_bots=True):
         return
     elif not message.guild:
         return
@@ -421,7 +421,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     # Statistics.
     stats: Final[Dict[str, int]] = {"start": round(time.time() * 100000)}
 
-    if parse_skip_message(client, message):
+    if parse_skip_message(client, message, allow_bots=True):
         return
     elif not message.guild:
         return
@@ -482,6 +482,16 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     # Log files if not deleted
     if not message_deleted:
         asyncio.create_task(log_message_files(message, kernel_args.kernel_ramfs))
+
+    # END blacklist loop
+
+    # disallow bots to send commands, but still run blacklist on their messages
+    # this is primarily motivated by adding pluralkit support, as their messages
+    # will still be blacklisted on and are thus safe in a server that relies on sonnet blacklisting
+    if message.author.bot:
+        return
+
+    # START command processing loop
 
     mention_prefix: Final = message.content.startswith(f"<@{client.user.id}>") or message.content.startswith(f"<@!{client.user.id}>")
 
