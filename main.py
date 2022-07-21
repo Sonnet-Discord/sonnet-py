@@ -45,6 +45,9 @@ intents.reactions = True
 # Initialize Discord Client.
 Client = discord.Client(status=discord.Status.online, intents=intents)
 
+# Define development mode flag
+DEVELOPMENT_MODE = False
+
 
 # Define token encryption system "miniflip"
 class miniflip:
@@ -120,6 +123,23 @@ class ram_filesystem:
 
         raise TypeError("No dirstr or dirlist passed")
 
+    def _get_directory(self, dir_path: List[str]) -> "ram_filesystem":
+        """
+        Gets a directory from a dir entry or raises FileNotFoundError
+        Expects last item in dir path is a directory
+        """
+
+        path: "ram_filesystem" = self
+
+        for item in dir_path:
+
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such folder: {'/'.join(dir_path)}")
+
+        return path
+
     def mkdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
 
         # Make fs list
@@ -136,21 +156,22 @@ class ram_filesystem:
 
         return path
 
-    def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
+    def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
+        """
+        Deletes provided file location, raises on error
+        """
 
         remove_item = self._parsedirlist(dirstr, dirlist)
 
-        path: "ram_filesystem" = self
-
-        for i, item in enumerate(remove_item):
+        if remove_item:
+            path = self._get_directory(remove_item[:-1])
 
             try:
-                if i < len(remove_item) - 1:
-                    path = path.directory_table[item]
-                else:
-                    del path.data_table[item]
+                del path.data_table[remove_item[-1]]
             except KeyError:
-                raise FileNotFoundError(f"No such filepath: {'/'.join(remove_item)}")
+                raise FileNotFoundError(f"No such file: {'/'.join(remove_item)}")
+        else:
+            raise FileNotFoundError("No file parameter passed")
 
         return path
 
@@ -158,17 +179,15 @@ class ram_filesystem:
 
         file_to_open = self._parsedirlist(dirstr, dirlist)
 
-        path: "ram_filesystem" = self
-
-        for i, item in enumerate(file_to_open):
+        if file_to_open:
+            path = self._get_directory(file_to_open[:-1])
 
             try:
-                if i < len(file_to_open) - 1:
-                    path = path.directory_table[item]
-                else:
-                    return path.data_table[item]
+                return path.data_table[file_to_open[-1]]
             except KeyError:
                 raise FileNotFoundError("No such filepath: {'/'.join(file_to_open)}")
+        else:
+            raise FileNotFoundError("No file parameter passed")
 
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Any]] = None, f_args: Optional[List[Any]] = None) -> Any:
 
@@ -210,31 +229,13 @@ class ram_filesystem:
 
     def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
 
-        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
-
-        path: "ram_filesystem" = self
-
-        for item in folderpath:
-
-            try:
-                path = path.directory_table[item]
-            except KeyError:
-                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+        path = self._get_directory(self._parsedirlist(dirstr, dirlist, allowNone=True))
 
         return list(path.data_table), list(path.directory_table)
 
     def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
-
-        path: "ram_filesystem" = self
-
-        for item in folderpath:
-
-            try:
-                path = path.directory_table[item]
-            except KeyError:
-                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+        path = self._get_directory(self._parsedirlist(dirstr, dirlist, allowNone=True))
 
         datamap: Tuple[List[str], Dict[str, Any]] = (list(path.data_table), {})
 
@@ -242,6 +243,31 @@ class ram_filesystem:
             datamap[1][folder] = path.directory_table[folder].tree()
 
         return datamap
+
+    def _dump_data(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
+
+        path = self._get_directory(self._parsedirlist(dirstr, dirlist, True))
+
+        try:
+            filelist: List[Tuple[str, str, object]] = []
+
+            for f in path.data_table:
+                # pretty print binary files
+                if isinstance(v := path.data_table[f], io.BytesIO):
+                    v.seek(0)
+                    filelist.append((f, type(path.data_table[f]).__name__, v.read()), )
+                else:
+                    filelist.append((f, type(path.data_table[f]).__name__, (path.data_table[f])), )
+
+            datamap: Tuple[List[Any], Dict[str, Any]] = (filelist, {})
+
+            for folder in path.directory_table:
+                datamap[1][folder] = path.directory_table[folder]._dump_data()
+
+            return datamap
+
+        except KeyError:
+            raise FileNotFoundError("Filepath does not exist")
 
 
 # Import blacklist
@@ -540,6 +566,9 @@ async def do_event(event: Any, args: Tuple[Any, ...]) -> None:
 async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
     # TODO(ultrabear): refactor to use undefined dispatch loop (on-message-0 will not call after on-message/may call at same time etc, module dispatches automatically namespaced)
 
+    # used by dev mode
+    tstartexec = time.monotonic()
+
     etypes = []
 
     try:
@@ -576,6 +605,9 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
             etypes.append(errtype(e, exname))
 
         call += 1
+
+    if DEVELOPMENT_MODE:
+        print(f"EVENT {argtype} : {round((time.monotonic()-tstartexec)*100000)/100}ms CC {call+1}")
 
     if etypes:
         return etypes[0]
@@ -853,13 +885,20 @@ def main(args: List[str]) -> int:
     parser.add_argument("--log-debug", action="store_true", help="makes the logging module start in debug mode")
     parser.add_argument("--generate-token", action="store_true", help="discards the current token file if there is one, and generates a new encrypted tokenfile")
     parser.add_argument("--version", "-v", action="store_true", help="print version info and exit")
+    parser.add_argument("--development", "--dev", action="store_true", help="enables development mode (prints event handling and dumps ramfs on exit), may cause performance issues")
     parsed = parser.parse_args()
+
+    global DEVELOPMENT_MODE
+    DEVELOPMENT_MODE = parsed.development
 
     if parsed.version:
         import platform
         pyver = f"{platform.python_implementation()} {platform.python_version()}"
         print(f"{version_info} @ {os.getcwd()}\n{pyver} @ {sys.executable}")
         return 0
+
+    if DEVELOPMENT_MODE:
+        print("Running in development mode")
 
     # Set Loglevel
     loglevel = logging.DEBUG if parsed.log_debug else logging.INFO
@@ -900,6 +939,12 @@ def main(args: List[str]) -> int:
         print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables, or a encrypted token in .tokenfile, to use sonnet")
         return 1
 
+    if DEVELOPMENT_MODE:
+        print("Dumping ramfs:")
+        print(ramfs._dump_data())
+        print("Dumping kramfs:")
+        print(kernel_ramfs._dump_data())
+
     # Clear cache at exit
     for i in glob.glob("datastore/*.cache.db"):
         os.remove(i)
@@ -910,7 +955,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.13"
+version_info: str = "LeXdPyK 1.4.14"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
