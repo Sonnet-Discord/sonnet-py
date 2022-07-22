@@ -288,6 +288,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
         timecount = int(float(antispam[1]) * 1000)
 
         messages = ramfs.read_f(f"{message.guild.id}/asam")
+        assert isinstance(messages, io.BytesIO)
         messages.seek(0, 2)
         EOF = messages.tell()
         messages.seek(0)
@@ -326,6 +327,7 @@ def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, anti
         charcount = int(charantispam[2])
 
         messages = ramfs.read_f(f"{message.guild.id}/casam")
+        assert isinstance(messages, io.BytesIO)
         messages.seek(0, 2)
         EOF = messages.tell()
         messages.seek(0)

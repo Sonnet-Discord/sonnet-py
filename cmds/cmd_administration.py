@@ -242,9 +242,11 @@ To fully ensure {BOT_NAME} does not store any data on this server, delete the db
         db.seek(0)
 
         # Add cache files
-        antispam: io.BytesIO = ramfs.read_f(f"{guild_id}/asam")
+        antispam = ramfs.read_f(f"{guild_id}/asam")
+        assert isinstance(antispam, io.BytesIO)
         antispam.seek(0)
-        charantispam: io.BytesIO = ramfs.read_f(f"{guild_id}/casam")
+        charantispam = ramfs.read_f(f"{guild_id}/casam")
+        assert isinstance(charantispam, io.BytesIO)
         charantispam.seek(0)
 
         # Finalize discord file objs
@@ -510,4 +512,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.13"
+version_info: str = "1.2.14-DEV"

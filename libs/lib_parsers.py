@@ -28,7 +28,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload, cast
 import lib_lexdpyk_h as lexdpyk
 
 # Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
@@ -155,7 +155,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
             infraction_type.append(f"WordInWord({i})")
 
     # Check message against REGEXP blacklist
-    regex_blacklist: List["re.Pattern[str]"] = blacklist["regex-blacklist"]
+    regex_blacklist = cast(List["re.Pattern[str]"], blacklist["regex-blacklist"])
     for r in regex_blacklist:
         try:
             if broke := r.findall(LowerCaseContent):
@@ -165,7 +165,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
             pass  # GC for old regex
 
     # Check message against REGEXP notifier list
-    regex_notifier: List["re.Pattern[str]"] = blacklist["regex-notifier"]
+    regex_notifier = cast(List["re.Pattern[str]"], blacklist["regex-notifier"])
     for r in regex_notifier:
         if r.findall(LowerCaseContent):
             notifier = True
@@ -180,7 +180,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
                     infraction_type.append(f"FileType({a})")
 
     # Check url blacklist
-    url_blacklist: Optional["re.Pattern[str]"] = blacklist["url-blacklist_regex"]
+    url_blacklist = cast(Optional["re.Pattern[str]"], blacklist["url-blacklist_regex"])
     if url_blacklist is not None:
         if broke := url_blacklist.findall(LowerCaseContent):
             broke_blacklist = True
@@ -403,16 +403,19 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
 
             try:
 
-                loc: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                assert isinstance(loc, io.BytesIO)
                 loc.seek(0)
                 pointer = loc.read()
 
-                keys: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                assert isinstance(keys, io.BytesIO)
                 keys.seek(0)
                 key = keys.read(32)
                 iv = keys.read(16)
 
-                name: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                assert isinstance(name, io.BytesIO)
                 name.seek(0)
                 fname = name.read().decode("utf8")
 

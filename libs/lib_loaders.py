@@ -119,7 +119,8 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
     try:
 
         # Loads fileio object
-        blacklist_cache: io.BytesIO = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
+        blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
+        assert isinstance(blacklist_cache, io.BytesIO)
         blacklist_cache.seek(0)
         message_config: Dict[str, Any] = {}
 
@@ -247,12 +248,14 @@ def generate_infractionid() -> str:
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
-        statistics: dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
+        statistics = kernel_ramfs.read_f(f"{guild}/stats")
+        assert isinstance(statistics, dict)
     except FileNotFoundError:
         statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(Type[Dict[str, int]], dict))
 
     try:
-        global_statistics: dict[str, int] = kernel_ramfs.read_f("global/stats")
+        global_statistics = kernel_ramfs.read_f("global/stats")
+        assert isinstance(global_statistics, dict)
     except FileNotFoundError:
         global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(Type[Dict[str, int]], dict))
 
