@@ -17,7 +17,7 @@ class ram_filesystem(Protocol):
     def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> None:
         ...
 
-    def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
+    def read_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> object:
         ...
 
     # pytype: disable=not-callable
