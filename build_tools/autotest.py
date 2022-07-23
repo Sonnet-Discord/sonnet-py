@@ -93,7 +93,7 @@ def main() -> int:
     tests: Dict[str, Union[str, Shell]] = {
         "pyflakes": "pyflakes .",
         "mypy": "mypy . --ignore-missing-imports --strict --warn-unreachable --python-version 3.8",
-        "yapf": "yapf -drp .",
+        "yapf": "python ./build_tools/cached_yapf.py -d",
         "pylint": Shell("pylint **/*.py -E -j4 --py-version=3.8"),
         "pyright": "pyright",
         #"pytype": "pytype .",
