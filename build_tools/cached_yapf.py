@@ -93,8 +93,12 @@ class FileCacheEntry:
 CACHED_DIR: Final = "./.cached_yapf"
 
 
-def get_current_yapf_version() -> str:
-    return subprocess.run(["yapf", "--version"], capture_output=True).stdout.decode("utf8")
+def get_current_yapf_version(cached: List[str] = []) -> str:
+    if cached:
+        return cached[0]
+    else:
+        cached.append(subprocess.run(["yapf", "--version"], capture_output=True).stdout.decode("utf8"))
+        return cached[0]
 
 
 def clear_cache() -> None:
@@ -104,23 +108,21 @@ def clear_cache() -> None:
         pass
 
 
-def load_cache() -> List[CacheEntry]:
+def load_cache() -> Dict[str, CacheEntry]:
 
     try:
-        cachefile = open(f"{CACHED_DIR}/cache", "r", encoding="utf8")
+        with open(f"{CACHED_DIR}/yapf_version", "r", encoding="utf8") as yapf_ver:
+            if get_current_yapf_version() != yapf_ver.read():
+                return {}
     except FileNotFoundError:
-        return []
+        return {}
 
     try:
-        yapf_ver = open(f"{CACHED_DIR}/yapf_version", "r", encoding="utf8")
+        with open(f"{CACHED_DIR}/cache", "r", encoding="utf8") as cachefile:
+            cache = [CacheEntry((v := i.split(" "))[0], v[1].strip("\n")) for i in cachefile if i]
+            return {c.filename: c for c in cache}
     except FileNotFoundError:
-        return []
-
-    if get_current_yapf_version() != yapf_ver.read():
-        return []
-
-    with cachefile:
-        return [CacheEntry((v := i.split(" "))[0], v[1].strip("\n")) for i in cachefile if i]
+        return {}
 
 
 def overwrite_cache(oldcache: Dict[str, CacheEntry], newfiles: List[str]) -> None:
@@ -152,8 +154,56 @@ async def run_single_yapf(mode: Literal["diff", "inplace"], filename: str) -> Pr
 
 
 async def run_yapf_async(mode: Literal["diff", "inplace"], files: List[str]) -> List[ProcessedData]:
+    """
+    Runs multiple yapf instances in async subprocesses  and provides returncode and info for each
+    """
     tasks = [asyncio.create_task(run_single_yapf(mode, i)) for i in files]
     return [await task for task in tasks]
+
+
+def run_yapf_once(mode: Literal["diff", "inplace"], files: List[str]) -> subprocess.CompletedProcess[bytes]:
+    """
+    Runs one yapf instance over a list of files, providing one ProcessedData instance to represent its output and return code
+    """
+    arg = "d" if mode == "diff" else "i"
+    return subprocess.run(["yapf", f"-{arg}p", *files], capture_output=True)
+
+
+def process_inplace(cache: Dict[str, CacheEntry], files: List[str]) -> int:
+
+    proc = run_yapf_once("inplace", files)
+
+    if proc.stdout:
+        print(proc.stdout.decode("utf8"))
+    if proc.stderr:
+        print(proc.stderr.decode("utf8"), file=sys.stderr)
+
+    if proc.returncode == 0:
+        overwrite_cache(cache, files)
+
+    return proc.returncode
+
+
+def process_diff(cache: Dict[str, CacheEntry], files: List[str]) -> int:
+    returncode = 1
+
+    safe_cached = []
+
+    for proc in asyncio.run(run_yapf_async("diff", files)):
+
+        if proc.stdout:
+            print(proc.stdout.decode("utf8"))
+        if proc.stderr:
+            print(proc.stderr.decode("utf8"), file=sys.stderr)
+
+        if proc.returncode == 0:
+            safe_cached.append(proc.file)
+        else:
+            returncode = 1
+
+        overwrite_cache(cache, safe_cached)
+
+    return returncode
 
 
 def main(args: List[str]) -> int:
@@ -163,7 +213,7 @@ def main(args: List[str]) -> int:
     if parsed.clear:
         clear_cache()
 
-    cache = {i.filename: i for i in load_cache()}
+    cache = load_cache()
 
     process = []
 
@@ -175,27 +225,13 @@ def main(args: List[str]) -> int:
         else:
             process.append(i)
 
-    returncode = 0
-
-    safe_cached = []
-
-    for proc in (asyncio.run(run_yapf_async(parsed.mode, process))):
-        if proc.stdout:
-            print(proc.stdout.decode("utf8"))
-        if proc.stderr:
-            print(proc.stderr.decode("utf8"), file=sys.stderr)
-
-        if proc.returncode == 0:
-            safe_cached.append(proc.file)
-        else:
-            returncode = 1
+    if not process:
+        return 0
 
     if parsed.mode == "inplace":
-        overwrite_cache(cache, process)
+        return process_inplace(cache, process)
     else:
-        overwrite_cache(cache, safe_cached)
-
-    return returncode
+        return process_diff(cache, process)
 
 
 if __name__ == "__main__":
