@@ -83,7 +83,7 @@ defaultcache: dict[Union[str, int], Any] = {
     "text":
         [
             ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""],
-            ["antispam-time", "20"]
+            ["antispam-time", "20"], ["moderator-protect", "0"]
             ],
     0: "sonnet_default"
     }
