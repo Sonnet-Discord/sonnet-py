@@ -20,10 +20,14 @@ importlib.reload(lib_sonnetconfig)
 import lib_goparsers
 
 importlib.reload(lib_goparsers)
+import lib_datetimeplus
+
+importlib.reload(lib_datetimeplus)
 
 from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
+from lib_datetimeplus import Time
 
 from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol, Final, Literal
 import lib_lexdpyk_h as lexdpyk
@@ -327,7 +331,7 @@ def datetime_now() -> datetime.datetime:
 
     :returns: datetime.datetime - timestamp returned
     """
-    return datetime.datetime.now(datetime.timezone.utc)
+    return Time.now().as_datetime()
 
 
 def datetime_unix(unix: int) -> datetime.datetime:
@@ -339,7 +343,10 @@ def datetime_unix(unix: int) -> datetime.datetime:
     :returns: datetime.datetime - The datetime object
     """
 
-    # WHY IS THIS SO DIFFICULT (ultrabear)
-    # This is the worst api I have ever used and its stdlib
-    # Ive used discord.py pre 1.0 ok ive seen messy apis
-    return datetime.datetime.fromtimestamp(unix).astimezone(datetime.timezone.utc)
+    # # WHY IS THIS SO DIFFICULT (ultrabear)
+    # # This is the worst api I have ever used and its stdlib
+    # # Ive used discord.py pre 1.0 ok ive seen messy apis
+    # return datetime.datetime.fromtimestamp(unix).astimezone(datetime.timezone.utc)
+
+    # thank you time api very cool (previous code kept as preservation of nightmares)
+    return Time(unix=unix).as_datetime()
