@@ -185,7 +185,7 @@ def process_inplace(cache: Dict[str, CacheEntry], files: List[str]) -> int:
 
 
 def process_diff(cache: Dict[str, CacheEntry], files: List[str]) -> int:
-    returncode = 1
+    returncode = 0
 
     safe_cached = []
 
