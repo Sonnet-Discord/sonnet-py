@@ -44,6 +44,31 @@ def maxlen(s: str, n: int, name: str) -> str:
     return s
 
 
+async def boolean_to_db_helper(message: discord.Message, args: List[str], db_name: str, pretty_name: str, default: bool, verbose: bool) -> int:
+    if not message.guild:
+        return 1
+
+    if args:
+
+        pb = parse_boolean(args[0])
+
+        if pb is None:
+            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
+
+        with db_hlapi(message.guild.id) as db:
+            db.add_config(db_name, str(int(pb)))
+
+        if verbose: await message.channel.send(f"Set {pretty_name} to {pb}")
+
+    else:
+        with db_hlapi(message.guild.id) as db:
+            gate = bool(int(db.grab_config(db_name) or int(default)))
+
+        if verbose: await message.channel.send(f"{pretty_name} is set to {gate}")
+
+    return 0
+
+
 async def add_infrac_modifier(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
@@ -122,28 +147,8 @@ async def list_infrac_modifiers(message: discord.Message, args: List[str], clien
 
 
 async def set_show_mutetime(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
-    if not message.guild:
-        return 1
 
-    if args:
-
-        pb = parse_boolean(args[0])
-
-        if pb is None:
-            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
-
-        with db_hlapi(message.guild.id) as db:
-            db.add_config("show-mutetime", str(int(pb)))
-
-        await message.channel.send(f"Set show-mutetime to {pb}")
-
-    else:
-        with db_hlapi(message.guild.id) as db:
-            pb = parse_boolean(db.grab_config("show-mutetime") or "0")
-
-        await message.channel.send(f"show-mutetime is set to {pb}")
-
-    return 0
+    return await boolean_to_db_helper(message, args, "show-mutetime", "Show Mutetime", False, ctx.verbose)
 
 
 async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -299,30 +304,8 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
 
 
 async def set_view_infractions(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
-    if not message.guild:
-        return 1
 
-    gate: bool
-
-    if args:
-
-        pb = parse_boolean(args[0])
-
-        if pb is None:
-            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
-
-        with db_hlapi(message.guild.id) as db:
-            db.add_config("member-view-infractions", str(int(pb)))
-
-        if ctx.verbose: await message.channel.send(f"Set member view own infractions to {pb}")
-
-    else:
-        with db_hlapi(message.guild.id) as db:
-            gate = bool(int(db.grab_config("member-view-infractions") or 0))
-
-        if ctx.verbose: await message.channel.send(f"Member view own infractions is set to {gate}")
-
-    return 0
+    return await boolean_to_db_helper(message, args, "member-view-infractions", "Member View own Infractions", False, ctx.verbose)
 
 
 async def set_prefix(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -372,6 +355,11 @@ async def set_filelog_behavior(message: discord.Message, args: List[str], client
         await message.channel.send(f"Message-to-file log status is currently {state}")
 
     return 0
+
+
+async def set_moderator_protect(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "moderator-protect", "Moderator Protect", False, ctx.verbose)
 
 
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
@@ -509,7 +497,15 @@ commands = {
         'permission': 'administrator',
         'cache': 'regenerate',
         'execute': set_moderator_role
-        }
+        },
+    'set-moderator-protect':
+        {
+            'pretty_name': 'set-moderator-protect <bool>',
+            'description': 'Set whether to disallow infractions being given to moderator+ members, disabled by default',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_moderator_protect,
+            }
     }
 
 version_info: str = "1.2.14-DEV"
