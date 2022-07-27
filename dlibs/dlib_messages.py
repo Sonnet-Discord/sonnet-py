@@ -34,13 +34,13 @@ import lib_sonnetcommands
 importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum, load_embed_color, embed_colors, datetime_now
+from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url, discord_datetime_now
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -271,95 +271,83 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kargs["ramfs"]))
 
 
-def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, str]:
+class BaseAntispamMeta(TypedDict):
+    name: str
+    message_count: int
+    lifetime_millis: int
+
+
+class FullAntispamMeta(BaseAntispamMeta, total=False):
+    char_count: int
+
+
+CharCount = NewType("CharCount", int)
+
+
+def breaches_char_count(total_char_count: int, scan: FullAntispamMeta) -> bool:
+    """
+    Returns True in cases where scan does not have a char_count attr
+    """
+    if "char_count" in scan:
+        return total_char_count > scan["char_count"]
+
+    return True
+
+
+def test_single_antispam(message: discord.Message, scan: FullAntispamMeta, ramfs: lexdpyk.ram_filesystem) -> bool:
     if not message.guild:
-        raise RuntimeError("How did we end up here? Basically antispam_check was called on a dm message, oops")
+        raise RuntimeError("ERROR: antispam_check called on a non guild message")
 
     # Weird behavior(ultrabear): message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
     # Update(ultrabear): now that we use discord_datetime_now() we get an unaware dt or aware dt depending on dpy version
+    # Time at which we drop a item if it is older than this
+    droptime = round(discord_datetime_now().timestamp() * 1000) - scan["lifetime_millis"]
 
-    userid: Final[int] = message.author.id
-    sent_at: Final[float] = message.created_at.timestamp()
-
-    # Base antispam
     try:
-
-        messagecount = int(antispam[0])
-        timecount = int(float(antispam[1]) * 1000)
-
-        messages = ramfs.read_f(f"{message.guild.id}/asam")
-        assert isinstance(messages, io.BytesIO)
-        messages.seek(0, 2)
-        EOF = messages.tell()
-        messages.seek(0)
-        droptime = round(discord_datetime_now().timestamp() * 1000) - timecount
-        userlist = []
-        ismute = 1
-
-        # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
-        while EOF > messages.tell():
-            uid, mtime = [read_vnum(messages) for i in range(2)]
-            if mtime > droptime:
-                userlist.append([uid, mtime])
-                if uid == userid:
-                    ismute += 1
-
-        userlist.append([userid, round(sent_at * 1000)])
-        messages.seek(0)
-        for i in userlist:
-            for v in i:
-                write_vnum(messages, v)
-        messages.truncate()
-
-        if ismute >= messagecount:
-            return (True, "Antispam")
-
+        data_dir = cast(Dict[int, List[Tuple[int, CharCount]]], ramfs.read_f(f"{message.guild.id}/{scan['name']}"))
+        assert isinstance(data_dir, dict)
     except FileNotFoundError:
-        messages = ramfs.create_f(f"{message.guild.id}/asam")
-        write_vnum(messages, message.author.id)
-        write_vnum(messages, round(1000 * message.created_at.timestamp()))
+        data_dir = ramfs.create_f(f"{message.guild.id}/{scan['name']}", f_type=dict)
 
-    # Char antispam
-    try:
+    user_data = data_dir.get(message.author.id, [])
 
-        messagecount = int(charantispam[0])
-        timecount = int(float(charantispam[1]) * 1000)
-        charcount = int(charantispam[2])
+    # add current message
+    user_data.append((round(message.created_at.timestamp() * 1000), CharCount(len(message.content))), )
 
-        messages = ramfs.read_f(f"{message.guild.id}/casam")
-        assert isinstance(messages, io.BytesIO)
-        messages.seek(0, 2)
-        EOF = messages.tell()
-        messages.seek(0)
-        droptime = round(discord_datetime_now().timestamp() * 1000) - timecount
-        userlist = []
-        ismute = 1
-        charc = 0
+    new_user_data = []
+    total_char_count = 0
 
-        # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
-        while EOF > messages.tell():
-            uid, mtime, clen = [read_vnum(messages) for i in range(3)]
-            if mtime > droptime:
-                userlist.append([uid, mtime, clen])
-                if uid == userid:
-                    charc += clen
-                    ismute += 1
+    for (timestamp_millis, char_count) in user_data:
 
-        userlist.append([userid, round(sent_at * 1000), len(message.content)])
-        messages.seek(0)
-        for i in userlist:
-            for v in i:
-                write_vnum(messages, v)
-        messages.truncate()
+        if timestamp_millis > droptime:
+            total_char_count += char_count
+            new_user_data.append((timestamp_millis, char_count), )
 
-        if ismute >= messagecount and charc >= charcount:
-            return (True, "CharAntispam")
+    # load new data
+    data_dir[message.author.id] = new_user_data
 
-    except FileNotFoundError:
-        messages = ramfs.create_f(f"{message.guild.id}/casam")
-        write_vnum(messages, message.author.id)
-        write_vnum(messages, round(1000 * message.created_at.timestamp()))
-        write_vnum(messages, len(message.content))
+    return breaches_char_count(total_char_count, scan) and len(new_user_data) >= scan["message_count"]
+
+
+def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, Literal["", "Antispam", "CharAntispam"]]:
+
+    antispam_data: FullAntispamMeta = {
+        "name": "asam",
+        "message_count": int(antispam[0]),
+        "lifetime_millis": int(float(antispam[1]) * 1000),
+        }
+
+    char_antispam_data: FullAntispamMeta = {
+        "name": "casam",
+        "message_count": int(charantispam[0]),
+        "lifetime_millis": int(float(charantispam[1]) * 1000),
+        "char_count": int(charantispam[2]),
+        }
+
+    if test_single_antispam(message, antispam_data, ramfs):
+        return (True, "Antispam")
+    elif test_single_antispam(message, char_antispam_data, ramfs):
+        return (True, "CharAntispam")
 
     return (False, "")
 
