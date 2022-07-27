@@ -37,7 +37,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
 from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
 from lib_encryption_wrapper import encrypted_writer
-from lib_compatibility import user_avatar_url, discord_datetime_now
+from lib_compatibility import user_avatar_url
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx
 
 from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, cast
@@ -300,8 +300,14 @@ def test_single_antispam(message: discord.Message, scan: FullAntispamMeta, ramfs
 
     # Weird behavior(ultrabear): message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
     # Update(ultrabear): now that we use discord_datetime_now() we get an unaware dt or aware dt depending on dpy version
-    # Time at which we drop a item if it is older than this
-    droptime = round(discord_datetime_now().timestamp() * 1000) - scan["lifetime_millis"]
+
+    # We drop a item if it is older than this
+    #
+    # We use the created_at timestamp here because this is the most recent message, and antispam should be based on durations created from message timestamps
+    # If it was based on current polled time (previously it was) a lagspike could cause the bot to not trigger antispam on a set of messages where it should have
+    #
+    # We add one millisecond so that a lifetime of 0 will drop the current message
+    droptime = (round(message.created_at.timestamp() * 1000) - scan["lifetime_millis"]) + 1
 
     try:
         data_dir = cast(Dict[int, List[Tuple[int, CharCount]]], ramfs.read_f(f"{message.guild.id}/{scan['name']}"))
