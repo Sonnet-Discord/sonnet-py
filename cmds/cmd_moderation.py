@@ -203,7 +203,7 @@ async def process_infraction(
 
     # Test if user is a moderator
     warn_moderator: Optional[str] = None
-    if member and parse_core_permissions(cast(discord.TextChannel, message.channel), member, local_conf_cache, "moderator") and infraction:
+    if not automod and member and parse_core_permissions(cast(discord.TextChannel, message.channel), member, local_conf_cache, "moderator") and infraction:
 
         get_help = f"`{local_conf_cache['prefix']}help set-moderator-protect`"
 
