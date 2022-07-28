@@ -227,10 +227,11 @@ class gdpr_functions:
             os.remove(i)
 
         await message.channel.send(
-            f"""Deleted database for guild {message.guild.id}
-Please note that when the bot receives a message from this guild it will generate a cache and statistics file again
-As we delete all data on this guild, there is no way {BOT_NAME} should be able to tell it is not supposed to be on this server
-To fully ensure {BOT_NAME} does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"""
+            f"Deleted database for guild {message.guild.id}\n"
+            "Please note that when the bot receives a message from this guild it will generate a cache and statistics file again\n"
+            f"As we delete all data on this guild, there is no way {BOT_NAME} should be able to tell it is not supposed to be on this server\n"
+            f"To fully ensure {BOT_NAME} does not store any data on this server, delete the db and kick the bot immediately,"
+            " or contact the bot owner to have the db manually deleted after kicking the bot"
             )
 
     async def download(self, message: discord.Message, guild_id: int, ramfs: lexdpyk.ram_filesystem, kramfs: lexdpyk.ram_filesystem) -> None:
@@ -247,26 +248,22 @@ To fully ensure {BOT_NAME} does not store any data on this server, delete the db
         db.seek(0)
 
         # Add cache files
-        antispam = ramfs.read_f(f"{guild_id}/asam")
-        assert isinstance(antispam, io.BytesIO)
-        antispam.seek(0)
-        charantispam = ramfs.read_f(f"{guild_id}/casam")
-        assert isinstance(charantispam, io.BytesIO)
-        charantispam.seek(0)
+        assert isinstance(antispam := ramfs.read_f(f"{guild_id}/asam"), dict)
+        assert isinstance(charantispam := ramfs.read_f(f"{guild_id}/casam"), dict)
 
         # Finalize discord file objs
         fileobj_db = discord.File(db, filename="database.gz")
-        fileobj_antispam = discord.File(io.BytesIO(antispam.read()), filename="antispam.vnum_x2.bin")
-        fileobj_cantispam = discord.File(io.BytesIO(charantispam.read()), filename="charantispam.vnum_x3.bin")
+        fileobj_antispam = discord.File(io.BytesIO(json.dumps(antispam, indent=4).encode("utf8")), filename="antispam.json")
+        fileobj_cantispam = discord.File(io.BytesIO(json.dumps(charantispam, indent=4).encode("utf8")), filename="charantispam.json")
 
         # Send data
         try:
             await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
         except discord.errors.HTTPException:
             await message.channel.send(
-                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords file size limitation
-Please contact the bot owner directly to download your guilds database
-Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"""
+                "ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords file size limitation\n"
+                "Please contact the bot owner directly to download your guilds database\n"
+                "Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"
                 )
 
 
