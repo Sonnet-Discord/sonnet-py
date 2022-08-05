@@ -52,8 +52,18 @@ async def boolean_to_db_helper(message: discord.Message, args: List[str], db_nam
 
         pb = parse_boolean(args[0])
 
-        if pb is None:
-            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
+        if pb == 0:
+
+            if args[0] in ["rm", "remove"]:
+
+                with db_hlapi(message.guild.id) as db:
+                    db.delete_config(db_name)
+
+                if verbose: await message.channel.send(f"Reset {pretty_name} to its default value ({default})")
+                return 0
+
+            else:
+                raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
 
         with db_hlapi(message.guild.id) as db:
             db.add_config(db_name, str(int(pb)))
