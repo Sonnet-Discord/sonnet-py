@@ -36,12 +36,12 @@ importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
+from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field, parse_boolean
 from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, cast
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -82,9 +82,15 @@ def decide_to_file(msg: discord.Message, filename: str, behavior: Literal["none"
     return None
 
 
-def message_file_log_behavior(db: db_hlapi) -> Literal["text", "none", "gzip"]:
+message_and_edit_logs: Dict[Union[str, int], Union[str, List[List[Any]]]] = {
+    0: "sonnet_message_and_edit_log",
+    "text": [["message-log", ""], ["message-edit-log", ""], ["message-to-file-behavior", "text"], ["edit-log-is-message-log", "1"]]
+    }
+
+
+def message_file_log_behavior(conf: Optional[str]) -> Literal["text", "none", "gzip"]:
     # file log state
-    tmp: Final = db.grab_config("message-to-file-behavior") or "text"
+    tmp: Final = conf or "text"
     # Statically assert comparisons because mypy hates me
     # (and hates promoting a Final[str] to a Final[Literal[V]] when Final[str] == V = True)
     # Seriously how is that not a feature
@@ -118,10 +124,10 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     inc_statistics_better(message.guild.id, "on-message-delete", kernel_ramfs)
 
-    # Add to log
-    with db_hlapi(message.guild.id) as db:
-        message_log = db.grab_config("message-log")
-        behavior = message_file_log_behavior(db)
+    db_configs = load_message_config(message.guild.id, kargs["ramfs"], datatypes=message_and_edit_logs)
+
+    message_log: Optional[str] = db_configs["message-log"]
+    behavior: Final = message_file_log_behavior(db_configs["message-to-file-behavior"])
 
     try:
         if not (message_log and (log_channel := client.get_channel(int(message_log)))):
@@ -192,11 +198,12 @@ async def grab_an_adult(discord_message: discord.Message, guild: discord.Guild, 
         await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
-async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs: Any) -> None:
+@lexdpyk.ToKernelArgs
+async def on_message_edit(old_message: discord.Message, message: discord.Message, kctx: lexdpyk.KernelArgs) -> None:
 
-    client: Final[discord.Client] = kargs["client"]
-    ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
-    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
+    client: Final[discord.Client] = kctx.client
+    ramfs: Final[lexdpyk.ram_filesystem] = kctx.ramfs
+    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kctx.kernel_ramfs
 
     # Ignore bots
     if parse_skip_message(client, message, allow_bots=True):
@@ -206,10 +213,10 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     inc_statistics_better(message.guild.id, "on-message-edit", kernel_ramfs)
 
-    # Add to log
-    with db_hlapi(message.guild.id) as db:
-        message_log_str: Final = db.grab_config("message-edit-log") or db.grab_config("message-log")
-        msgtofile_behavior: Final = message_file_log_behavior(db)
+    db_configs = load_message_config(message.guild.id, kctx.ramfs, datatypes=message_and_edit_logs)
+
+    message_log_str: Final[Optional[str]] = db_configs["message-edit-log"] or (db_configs["message-log"] if parse_boolean(db_configs["edit-log-is-message-log"]) else None)
+    msgtofile_behavior: Final = message_file_log_behavior(db_configs["message-to-file-behavior"])
 
     # Skip logging if message is the same or mlog doesn't exist
     if message_log_str and not (old_message.content == message.content):
@@ -252,24 +259,24 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
         command_ctx: Final = CommandCtx(
             stats={},
-            cmds=kargs["command_modules"][0],
+            cmds=kctx.command_modules[0],
             ramfs=ramfs,
-            bot_start=kargs["bot_start"],
-            dlibs=kargs["dynamiclib_modules"][0],
-            main_version=kargs["kernel_version"],
+            bot_start=kctx.bot_start,
+            dlibs=kctx.dynamiclib_modules[0],
+            main_version=kctx.kernel_version,
             kernel_ramfs=kernel_ramfs,
             conf_cache={},
             verbose=False,
-            cmds_dict=kargs["command_modules"][1],
+            cmds_dict=kctx.command_modules[1],
             automod=True
             )
 
         asyncio.create_task(attempt_message_delete(message))
         execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await warn_missing(kargs["command_modules"][1], mconf["blacklist-action"])(message, execargs, client, command_ctx)
+        await warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx)
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kargs["ramfs"]))
+        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
 
 
 class BaseAntispamMeta(TypedDict):
