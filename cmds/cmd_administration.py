@@ -359,6 +359,16 @@ async def set_moderator_protect(message: discord.Message, args: List[str], clien
     return await boolean_to_db_helper(message, args, "moderator-protect", "Moderator Protect", False, ctx.verbose)
 
 
+async def set_edit_log_is_message_log(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "edit-log-is-message-log", "Edit log is Message log", True, ctx.verbose)
+
+
+async def set_leave_log_is_join_log(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "leave-log-is-join-log", "Leave log is Join log", True, ctx.verbose)
+
+
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
@@ -506,7 +516,25 @@ commands = {
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': set_moderator_protect,
-            }
+            },
+    'set-leave-log-is-join-log':
+        {
+            'pretty_name': 'set-leave-log-is-join-log <bool>',
+            'description': "Set whether the leave-log config should fallback to join-log if it doesn't exist",
+            'rich_description': "This config exists to disable legacy compatibility where join-log used to be both logs, so leave-log could not be disabled without disabling join-log",
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
+            'permission': 'administrator',
+            "execute": set_leave_log_is_join_log,
+            },
+    'set-edit-log-is-message-log':
+        {
+            'pretty_name': 'set-edit-log-is-message-log <bool>',
+            'description': "Set whether the message-edit-log config should fallback to message-log if it doesn't exist",
+            'rich_description': "This config exists to disable legacy compatibility where message-log used to be both logs, so message-edit-log could not be disabled without disabling message-log",
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
+            'permission': 'administrator',
+            "execute": set_edit_log_is_message_log,
+            },
     }
 
 version_info: str = "1.2.14-DEV"
