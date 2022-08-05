@@ -397,6 +397,7 @@ commands = {
             'pretty_name': 'set-filelog-behavior [text|gzip|none]',
             'description': 'Set the message to file log behavior to store text, gzip, or not store',
             'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_message_and_edit_log',
             'execute': set_filelog_behavior,
             },
     'message-edit-log':
@@ -404,14 +405,17 @@ commands = {
             'pretty_name': 'message-edit-log <channel>',
             'description': 'Change message edit log, overloads message-log',
             'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_message_and_edit_log',
             'execute': message_edit_log_change
             },
-    'message-log': {
-        'pretty_name': 'message-log <channel>',
-        'description': 'Change message log',
-        'permission': 'administrator',
-        'execute': msglog_change
-        },
+    'message-log':
+        {
+            'pretty_name': 'message-log <channel>',
+            'description': 'Change message log',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_message_and_edit_log',
+            'execute': msglog_change
+            },
     'leave-log':
         {
             'pretty_name': 'leave-log <channel>',
