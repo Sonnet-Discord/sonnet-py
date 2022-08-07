@@ -379,6 +379,11 @@ async def set_leave_log_is_join_log(message: discord.Message, args: List[str], c
     return await boolean_to_db_helper(message, args, "leave-log-is-join-log", "Leave log is Join log", True, ctx.verbose)
 
 
+async def set_unmute_on_ban(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "unmute-on-ban", "Unmute on ban", False, ctx.verbose)
+
+
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
@@ -544,6 +549,14 @@ commands = {
             'cache': 'direct:(f)caches/sonnet_userupdate_log',
             'permission': 'administrator',
             "execute": set_edit_log_is_message_log,
+            },
+    'set-unmute-on-ban':
+        {
+            'pretty_name': "set-unmute-on-ban <bool>",
+            "description": "Set whether to unmute a user upon banning them",
+            "rich_description": "This config is designed to make it easier to cleanup after a user is banned, clearing the mutedb and making unbanning the user less of a hassle",
+            "permission": "administrator",
+            "execute": set_unmute_on_ban,
             },
     }
 

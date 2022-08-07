@@ -34,7 +34,7 @@ importlib.reload(lib_sonnetcommands)
 from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_user_member, format_duration, parse_core_permissions
+from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
@@ -367,13 +367,22 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
             await dm_sent  # Wait for dm to be sent before banning
         await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
     except discord.errors.Forbidden:
-        await message.channel.send(f"{BOT_NAME} does not have permission to ban this user.")
-        return 1
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
 
-    delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
+    unmute_user: bool
+
+    with db_hlapi(message.guild.id) as db:
+        if parse_boolean(db.grab_config("unmute-on-ban") or "0") and db.is_muted(userid=user.id):
+            unmute_user = True
+            db.unmute_user(userid=user.id)
+        else:
+            unmute_user = False
+
+    unmuted_str = f"{',' * (not delete_days)} and unmuted them," if unmute_user else ""
+    delete_str = f",{' and' * (not unmute_user)} deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str}{unmuted_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
     if warn_text is not None:
         await message.channel.send(warn_text)
