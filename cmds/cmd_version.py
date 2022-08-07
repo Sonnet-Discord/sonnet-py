@@ -23,8 +23,10 @@ importlib.reload(lib_datetimeplus)
 from lib_loaders import clib_exists, DotHeaders
 from lib_datetimeplus import Time
 
-from typing import List, Any, Union
+from typing import List, Any, Union, Final
 import lib_lexdpyk_h as lexdpyk
+
+LAST_LOAD: Final = Time.now()
 
 
 # Pretty gives spacing between key-value items to have them padded
@@ -39,20 +41,14 @@ def prettyprint(inlist: List[List[str]]) -> List[str]:
     return [(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}") for i in inlist]
 
 
-# Adds zero padding to number
-def zpad(n: int) -> str:
-    """
-    Deprecated, just use a format string directly
-    """
-    return f"{n:02d}"
-
-
-def getdelta(past: Union[int, float]) -> str:
+def getdelta(past: Union[int, float, Time]) -> str:
     """
     Formats a delta between a past time and now to be human readable
     """
 
-    clock = (Time.now() - Time(unix=int(past))).clock()
+    past_t = past if isinstance(past, Time) else Time(unix=int(past))
+
+    clock = (Time.now() - past_t).clock()
 
     days, hours = divmod(clock.hours, 24)
 
@@ -92,7 +88,9 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
 
     fmt.write(f"Go accel: {lib_goparsers.GetVersion()}={lib_goparsers.hascompiled}\n")
 
-    fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n```")
+    fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n")
+
+    fmt.write(f"Last Reload: {getdelta(LAST_LOAD)}\n```")
 
     content = fmt.getvalue()
 
@@ -184,4 +182,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.13"
+version_info: str = "1.2.14-DEV"
