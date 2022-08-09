@@ -237,7 +237,6 @@ def parse_boolean_strict(s: str, /) -> Optional[bool]:
     """
     Parse a boolean from preset true|false values
     Returns None (a falsey) if data could not be parsed
-    If s is None this function will propagate None
     """
 
     yeslist: List[str] = ["yes", "true", "y", "t", "1"]
