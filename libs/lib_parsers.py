@@ -216,7 +216,7 @@ def parse_skip_message(Client: discord.Client, message: discord.Message, *, allo
 
 
 # Parse a boolean datatype from a string
-def parse_boolean(instr: str) -> Union[bool, int]:
+def parse_boolean(instr: str) -> Union[bool, Literal[0]]:
     """
     Parse a boolean from preset true|false values
     Returns 0 (a falsey) if data could not be parsed
@@ -231,6 +231,23 @@ def parse_boolean(instr: str) -> Union[bool, int]:
         return False
 
     return 0
+
+
+def parse_boolean_strict(instr: str, /) -> Optional[bool]:
+    """
+    Parse a boolean from preset true|false values
+    Returns None (a falsey) if data could not be parsed
+    """
+
+    yeslist: list[str] = ["yes", "true", "y", "t", "1"]
+    nolist: list[str] = ["no", "false", "n", "f", "0"]
+
+    if instr.lower() in yeslist:
+        return True
+    elif instr.lower() in nolist:
+        return False
+
+    return None
 
 
 # Parse channel from message and put it into specified config
@@ -740,7 +757,7 @@ def format_duration(durationSeconds: Union[int, float]) -> str:
     rounded = round(fseconds, 1)
 
     # Basically removes a .0 if the number ends in .0
-    perfectround = int(rounded) if float(int(rounded)) == rounded else rounded
+    perfectround = int(rounded) if rounded.is_integer() else rounded
 
     return f"{perfectround} {base}{'s'*(perfectround!=1)}"
 
