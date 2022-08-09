@@ -222,29 +222,27 @@ def parse_boolean(instr: str) -> Union[bool, Literal[0]]:
     Returns 0 (a falsey) if data could not be parsed
     """
 
-    yeslist: list[str] = ["yes", "true", "y", "t", "1"]
-    nolist: list[str] = ["no", "false", "n", "f", "0"]
+    parsed = parse_boolean_strict(instr)
 
-    if instr.lower() in yeslist:
-        return True
-    elif instr.lower() in nolist:
-        return False
+    if parsed is None:
+        return 0
 
-    return 0
+    return parsed
 
 
-def parse_boolean_strict(instr: str, /) -> Optional[bool]:
+def parse_boolean_strict(s: str, /) -> Optional[bool]:
     """
     Parse a boolean from preset true|false values
     Returns None (a falsey) if data could not be parsed
+    If s is None this function will propagate None
     """
 
-    yeslist: list[str] = ["yes", "true", "y", "t", "1"]
-    nolist: list[str] = ["no", "false", "n", "f", "0"]
+    yeslist: List[str] = ["yes", "true", "y", "t", "1"]
+    nolist: List[str] = ["no", "false", "n", "f", "0"]
 
-    if instr.lower() in yeslist:
+    if s.lower() in yeslist:
         return True
-    elif instr.lower() in nolist:
+    elif s.lower() in nolist:
         return False
 
     return None
