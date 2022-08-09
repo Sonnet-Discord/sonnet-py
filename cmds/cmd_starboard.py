@@ -22,7 +22,7 @@ import lib_starboard
 importlib.reload(lib_starboard)
 
 from lib_starboard import starboard_cache, build_starboard_embed
-from lib_parsers import parse_boolean, update_log_channel, parse_channel_message
+from lib_parsers import parse_boolean_strict, update_log_channel, parse_channel_message
 from lib_loaders import load_message_config
 from lib_db_obfuscator import db_hlapi
 import lib_constants as constants
@@ -57,10 +57,15 @@ async def set_starboard_use(message: discord.Message, args: List[str], client: d
         return 1
 
     if args:
-        gate = parse_boolean(args[0])
+        gate = parse_boolean_strict(args[0])
+
+        if gate is None:
+            await message.channel.send("ERROR: Could not parse bool value")
+            return 1
+
         with db_hlapi(message.guild.id) as database:
             database.add_config("starboard-enabled", str(int(gate)))
-            if kwargs["verbose"]: await message.channel.send(f"Set starboard enabled to {bool(gate)}")
+            if kwargs["verbose"]: await message.channel.send(f"Set starboard enabled to {gate}")
     else:
         mconf = load_message_config(message.guild.id, kwargs["ramfs"], datatypes=starboard_cache)
         gate = bool(int(mconf["starboard-enabled"]))
@@ -176,4 +181,4 @@ commands: Dict[str, Dict[str, Any]] = {
             },
     }
 
-version_info: str = "1.2.8"
+version_info: str = "1.2.14-DEV"

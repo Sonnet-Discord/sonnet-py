@@ -34,7 +34,7 @@ importlib.reload(lib_sonnetcommands)
 from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean
+from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean_strict
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
@@ -372,7 +372,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     unmute_user: bool
 
     with db_hlapi(message.guild.id) as db:
-        if parse_boolean(db.grab_config("unmute-on-ban") or "0") and db.is_muted(userid=user.id):
+        if parse_boolean_strict(db.grab_config("unmute-on-ban") or "0") and db.is_muted(userid=user.id):
             unmute_user = True
             db.unmute_user(userid=user.id)
         else:

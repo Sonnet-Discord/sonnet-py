@@ -47,7 +47,7 @@ import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import embed_colors, load_embed_color
-from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
+from lib_parsers import (parse_boolean_strict, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 from lib_tparse import Parser
@@ -138,7 +138,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
-        viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
+        viewinfs = parse_boolean_strict(db.grab_config("member-view-infractions") or "0")
         moderator = await parse_permissions(message, ctx.conf_cache, "moderator", verbose=False)
         if moderator or (viewinfs and user.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
