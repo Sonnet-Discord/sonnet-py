@@ -218,9 +218,12 @@ def parse_skip_message(Client: discord.Client, message: discord.Message, *, allo
 # Parse a boolean datatype from a string
 def parse_boolean(instr: str) -> Union[bool, Literal[0]]:
     """
+    Deprecated: use parse_boolean_strict
     Parse a boolean from preset true|false values
     Returns 0 (a falsey) if data could not be parsed
     """
+
+    warnings.warn("parse_boolean is a deprecated function, use parse_boolean_strict instead", DeprecationWarning)
 
     parsed = parse_boolean_strict(instr)
 
