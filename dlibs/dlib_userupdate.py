@@ -28,7 +28,7 @@ import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import (discord_datetime_now, has_default_avatar, user_avatar_url)
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
-from lib_parsers import parse_boolean
+from lib_parsers import parse_boolean_strict
 
 
 async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed) -> None:
@@ -175,7 +175,7 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
     log_channels = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_leave_user_logs)
 
     # Try for leave-log, default to join-log if leave-log-is-join-log is set
-    if joinlog := (log_channels["leave-log"] or (log_channels["join-log"] if parse_boolean(log_channels["leave-log-is-join-log"]) else None)):
+    if joinlog := (log_channels["leave-log"] or (log_channels["join-log"] if parse_boolean_strict(log_channels["leave-log-is-join-log"]) else None)):
         if logging_channel := kargs["client"].get_channel(int(joinlog)):
 
             # Only run if in a TextChannel

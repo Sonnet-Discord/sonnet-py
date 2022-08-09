@@ -36,7 +36,7 @@ importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field, parse_boolean
+from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field, parse_boolean_strict
 from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
@@ -215,7 +215,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
     db_configs = load_message_config(message.guild.id, kctx.ramfs, datatypes=message_and_edit_logs)
 
-    message_log_str: Final[Optional[str]] = db_configs["message-edit-log"] or (db_configs["message-log"] if parse_boolean(db_configs["edit-log-is-message-log"]) else None)
+    message_log_str: Final[Optional[str]] = db_configs["message-edit-log"] or (db_configs["message-log"] if parse_boolean_strict(db_configs["edit-log-is-message-log"]) else None)
     msgtofile_behavior: Final = message_file_log_behavior(db_configs["message-to-file-behavior"])
 
     # Skip logging if message is the same or mlog doesn't exist
