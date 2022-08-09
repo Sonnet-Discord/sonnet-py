@@ -25,7 +25,7 @@ import lib_constants
 
 importlib.reload(lib_constants)
 
-from lib_parsers import parse_boolean, update_log_channel, parse_role, paginate_noexcept
+from lib_parsers import parse_boolean_strict, update_log_channel, parse_role, paginate_noexcept
 from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import BOT_NAME
@@ -50,9 +50,9 @@ async def boolean_to_db_helper(message: discord.Message, args: List[str], db_nam
 
     if args:
 
-        pb = parse_boolean(args[0])
+        pb = parse_boolean_strict(args[0])
 
-        if pb == 0:
+        if pb is None:
 
             if args[0] in ["rm", "remove"]:
 
