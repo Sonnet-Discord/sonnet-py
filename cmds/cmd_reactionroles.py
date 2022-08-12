@@ -20,7 +20,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_channel_message
 from lib_loaders import load_embed_color, embed_colors
 
-from typing import List, Any, Final
+from typing import List, Any, Final, Dict, Union
 
 # This is imposed due to the projected database failure beyond ~1500 reactionroles (due to a 65k char limit on configs)
 # This may be increased if predictions are improved or the db is upgraded
@@ -31,7 +31,13 @@ class InvalidEmoji(Exception):
     __slots__ = ()
 
 
-async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Client) -> str:
+# NOTE(ultrabear): reactionrole data used to be stored in the form Dict[str(message_id), Dict[str(unicode or emoji str), role_id]]
+# it is now stored in the form Dict[str(message_id), Dict[str(unicode or emoji_id), role_id]]
+# to maintain backwards compatibility the remove_reactionroles function still attempts to remove the string format, and the dlib module will still attempt to load emoji str repr
+# but the add functions will only use the new format
+
+
+async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Client) -> Union[str, discord.Emoji]:
 
     if len(pEmoji) <= 5:
         return pEmoji
@@ -49,7 +55,7 @@ async def valid_emoji(message: discord.Message, pEmoji: str, client: discord.Cli
             await message.channel.send("ERROR: Emoji does not exist in scope")
             raise InvalidEmoji
 
-        return str(emoji)
+        return emoji
 
 
 class RindexFailure(Exception):
@@ -114,7 +120,7 @@ async def add_reactionroles(message: discord.Message, args: List[str], client: d
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
+        reactionroles: Dict[str, Dict[str, int]] = json.loads(db.grab_config("reaction-role-data") or "{}")
 
     rrcount = sum(len(v) for _, v in reactionroles.items())
 
@@ -122,11 +128,12 @@ async def add_reactionroles(message: discord.Message, args: List[str], client: d
         await message.channel.send("ERROR: Reached sanity limit of {REACTIONROLE_SANITY_LIMIT} total reactionroles, if you wish to add more then remove others")
         return 1
 
-    if str(rr_message.id) in reactionroles:
-        reactionroles[str(rr_message.id)][emoji] = role.id
-    else:
+    if str(rr_message.id) not in reactionroles:
         reactionroles[str(rr_message.id)] = {}
-        reactionroles[str(rr_message.id)][emoji] = role.id
+
+    # overload cond, because we store a different format for the same role potentially you can have 2 roles from one emoji,
+    # this is a bug that can be mitigated by using remove_reactionroles for the emoji and resetting it to only one role
+    reactionroles[str(rr_message.id)][emoji if isinstance(emoji, str) else str(emoji.id)] = role.id
 
     with db_hlapi(message.guild.id) as db:
         db.add_config("reaction-role-data", json.dumps(reactionroles))
@@ -155,17 +162,28 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        reactionroles: Any = db.grab_config("reaction-role-data")
+        reactionroles_raw = db.grab_config("reaction-role-data")
 
-    if not reactionroles:
+    if not reactionroles_raw:
         await message.channel.send("ERROR: This guild has no reactionroles")
         return 1
 
-    reactionroles = json.loads(reactionroles)
+    reactionroles: Dict[str, Dict[str, int]] = json.loads(reactionroles_raw)
 
     if str(rr_message.id) in reactionroles:
-        if emoji in reactionroles[str(rr_message.id)]:
-            del reactionroles[str(rr_message.id)][emoji]
+        if str(emoji) in reactionroles[str(rr_message.id)]:
+            del reactionroles[str(rr_message.id)][str(emoji)]
+        elif isinstance(emoji, discord.Emoji) and any(i in reactionroles[str(rr_message.id)] for i in (str(emoji.id), str(emoji))):
+            try:
+                # try deleting old repr
+                del reactionroles[str(rr_message.id)][str(emoji)]
+            except KeyError:
+                pass
+            try:
+                # try deleting new repr
+                del reactionroles[str(rr_message.id)][str(emoji.id)]
+            except KeyError:
+                pass
         else:
             await message.channel.send(f"ERROR: This message does not have {emoji} reactionrole on it")
             return 1
@@ -220,7 +238,7 @@ async def addmany_reactionroles(message: discord.Message, args: List[str], clien
     args = args[nargs:]
 
     with db_hlapi(message.guild.id) as db:
-        reactionroles = json.loads(db.grab_config("reaction-role-data") or "{}")
+        reactionroles: Dict[str, Dict[str, int]] = json.loads(db.grab_config("reaction-role-data") or "{}")
 
     for i in range(len(args) // 2):
         try:
@@ -230,11 +248,10 @@ async def addmany_reactionroles(message: discord.Message, args: List[str], clien
         except (InvalidEmoji, NoRoleError, RindexFailure):
             return 1
 
-        if str(rr_message.id) in reactionroles:
-            reactionroles[str(rr_message.id)][emoji] = role.id
-        else:
+        if str(rr_message.id) not in reactionroles:
             reactionroles[str(rr_message.id)] = {}
-            reactionroles[str(rr_message.id)][emoji] = role.id
+
+        reactionroles[str(rr_message.id)][emoji if isinstance(emoji, str) else str(emoji.id)] = role.id
 
     with db_hlapi(message.guild.id) as db:
         db.add_config("reaction-role-data", json.dumps(reactionroles))
@@ -256,13 +273,13 @@ async def rr_purge(message: discord.Message, args: List[str], client: discord.Cl
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        reactionroles: Any = db.grab_config("reaction-role-data")
+        reactionroles_raw = db.grab_config("reaction-role-data")
 
-    if not reactionroles:
+    if not reactionroles_raw:
         await message.channel.send("ERROR: This guild has no reactionroles")
         return 1
 
-    reactionroles = json.loads(reactionroles)
+    reactionroles: Dict[str, Dict[str, int]] = json.loads(reactionroles_raw)
 
     if str(message_id) in reactionroles:
         del reactionroles[str(message_id)]
@@ -329,4 +346,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.14-DEV"
