@@ -372,7 +372,11 @@ async def download_file(nfile: discord.Attachment, compression: Any, encryption:
     compression.close()
     encryption.close()
 
-    await asyncio.sleep(60 * 30)
+    # Keep message files in cache for 60 minutes, or 1 hour
+    # This was previously 30 minutes as it was seen as an average response time,
+    # but has been raised to account for some edge case poor response times from moderators
+    # This did not show significant disk use at 30 minutes, so double that time should be fine
+    await asyncio.sleep(60 * 60)
 
     try:
         os.remove(filename)
