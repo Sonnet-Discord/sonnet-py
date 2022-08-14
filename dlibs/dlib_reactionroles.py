@@ -57,8 +57,12 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent, **kargs: 
 
     inc_statistics_better(payload.guild_id, "on-raw-reaction-add", kargs["kernel_ramfs"])
 
-    client = kargs["client"]
+    client: discord.Client = kargs["client"]
     rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs["ramfs"], datatypes=reactionrole_types)["reaction-role-data"]
+
+    # do not give reactionroles to self
+    if payload.user_id == client.user.id:
+        return
 
     if rrconf:
         opt = await get_role_from_emojiname(payload, client, rrconf)

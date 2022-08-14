@@ -4,7 +4,7 @@
 import importlib
 
 import discord
-import json, io
+import json, io, asyncio
 
 import lib_db_obfuscator
 
@@ -17,7 +17,7 @@ import lib_loaders
 importlib.reload(lib_loaders)
 
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_channel_message
+from lib_parsers import parse_channel_message_noexcept
 from lib_loaders import load_embed_color, embed_colors
 
 from typing import List, Any, Final, Dict, Union
@@ -101,10 +101,7 @@ async def add_reactionroles(message: discord.Message, args: List[str], client: d
     if not message.guild:
         return 1
 
-    try:
-        rr_message, nargs = await parse_channel_message(message, args, client)
-    except lib_parsers.errors.message_parse_failure:
-        return 1
+    rr_message, nargs = await parse_channel_message_noexcept(message, args, client)
 
     args = args[nargs:]
 
@@ -138,6 +135,8 @@ async def add_reactionroles(message: discord.Message, args: List[str], client: d
     with db_hlapi(message.guild.id) as db:
         db.add_config("reaction-role-data", json.dumps(reactionroles))
 
+    await try_add_reaction(rr_message, emoji)
+
     if kwargs["verbose"]: await message.channel.send(f"Added reactionrole to message id {rr_message.id}: {emoji}:{role.mention}", allowed_mentions=discord.AllowedMentions.none())
 
 
@@ -145,10 +144,7 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
     if not message.guild:
         return 1
 
-    try:
-        rr_message, nargs = await parse_channel_message(message, args, client)
-    except lib_parsers.errors.message_parse_failure:
-        return 1
+    rr_message, nargs = await parse_channel_message_noexcept(message, args, client)
 
     args = args[nargs:]
 
@@ -197,6 +193,14 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
     if kwargs["verbose"]: await message.channel.send(f"Removed reactionrole {emoji} from message id {rr_message.id}")
 
 
+async def try_add_reaction(message: discord.Message, emoji: Union[discord.Emoji, str]) -> None:
+    try:
+        await message.add_reaction(emoji)
+    except discord.errors.Forbidden:
+        # raise non permission errors
+        pass
+
+
 async def list_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
@@ -230,10 +234,10 @@ async def addmany_reactionroles(message: discord.Message, args: List[str], clien
     if not message.guild:
         return 1
 
-    try:
-        rr_message, nargs = await parse_channel_message(message, args, client)
-    except lib_parsers.errors.message_parse_failure:
-        return 1
+    rr_message: discord.Message
+    nargs: int
+
+    rr_message, nargs = await parse_channel_message_noexcept(message, args, client)
 
     args = args[nargs:]
 
@@ -252,6 +256,8 @@ async def addmany_reactionroles(message: discord.Message, args: List[str], clien
             reactionroles[str(rr_message.id)] = {}
 
         reactionroles[str(rr_message.id)][emoji if isinstance(emoji, str) else str(emoji.id)] = role.id
+
+        asyncio.create_task(try_add_reaction(rr_message, emoji))
 
     with db_hlapi(message.guild.id) as db:
         db.add_config("reaction-role-data", json.dumps(reactionroles))
