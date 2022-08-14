@@ -97,6 +97,22 @@ async def get_exact_role(message: discord.Message, rolestr: str) -> discord.Role
     return role
 
 
+async def try_add_reaction(message: discord.Message, emoji: Union[discord.Emoji, str]) -> None:
+    try:
+        await message.add_reaction(emoji)
+    except discord.errors.Forbidden:
+        # raise non permission errors
+        pass
+
+
+async def try_remove_reaction(me: discord.Client, message: discord.Message, emoji: Union[discord.Emoji, str]) -> None:
+    try:
+        await message.remove_reaction(emoji, me.user)
+    except discord.errors.Forbidden:
+        # raise non permission errors
+        pass
+
+
 async def add_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
     if not message.guild:
         return 1
@@ -183,6 +199,9 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
         else:
             await message.channel.send(f"ERROR: This message does not have {emoji} reactionrole on it")
             return 1
+
+        await try_remove_reaction(client, rr_message, emoji)
+
     else:
         await message.channel.send("ERROR: This message has no reactionroles on it")
         return 1
@@ -191,14 +210,6 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
         db.add_config("reaction-role-data", json.dumps(reactionroles))
 
     if kwargs["verbose"]: await message.channel.send(f"Removed reactionrole {emoji} from message id {rr_message.id}")
-
-
-async def try_add_reaction(message: discord.Message, emoji: Union[discord.Emoji, str]) -> None:
-    try:
-        await message.add_reaction(emoji)
-    except discord.errors.Forbidden:
-        # raise non permission errors
-        pass
 
 
 async def list_reactionroles(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
