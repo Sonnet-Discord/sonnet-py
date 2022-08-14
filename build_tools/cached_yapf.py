@@ -161,7 +161,7 @@ async def run_yapf_async(mode: Literal["diff", "inplace"], files: List[str]) -> 
     return [await task for task in tasks]
 
 
-def run_yapf_once(mode: Literal["diff", "inplace"], files: List[str]) -> subprocess.CompletedProcess[bytes]:
+def run_yapf_once(mode: Literal["diff", "inplace"], files: List[str]) -> "subprocess.CompletedProcess[bytes]":
     """
     Runs one yapf instance over a list of files, providing one ProcessedData instance to represent its output and return code
     """
