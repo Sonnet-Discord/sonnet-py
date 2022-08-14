@@ -169,6 +169,11 @@ async def remove_reactionroles(message: discord.Message, args: List[str], client
         else:
             await message.channel.send(f"ERROR: This message does not have {emoji} reactionrole on it")
             return 1
+
+        # cleanup fragments from json store
+        if len(reactionroles[str(rr_message.id)]) == 0:
+            del reactionroles[str(rr_message.id)]
+
     else:
         await message.channel.send("ERROR: This message has no reactionroles on it")
         return 1
@@ -190,9 +195,11 @@ async def list_reactionroles(message: discord.Message, args: List[str], client: 
 
     if data:
 
-        if len(data) <= 25:
-            for i in data:
-                reactionrole_embed.add_field(name=i, value="\n".join([f"{emoji}: <@&{data[i][emoji]}>" for emoji in data[i]]))
+        items = list(filter(lambda kv: len(kv[3]), data.items()))
+
+        if len(items) <= 20:
+            for k, v in items:
+                reactionrole_embed.add_field(name=k, value="\n".join([f"{emoji}: <@&{v[emoji]}>" for emoji in v]))
 
             await message.channel.send(embed=reactionrole_embed)
 
@@ -329,4 +336,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.13-2"
