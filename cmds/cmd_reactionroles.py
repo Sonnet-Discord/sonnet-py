@@ -227,7 +227,7 @@ async def list_reactionroles(message: discord.Message, args: List[str], client: 
 
     if data:
 
-        items = list(filter(lambda kv: len(kv[3]), data.items()))
+        items = list(filter(lambda kv: len(kv[1]), data.items()))
 
         if len(items) <= 20:
             for k, v in items:
