@@ -225,9 +225,9 @@ async def list_reactionroles(message: discord.Message, args: List[str], client: 
 
     reactionrole_embed = discord.Embed(title=f"ReactionRoles in {message.guild}", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
 
-    if data:
+    items = list(filter(lambda kv: len(kv[1]), data.items()))
 
-        items = list(filter(lambda kv: len(kv[1]), data.items()))
+    if items:
 
         if len(items) <= 20:
             for k, v in items:
