@@ -165,7 +165,7 @@ class InfractionGenerationError(Exception):
 
 
 class InfractionInfo(NamedTuple):
-    memeber: Optional[discord.Member]
+    member: Optional[discord.Member]
     user: InterfacedUser
     reason: str
     infraction_id: str
