@@ -45,6 +45,9 @@ intents.reactions = True
 # Initialize Discord Client.
 Client = discord.Client(status=discord.Status.online, intents=intents)
 
+# Define development mode flag
+DEVELOPMENT_MODE = False
+
 
 # Define token encryption system "miniflip"
 class miniflip:
@@ -104,7 +107,7 @@ class ram_filesystem:
 
     def __init__(self) -> None:
         self.directory_table: Dict[str, "ram_filesystem"] = {}
-        self.data_table: Dict[str, Any] = {}
+        self.data_table: Dict[str, object] = {}
 
     def __enter__(self) -> "ram_filesystem":
         return self
@@ -119,6 +122,23 @@ class ram_filesystem:
             return []
 
         raise TypeError("No dirstr or dirlist passed")
+
+    def _get_directory(self, dir_path: List[str]) -> "ram_filesystem":
+        """
+        Gets a directory from a dir entry or raises FileNotFoundError
+        Expects last item in dir path is a directory
+        """
+
+        path: "ram_filesystem" = self
+
+        for item in dir_path:
+
+            try:
+                path = path.directory_table[item]
+            except KeyError:
+                raise FileNotFoundError(f"No such folder: {'/'.join(dir_path)}")
+
+        return path
 
     def mkdir(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
 
@@ -136,21 +156,22 @@ class ram_filesystem:
 
         return path
 
-    def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
+    def remove_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> "ram_filesystem":
+        """
+        Deletes provided file location, raises on error
+        """
 
         remove_item = self._parsedirlist(dirstr, dirlist)
 
-        path: "ram_filesystem" = self
-
-        for i, item in enumerate(remove_item):
+        if remove_item:
+            path = self._get_directory(remove_item[:-1])
 
             try:
-                if i < len(remove_item) - 1:
-                    path = path.directory_table[item]
-                else:
-                    del path.data_table[item]
+                del path.data_table[remove_item[-1]]
             except KeyError:
-                raise FileNotFoundError(f"No such filepath: {'/'.join(remove_item)}")
+                raise FileNotFoundError(f"No such file: {'/'.join(remove_item)}")
+        else:
+            raise FileNotFoundError("No file parameter passed")
 
         return path
 
@@ -158,17 +179,15 @@ class ram_filesystem:
 
         file_to_open = self._parsedirlist(dirstr, dirlist)
 
-        path: "ram_filesystem" = self
-
-        for i, item in enumerate(file_to_open):
+        if file_to_open:
+            path = self._get_directory(file_to_open[:-1])
 
             try:
-                if i < len(file_to_open) - 1:
-                    path = path.directory_table[item]
-                else:
-                    return path.data_table[item]
+                return path.data_table[file_to_open[-1]]
             except KeyError:
                 raise FileNotFoundError("No such filepath: {'/'.join(file_to_open)}")
+        else:
+            raise FileNotFoundError("No file parameter passed")
 
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Any]] = None, f_args: Optional[List[Any]] = None) -> Any:
 
@@ -210,31 +229,13 @@ class ram_filesystem:
 
     def ls(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Tuple[List[str], List[str]]:
 
-        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
-
-        path: "ram_filesystem" = self
-
-        for item in folderpath:
-
-            try:
-                path = path.directory_table[item]
-            except KeyError:
-                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+        path = self._get_directory(self._parsedirlist(dirstr, dirlist, allowNone=True))
 
         return list(path.data_table), list(path.directory_table)
 
     def tree(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
 
-        folderpath = self._parsedirlist(dirstr, dirlist, allowNone=True)
-
-        path: "ram_filesystem" = self
-
-        for item in folderpath:
-
-            try:
-                path = path.directory_table[item]
-            except KeyError:
-                raise FileNotFoundError(f"No such filepath: {'/'.join(folderpath)}")
+        path = self._get_directory(self._parsedirlist(dirstr, dirlist, allowNone=True))
 
         datamap: Tuple[List[str], Dict[str, Any]] = (list(path.data_table), {})
 
@@ -242,6 +243,31 @@ class ram_filesystem:
             datamap[1][folder] = path.directory_table[folder].tree()
 
         return datamap
+
+    def _dump_data(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None) -> Any:
+
+        path = self._get_directory(self._parsedirlist(dirstr, dirlist, True))
+
+        try:
+            filelist: List[Tuple[str, str, object]] = []
+
+            for f in path.data_table:
+                # pretty print binary files
+                if isinstance(v := path.data_table[f], io.BytesIO):
+                    v.seek(0)
+                    filelist.append((f, type(path.data_table[f]).__name__, v.read()), )
+                else:
+                    filelist.append((f, type(path.data_table[f]).__name__, (path.data_table[f])), )
+
+            datamap: Tuple[List[Any], Dict[str, Any]] = (filelist, {})
+
+            for folder in path.directory_table:
+                datamap[1][folder] = path.directory_table[folder]._dump_data()
+
+            return datamap
+
+        except KeyError:
+            raise FileNotFoundError("Filepath does not exist")
 
 
 # Import blacklist
@@ -288,8 +314,20 @@ else:
     BOT_OWNER = []
 
 
+def log_kernel_info(s: object) -> None:
+    """
+    Logs kernel messages to stdout and the info logger
+    """
+
+    now_t = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    print(f"{now_t}: {s}")
+
+    logger.info(f"{version_info}: {s}")
+
+
 def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
-    print("Loading Kernel Modules")
+    log_kernel_info("Loading Kernel Modules")
+    start_load_modules = time.monotonic()
     # Globalize variables
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
     command_modules = []
@@ -327,28 +365,34 @@ def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, Lis
         except AttributeError:
             err.append((KernelSyntaxError("Missing commands"), module.__name__), )
 
+    log_kernel_info(f"Loaded Kernel Modules in {(time.monotonic()-start_load_modules)*1000:.1f}ms")
+
     if err: return ("\n".join([f"Error importing {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
     else: return None
 
 
 def regenerate_ramfs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info("Regenerating ramfs")
     global ramfs
     ramfs = ram_filesystem()
     return None
 
 
 def regenerate_kernel_ramfs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info("Regenerating kernel ramfs")
     global kernel_ramfs
     kernel_ramfs = ram_filesystem()
     return None
 
 
 def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
-    print("Reloading Kernel Modules")
+    log_kernel_info("Reloading Kernel Modules")
     # Init vars
     global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
     command_modules_dict = {}
     dynamiclib_modules_dict = {}
+
+    start_reload_modules = time.monotonic()
 
     # Init ret state
     err = []
@@ -380,11 +424,14 @@ def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, L
     # Regen tempramfs
     regenerate_ramfs()
 
+    log_kernel_info(f"Reloaded Kernel Modules in {(time.monotonic()-start_reload_modules)*1000:.1f}ms")
+
     if err: return ("\n".join([f"Error reimporting {i[1]}: {type(i[0]).__name__}: {i[0]}" for i in err]), [i[0] for i in err])
     else: return None
 
 
 def kernel_blacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info(f"Attempting to blacklist guild with args {args}")
 
     try:
         blacklist["guild"].append(int(args[0]))
@@ -398,6 +445,7 @@ def kernel_blacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[Exc
 
 
 def kernel_blacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info(f"Attempting to blacklist user with args {args}")
 
     try:
         blacklist["user"].append(int(args[0]))
@@ -411,6 +459,7 @@ def kernel_blacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Exce
 
 
 def kernel_unblacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info(f"Attempting to unblacklist guild with args {args}")
 
     try:
         if int(args[0]) in blacklist["guild"]:
@@ -427,6 +476,7 @@ def kernel_unblacklist_guild(args: List[str] = []) -> Optional[Tuple[str, List[E
 
 
 def kernel_unblacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info(f"Attempting to unblacklist user with args {args}")
 
     try:
         if int(args[0]) in blacklist["user"]:
@@ -443,11 +493,13 @@ def kernel_unblacklist_user(args: List[str] = []) -> Optional[Tuple[str, List[Ex
 
 
 def kernel_logout(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info("Logging out of discord client session")
     asyncio.create_task(Client.close())
     return None
 
 
 def kernel_drop_dlibs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info("Dropping dynamiclib modules")
     global dynamiclib_modules, dynamiclib_modules_dict
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
@@ -455,6 +507,7 @@ def kernel_drop_dlibs(args: List[str] = []) -> Optional[Tuple[str, List[Exceptio
 
 
 def kernel_drop_cmds(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
+    log_kernel_info("Dropping command modules")
     global command_modules, command_modules_dict
     command_modules = []
     command_modules_dict = {}
@@ -462,12 +515,17 @@ def kernel_drop_cmds(args: List[str] = []) -> Optional[Tuple[str, List[Exception
 
 
 def logging_toggle(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
-    if logger.isEnabledFor(10):
-        logger.setLevel(20)
-        return "Logging at L20", []
+
+    is_debug = logger.isEnabledFor(logging.DEBUG)
+
+    log_kernel_info(f"Swapping log visibility to {'INFO' if is_debug else 'DEBUG'}")
+
+    if is_debug:
+        logger.setLevel(logging.INFO)
+        return "Logging at L20 (INFO)", []
     else:
-        logger.setLevel(10)
-        return "Logging at L10", []
+        logger.setLevel(logging.DEBUG)
+        return "Logging at L10 (DEBUG)", []
 
 
 class DebugCallable(Protocol):
@@ -476,19 +534,20 @@ class DebugCallable(Protocol):
 
 
 # Generate debug command subset
-debug_commands: Dict[str, DebugCallable] = {}
-debug_commands["debug-add-guild-blacklist"] = kernel_blacklist_guild
-debug_commands["debug-add-user-blacklist"] = kernel_blacklist_user
-debug_commands["debug-remove-guild-blacklist"] = kernel_unblacklist_guild
-debug_commands["debug-remove-user-blacklist"] = kernel_unblacklist_user
-debug_commands["debug-modules-load"] = kernel_load_command_modules
-debug_commands["debug-modules-reload"] = kernel_reload_command_modules
-debug_commands["debug-logout-system"] = kernel_logout
-debug_commands["debug-drop-ramfs"] = regenerate_ramfs
-debug_commands["debug-drop-kramfs"] = regenerate_kernel_ramfs
-debug_commands["debug-drop-modules"] = kernel_drop_dlibs
-debug_commands["debug-drop-commands"] = kernel_drop_cmds
-debug_commands["debug-toggle-logging"] = logging_toggle
+debug_commands: Dict[str, DebugCallable] = {
+    "debug-add-guild-blacklist": kernel_blacklist_guild,
+    "debug-add-user-blacklist": kernel_blacklist_user,
+    "debug-remove-guild-blacklist": kernel_unblacklist_guild,
+    "debug-remove-user-blacklist": kernel_unblacklist_user,
+    "debug-modules-load": kernel_load_command_modules,
+    "debug-modules-reload": kernel_reload_command_modules,
+    "debug-logout-system": kernel_logout,
+    "debug-drop-ramfs": regenerate_ramfs,
+    "debug-drop-kramfs": regenerate_kernel_ramfs,
+    "debug-drop-modules": kernel_drop_dlibs,
+    "debug-drop-commands": kernel_drop_cmds,
+    "debug-toggle-logging": logging_toggle,
+    }
 
 
 # A object used to pass error messages from the kernel callers to the event handlers
@@ -499,12 +558,16 @@ class errtype:
 
         self.err = err
         owner: str = f"<@!{BOT_OWNER[0]}>" if BOT_OWNER else "BOT OWNER"
-        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nErr: `{type(err).__name__}: {err}`"
+        # truncate to 1k chars to clip message to reasonable length, this makes message print to discord even if it is oversize
+        # the alternative is messages too large not being accepted by discord and causing a error in kernel handling code
+        # full error message can be obtained from err.log/stderr so this should be fine
+        self.errmsg = f"FATAL ERROR in {argtype}\nPlease contact {owner}\nErr: `{type(err).__name__}: {err}`"[:1000]
 
-        traceback.print_exception(type(self.err), self.err, self.err.__traceback__)
+        log_kernel_info("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
+        # accept penalty of fopen syscall because errors should not be frequent and deleting/moving logs may be needed
         with open("err.log", "a+", encoding="utf-8") as logfile:
-            logfile.write(f"AT {time.strftime('%a, %d %b %Y %H:%M:%S', datetime.datetime.now(datetime.timezone.utc).utctimetuple())}:\n")
+            logfile.write(f"AT {datetime.datetime.now(datetime.timezone.utc).isoformat()}:\n")
             logfile.write("".join(traceback.format_exception(type(self.err), self.err, self.err.__traceback__)))
 
 
@@ -533,6 +596,10 @@ async def do_event(event: Any, args: Tuple[Any, ...]) -> None:
 
 
 async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
+    # TODO(ultrabear): refactor to use undefined dispatch loop (on-message-0 will not call after on-message/may call at same time etc, module dispatches automatically namespaced)
+
+    # used by dev mode
+    tstartexec = time.monotonic()
 
     etypes = []
 
@@ -571,6 +638,9 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
 
         call += 1
 
+    if DEVELOPMENT_MODE:
+        log_kernel_info(f"EVENT {argtype} : {round((time.monotonic()-tstartexec)*100000)/100}ms CC {call+1}")
+
     if etypes:
         return etypes[0]
     else:
@@ -599,7 +669,9 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
             await non_null_guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
         except discord.errors.Forbidden:
 
-            blacklist["guild"].append(guild_id)
+            # call kernel_blacklist_guild to add to json db, blacklist guild
+            # because it must be controlled by user that is blacklisted if there are no perms
+            kernel_blacklist_guild([str(guild_id)])
             try:
                 await non_null_guild.leave()
                 return False
@@ -629,7 +701,7 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
     return True
 
 
-async def sendable_send(sendable: Any, message: str) -> None:
+async def sendable_send(sendable: object, message: str) -> None:
     if isinstance(sendable, (discord.TextChannel, discord.DMChannel)):
         try:
             await sendable.send(message)
@@ -639,6 +711,7 @@ async def sendable_send(sendable: Any, message: str) -> None:
 
 @Client.event
 async def on_connect() -> None:
+    log_kernel_info(f"Connection to discord established {(time.monotonic()-kernel_start):.2f}s after boot")
     await event_call("on-connect")
 
 
@@ -845,13 +918,20 @@ def main(args: List[str]) -> int:
     parser.add_argument("--log-debug", action="store_true", help="makes the logging module start in debug mode")
     parser.add_argument("--generate-token", action="store_true", help="discards the current token file if there is one, and generates a new encrypted tokenfile")
     parser.add_argument("--version", "-v", action="store_true", help="print version info and exit")
+    parser.add_argument("--development", "--dev", action="store_true", help="enables development mode (prints event handling and dumps ramfs on exit), may cause performance issues")
     parsed = parser.parse_args()
+
+    global DEVELOPMENT_MODE
+    DEVELOPMENT_MODE = parsed.development
 
     if parsed.version:
         import platform
         pyver = f"{platform.python_implementation()} {platform.python_version()}"
         print(f"{version_info} @ {os.getcwd()}\n{pyver} @ {sys.executable}")
         return 0
+
+    if DEVELOPMENT_MODE:
+        print("Running in development mode (extra performance logging enabled)")
 
     # Set Loglevel
     loglevel = logging.DEBUG if parsed.log_debug else logging.INFO
@@ -892,6 +972,12 @@ def main(args: List[str]) -> int:
         print("You need a token set in SONNET_TOKEN or RHEA_TOKEN environment variables, or a encrypted token in .tokenfile, to use sonnet")
         return 1
 
+    if DEVELOPMENT_MODE:
+        print("Dumping ramfs:")
+        print(ramfs._dump_data())
+        print("Dumping kramfs:")
+        print(kernel_ramfs._dump_data())
+
     # Clear cache at exit
     for i in glob.glob("datastore/*.cache.db"):
         os.remove(i)
@@ -902,7 +988,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.12"
+version_info: str = "LeXdPyK 1.4.15"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":

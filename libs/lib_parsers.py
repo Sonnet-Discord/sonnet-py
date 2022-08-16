@@ -28,7 +28,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
 
-from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload
+from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload, cast
 import lib_lexdpyk_h as lexdpyk
 
 # Import re here to trick type checker into using re stubs even if importlib grabs re2, they (should) have the same stubs
@@ -155,7 +155,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
             infraction_type.append(f"WordInWord({i})")
 
     # Check message against REGEXP blacklist
-    regex_blacklist: List["re.Pattern[str]"] = blacklist["regex-blacklist"]
+    regex_blacklist = cast(List["re.Pattern[str]"], blacklist["regex-blacklist"])
     for r in regex_blacklist:
         try:
             if broke := r.findall(LowerCaseContent):
@@ -165,7 +165,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
             pass  # GC for old regex
 
     # Check message against REGEXP notifier list
-    regex_notifier: List["re.Pattern[str]"] = blacklist["regex-notifier"]
+    regex_notifier = cast(List["re.Pattern[str]"], blacklist["regex-notifier"])
     for r in regex_notifier:
         if r.findall(LowerCaseContent):
             notifier = True
@@ -180,7 +180,7 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
                     infraction_type.append(f"FileType({a})")
 
     # Check url blacklist
-    url_blacklist: Optional["re.Pattern[str]"] = blacklist["url-blacklist_regex"]
+    url_blacklist = cast(Optional["re.Pattern[str]"], blacklist["url-blacklist_regex"])
     if url_blacklist is not None:
         if broke := url_blacklist.findall(LowerCaseContent):
             broke_blacklist = True
@@ -190,22 +190,25 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
 
 
 # Parse if we skip a message due to X reasons
-def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool:
+def parse_skip_message(Client: discord.Client, message: discord.Message, *, allow_bots: bool = False) -> bool:
     """
-    Parse to skip a message based on the author being a bot, itself, or not in a guild
+    Parse to skip a message based on the author being a bot, itself, or not in a guild.
+    The additional allow_bots flag will remove checking if the user is a bot if it is set to True
 
     :returns: bool -- Whether or not to skip the message, True being to skip
     """
 
     # Make sure we don't start a feedback loop.
-    if message.author == Client.user:
+    if message.author.id == Client.user.id:
         return True
 
-    # Ignore message if author is a bot
-    if message.author.bot:
-        return True
+    # only check if we are not allowing bots
+    if not allow_bots:
+        # Ignore message if author is a bot
+        if message.author.bot:
+            return True
 
-    # Ignore dmmessage
+    # Ignore messages that do not originate from a guild
     if not message.guild:
         return True
 
@@ -213,21 +216,38 @@ def parse_skip_message(Client: discord.Client, message: discord.Message) -> bool
 
 
 # Parse a boolean datatype from a string
-def parse_boolean(instr: str) -> Union[bool, int]:
+def parse_boolean(instr: str) -> Union[bool, Literal[0]]:
     """
+    Deprecated: use parse_boolean_strict
     Parse a boolean from preset true|false values
     Returns 0 (a falsey) if data could not be parsed
     """
 
-    yeslist: list[str] = ["yes", "true", "y", "t", "1"]
-    nolist: list[str] = ["no", "false", "n", "f", "0"]
+    warnings.warn("parse_boolean is a deprecated function, use parse_boolean_strict instead", DeprecationWarning)
 
-    if instr.lower() in yeslist:
+    parsed = parse_boolean_strict(instr)
+
+    if parsed is None:
+        return 0
+
+    return parsed
+
+
+def parse_boolean_strict(s: str, /) -> Optional[bool]:
+    """
+    Parse a boolean from preset true|false values
+    Returns None (a falsey) if data could not be parsed
+    """
+
+    yeslist: List[str] = ["yes", "true", "y", "t", "1"]
+    nolist: List[str] = ["no", "false", "n", "f", "0"]
+
+    if s.lower() in yeslist:
         return True
-    elif instr.lower() in nolist:
+    elif s.lower() in nolist:
         return False
 
-    return 0
+    return None
 
 
 # Parse channel from message and put it into specified config
@@ -400,16 +420,19 @@ def grab_files(guild_id: int, message_id: int, ramfs: lexdpyk.ram_filesystem, de
 
             try:
 
-                loc: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                loc = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/pointer")
+                assert isinstance(loc, io.BytesIO)
                 loc.seek(0)
                 pointer = loc.read()
 
-                keys: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                keys = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/key")
+                assert isinstance(keys, io.BytesIO)
                 keys.seek(0)
                 key = keys.read(32)
                 iv = keys.read(16)
 
-                name: io.BytesIO = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                name = ramfs.read_f(f"{guild_id}/files/{message_id}/{i}/name")
+                assert isinstance(name, io.BytesIO)
                 name.seek(0)
                 fname = name.read().decode("utf8")
 
@@ -734,7 +757,7 @@ def format_duration(durationSeconds: Union[int, float]) -> str:
     rounded = round(fseconds, 1)
 
     # Basically removes a .0 if the number ends in .0
-    perfectround = int(rounded) if float(int(rounded)) == rounded else rounded
+    perfectround = int(rounded) if rounded.is_integer() else rounded
 
     return f"{perfectround} {base}{'s'*(perfectround!=1)}"
 

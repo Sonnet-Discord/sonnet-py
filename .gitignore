@@ -1,5 +1,6 @@
-# Get rid of Python caching.
+# Get rid of caching.
 __pycache__
+.cached_yapf
 
 # Remove all DB stuff.
 *.db

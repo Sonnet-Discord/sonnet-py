@@ -291,7 +291,7 @@ class Duration(int):
 
     def clock(self) -> Clock:
         """
-        Returns duration as a Clock representation
+        Returns duration as a Clock representation with overflowing hours
         """
 
         nanos = self.nanos()

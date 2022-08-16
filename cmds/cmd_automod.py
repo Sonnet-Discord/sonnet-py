@@ -26,7 +26,7 @@ importlib.reload(lib_sonnetcommands)
 from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import REGEX_VERSION
-from lib_parsers import parse_role, parse_boolean, parse_user_member, format_duration
+from lib_parsers import parse_role, parse_boolean_strict, parse_user_member, format_duration
 from lib_sonnetcommands import CommandCtx
 
 from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional, Literal
@@ -521,9 +521,16 @@ class joinrules:
         cnf_name: Final[str] = "notifier-log-defaultpfp"
 
         if args:
+
+            res = parse_boolean_strict(args[0])
+
+            if res is None:
+                await self.m.channel.send("ERROR: Passed bool could not be parsed")
+                return 1
+
             with db_hlapi(self.guild.id) as db:
-                db.add_config(cnf_name, str(true := int(parse_boolean(args[0]))))
-            await self.m.channel.send(f"Updated defaultpfp checking to {bool(true)}")
+                db.add_config(cnf_name, str(int(res)))
+            await self.m.channel.send(f"Updated defaultpfp checking to {res}")
         else:
             with db_hlapi(self.guild.id) as db:
                 await self.m.channel.send(f"Defaultpfp checking is set to {bool(int(db.grab_config(cnf_name) or 0))}")
@@ -690,4 +697,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.13"
+version_info: str = "1.2.14"

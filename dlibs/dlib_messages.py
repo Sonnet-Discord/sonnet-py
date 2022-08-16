@@ -4,6 +4,7 @@
 import importlib
 
 import time, asyncio, os, hashlib, string, io, gzip
+import warnings
 import copy as pycopy
 
 import discord, lz4.frame
@@ -34,17 +35,17 @@ import lib_sonnetcommands
 importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics_better, read_vnum, write_vnum, load_embed_color, embed_colors, datetime_now
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field
+from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
+from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field, parse_boolean_strict
 from lib_encryption_wrapper import encrypted_writer
-from lib_compatibility import user_avatar_url, discord_datetime_now
-from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx
+from lib_compatibility import user_avatar_url
+from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
-ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]=")
+ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]= ")
 
 
 async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
@@ -81,9 +82,15 @@ def decide_to_file(msg: discord.Message, filename: str, behavior: Literal["none"
     return None
 
 
-def message_file_log_behavior(db: db_hlapi) -> Literal["text", "none", "gzip"]:
+message_and_edit_logs: Dict[Union[str, int], Union[str, List[List[Any]]]] = {
+    0: "sonnet_message_and_edit_log",
+    "text": [["message-log", ""], ["message-edit-log", ""], ["message-to-file-behavior", "text"], ["edit-log-is-message-log", "1"]]
+    }
+
+
+def message_file_log_behavior(conf: Optional[str]) -> Literal["text", "none", "gzip"]:
     # file log state
-    tmp: Final = db.grab_config("message-to-file-behavior") or "text"
+    tmp: Final = conf or "text"
     # Statically assert comparisons because mypy hates me
     # (and hates promoting a Final[str] to a Final[Literal[V]] when Final[str] == V = True)
     # Seriously how is that not a feature
@@ -101,7 +108,7 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
     ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
 
     # Ignore bots
-    if parse_skip_message(client, message):
+    if parse_skip_message(client, message, allow_bots=True):
         return
     elif not message.guild:
         return
@@ -117,10 +124,10 @@ async def on_message_delete(message: discord.Message, **kargs: Any) -> None:
 
     inc_statistics_better(message.guild.id, "on-message-delete", kernel_ramfs)
 
-    # Add to log
-    with db_hlapi(message.guild.id) as db:
-        message_log = db.grab_config("message-log")
-        behavior = message_file_log_behavior(db)
+    db_configs = load_message_config(message.guild.id, kargs["ramfs"], datatypes=message_and_edit_logs)
+
+    message_log: Optional[str] = db_configs["message-log"]
+    behavior: Final = message_file_log_behavior(db_configs["message-to-file-behavior"])
 
     try:
         if not (message_log and (log_channel := client.get_channel(int(message_log)))):
@@ -191,24 +198,25 @@ async def grab_an_adult(discord_message: discord.Message, guild: discord.Guild, 
         await catch_logging_error(notify_log, message_embed, fileobjs)
 
 
-async def on_message_edit(old_message: discord.Message, message: discord.Message, **kargs: Any) -> None:
+@lexdpyk.ToKernelArgs
+async def on_message_edit(old_message: discord.Message, message: discord.Message, kctx: lexdpyk.KernelArgs) -> None:
 
-    client: Final[discord.Client] = kargs["client"]
-    ramfs: Final[lexdpyk.ram_filesystem] = kargs["ramfs"]
-    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kargs["kernel_ramfs"]
+    client: Final[discord.Client] = kctx.client
+    ramfs: Final[lexdpyk.ram_filesystem] = kctx.ramfs
+    kernel_ramfs: Final[lexdpyk.ram_filesystem] = kctx.kernel_ramfs
 
     # Ignore bots
-    if parse_skip_message(client, message):
+    if parse_skip_message(client, message, allow_bots=True):
         return
     elif not message.guild:
         return
 
     inc_statistics_better(message.guild.id, "on-message-edit", kernel_ramfs)
 
-    # Add to log
-    with db_hlapi(message.guild.id) as db:
-        message_log_str: Final = db.grab_config("message-edit-log") or db.grab_config("message-log")
-        msgtofile_behavior: Final = message_file_log_behavior(db)
+    db_configs = load_message_config(message.guild.id, kctx.ramfs, datatypes=message_and_edit_logs)
+
+    message_log_str: Final[Optional[str]] = db_configs["message-edit-log"] or (db_configs["message-log"] if parse_boolean_strict(db_configs["edit-log-is-message-log"]) else None)
+    msgtofile_behavior: Final = message_file_log_behavior(db_configs["message-to-file-behavior"])
 
     # Skip logging if message is the same or mlog doesn't exist
     if message_log_str and not (old_message.content == message.content):
@@ -251,113 +259,109 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
         command_ctx: Final = CommandCtx(
             stats={},
-            cmds=kargs["command_modules"][0],
+            cmds=kctx.command_modules[0],
             ramfs=ramfs,
-            bot_start=kargs["bot_start"],
-            dlibs=kargs["dynamiclib_modules"][0],
-            main_version=kargs["kernel_version"],
+            bot_start=kctx.bot_start,
+            dlibs=kctx.dynamiclib_modules[0],
+            main_version=kctx.kernel_version,
             kernel_ramfs=kernel_ramfs,
             conf_cache={},
             verbose=False,
-            cmds_dict=kargs["command_modules"][1],
+            cmds_dict=kctx.command_modules[1],
             automod=True
             )
 
         asyncio.create_task(attempt_message_delete(message))
         execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await CallCtx(kargs["command_modules"][1][mconf["blacklist-action"]]['execute'])(message, execargs, client, command_ctx)
+        await warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx)
 
     if notify:
-        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kargs["ramfs"]))
+        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
 
 
-def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, str]:
+class BaseAntispamMeta(TypedDict):
+    name: str
+    message_count: int
+    lifetime_millis: int
+
+
+class FullAntispamMeta(BaseAntispamMeta, total=False):
+    char_count: int
+
+
+CharCount = NewType("CharCount", int)
+
+
+def breaches_char_count(total_char_count: int, scan: FullAntispamMeta) -> bool:
+    """
+    Returns True in cases where scan does not have a char_count attr
+    """
+    if "char_count" in scan:
+        return total_char_count > scan["char_count"]
+
+    return True
+
+
+def test_single_antispam(message: discord.Message, scan: FullAntispamMeta, ramfs: lexdpyk.ram_filesystem) -> bool:
     if not message.guild:
-        raise RuntimeError("How did we end up here? Basically antispam_check was called on a dm message, oops")
+        raise RuntimeError("ERROR: antispam_check called on a non guild message")
 
     # Weird behavior(ultrabear): message.created_at.timestamp() returns unaware dt so we need to use datetime.utcnow for timestamps in antispam
     # Update(ultrabear): now that we use discord_datetime_now() we get an unaware dt or aware dt depending on dpy version
 
-    userid: Final[int] = message.author.id
-    sent_at: Final[float] = message.created_at.timestamp()
+    # We drop a item if it is older than this
+    #
+    # We use the created_at timestamp here because this is the most recent message, and antispam should be based on durations created from message timestamps
+    # If it was based on current polled time (previously it was) a lagspike could cause the bot to not trigger antispam on a set of messages where it should have
+    #
+    # We add one millisecond so that a lifetime of 0 will drop the current message
+    droptime = (round(message.created_at.timestamp() * 1000) - scan["lifetime_millis"]) + 1
 
-    # Base antispam
     try:
-
-        messagecount = int(antispam[0])
-        timecount = int(float(antispam[1]) * 1000)
-
-        messages = ramfs.read_f(f"{message.guild.id}/asam")
-        messages.seek(0, 2)
-        EOF = messages.tell()
-        messages.seek(0)
-        droptime = round(discord_datetime_now().timestamp() * 1000) - timecount
-        userlist = []
-        ismute = 1
-
-        # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
-        while EOF > messages.tell():
-            uid, mtime = [read_vnum(messages) for i in range(2)]
-            if mtime > droptime:
-                userlist.append([uid, mtime])
-                if uid == userid:
-                    ismute += 1
-
-        userlist.append([userid, round(sent_at * 1000)])
-        messages.seek(0)
-        for i in userlist:
-            for v in i:
-                write_vnum(messages, v)
-        messages.truncate()
-
-        if ismute >= messagecount:
-            return (True, "Antispam")
-
+        data_dir = cast(Dict[int, List[Tuple[int, CharCount]]], ramfs.read_f(f"{message.guild.id}/{scan['name']}"))
+        assert isinstance(data_dir, dict)
     except FileNotFoundError:
-        messages = ramfs.create_f(f"{message.guild.id}/asam")
-        write_vnum(messages, message.author.id)
-        write_vnum(messages, round(1000 * message.created_at.timestamp()))
+        data_dir = ramfs.create_f(f"{message.guild.id}/{scan['name']}", f_type=dict)
 
-    # Char antispam
-    try:
+    user_data = data_dir.get(message.author.id, [])
 
-        messagecount = int(charantispam[0])
-        timecount = int(float(charantispam[1]) * 1000)
-        charcount = int(charantispam[2])
+    # add current message
+    user_data.append((round(message.created_at.timestamp() * 1000), CharCount(len(message.content))), )
 
-        messages = ramfs.read_f(f"{message.guild.id}/casam")
-        messages.seek(0, 2)
-        EOF = messages.tell()
-        messages.seek(0)
-        droptime = round(discord_datetime_now().timestamp() * 1000) - timecount
-        userlist = []
-        ismute = 1
-        charc = 0
+    new_user_data = []
+    total_char_count = 0
 
-        # Parse though all messages, drop them if they are old, and add them to spamlist if uids match
-        while EOF > messages.tell():
-            uid, mtime, clen = [read_vnum(messages) for i in range(3)]
-            if mtime > droptime:
-                userlist.append([uid, mtime, clen])
-                if uid == userid:
-                    charc += clen
-                    ismute += 1
+    for (timestamp_millis, char_count) in user_data:
 
-        userlist.append([userid, round(sent_at * 1000), len(message.content)])
-        messages.seek(0)
-        for i in userlist:
-            for v in i:
-                write_vnum(messages, v)
-        messages.truncate()
+        if timestamp_millis > droptime:
+            total_char_count += char_count
+            new_user_data.append((timestamp_millis, char_count), )
 
-        if ismute >= messagecount and charc >= charcount:
-            return (True, "CharAntispam")
+    # load new data
+    data_dir[message.author.id] = new_user_data
 
-    except FileNotFoundError:
-        messages = ramfs.create_f(f"{message.guild.id}/casam")
-        write_vnum(messages, message.author.id)
-        write_vnum(messages, round(1000 * message.created_at.timestamp()))
-        write_vnum(messages, len(message.content))
+    return breaches_char_count(total_char_count, scan) and len(new_user_data) >= scan["message_count"]
+
+
+def antispam_check(message: discord.Message, ramfs: lexdpyk.ram_filesystem, antispam: List[str], charantispam: List[str]) -> Tuple[bool, Literal["", "Antispam", "CharAntispam"]]:
+
+    antispam_data: FullAntispamMeta = {
+        "name": "asam",
+        "message_count": int(antispam[0]),
+        "lifetime_millis": int(float(antispam[1]) * 1000),
+        }
+
+    char_antispam_data: FullAntispamMeta = {
+        "name": "casam",
+        "message_count": int(charantispam[0]),
+        "lifetime_millis": int(float(charantispam[1]) * 1000),
+        "char_count": int(charantispam[2]),
+        }
+
+    if test_single_antispam(message, antispam_data, ramfs):
+        return (True, "Antispam")
+    elif test_single_antispam(message, char_antispam_data, ramfs):
+        return (True, "CharAntispam")
 
     return (False, "")
 
@@ -368,7 +372,11 @@ async def download_file(nfile: discord.Attachment, compression: Any, encryption:
     compression.close()
     encryption.close()
 
-    await asyncio.sleep(60 * 30)
+    # Keep message files in cache for 60 minutes, or 1 hour
+    # This was previously 30 minutes as it was seen as an average response time,
+    # but has been raised to account for some edge case poor response times from moderators
+    # This did not show significant disk use at 30 minutes, so double that time should be fine
+    await asyncio.sleep(60 * 60)
 
     try:
         os.remove(filename)
@@ -410,6 +418,23 @@ async def log_message_files(message: discord.Message, kernel_ramfs: lexdpyk.ram_
         asyncio.create_task(download_file(i, compression_fileobj, encryption_fileobj, file_loc, kernel_ramfs, message.guild.id, message.id))
 
 
+def warn_missing(command_dict: Dict[str, Any], argument: str, /) -> ExecutableCtxT:
+    """
+    Attempts to grab a command, if it cannot it will send a warning to terminal that it is missing and return a null callback
+    """
+
+    try:
+        return CallCtx(command_dict[argument]["execute"])
+    except KeyError:
+
+        warnings.warn(f"WARN: Automod command {argument} was missing when it was queried")
+
+        async def dummy(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
+            return None
+
+        return dummy
+
+
 @lexdpyk.ToKernelArgs
 async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
 
@@ -421,7 +446,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     # Statistics.
     stats: Final[Dict[str, int]] = {"start": round(time.time() * 100000)}
 
-    if parse_skip_message(client, message):
+    if parse_skip_message(client, message, allow_bots=True):
         return
     elif not message.guild:
         return
@@ -464,7 +489,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(CallCtx(command_modules_dict[mconf["blacklist-action"]]['execute'])(message, execargs, client, automod_ctx))
+        asyncio.create_task(warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, automod_ctx))
 
     if spammer:
         message_deleted = True
@@ -472,7 +497,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(CallCtx(command_modules_dict["mute"]["execute"])(message, execargs, client, automod_ctx))
+                asyncio.create_task(warn_missing(command_modules_dict, "mute")(message, execargs, client, automod_ctx))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
@@ -482,6 +507,16 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     # Log files if not deleted
     if not message_deleted:
         asyncio.create_task(log_message_files(message, kernel_args.kernel_ramfs))
+
+    # END blacklist loop
+
+    # disallow bots to send commands, but still run blacklist on their messages
+    # this is primarily motivated by adding pluralkit support, as their messages
+    # will still be blacklisted on and are thus safe in a server that relies on sonnet blacklisting
+    if message.author.bot:
+        return
+
+    # START command processing loop
 
     mention_prefix: Final = message.content.startswith(f"<@{client.user.id}>") or message.content.startswith(f"<@!{client.user.id}>")
 
@@ -559,4 +594,4 @@ commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: Final = "1.2.13"
+version_info: Final = "1.2.14"

@@ -32,15 +32,15 @@ import lib_sonnetcommands
 importlib.reload(lib_sonnetcommands)
 
 from lib_goparsers import ParseDurationSuper
-from lib_loaders import generate_infractionid, load_embed_color, embed_colors, datetime_now
+from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_user_member, format_duration
+from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean_strict
 from lib_compatibility import user_avatar_url
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
 import lib_constants as constants
 
-from typing import List, Tuple, Awaitable, Optional, Callable, Union, Final, Dict, cast
+from typing import List, Tuple, Awaitable, Optional, Callable, Union, Final, Dict, cast, NamedTuple
 import lib_lexdpyk_h as lexdpyk
 
 
@@ -164,7 +164,13 @@ class InfractionGenerationError(Exception):
     __slots__ = ()
 
 
-InfractionInfo = Tuple[Optional[discord.Member], InterfacedUser, str, str, Optional[Awaitable[None]]]
+class InfractionInfo(NamedTuple):
+    member: Optional[discord.Member]
+    user: InterfacedUser
+    reason: str
+    infraction_id: str
+    dm_await: Optional[Awaitable[None]]
+    user_warning: Optional[str]
 
 
 # General processor for infractions
@@ -193,6 +199,21 @@ async def process_infraction(
     except lib_parsers.errors.user_parse_error:
         raise InfractionGenerationError("Could not parse user")
 
+    local_conf_cache = load_message_config(message.guild.id, ramfs)
+
+    # Test if user is a moderator
+    warn_moderator: Optional[str] = None
+    if not automod and member and parse_core_permissions(cast(discord.TextChannel, message.channel), member, local_conf_cache, "moderator") and infraction:
+
+        get_help = f"`{local_conf_cache['prefix']}help set-moderator-protect`"
+
+        warn_moderator = f"Note: The user selected is a moderator+ (did you mean to {i_type} this user anyways?)\n(to disallow infractions on a moderator+ see {get_help})"
+
+        if bool(int(local_conf_cache["moderator-protect"])):
+            await message.channel.send(f"Cannot {i_type} specified user, user is a moderator+\n"
+                                       f"(to disable this behavior see {get_help})")
+            raise InfractionGenerationError("Attempted to warn a moderator+ but mprotect was on")
+
     # Test if user is self
     if member and moderator.id == member.id:
         await message.channel.send(f"Cannot {i_type} yourself")
@@ -214,7 +235,7 @@ async def process_infraction(
     # Log infraction
     infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs, modifiers)
 
-    return (member, user, reason, infraction_id, dm_sent)
+    return InfractionInfo(member, user, reason, infraction_id, dm_sent, warn_moderator)
 
 
 InfracModifierDBT = Dict[str, Tuple[str, str]]
@@ -247,16 +268,16 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
     modifiers = parse_infraction_modifiers(message.guild, args)
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
+        _, user, reason, _, _, warn_text = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
-    if ctx.verbose and user:
+    if ctx.verbose:
         mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
         await message.channel.send(f"Warned {user.mention} with ID {user.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
-    elif not user:
-        await message.channel.send("User does not exist")
-        return 1
+
+    if warn_text is not None:
+        await message.channel.send(warn_text)
 
     return 0
 
@@ -264,15 +285,12 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
 async def note_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "note", ctx.ramfs, infraction=False, automod=ctx.automod)
+        _, user, reason, _, _, _ = await process_infraction(message, args, client, "note", ctx.ramfs, infraction=False, automod=ctx.automod)
     except InfractionGenerationError:
         return 1
 
-    if ctx.verbose and user:
+    if ctx.verbose:
         await message.channel.send(f"Put a note on {user.mention} with ID {user.id}: {reason}", allowed_mentions=discord.AllowedMentions.none())
-    elif not user:
-        await message.channel.send("User does not exist")
-        return 1
 
     return 0
 
@@ -288,7 +306,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     modifiers = parse_infraction_modifiers(message.guild, args)
 
     try:
-        member, _, reason, _, dm_sent = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers)
+        member, _, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -298,6 +316,10 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
             if dm_sent:
                 await dm_sent  # Wait for dm to be sent before kicking
             await message.guild.kick((member), reason=reason[:512])
+
+            if warn_text is not None:
+                await message.channel.send(warn_text)
+
         except discord.errors.Forbidden:
             await message.channel.send(f"{BOT_NAME} does not have permission to kick this user.")
             return 1
@@ -308,6 +330,10 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
     if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+
+    if warn_text is not None:
+        await message.channel.send(warn_text)
+
     return 0
 
 
@@ -332,7 +358,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     elif delete_days < 0: delete_days = 0
 
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
+        member, user, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -341,13 +367,26 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
             await dm_sent  # Wait for dm to be sent before banning
         await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
     except discord.errors.Forbidden:
-        await message.channel.send(f"{BOT_NAME} does not have permission to ban this user.")
-        return 1
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
 
-    delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
+    unmute_user: bool
+
+    with db_hlapi(message.guild.id) as db:
+        if parse_boolean_strict(db.grab_config("unmute-on-ban") or "0") and db.is_muted(userid=user.id):
+            unmute_user = True
+            db.unmute_user(userid=user.id)
+        else:
+            unmute_user = False
+
+    unmuted_str = f"{',' * (not delete_days)} and unmuted them," if unmute_user else ""
+    delete_str = f",{' and' * (not unmute_user)} deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str}{unmuted_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+
+    if warn_text is not None:
+        await message.channel.send(warn_text)
+
     return 0
 
 
@@ -360,7 +399,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
     verbose = ctx.verbose
 
     try:
-        _, user, reason, _, _ = await process_infraction(message, args, client, "unban", ramfs, infraction=False, automod=automod)
+        _, user, reason, _, _, _ = await process_infraction(message, args, client, "unban", ramfs, infraction=False, automod=automod)
     except InfractionGenerationError:
         return 1
 
@@ -400,7 +439,7 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
     elif delete_days < 0: delete_days = 0
 
     try:
-        member, user, reason, _, dm_sent = await process_infraction(message, args, client, "softban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
+        member, user, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "softban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
     except InfractionGenerationError:
         return 1
 
@@ -408,6 +447,7 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
         await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
+
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
 
@@ -422,6 +462,10 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
     if ctx.verbose: await message.channel.send(f"Softbanned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+
+    if warn_text is not None:
+        await message.channel.send(warn_text)
+
     return 0
 
 
@@ -499,7 +543,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, infractionID, _ = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers)
+        member, _, reason, infractionID, _, warn_text = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers)
     except (NoMuteRole, InfractionGenerationError):
         return 1
 
@@ -521,6 +565,9 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     if verbose and not mutetime:
         await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}{duration_str}", allowed_mentions=discord.AllowedMentions.none())
 
+        if warn_text is not None:
+            await message.channel.send(warn_text)
+
     # if mutetime call db timed mute
     if mutetime:
 
@@ -528,6 +575,9 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
             asyncio.create_task(
                 message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none())
                 )
+
+        if warn_text is not None:
+            asyncio.create_task(message.channel.send(warn_text))
 
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
@@ -557,7 +607,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod)
+        member, _, reason, _, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod)
     except (InfractionGenerationError, NoMuteRole):
         return 1
 
@@ -581,52 +631,53 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
 
 class purger:
-    __slots__ = "user_id",
+    __slots__ = "user_id", "message_id"
 
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: Optional[int], message: discord.Message):
         self.user_id = user_id
+        self.message_id = message.id
 
     def check(self, message: discord.Message) -> bool:
+        if message.id == self.message_id:
+            return False
+
+        if self.user_id is None:
+            return True
+
         return bool(message.author.id == self.user_id)
 
 
-async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+async def purge_cli(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
 
     if args:
         try:
             limit = int(args[0])
         except ValueError:
-            await message.channel.send("ERROR: Limit is not valid int")
-            return 1
+            raise lib_sonnetcommands.CommandError("ERROR: Limit is not valid int")
     else:
-        await message.channel.send("ERROR: No limit specified")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: No limit specified")
 
     if limit > 100 or limit <= 0:
-        await message.channel.send("ERROR: Cannot purge more than 100 messages or less than 1 message")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: Cannot purge more than 100 messages or less than 1 message")
 
-    ucheck: Optional[Callable[[discord.Message], bool]]
+    ucheck: Callable[[discord.Message], bool]
 
     try:
         if not (user := client.get_user(int(args[1].strip("<@!>")))):
             user = await client.fetch_user(int(args[1].strip("<@!>")))
-        ucheck = purger(user.id).check
+        ucheck = purger(user.id, message).check
     except ValueError:
-        await message.channel.send("Invalid UserID")
-        return 1
+        raise lib_sonnetcommands.CommandError("Invalid UserID")
     except IndexError:
-        ucheck = None
+        ucheck = purger(None, message).check
     except (discord.errors.NotFound, discord.errors.HTTPException):
-        await message.channel.send("User does not exist")
-        return 1
+        raise lib_sonnetcommands.CommandError("User does not exist")
 
     try:
-        await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
-        return 0
+        purged = await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
+        await message.channel.send(f"Purged {len(purged)} message{'s' * (len(purged)!=1)}, initiated by {message.author.mention}", allowed_mentions=discord.AllowedMentions.none())
     except discord.errors.Forbidden:
-        await message.channel.send("ERROR: Bot lacks perms to purge")
-        return 1
+        raise lib_sonnetcommands.CommandError("ERROR: Bot lacks perms to purge")
 
 
 category_info = {'name': 'moderation', 'pretty_name': 'Moderation', 'description': 'Moderation commands.'}
@@ -684,11 +735,13 @@ commands = {
     'purge':
         {
             'pretty_name': 'purge <limit> [user]',
-            'description': 'Purge messages from a given channel and optionally only from a specified user',
-            'rich_description': 'Can only purge up to 100 messages at a time to prevent catastrophic errors',
+            'description': 'Purge messages from a given channel and optionally only from a specified user, this will not purge the command invocation',
+            'rich_description':
+                ('Can only purge up to 100 messages at a time to prevent catastrophic errors, '
+                 'will print a success message indicating how many messages were purged and who invoked the command'),
             'permission': 'moderator',
             'execute': purge_cli
             }
     }
 
-version_info: str = "1.2.13"
+version_info: str = "1.2.14"

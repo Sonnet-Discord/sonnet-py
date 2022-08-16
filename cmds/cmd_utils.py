@@ -47,7 +47,7 @@ import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import discord_datetime_now, user_avatar_url
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import embed_colors, load_embed_color
-from lib_parsers import (parse_boolean, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
+from lib_parsers import (parse_boolean_strict, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
 from lib_sonnetcommands import CallCtx, CommandCtx, SonnetCommand
 from lib_sonnetconfig import BOT_NAME
 from lib_tparse import Parser
@@ -138,7 +138,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
 
     # Parse adding infraction count
     with db_hlapi(message.guild.id) as db:
-        viewinfs = parse_boolean(db.grab_config("member-view-infractions") or "0")
+        viewinfs = parse_boolean_strict(db.grab_config("member-view-infractions") or "0")
         moderator = await parse_permissions(message, ctx.conf_cache, "moderator", verbose=False)
         if moderator or (viewinfs and user.id == message.author.id):
             embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
@@ -289,7 +289,22 @@ class HelpHelper:
         for module in sorted(cmds, key=lambda m: m.category_info['pretty_name'])[(page * per_page):(page * per_page) + per_page]:
             mnames = [f"`{i}`" for i in module.commands if 'alias' not in module.commands[i]]
 
-            helptext = ', '.join(sorted(mnames)) if mnames else module.category_info['description']
+            if mnames:
+                builder = io.StringIO()
+                for idx, i in enumerate(sorted(mnames)):
+                    if idx != 0:
+                        builder.write(", ")
+
+                    if (len(i) + builder.tell()) < 512:
+                        builder.write(i)
+                    else:
+                        builder.write("...")
+                        break
+
+                helptext = builder.getvalue()
+            else:
+                helptext = module.category_info['description']
+
             cmd_embed.add_field(name=f"{module.category_info['pretty_name']} ({module.category_info['name']})", value=helptext, inline=False)
 
         cmd_embed.set_footer(text=f"Total Commands: {total} | Total Endpoints: {len(cmds_dict)} | Took: {self.start_time.elapsed().milli_f():.1f}ms")
@@ -619,4 +634,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.13-1"
+version_info: str = "1.2.14"

@@ -7,10 +7,24 @@ sys.path.insert(1, os.getcwd() + '/common')
 sys.path.insert(1, os.getcwd() + '/libs')
 sys.path.insert(1, os.getcwd())
 
-from typing import Callable, TypeVar, List, Optional, Final, Iterable
+from typing import Callable, TypeVar, List, Optional, Final, Iterable, Type, Any
 
 T = TypeVar("T")
 O = TypeVar("O")
+
+
+def must_raise(expr: Callable[[], Any], exc: Type[Exception]) -> None:
+    """
+    Raises an AssertionError if exc is not raised by expr, otherwise exits normally
+    """
+    try:
+        expr()
+    except exc:
+        return None
+    except Exception as e:
+        raise AssertionError(f"Value raised was '{e}' (not private error)")
+
+    raise AssertionError("No value was raised")
 
 
 def test_func_io(func: Callable[[T], O], arg: T, expect: O) -> None:
@@ -143,6 +157,14 @@ def test_ramfs() -> Optional[Iterable[Exception]]:
 
     try:
         assert testfs.ls("dir") == ([], [])
+
+        must_raise(lambda: testfs.create_f(), TypeError)
+        must_raise(lambda: testfs.rmdir(), TypeError)
+
+        must_raise(lambda: testfs.rmdir(dirlist=["balu"]), FileNotFoundError)
+        must_raise(lambda: testfs.rmdir(""), FileNotFoundError)
+
+        assertdir([], ["dir"])
     except AssertionError as e:
         errs.append(e)
 
