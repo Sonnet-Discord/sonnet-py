@@ -289,6 +289,50 @@ command_modules: List[Any] = []
 command_modules_dict: Dict[str, Any] = {}
 dynamiclib_modules: List[Any] = []
 dynamiclib_modules_dict: Dict[str, Any] = {}
+# LeXdPyK 1.5: undefined exec order feature
+# on-message is now Dict[on-message: [[on-message items], [on-message-0 items], [on-message-1 items]]
+# this feature means you can have multiple on-message calls that will exec in an undefined order, but on-message-0 will always
+#  exec after on-message and on-message-1 after that etc
+#  this allows flexibility with multiple modules that just "must run after command processor init"
+dynamiclib_modules_exec_dict: Dict[str, List[List[Any]]] = {}
+
+
+def add_module_to_exec_dict(module_dlibs: Dict[str, Any]) -> None:
+
+    global dynamiclib_modules_exec_dict
+
+    for k, v in module_dlibs.items():
+
+        if (maybe_num := k.split("-")[-1]).isnumeric():
+            true_key = "-".join(k.split("-")[:-1])
+            idx = int(maybe_num) + 1
+
+        else:
+            true_key = k
+            idx = 0
+
+        if idx >= 2048:
+            raise RuntimeError("Command execution order request exceeds 2048 (oom safety limit reached)")
+
+        try:
+            data_list = dynamiclib_modules_exec_dict[true_key]
+        except KeyError:
+            data_list = dynamiclib_modules_exec_dict[true_key] = []
+
+        if len(data_list) < (idx + 1):
+            data_list.extend([] for _ in range((idx + 1) - len(data_list)))
+
+        data_list[idx].append(v)
+
+
+def compress_exec_dict() -> None:
+
+    global dynamiclib_modules_exec_dict
+
+    for k in dynamiclib_modules_exec_dict:
+
+        dynamiclib_modules_exec_dict[k] = [i for i in dynamiclib_modules_exec_dict[k] if i]
+
 
 # Initialize ramfs, kernel ramfs
 ramfs = ram_filesystem()
@@ -329,11 +373,12 @@ def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, Lis
     log_kernel_info("Loading Kernel Modules")
     start_load_modules = time.monotonic()
     # Globalize variables
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, dynamiclib_modules_exec_dict
     command_modules = []
     command_modules_dict = {}
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
+    dynamiclib_modules_exec_dict = {}
     importlib.invalidate_caches()
 
     # Init return state
@@ -361,9 +406,12 @@ def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, Lis
             err.append((KernelSyntaxError("Missing commands"), module.__name__), )
     for module in dynamiclib_modules:
         try:
+            add_module_to_exec_dict(module.commands)
             dynamiclib_modules_dict.update(module.commands)
         except AttributeError:
             err.append((KernelSyntaxError("Missing commands"), module.__name__), )
+
+    compress_exec_dict()
 
     log_kernel_info(f"Loaded Kernel Modules in {(time.monotonic()-start_load_modules)*1000:.1f}ms")
 
@@ -417,12 +465,15 @@ def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, L
             err.append([KernelSyntaxError("Missing commands"), module.__name__])
     for module in dynamiclib_modules:
         try:
+            add_module_to_exec_dict(module.commands)
             dynamiclib_modules_dict.update(module.commands)
         except AttributeError:
             err.append([KernelSyntaxError("Missing commands"), module.__name__])
 
     # Regen tempramfs
     regenerate_ramfs()
+
+    compress_exec_dict()
 
     log_kernel_info(f"Reloaded Kernel Modules in {(time.monotonic()-start_reload_modules)*1000:.1f}ms")
 
@@ -582,21 +633,25 @@ async def on_error(event: str, *args: Any, **kwargs: Any) -> None:
     raise
 
 
-async def do_event(event: Any, args: Tuple[Any, ...]) -> None:
-    await event(
-        *args,
-        client=Client,
-        ramfs=ramfs,
-        bot_start=bot_start_time,
-        command_modules=[command_modules, command_modules_dict],
-        dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-        kernel_version=version_info,
-        kernel_ramfs=kernel_ramfs
-        )
+async def do_event_return_error(event: Any, args: Tuple[Any, ...]) -> Optional[Exception]:
+    try:
+
+        await event(
+            *args,
+            client=Client,
+            ramfs=ramfs,
+            bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info,
+            kernel_ramfs=kernel_ramfs
+            )
+        return None
+    except Exception as e:
+        return e
 
 
 async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
-    # TODO(ultrabear): refactor to use undefined dispatch loop (on-message-0 will not call after on-message/may call at same time etc, module dispatches automatically namespaced)
 
     # used by dev mode
     tstartexec = time.monotonic()
@@ -604,42 +659,19 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
     etypes = []
 
     try:
+        functions = dynamiclib_modules_exec_dict[argtype]
+    except KeyError:
+        functions = []
 
-        # Do hash lookup with KeyError
-        # Separate from running function so we do not catch a KeyError deeper in the stack
-        try:
-            func = dynamiclib_modules_dict[argtype]
-        except KeyError:
-            raise KernelKeyError
+    for ftable in functions:
+        tasks = [asyncio.create_task(do_event_return_error(func, args)) for func in ftable]
 
-        await do_event(func, args)
-
-    # Check for KernelKeyError before checking for Exception (inherits from)
-    except KernelKeyError:
-        pass
-    except Exception as e:
-        etypes.append(errtype(e, argtype))
-
-    call = 0
-    while True:
-
-        exname = f"{argtype}-{call}"
-
-        # If there is no hash then break the loop
-        try:
-            func = dynamiclib_modules_dict[exname]
-        except KeyError:
-            break
-
-        try:
-            await do_event(func, args)
-        except Exception as e:
-            etypes.append(errtype(e, exname))
-
-        call += 1
+        for i in tasks:
+            if e := (await i):
+                etypes.append(errtype(e, argtype))
 
     if DEVELOPMENT_MODE:
-        log_kernel_info(f"EVENT {argtype} : {round((time.monotonic()-tstartexec)*100000)/100}ms CC {call+1}")
+        log_kernel_info(f"EVENT {argtype} : {round((time.monotonic()-tstartexec)*100000)/100}ms CC {len(functions)}")
 
     if etypes:
         return etypes[0]
@@ -988,7 +1020,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.15"
+version_info: str = "LeXdPyK 1.5"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
