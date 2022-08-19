@@ -116,8 +116,11 @@ async def try_mute_on_rejoin(member: discord.Member, db: db_hlapi, client: disco
         if log and (channel := client.get_channel(int(log))):
             if isinstance(channel, discord.TextChannel):
 
-                muted_embed = discord.Embed(title=f"Notify on muted member join: {member}", description=f"This user has an entry in the mute database and {stringcases[success]}.")
-                muted_embed.color = load_embed_color(member.guild, embed_colors.primary, ramfs)
+                muted_embed = discord.Embed(
+                    title=f"Notify on muted member join: {member}",
+                    description=f"This user has an entry in the mute database and {stringcases[success]}.",
+                    color=load_embed_color(member.guild, embed_colors.primary, ramfs)
+                    )
                 muted_embed.set_footer(text=f"uid: {member.id}")
 
                 await catch_logging_error(channel, muted_embed)
@@ -202,4 +205,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.14"
+version_info: str = "2.0.0-DEV"
