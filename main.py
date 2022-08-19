@@ -41,6 +41,7 @@ intents.presences = True
 intents.guilds = True
 intents.members = True
 intents.reactions = True
+intents.message_content = True
 
 # Initialize Discord Client.
 Client = discord.Client(status=discord.Status.online, intents=intents)
@@ -773,7 +774,7 @@ async def on_message(message: discord.Message) -> None:
 
     # If bot owner run a debug command
     if len(args) >= 2 and args[0] in debug_commands:
-        if message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
+        if Client.user and message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
             if e := debug_commands[args[0]](args[2:]):
                 await message.channel.send(e[0])
                 for i in e[1]:
@@ -1000,7 +1001,7 @@ def main(args: List[str]) -> int:
     # Start bot
     if TOKEN:
         try:
-            Client.run(TOKEN, reconnect=True)
+            Client.run(TOKEN, reconnect=True, log_handler=None)
         except discord.errors.LoginFailure:
             print("Invalid token passed")
             return 1
@@ -1024,7 +1025,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.5"
+version_info: str = "LeXdPyK 2"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
