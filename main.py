@@ -15,7 +15,7 @@ print("Booting LeXdPyK")
 import os, importlib, sys, io, traceback
 
 # Import sub dependencies
-import glob, json, hashlib, logging, getpass, datetime, argparse
+import glob, json, hashlib, logging, getpass, datetime, argparse, random
 
 # Import typing support
 from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol
@@ -332,6 +332,10 @@ def compress_exec_dict() -> None:
     for k in dynamiclib_modules_exec_dict:
 
         dynamiclib_modules_exec_dict[k] = [i for i in dynamiclib_modules_exec_dict[k] if i]
+
+        # randomize inner ordering to prevent people relying on it
+        for unordered in dynamiclib_modules_exec_dict[k]:
+            random.shuffle(unordered)
 
 
 # Initialize ramfs, kernel ramfs
