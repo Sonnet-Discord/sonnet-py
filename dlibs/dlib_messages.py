@@ -50,7 +50,7 @@ ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^
 
 async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
     try:
-        await channel.send(embed=contents, files=files)
+        await channel.send(embed=contents, files=(files or []))
     except discord.errors.Forbidden:
         pass
     except discord.errors.HTTPException:
@@ -450,6 +450,8 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         return
     elif not message.guild:
         return
+    elif not client.user:
+        return
 
     inc_statistics_better(message.guild.id, "on-message", kernel_args.kernel_ramfs)
 
@@ -561,7 +563,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
                 await cmd.execute_ctx(message, arguments, client, command_ctx)
             except lib_sonnetcommands.CommandError as ce:
                 try:
-                    await message.channel.send(ce)
+                    await message.channel.send(str(ce))
                 except discord.errors.Forbidden:
                     pass
 
@@ -594,4 +596,4 @@ commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: Final = "1.2.14"
+version_info: Final = "2.0.0-DEV"

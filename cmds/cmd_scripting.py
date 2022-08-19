@@ -110,7 +110,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                     try:
                         suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
                     except lib_sonnetcommands.CommandError as ce:
-                        await message.channel.send(ce)
+                        await message.channel.send(str(ce))
                         suc = 1
 
                     # Stop processing if error
@@ -222,7 +222,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
             try:
                 suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
             except lib_sonnetcommands.CommandError as ce:
-                await message.channel.send(ce)
+                await message.channel.send(str(ce))
                 suc = 1
 
             if suc != 0:
@@ -247,7 +247,7 @@ async def wrapasyncerror(cmd: SonnetCommand, message: discord.Message, args: Lis
         await cmd.execute_ctx(message, args, client, ctx)
     except lib_sonnetcommands.CommandError as ce:  # catch CommandError to print message
         try:
-            await message.channel.send(ce)
+            await message.channel.send(str(ce))
         except discord.errors.Forbidden:
             pass
 
@@ -430,4 +430,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
         },
     }
 
-version_info: str = "1.2.13"
+version_info: str = "2.0.0-DEV"

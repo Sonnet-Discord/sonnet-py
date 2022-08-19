@@ -106,6 +106,9 @@ async def try_add_reaction(message: discord.Message, emoji: Union[discord.Emoji,
 
 
 async def try_remove_reaction(me: discord.Client, message: discord.Message, emoji: Union[discord.Emoji, str]) -> None:
+    if not me.user:
+        return
+
     try:
         await message.remove_reaction(emoji, me.user)
     except discord.errors.Forbidden:
@@ -369,4 +372,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.14"
+version_info: str = "2.0.0-DEV"

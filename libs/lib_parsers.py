@@ -199,8 +199,9 @@ def parse_skip_message(Client: discord.Client, message: discord.Message, *, allo
     """
 
     # Make sure we don't start a feedback loop.
-    if message.author.id == Client.user.id:
-        return True
+    if Client.user:
+        if message.author.id == Client.user.id:
+            return True
 
     # only check if we are not allowing bots
     if not allow_bots:
@@ -624,7 +625,7 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
     try:
         return await parse_channel_message_noexcept(message, args, client)
     except lib_sonnetcommands.CommandError as ce:
-        await message.channel.send(ce)
+        await message.channel.send(str(ce))
         raise errors.message_parse_failure(ce)
 
 
@@ -727,7 +728,7 @@ async def parse_user_member(message: discord.Message, args: List[str], client: d
     try:
         return await parse_user_member_noexcept(message, args, client, argindex=argindex, default_self=default_self)
     except lib_sonnetcommands.CommandError as ce:
-        await message.channel.send(ce)
+        await message.channel.send(str(ce))
         raise errors.user_parse_error(ce)
 
 

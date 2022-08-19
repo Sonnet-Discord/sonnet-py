@@ -40,7 +40,7 @@ import lib_datetimeplus
 
 importlib.reload(lib_datetimeplus)
 
-from typing import Any, Final, List, Optional, Tuple, Dict, cast
+from typing import Any, Final, List, Optional, Tuple, Dict
 
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
@@ -416,7 +416,8 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
     guild_embed.add_field(name="Creation Date:", value=parsedate(guild.created_at))
 
     guild_embed.set_footer(text=f"gid: {guild.id}")
-    guild_embed.set_thumbnail(url=cast(str, guild.icon_url))
+    if guild.icon:
+        guild_embed.set_thumbnail(url=guild.icon.url)
 
     try:
         await message.channel.send(embed=guild_embed)
@@ -634,4 +635,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.14"
+version_info: str = "2.0.0-DEV"

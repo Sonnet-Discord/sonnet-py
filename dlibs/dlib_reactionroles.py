@@ -65,9 +65,10 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent, kargs: Ke
     client: discord.Client = kargs.client
     rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs.ramfs, datatypes=reactionrole_types)["reaction-role-data"]
 
-    # do not give reactionroles to self
-    if payload.user_id == client.user.id:
-        return
+    if client.user:
+        # do not give reactionroles to self
+        if payload.user_id == client.user.id:
+            return
 
     if rrconf:
         opt = await get_role_from_emojiname(payload, client, rrconf)
@@ -89,9 +90,10 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent, kargs:
     client: discord.Client = kargs.client
     rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs.ramfs, datatypes=reactionrole_types)["reaction-role-data"]
 
-    # do not remove reactionroles from self
-    if payload.user_id == client.user.id:
-        return
+    if client.user:
+        # do not remove reactionroles from self
+        if payload.user_id == client.user.id:
+            return
 
     if rrconf:
         opt = await get_role_from_emojiname(payload, client, rrconf)
@@ -110,4 +112,4 @@ commands = {
     "on-raw-reaction-remove": on_raw_reaction_remove,
     }
 
-version_info = "1.2.14"
+version_info = "2.0.0-DEV"

@@ -40,7 +40,7 @@ async def on_ready(**kargs: Any) -> None:
     print(f'{Client.user} has connected to Discord!')
 
     # Warn if user is not bot
-    if not Client.user.bot:
+    if Client.user and not Client.user.bot:
         print("WARNING: The connected account is not a bot, as it is against ToS we do not condone user botting")
 
     # bot start time check to not reparse timers on network disconnect
@@ -84,4 +84,4 @@ category_info: Dict[str, str] = {'name': 'Initializers'}
 
 commands: Dict[str, Callable[..., Any]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info: str = "1.2.10"
+version_info: str = "2.0.0-DEV"
