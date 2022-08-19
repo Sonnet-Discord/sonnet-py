@@ -4,7 +4,7 @@ None of the things listed below should happen in Sonnet.
 # Absolutely not
 - Do not have blind excepts, this means a `try:` `except:` statement with no specific error to catch
 - Do not have try excepts that cover more than one or a few lines
-  - This can be ommited if the errors caught are custom errors or errors that will only be on absolutely known lines
+  - This can be omitted if the errors caught are custom errors or errors that will only be on absolutely known lines
 - Do not use `input()` or `print()` unless it is for debug or exceptions
   - Do not use `input()` even for debugging, it blocks asyncio
 - Respect asyncio, do not use threading or multiprocessing, they are not designed to work together and introduce bugs

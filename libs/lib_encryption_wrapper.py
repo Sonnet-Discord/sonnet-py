@@ -37,10 +37,10 @@ def directBinNumber(inData: int, length: int) -> bytes:
 
 
 class _WriteSeekCloser(Protocol):
-    def write(self, buf: bytes) -> int:
+    def write(self, buf: bytes, /) -> int:
         ...
 
-    def seek(self, cookie: int, whence: int = 0) -> int:
+    def seek(self, cookie: int, whence: int = 0, /) -> int:
         ...
 
     def close(self) -> None:
@@ -54,7 +54,7 @@ class encrypted_writer:
 
         # Start cipher system
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.encryptor_module: crypto_typing.encryptor_decryptor = self.cipher.encryptor()  # type: ignore[no-untyped-call]
+        self.encryptor_module = self.cipher.encryptor()
 
         # Initialize HMAC generator
         self.HMACencrypt = hmac.HMAC(key, hashes.SHA512())
@@ -132,7 +132,7 @@ class _ReadSeekCloser(Protocol):
     def read(self, amnt: int) -> bytes:
         ...
 
-    def seek(self, cookie: int, whence: int = 0) -> int:
+    def seek(self, cookie: int, whence: int = 0, /) -> int:
         ...
 
     def close(self) -> None:
@@ -152,7 +152,7 @@ class encrypted_reader:
 
         # Make decryptor instance
         self.cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
-        self.decryptor_module: crypto_typing.encryptor_decryptor = self.cipher.decryptor()  # type: ignore[no-untyped-call]
+        self.decryptor_module = self.cipher.decryptor()
 
         # Generate HMAC
         HMACobj = hmac.HMAC(key, hashes.SHA512())

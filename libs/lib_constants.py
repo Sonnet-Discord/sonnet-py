@@ -41,12 +41,14 @@ class permission:
         29: "manage webhooks",
         30: "manage emojis and stickers",
         31: "use slash commands",
+        32: "request to speak",  # NOTE(ultrabear) this is listed as 'may be removed'
         33: "manage events",
         34: "manage threads",
         35: "create public threads",
         36: "create private threads",
         37: "use external stickers",
         38: "send messages in threads",
+        39: "use activities",
         40: "moderate members",
         }
 

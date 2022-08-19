@@ -3,7 +3,6 @@
 
 import asyncio
 import importlib
-import time
 from datetime import datetime
 
 import discord
@@ -19,6 +18,9 @@ importlib.reload(lib_compatibility)
 import lib_db_obfuscator
 
 importlib.reload(lib_db_obfuscator)
+import lib_parsers
+
+importlib.reload(lib_parsers)
 
 from typing import Any, Dict, List, Optional, Union
 
@@ -26,6 +28,7 @@ import lib_lexdpyk_h as lexdpyk
 from lib_compatibility import (discord_datetime_now, has_default_avatar, user_avatar_url)
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
+from lib_parsers import parse_boolean_strict
 
 
 async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed) -> None:
@@ -35,7 +38,10 @@ async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed
         pass
 
 
-join_leave_user_logs: Dict[Union[str, int], Union[str, List[List[Any]]]] = {0: "sonnet_userupdate_log", "text": [["username-log", ""], ["join-log", ""], ["leave-log", ""]]}
+join_leave_user_logs: Dict[Union[str, int], Union[str, List[List[Any]]]] = {
+    0: "sonnet_userupdate_log",
+    "text": [["username-log", ""], ["join-log", ""], ["leave-log", ""], ["leave-log-is-join-log", "1"]]
+    }
 
 
 async def on_member_update(before: discord.Member, after: discord.Member, **kargs: Any) -> None:
@@ -61,7 +67,7 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
 
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
-        basetime = time.strftime('%a, %d %b %Y %H:%M:%S', indata.utctimetuple())
+        basetime = format(indata, '%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
         return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
     else:
@@ -129,7 +135,7 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
     issues: List[str] = []
 
-    # Handle notifer logging
+    # Handle notifier logging
     if member.id in notifier_cache["notifier-log-users"]:
         issues.append("User")
     if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
@@ -168,8 +174,8 @@ async def on_member_remove(member: discord.Member, **kargs: Any) -> None:
 
     log_channels = load_message_config(member.guild.id, kargs["ramfs"], datatypes=join_leave_user_logs)
 
-    # Try for leave-log, default to join-log
-    if (joinlog := (log_channels["leave-log"] or log_channels["join-log"])):
+    # Try for leave-log, default to join-log if leave-log-is-join-log is set
+    if joinlog := (log_channels["leave-log"] or (log_channels["join-log"] if parse_boolean_strict(log_channels["leave-log-is-join-log"]) else None)):
         if logging_channel := kargs["client"].get_channel(int(joinlog)):
 
             # Only run if in a TextChannel
@@ -196,4 +202,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "1.2.10"
+version_info: str = "1.2.14"

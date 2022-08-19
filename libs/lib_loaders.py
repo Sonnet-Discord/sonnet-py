@@ -20,10 +20,14 @@ importlib.reload(lib_sonnetconfig)
 import lib_goparsers
 
 importlib.reload(lib_goparsers)
+import lib_datetimeplus
+
+importlib.reload(lib_datetimeplus)
 
 from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
+from lib_datetimeplus import Time
 
 from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol, Final, Literal
 import lib_lexdpyk_h as lexdpyk
@@ -79,7 +83,7 @@ defaultcache: dict[Union[str, int], Any] = {
     "text":
         [
             ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""],
-            ["antispam-time", "20"]
+            ["antispam-time", "20"], ["moderator-protect", "0"]
             ],
     0: "sonnet_default"
     }
@@ -91,7 +95,7 @@ class Reader(Protocol):
 
 
 class Writer(Protocol):
-    def write(self, data: bytes) -> int:
+    def write(self, data: bytes, /) -> int:
         ...
 
 
@@ -119,7 +123,8 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
     try:
 
         # Loads fileio object
-        blacklist_cache: io.BytesIO = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
+        blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
+        assert isinstance(blacklist_cache, io.BytesIO)
         blacklist_cache.seek(0)
         message_config: Dict[str, Any] = {}
 
@@ -247,12 +252,14 @@ def generate_infractionid() -> str:
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
-        statistics: dict[str, int] = kernel_ramfs.read_f(f"{guild}/stats")
+        statistics = kernel_ramfs.read_f(f"{guild}/stats")
+        assert isinstance(statistics, dict)
     except FileNotFoundError:
         statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(Type[Dict[str, int]], dict))
 
     try:
-        global_statistics: dict[str, int] = kernel_ramfs.read_f("global/stats")
+        global_statistics = kernel_ramfs.read_f("global/stats")
+        assert isinstance(global_statistics, dict)
     except FileNotFoundError:
         global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(Type[Dict[str, int]], dict))
 
@@ -291,10 +298,10 @@ _colortypes_cache: dict[Any, Any] = {
 # I hate bugs more than I hate slow python
 class embed_colors:
     __slots__ = ()
-    primary: Final = "primary"
-    creation: Final = "creation"
-    edit: Final = "edit"
-    deletion: Final = "deletion"
+    primary: Final[Literal["primary"]] = "primary"
+    creation: Final[Literal["creation"]] = "creation"
+    edit: Final[Literal["edit"]] = "edit"
+    deletion: Final[Literal["deletion"]] = "deletion"
 
 
 def load_embed_color(guild: discord.Guild, colortype: Literal["primary", "creation", "edit", "deletion"], ramfs: lexdpyk.ram_filesystem) -> int:
@@ -324,7 +331,7 @@ def datetime_now() -> datetime.datetime:
 
     :returns: datetime.datetime - timestamp returned
     """
-    return datetime.datetime.now(datetime.timezone.utc)
+    return Time.now().as_datetime()
 
 
 def datetime_unix(unix: int) -> datetime.datetime:
@@ -336,7 +343,10 @@ def datetime_unix(unix: int) -> datetime.datetime:
     :returns: datetime.datetime - The datetime object
     """
 
-    # WHY IS THIS SO DIFFICULT (ultrabear)
-    # This is the worst api I have ever used and its stdlib
-    # Ive used discord.py pre 1.0 ok ive seen messy apis
-    return datetime.datetime.fromtimestamp(unix).astimezone(datetime.timezone.utc)
+    # # WHY IS THIS SO DIFFICULT (ultrabear)
+    # # This is the worst api I have ever used and its stdlib
+    # # Ive used discord.py pre 1.0 ok ive seen messy apis
+    # return datetime.datetime.fromtimestamp(unix).astimezone(datetime.timezone.utc)
+
+    # thank you time api very cool (previous code kept as preservation of nightmares)
+    return Time(unix=unix).as_datetime()

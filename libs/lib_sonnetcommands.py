@@ -39,8 +39,17 @@ class CommandError(Exception):
     may be replaced with
     `raise CommandError("error")`
     for the same effect
+
+    Additionally a private_message may be passed to CommandError,
+    allowing extra info to be attached that is only sent to the specific user
+    this allows echoing user input as it is self contained
     """
-    __slots__ = ()
+    __slots__ = "private_message",
+
+    def __init__(self, *args: object, private_message: Optional[str] = None) -> None:
+
+        super().__init__(*args)
+        self.private_message = private_message
 
 
 class CommandCtx:
@@ -162,7 +171,7 @@ class SonnetCommand(dict):  # type: ignore[type-arg]
     def __init__(self, vals: Dict[str, Any], aliasmap: Optional[Dict[str, Dict[str, Any]]] = None) -> None:
         """
         Init a new sonnetcommand instance.
-        If an aliasmap is passed, the command will be checked for if it has an alias and inheret it into itself if it does
+        If an aliasmap is passed, the command will be checked for if it has an alias and inherit it into itself if it does
         """
         if aliasmap is not None and 'alias' in vals:
             vals = aliasmap[vals['alias']]

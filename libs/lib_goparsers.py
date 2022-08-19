@@ -6,6 +6,7 @@ __all__ = [
     "hascompiled",
     "ParseDuration",
     "MustParseDuration",
+    "ParseDurationSuper",
     "GenerateCacheFile",
     "GetVersion",
     ]
@@ -14,14 +15,19 @@ import importlib
 
 import ctypes as _ctypes
 import subprocess as _subprocess
+from functools import lru_cache
 
-from typing import cast
+from typing import Optional
 
 import lib_sonnetconfig
 
 importlib.reload(lib_sonnetconfig)
+import lib_datetimeplus
+
+importlib.reload(lib_datetimeplus)
 
 from lib_sonnetconfig import GOLIB_LOAD, GOLIB_VERSION
+from lib_datetimeplus import Duration as _Duration
 
 
 class _GoString(_ctypes.Structure):
@@ -34,8 +40,8 @@ class _ParseDurationRet(_ctypes.Structure):
     _fields_ = [("ret", _ctypes.c_longlong), ("err", _ctypes.c_int)]
 
 
-hascompiled = True
 _version = "2.0.0-DEV.3"
+_gotools: Optional[_ctypes.CDLL]
 if GOLIB_LOAD:
     try:
         _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
@@ -44,13 +50,15 @@ if GOLIB_LOAD:
             if _subprocess.run(["make", "gotools", f"GOCMD={GOLIB_VERSION}"]).returncode == 0:
                 _gotools = _ctypes.CDLL(f"./libs/compiled/gotools.{_version}.so")
             else:
-                hascompiled = False
+                _gotools = None
         except OSError:
-            hascompiled = False
+            _gotools = None
 else:
-    hascompiled = False
+    _gotools = None
 
-if hascompiled:
+hascompiled = _gotools is not None
+
+if _gotools is not None:
     _gotools.ParseDuration.argtypes = [_GoString]
     _gotools.ParseDuration.restype = _ParseDurationRet
     _gotools.GenerateCacheFile.argtypes = [_GoString, _GoString]
@@ -106,7 +114,7 @@ def GenerateCacheFile(fin: str, fout: str) -> None:
     :raises: FileNotFoundError - infile does not exist
     """
 
-    if hascompiled:
+    if _gotools is not None:
 
         ret = _gotools.GenerateCacheFile(_FromString(fin), _FromString(fout))
 
@@ -137,6 +145,7 @@ def GenerateCacheFile(fin: str, fout: str) -> None:
 
 def ParseDuration(s: str) -> int:
     """
+    Deprecated: use MustParseDuration or ParseDurationSuper
     Parses a Duration from a string using go stdlib
 
     :raises: errors.NoBinaryError - ctypes could not load the go binary, no parsing occurred
@@ -144,7 +153,7 @@ def ParseDuration(s: str) -> int:
     :returns: int - Time parsed in seconds
     """
 
-    if not hascompiled:
+    if _gotools is None:
         raise errors.NoBinaryError("ParseDuration: No binary found")
 
     # Special case to default to seconds
@@ -158,30 +167,42 @@ def ParseDuration(s: str) -> int:
     if r.err != 0:
         raise errors.ParseFailureError(f"ParseDuration: returned status code {r.err}")
 
-    return cast(int, r.ret // 1000 // 1000 // 1000)
+    return int(r.ret // 1000 // 1000 // 1000)
 
 
 def MustParseDuration(s: str) -> int:
     """
-    Parses a Duration from a string using go stdlib, and fallsback to inferior python version if it does not exist
-
-    Most situations should call this over ParseDuration, unless you want to
-    assert whether the golib exists or not, or avoid parsing in python entirely
+    Parses a Duration from a string using ParseDurationSuper with API similarity to ParseDuration
 
     :raises: errors.ParseFailureError - Failed to parse time
     :returns: int - Time parsed in seconds
     """
 
-    if hascompiled:
+    ret = ParseDurationSuper(s)
 
-        return ParseDuration(s)
-
+    if ret is None:
+        raise errors.ParseFailureError("MustParseDuration: pyparser returned error")
     else:
+        return ret
 
-        try:
-            if s[-1] in (multi := {"s": 1, "m": 60, "h": 3600}):
-                return int(s[:-1]) * multi[s[-1]]
-            else:
-                return int(s)
-        except (ValueError, TypeError):
-            raise errors.ParseFailureError("MustParseDuration: pyparser returned error")
+
+@lru_cache(maxsize=500)
+def ParseDurationSuper(s: str) -> Optional[int]:
+    """
+    Parses a duration in pure python
+    Where number is a float or float/float fraction
+    Allows ({number}{suffix})+ where suffix is weeks|days|hours|minutes|seconds or singular or single char shorthands
+    Parses {number} => seconds
+    Parses {singular|single char} suffix => 1 of suffix type (day => 1day)
+
+    Numbers are kept as integer values when possible, floating point values are subject to IEEE-754 64 bit limitations.
+    Fraction numerators are multiplied by their suffix multiplier before being divided by their denominator, with floating point math starting where the first float is present
+
+    :returns: Optional[int] - Return value, None if it could not be parsed
+    """
+
+    # Call into Duration.parse, replaces codebase of ParseDurationSuper
+    if (v := _Duration.parse(s)) is not None:
+        return v.seconds()
+    else:
+        return None

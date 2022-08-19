@@ -104,6 +104,7 @@ air
 alive
 alternative
 always
+amaze
 amazing
 among
 ampersand
@@ -133,6 +134,7 @@ azure
 baby
 back
 backslash
+backspace
 bake
 baker
 bakery
@@ -188,6 +190,8 @@ car
 carbohydrates
 card
 cardboard
+care
+cares
 cartridge
 case
 casting
@@ -195,6 +199,7 @@ cat
 changer
 channel
 char
+character
 charisma
 chat
 chicken
@@ -206,6 +211,7 @@ clean
 cleaner
 clear
 click
+closure
 clothing
 cloud
 clouds
@@ -213,6 +219,7 @@ clown
 coal
 cobblestone
 coconut
+coffee
 cola
 collage
 college
@@ -307,9 +314,12 @@ else
 emerald
 emulator
 engineer
+english
 enter
 equals
 equation
+error
+errors
 eurocentric
 euroclydon
 eurodollar
@@ -462,6 +472,7 @@ float
 floppy
 flowers
 folding
+font
 food
 football
 formula
@@ -491,6 +502,7 @@ gift
 glass
 glorious
 glow
+go
 gold
 good
 grab
@@ -529,10 +541,12 @@ hundred
 hundredth
 hyper
 if
+implement
 imposter
 in
 incredible
 information
+infraction
 input
 insert
 inside
@@ -554,6 +568,7 @@ invasion
 invisible
 ion
 iron
+java
 jellyfish
 jupiter
 justify
@@ -563,12 +578,15 @@ keys
 knishes
 lab
 lamb
+lambda
+language
 laptop
 late
 laugh
 leather
 lemon
 length
+letter
 level
 library
 license
@@ -636,11 +654,11 @@ next
 night
 nine
 nineteen
-nineth
+ninth
 ninetieth
 ninety
 ninja
-ninteenth
+nineteenth
 no
 nondurability
 nondurable
@@ -781,6 +799,7 @@ octuple
 odour
 offer
 official
+ok
 one
 onion
 only
@@ -817,6 +836,7 @@ pill
 pink
 pizza
 plain
+plane
 planning
 plastic
 play
@@ -841,6 +861,7 @@ purple
 push
 pyramid
 pythagoras
+python
 quadrillion
 quadruple
 quest
@@ -873,6 +894,8 @@ rolling
 roman
 rubbish
 rugby
+rune
+rust
 safety
 sand
 santa
@@ -884,6 +907,7 @@ scissors
 scorpion
 screen
 screwdriver
+script
 seal
 second
 sensation
@@ -923,8 +947,10 @@ slow
 slower
 slowest
 smelly
+snake
 soccer
 soda
+some
 someone
 something
 sometimes
@@ -948,7 +974,9 @@ stone
 stop
 stream
 street
+streetcar
 string
+strings
 structure
 subscribe
 subtraction
@@ -990,6 +1018,7 @@ toast
 tomatoes
 tower
 train
+trait
 tram
 transfer
 trap
@@ -997,6 +1026,7 @@ trash
 treble
 triangle
 trio
+truck
 trust
 tune
 tuner
@@ -1010,6 +1040,7 @@ twist
 two
 ultra
 underscore
+unicode
 union
 unit
 unordered

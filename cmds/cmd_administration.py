@@ -25,7 +25,7 @@ import lib_constants
 
 importlib.reload(lib_constants)
 
-from lib_parsers import parse_boolean, update_log_channel, parse_role, paginate_noexcept
+from lib_parsers import parse_boolean_strict, update_log_channel, parse_role, paginate_noexcept
 from lib_loaders import load_embed_color, embed_colors
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import BOT_NAME
@@ -42,6 +42,41 @@ def maxlen(s: str, n: int, name: str) -> str:
     if len(s) > n:
         raise lib_sonnetcommands.CommandError(f"ERROR: {name} argument exceeds maxsize of {n}")
     return s
+
+
+async def boolean_to_db_helper(message: discord.Message, args: List[str], db_name: str, pretty_name: str, default: bool, verbose: bool) -> int:
+    if not message.guild:
+        return 1
+
+    if args:
+
+        pb = parse_boolean_strict(args[0])
+
+        if pb is None:
+
+            if args[0] in ["rm", "remove"]:
+
+                with db_hlapi(message.guild.id) as db:
+                    db.delete_config(db_name)
+
+                if verbose: await message.channel.send(f"Reset {pretty_name} to its default value ({default})")
+                return 0
+
+            else:
+                raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
+
+        with db_hlapi(message.guild.id) as db:
+            db.add_config(db_name, str(int(pb)))
+
+        if verbose: await message.channel.send(f"Set {pretty_name} to {pb}")
+
+    else:
+        with db_hlapi(message.guild.id) as db:
+            gate = bool(int(db.grab_config(db_name) or int(default)))
+
+        if verbose: await message.channel.send(f"{pretty_name} is set to {gate}")
+
+    return 0
 
 
 async def add_infrac_modifier(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -122,28 +157,8 @@ async def list_infrac_modifiers(message: discord.Message, args: List[str], clien
 
 
 async def set_show_mutetime(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
-    if not message.guild:
-        return 1
 
-    if args:
-
-        pb = parse_boolean(args[0])
-
-        if pb is None:
-            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
-
-        with db_hlapi(message.guild.id) as db:
-            db.add_config("show-mutetime", str(int(pb)))
-
-        await message.channel.send(f"Set show-mutetime to {pb}")
-
-    else:
-        with db_hlapi(message.guild.id) as db:
-            pb = parse_boolean(db.grab_config("show-mutetime") or "0")
-
-        await message.channel.send(f"show-mutetime is set to {pb}")
-
-    return 0
+    return await boolean_to_db_helper(message, args, "show-mutetime", "Show Mutetime", False, ctx.verbose)
 
 
 async def joinlog_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -222,10 +237,11 @@ class gdpr_functions:
             os.remove(i)
 
         await message.channel.send(
-            f"""Deleted database for guild {message.guild.id}
-Please note that when the bot receives a message from this guild it will generate a cache and statistics file again
-As we delete all data on this guild, there is no way {BOT_NAME} should be able to tell it is not supposed to be on this server
-To fully ensure {BOT_NAME} does not store any data on this server, delete the db and kick the bot immediately, or contact the bot owner to have the db manually deleted after kicking the bot"""
+            f"Deleted database for guild {message.guild.id}\n"
+            "Please note that when the bot receives a message from this guild it will generate a cache and statistics file again\n"
+            f"As we delete all data on this guild, there is no way {BOT_NAME} should be able to tell it is not supposed to be on this server\n"
+            f"To fully ensure {BOT_NAME} does not store any data on this server, delete the db and kick the bot immediately,"
+            " or contact the bot owner to have the db manually deleted after kicking the bot"
             )
 
     async def download(self, message: discord.Message, guild_id: int, ramfs: lexdpyk.ram_filesystem, kramfs: lexdpyk.ram_filesystem) -> None:
@@ -242,24 +258,22 @@ To fully ensure {BOT_NAME} does not store any data on this server, delete the db
         db.seek(0)
 
         # Add cache files
-        antispam: io.BytesIO = ramfs.read_f(f"{guild_id}/asam")
-        antispam.seek(0)
-        charantispam: io.BytesIO = ramfs.read_f(f"{guild_id}/casam")
-        charantispam.seek(0)
+        assert isinstance(antispam := ramfs.read_f(f"{guild_id}/asam"), dict)
+        assert isinstance(charantispam := ramfs.read_f(f"{guild_id}/casam"), dict)
 
         # Finalize discord file objs
         fileobj_db = discord.File(db, filename="database.gz")
-        fileobj_antispam = discord.File(io.BytesIO(antispam.read()), filename="antispam.vnum_x2.bin")
-        fileobj_cantispam = discord.File(io.BytesIO(charantispam.read()), filename="charantispam.vnum_x3.bin")
+        fileobj_antispam = discord.File(io.BytesIO(json.dumps(antispam, indent=4).encode("utf8")), filename="antispam.json")
+        fileobj_cantispam = discord.File(io.BytesIO(json.dumps(charantispam, indent=4).encode("utf8")), filename="charantispam.json")
 
         # Send data
         try:
             await message.channel.send(f"Grabbing DB took: {round((time.time()-timestart)*100000)/100}ms", files=[fileobj_db, fileobj_antispam, fileobj_cantispam])
         except discord.errors.HTTPException:
             await message.channel.send(
-                """ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords file size limitation
-Please contact the bot owner directly to download your guilds database
-Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"""
+                "ERROR: There was an error uploading the files, if you have a large infraction database this could be caused by discords file size limitation\n"
+                "Please contact the bot owner directly to download your guilds database\n"
+                "Or if discord experienced a lag spike, consider retrying as the network may have gotten corrupted"
                 )
 
 
@@ -277,6 +291,7 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
         confirmation = ""
     else:
         command = ""
+        confirmation = ""
 
     PREFIX = ctx.conf_cache["prefix"]
 
@@ -296,30 +311,8 @@ async def gdpr_database(message: discord.Message, args: List[str], client: disco
 
 
 async def set_view_infractions(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
-    if not message.guild:
-        return 1
 
-    gate: bool
-
-    if args:
-
-        pb = parse_boolean(args[0])
-
-        if pb is None:
-            raise lib_sonnetcommands.CommandError("ERROR: Could not parse boolean value")
-
-        with db_hlapi(message.guild.id) as db:
-            db.add_config("member-view-infractions", str(int(pb)))
-
-        if ctx.verbose: await message.channel.send(f"Set member view own infractions to {pb}")
-
-    else:
-        with db_hlapi(message.guild.id) as db:
-            gate = bool(int(db.grab_config("member-view-infractions") or 0))
-
-        if ctx.verbose: await message.channel.send(f"Member view own infractions is set to {gate}")
-
-    return 0
+    return await boolean_to_db_helper(message, args, "member-view-infractions", "Member View own Infractions", False, ctx.verbose)
 
 
 async def set_prefix(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
@@ -371,6 +364,26 @@ async def set_filelog_behavior(message: discord.Message, args: List[str], client
     return 0
 
 
+async def set_moderator_protect(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "moderator-protect", "Moderator Protect", False, ctx.verbose)
+
+
+async def set_edit_log_is_message_log(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "edit-log-is-message-log", "Edit log is Message log", True, ctx.verbose)
+
+
+async def set_leave_log_is_join_log(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "leave-log-is-join-log", "Leave log is Join log", True, ctx.verbose)
+
+
+async def set_unmute_on_ban(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+
+    return await boolean_to_db_helper(message, args, "unmute-on-ban", "Unmute on ban", False, ctx.verbose)
+
+
 category_info = {'name': 'administration', 'pretty_name': 'Administration', 'description': 'Administration commands.'}
 
 commands = {
@@ -409,6 +422,7 @@ commands = {
             'pretty_name': 'set-filelog-behavior [text|gzip|none]',
             'description': 'Set the message to file log behavior to store text, gzip, or not store',
             'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_message_and_edit_log',
             'execute': set_filelog_behavior,
             },
     'message-edit-log':
@@ -416,14 +430,17 @@ commands = {
             'pretty_name': 'message-edit-log <channel>',
             'description': 'Change message edit log, overloads message-log',
             'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_message_and_edit_log',
             'execute': message_edit_log_change
             },
-    'message-log': {
-        'pretty_name': 'message-log <channel>',
-        'description': 'Change message log',
-        'permission': 'administrator',
-        'execute': msglog_change
-        },
+    'message-log':
+        {
+            'pretty_name': 'message-log <channel>',
+            'description': 'Change message log',
+            'permission': 'administrator',
+            'cache': 'direct:(f)caches/sonnet_message_and_edit_log',
+            'execute': msglog_change
+            },
     'leave-log':
         {
             'pretty_name': 'leave-log <channel>',
@@ -506,7 +523,41 @@ commands = {
         'permission': 'administrator',
         'cache': 'regenerate',
         'execute': set_moderator_role
-        }
+        },
+    'set-moderator-protect':
+        {
+            'pretty_name': 'set-moderator-protect <bool>',
+            'description': 'Set whether to disallow infractions being given to moderator+ members, disabled by default',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_moderator_protect,
+            },
+    'set-leave-log-is-join-log':
+        {
+            'pretty_name': 'set-leave-log-is-join-log <bool>',
+            'description': "Set whether the leave-log config should fallback to join-log if it doesn't exist",
+            'rich_description': "This config exists to disable legacy compatibility where join-log used to be both logs, so leave-log could not be disabled without disabling join-log",
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
+            'permission': 'administrator',
+            "execute": set_leave_log_is_join_log,
+            },
+    'set-edit-log-is-message-log':
+        {
+            'pretty_name': 'set-edit-log-is-message-log <bool>',
+            'description': "Set whether the message-edit-log config should fallback to message-log if it doesn't exist",
+            'rich_description': "This config exists to disable legacy compatibility where message-log used to be both logs, so message-edit-log could not be disabled without disabling message-log",
+            'cache': 'direct:(f)caches/sonnet_userupdate_log',
+            'permission': 'administrator',
+            "execute": set_edit_log_is_message_log,
+            },
+    'set-unmute-on-ban':
+        {
+            'pretty_name': "set-unmute-on-ban <bool>",
+            "description": "Set whether to unmute a user upon banning them",
+            "rich_description": "This config is designed to make it easier to cleanup after a user is banned, clearing the mutedb and making unbanning the user less of a hassle",
+            "permission": "administrator",
+            "execute": set_unmute_on_ban,
+            },
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.14"

@@ -172,7 +172,7 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         returndata = tuple(self.cur)
         return returndata
 
-    def list_tables(self, searchterm: str) -> Tuple[Any, ...]:
+    def list_tables(self, searchterm: str) -> Tuple[Tuple[str], ...]:
 
         self.cur.execute(f"SHOW TABLES WHERE Tables_in_{self.db_name} LIKE ?", (searchterm, ))
 

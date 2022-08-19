@@ -5,7 +5,6 @@ import importlib
 
 import discord
 import io
-import time
 import platform
 
 import lib_loaders
@@ -17,11 +16,17 @@ importlib.reload(lib_goparsers)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
+import lib_datetimeplus
 
-from lib_loaders import clib_exists, DotHeaders, datetime_unix
+importlib.reload(lib_datetimeplus)
 
-from typing import List, Any, Union
+from lib_loaders import clib_exists, DotHeaders
+from lib_datetimeplus import Time
+
+from typing import List, Any, Union, Final
 import lib_lexdpyk_h as lexdpyk
+
+LAST_LOAD: Final = Time.now()
 
 
 # Pretty gives spacing between key-value items to have them padded
@@ -36,27 +41,18 @@ def prettyprint(inlist: List[List[str]]) -> List[str]:
     return [(f"{i[0]}{(maxln-len(i[0]))*' '} : {i[1]}") for i in inlist]
 
 
-# Adds zero padding to number
-def zpad(n: int) -> str:
-    """
-    Deprecated, just use a format string directly
-    """
-    return f"{n:02d}"
-
-
-def getdelta(past: Union[int, float]) -> str:
+def getdelta(past: Union[int, float, Time]) -> str:
     """
     Formats a delta between a past time and now to be human readable
     """
 
-    trunning = (datetime_unix(int(time.time())) - datetime_unix(int(past)))
+    past_t = past if isinstance(past, Time) else Time(unix=int(past))
 
-    seconds = trunning.seconds % 60
-    minutes = ((trunning.seconds) // 60 % 60)
-    hours = ((trunning.seconds) // (60 * 60))
-    days = trunning.days
+    clock = (Time.now() - past_t).clock()
 
-    hms = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    days, hours = divmod(clock.hours, 24)
+
+    hms = f"{hours:02d}:{clock.minutes:02d}:{clock.seconds:02d}"
 
     # if days is 0 don't bother rendering it
     if days == 0: return hms
@@ -92,7 +88,9 @@ async def print_version_info(message: discord.Message, args: List[str], client: 
 
     fmt.write(f"Go accel: {lib_goparsers.GetVersion()}={lib_goparsers.hascompiled}\n")
 
-    fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n```")
+    fmt.write(f"\nBot Uptime: {getdelta(bot_start_time)}\n")
+
+    fmt.write(f"Last Reload: {getdelta(LAST_LOAD)}\n```")
 
     content = fmt.getvalue()
 
@@ -137,7 +135,7 @@ async def print_stats(message: discord.Message, args: List[str], client: discord
     for i in global_statistics_file:
         outputmap.append([i, global_statistics_file[i]])
 
-    # Declare here cause fstrings cant have \ in it 草
+    # Declare here cause fstrings can't have \ in it 草
     newline = "\n"
 
     writer = io.StringIO()
@@ -184,4 +182,4 @@ commands = {
         }
     }
 
-version_info: str = "1.2.12"
+version_info: str = "1.2.14"
