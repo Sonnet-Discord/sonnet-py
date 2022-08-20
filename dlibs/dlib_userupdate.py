@@ -25,7 +25,7 @@ importlib.reload(lib_parsers)
 from typing import Any, Dict, List, Optional, Union
 
 import lib_lexdpyk_h as lexdpyk
-from lib_compatibility import (discord_datetime_now, has_default_avatar, user_avatar_url)
+from lib_compatibility import (discord_datetime_now, has_default_avatar, user_avatar_url, to_snowflake)
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
 from lib_parsers import parse_boolean_strict
@@ -103,7 +103,7 @@ async def try_mute_on_rejoin(member: discord.Member, db: db_hlapi, client: disco
         success: bool
 
         try:
-            await member.add_roles(mute_role)
+            await member.add_roles(to_snowflake(mute_role))
             success = True
         except discord.errors.Forbidden:
             success = False

@@ -35,7 +35,7 @@ from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean_strict
-from lib_compatibility import user_avatar_url
+from lib_compatibility import user_avatar_url, to_snowflake
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
 import lib_constants as constants
@@ -315,7 +315,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
         try:
             if dm_sent:
                 await dm_sent  # Wait for dm to be sent before kicking
-            await message.guild.kick((member), reason=reason[:512])
+            await message.guild.kick(to_snowflake(member), reason=reason[:512])
 
             if warn_text is not None:
                 await message.channel.send(warn_text)
@@ -365,7 +365,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     try:
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
+        await message.guild.ban(to_snowflake(user), delete_message_days=delete_days, reason=reason[:512])
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
 
@@ -405,7 +405,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
 
     # Attempt to unban user
     try:
-        await message.guild.unban(user, reason=reason[:512])
+        await message.guild.unban(to_snowflake(user), reason=reason[:512])
     except discord.errors.Forbidden:
         await message.channel.send(f"{BOT_NAME} does not have permission to unban this user.")
         return 1
@@ -446,13 +446,13 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
     try:
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
+        await message.guild.ban(to_snowflake(user), delete_message_days=delete_days, reason=reason[:512])
 
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
 
     try:
-        await message.guild.unban(user, reason=reason[:512])
+        await message.guild.unban(to_snowflake(user), reason=reason[:513])
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to unban this user.")
     except discord.errors.NotFound:
@@ -498,7 +498,7 @@ async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infract
             db.unmute_user(infractionid=infractionID)
 
             try:
-                await member.remove_roles(mute_role)
+                await member.remove_roles(to_snowflake(mute_role))
             except discord.errors.HTTPException:
                 pass
 
@@ -554,7 +554,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     # Attempt to mute user
     try:
-        await member.add_roles(mute_role)
+        await member.add_roles(to_snowflake(mute_role))
     except discord.errors.Forbidden:
         await message.channel.send(f"{BOT_NAME} does not have permission to mute this user.")
         return 1
@@ -617,7 +617,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
     # Attempt to unmute user
     try:
-        await member.remove_roles(mute_role)
+        await member.remove_roles(to_snowflake(mute_role))
     except discord.errors.Forbidden:
         await message.channel.send(f"{BOT_NAME} does not have permission to unmute this user.")
         return 1
@@ -744,4 +744,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.14"
+version_info: str = "2.0.0-DEV"

@@ -15,10 +15,14 @@ importlib.reload(lib_parsers)
 import lib_loaders
 
 importlib.reload(lib_loaders)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_channel_message_noexcept
 from lib_loaders import load_embed_color, embed_colors
+from lib_compatibility import to_snowflake
 
 from typing import List, Any, Final, Dict, Union
 
@@ -110,7 +114,7 @@ async def try_remove_reaction(me: discord.Client, message: discord.Message, emoj
         return
 
     try:
-        await message.remove_reaction(emoji, me.user)
+        await message.remove_reaction(emoji, to_snowflake(me.user))
     except discord.errors.Forbidden:
         # raise non permission errors
         pass

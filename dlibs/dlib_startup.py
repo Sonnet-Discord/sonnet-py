@@ -11,9 +11,13 @@ importlib.reload(lib_db_obfuscator)
 import lib_loaders
 
 importlib.reload(lib_loaders)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import inc_statistics_better, datetime_now
+from lib_compatibility import to_snowflake
 
 from typing import Dict, Callable, Any, List, Tuple
 
@@ -27,7 +31,7 @@ async def attempt_unmute(Client: discord.Client, mute_entry: Tuple[str, str, str
     if (guild := Client.get_guild(int(mute_entry[0]))) and mute_role_id:
         if (user := guild.get_member(int(mute_entry[2]))) and (mute_role := guild.get_role(int(mute_role_id))):
             try:
-                await user.remove_roles(mute_role)
+                await user.remove_roles(to_snowflake(mute_role))
             except discord.errors.Forbidden:
                 pass
 
