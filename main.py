@@ -684,6 +684,10 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
         return None
 
 
+def lexdpyk_to_snowflake(v: Union[discord.User, discord.Member]) -> discord.abc.Snowflake:
+    return v  # type: ignore[return-value]
+
+
 async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional[int] = None, user: Optional[Union[discord.User, discord.Member]] = None, user_id: Optional[int] = None) -> bool:
 
     if guild: guild_id = guild.id
@@ -703,7 +707,7 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
             return False
 
         try:
-            await non_null_guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
+            await non_null_guild.ban(lexdpyk_to_snowflake(user), reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
         except discord.errors.Forbidden:
 
             # call kernel_blacklist_guild to add to json db, blacklist guild
