@@ -5,7 +5,7 @@
 import discord
 import datetime
 
-from typing import Union, Dict, Callable, cast
+from typing import Union, Dict, Callable, Protocol, cast
 
 _releaselevel: int = discord.version_info[0]
 
@@ -15,6 +15,7 @@ __all__ = [
     "default_avatar_url",
     "has_default_avatar",
     "discord_datetime_now",
+    "to_snowflake",
     ]
 
 
@@ -109,3 +110,17 @@ def discord_datetime_now() -> datetime.datetime:
     # 2.0: datetime aware
 
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+class _WeakSnowflake(Protocol):
+    id: int
+
+
+def to_snowflake(v: _WeakSnowflake) -> discord.abc.Snowflake:
+    """
+    Casts any true compatible type into a discord.py Showflake interface, bypassing a interface bug with mypy
+    """
+    # FIXME(ultrabear):
+    # we ignore interface errors here because dpy/mypy 2.0 has a bug where snowflakes interface includes slots
+    # when this bug is patched mypy should raise an error for unused type ignores and this should be patched
+    return v  # type: ignore[return-value]
