@@ -3,6 +3,7 @@
 
 import importlib
 
+from datetime import timedelta
 import discord, asyncio, json
 from dataclasses import dataclass
 
@@ -508,15 +509,11 @@ async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infract
                 pass
 
 
-async def mute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
-    if not message.guild:
-        return 1
-
-    ramfs = ctx.ramfs
-    automod = ctx.automod
-    verbose = ctx.verbose
-
-    modifiers = parse_infraction_modifiers(message.guild, args)
+def parse_duration_for_mutes(args: List[str], inf_name: str, /) -> Tuple[int, Optional[str]]:
+    """
+    Parses a duration from args to get mutetime/timeouttime and returns string if a duration was not passed in the correct place but is valid
+    abstracts logic for mutes/timeouts
+    """
 
     # Grab mute time
     if len(args) >= 2:
@@ -535,6 +532,23 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     if mutetime is None:
         mutetime = 0
+
+    duration_str = f"\n(No {inf_name} length was specified, but one of the reason items `{misplaced_duration}` is a valid duration, did you mean to {inf_name} for this length?)" if misplaced_duration is not None else None
+
+    return mutetime, duration_str
+
+
+async def mute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
+
+    mutetime, duration_str = parse_duration_for_mutes(args, "mute")
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
 
     # This ones for you, curl
     if not 0 <= mutetime < 60 * 60 * 256:
@@ -565,10 +579,9 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
         return 1
 
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
-    duration_str = f"\n(No mute length was specified, but one of the reason items `{misplaced_duration}` is a valid duration, did you mean to mute for this length?)" if misplaced_duration is not None else ""
 
     if verbose and not mutetime:
-        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}{duration_str}", allowed_mentions=discord.AllowedMentions.none())
+        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}{duration_str or ''}", allowed_mentions=discord.AllowedMentions.none())
 
         if warn_text is not None:
             await message.channel.send(warn_text)
@@ -632,6 +645,66 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
         db.unmute_user(userid=member.id)
 
     if verbose: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    return 0
+
+
+async def timeout_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    mutetime, duration_str = parse_duration_for_mutes(args, "timeout")
+
+    if mutetime >= ((60 * 60) * 24) * 28 or mutetime == 0:
+        mutetime = ((60 * 60) * 24) * 28
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
+    try:
+        member, _, reason, _, _, warn_text = await process_infraction(message, args, client, "timeout", ctx.ramfs, automod=ctx.automod, modifiers=modifiers, require_in_guild=True)
+    except InfractionGenerationError:
+        return 1
+
+    if not member:
+        raise lib_sonnetcommands.CommandError("ERROR: User not in guild")
+
+    try:
+        await member.timeout(timedelta(seconds=mutetime), reason=reason[:512])
+    except discord.errors.Forbidden:
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to timeout this user.")
+
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+
+    if ctx.verbose:
+        await message.channel.send(
+            f"Timed out {member.mention} with ID {member.id}{mod_str} for {format_duration(mutetime)} for {reason}{duration_str or ''}", allowed_mentions=discord.AllowedMentions.none()
+            )
+
+        if warn_text is not None:
+            await message.channel.send(warn_text)
+
+    return 0
+
+
+async def un_timeout_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    try:
+        member, _, reason, _, _, _ = await process_infraction(message, args, client, "untimeout", ctx.ramfs, infraction=False, automod=ctx.automod, require_in_guild=True)
+    except InfractionGenerationError:
+        return 1
+
+    if not member:
+        raise lib_sonnetcommands.CommandError("ERROR: User is not a member")
+
+    # Attempt to untimeout user
+    try:
+        await member.timeout(None, reason=reason[:512])
+    except discord.errors.Forbidden:
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to untimeout this user.")
+
+    if ctx.verbose:
+        await message.channel.send(f"Removed timeout for {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     return 0
 
 
@@ -713,7 +786,7 @@ commands = {
         'execute': ban_user
         },
     'unban': {
-        'pretty_name': 'unban <uid>',
+        'pretty_name': 'unban <uid> [reason]',
         'description': 'Unban a user, does not dm user',
         'permission': 'moderator',
         'execute': unban_user
@@ -732,10 +805,26 @@ commands = {
         'execute': mute_user
         },
     'unmute': {
-        'pretty_name': 'unmute <uid>',
+        'pretty_name': 'unmute <uid> [reason]',
         'description': 'Unmute a user, does not dm user',
         'permission': 'moderator',
         'execute': unmute_user
+        },
+    "timeout":
+        {
+            'pretty_name': 'timeout [+modifiers] <uid> [time[h|m|S]] [reason]',
+            'description': 'Timeout a member, defaults to longest timeout possible (28 days)',
+            'permission': "moderator",
+            "execute": timeout_user,
+            },
+    "untimeout": {
+        'alias': "remove-timeout",
+        },
+    "remove-timeout": {
+        'pretty_name': 'remove-timeout <uid> [reason]',
+        'description': 'Remove a timeout on a member',
+        'permission': "moderator",
+        "execute": un_timeout_user,
         },
     'purge':
         {
