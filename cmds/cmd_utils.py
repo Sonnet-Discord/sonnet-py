@@ -124,8 +124,10 @@ async def profile_function(message: discord.Message, args: List[str], client: di
         "invisible": "\U000026AB (offline)"
         }
 
+    avatar_asset = user.display_avatar if member is None else member.display_avatar
+
     embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
-    embed.set_thumbnail(url=user_avatar_url(user))
+    embed.set_thumbnail(url=avatar_asset.url)
     embed.add_field(name="Username", value=str(user), inline=True)
     embed.add_field(name="User ID", value=str(user.id), inline=True)
     if member:
@@ -154,10 +156,24 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
     if not message.guild:
         return 1
 
-    user, _ = await parse_user_member_noexcept(message, args, client, default_self=True)
+    p = Parser("avatar")
+    global_flag: lib_tparse.Promise[bool] = p.add_arg(["-g", "--global"], lib_tparse.store_true, flag=True, helpstr="whether or not to grab global avatar")
+
+    try:
+        p.parse(args, stderr=io.StringIO(), exit_on_fail=False, lazy=True, consume=True)
+    except lib_tparse.ParseFailureError:
+        # this is a programming error because lazy is set and no value parsing happens
+        raise
+
+    user, member = await parse_user_member_noexcept(message, args, client, default_self=True)
+
+    global_avatar = user.avatar if user.avatar is not None else user.default_avatar
+    guild_avatar = member.display_avatar if member is not None else user.display_avatar
+
+    avatar_asset = global_avatar if global_flag.get(False) else guild_avatar
 
     embed = discord.Embed(description=f"{user.mention}'s Avatar", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
-    embed.set_image(url=user_avatar_url(user))
+    embed.set_image(url=avatar_asset.url)
     embed.timestamp = Time.now().as_datetime()
     try:
         await message.channel.send(embed=embed)
@@ -595,10 +611,8 @@ commands = {
         'alias': 'avatar'
         },
     'avatar': {
-        'pretty_name': 'avatar [user]',
-        'description': 'Get avatar of a user',
-        'permission': 'everyone',
-        'cache': 'keep',
+        'pretty_name': 'avatar [user] [--global]',
+        'description': 'Get avatar of a user, returns guild avatar if it exists unless --global is specified',
         'execute': avatar_function
         },
     'server-info': {
