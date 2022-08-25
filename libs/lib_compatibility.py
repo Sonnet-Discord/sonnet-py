@@ -121,7 +121,8 @@ class _WeakSnowflake(Protocol):
 
 def to_snowflake(v: _WeakSnowflake, /) -> discord.abc.Snowflake:
     """
-    Casts any true compatible type into a discord.py Showflake interface, bypassing a interface bug with mypy
+    Casts any snowflake compatible type into something satisfying the discord.py Showflake interface, bypassing a interface bug with mypy
+    When discord.py/mypy is updated this method will be changed to a bounded identity function
     """
     # FIXME(ultrabear):
     # we ignore interface errors here because dpy/mypy 2.0 has a bug where snowflakes interface includes slots
