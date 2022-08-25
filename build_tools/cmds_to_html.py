@@ -73,6 +73,19 @@ for command in command_modules_dict:
 
     raise SyntaxError(f"ERROR IN [{execmodule} : {command}] PERMISSION TYPE({cmd.permission}) IS NOT VALID")
 
+# Test for pretty_name starting with the keyname
+for command in command_modules_dict:
+    if "alias" in command_modules_dict[command]:
+        continue
+
+    # cmd.execute might point to lib_sonnetcommands if it builds a closure for backwards compat, so get the raw value
+    execmodule = command_modules_dict[command]['execute'].__module__
+
+    if command_modules_dict[command]["pretty_name"].startswith(command):
+        continue
+
+    raise SyntaxError(f"ERROR IN [{execmodule} : {command}] pretty_name does not start with command name (malformed helptext)")
+
 # Test for aliases pointing to existing commands that are not aliases
 for command in command_modules_dict:
     if "alias" not in command_modules_dict[command]:
