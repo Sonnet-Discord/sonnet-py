@@ -35,7 +35,7 @@ from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean_strict
-from lib_compatibility import user_avatar_url, to_snowflake
+from lib_compatibility import user_avatar_url, to_snowflake, GuildMessageable
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
 import lib_constants as constants
@@ -674,7 +674,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         raise lib_sonnetcommands.CommandError("User does not exist")
 
     try:
-        purged = await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
+        purged = await cast(GuildMessageable, message.channel).purge(limit=limit, check=ucheck)
         await message.channel.send(f"Purged {len(purged)} message{'s' * (len(purged)!=1)}, initiated by {message.author.mention}", allowed_mentions=discord.AllowedMentions.none())
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError("ERROR: Bot lacks perms to purge")

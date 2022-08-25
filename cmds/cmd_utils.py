@@ -44,7 +44,7 @@ from typing import Any, Final, List, Optional, Tuple, Dict
 
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
-from lib_compatibility import discord_datetime_now, user_avatar_url
+from lib_compatibility import discord_datetime_now, user_avatar_url, is_guild_messageable
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import embed_colors, load_embed_color
 from lib_parsers import (parse_boolean_strict, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
@@ -95,7 +95,7 @@ def parsedate(indata: Optional[datetime]) -> str:
 
 
 def _get_highest_perm(message: discord.Message, member: discord.Member, conf_cache: Dict[str, Any]) -> str:
-    if not isinstance(message.channel, discord.TextChannel):
+    if not is_guild_messageable(message.channel):
         return "everyone"
 
     highest = "everyone"
