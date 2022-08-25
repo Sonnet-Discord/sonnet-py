@@ -82,8 +82,8 @@ defaultcache: dict[Union[str, int], Any] = {
     "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["url-blacklist", ""], ["antispam", "3,2"], ["char-antispam", "2,2,1000"]],
     "text":
         [
-            ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""], ["moderator-role", ""],
-            ["antispam-time", "20"], ["moderator-protect", "0"]
+            ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["antispam-action", "mute"], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""],
+            ["moderator-role", ""], ["antispam-time", "20"], ["moderator-protect", "0"]
             ],
     0: "sonnet_default"
     }

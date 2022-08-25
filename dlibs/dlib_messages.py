@@ -499,7 +499,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(warn_missing(command_modules_dict, "mute")(message, execargs, client, automod_ctx))
+                asyncio.create_task(warn_missing(command_modules_dict, mconf["antispam-action"])(message, execargs, client, automod_ctx))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
