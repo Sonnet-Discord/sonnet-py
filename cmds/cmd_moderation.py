@@ -182,7 +182,8 @@ async def process_infraction(
     ramfs: lexdpyk.ram_filesystem,
     infraction: bool = True,
     automod: bool = False,
-    modifiers: Optional[List[InfractionModifier]] = None
+    modifiers: Optional[List[InfractionModifier]] = None,
+    require_in_guild: bool = False
     ) -> InfractionInfo:
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
@@ -199,6 +200,10 @@ async def process_infraction(
     except lib_parsers.errors.user_parse_error:
         raise InfractionGenerationError("Could not parse user")
 
+    if require_in_guild and member is None:
+        await message.channel.send(f"User is not in guild (required to {i_type} user)")
+        raise InfractionGenerationError(f"Attempted to {i_type} a user but they were not a member")
+
     local_conf_cache = load_message_config(message.guild.id, ramfs)
 
     # Test if user is a moderator
@@ -212,7 +217,7 @@ async def process_infraction(
         if bool(int(local_conf_cache["moderator-protect"])):
             await message.channel.send(f"Cannot {i_type} specified user, user is a moderator+\n"
                                        f"(to disable this behavior see {get_help})")
-            raise InfractionGenerationError("Attempted to warn a moderator+ but mprotect was on")
+            raise InfractionGenerationError(f"Attempted to {i_type} a moderator+ but mprotect was on")
 
     # Test if user is self
     if member and moderator.id == member.id:
@@ -306,7 +311,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     modifiers = parse_infraction_modifiers(message.guild, args)
 
     try:
-        member, _, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers)
+        member, _, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
     except InfractionGenerationError:
         return 1
 
@@ -543,7 +548,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, infractionID, _, warn_text = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers)
+        member, _, reason, infractionID, _, warn_text = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
     except (NoMuteRole, InfractionGenerationError):
         return 1
 
@@ -607,7 +612,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, _, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod)
+        member, _, reason, _, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod, require_in_guild=True)
     except (InfractionGenerationError, NoMuteRole):
         return 1
 
