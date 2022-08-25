@@ -936,6 +936,56 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
         await event_call("on-member-unban", guild, user)
 
 
+# new in 2.0:
+
+
+@Client.event
+async def on_raw_app_command_permissions_update(payload: discord.RawAppCommandPermissionsUpdateEvent) -> None:
+    if await safety_check(guild=payload.guild):
+        await event_call("on-raw-app-command-permissions-update", payload)
+
+
+@Client.event
+async def on_app_command_completion(interaction: discord.Interaction, command: Union[discord.app_commands.Command[Any, Any, Any], discord.app_commands.ContextMenu]) -> None:
+    if await safety_check(guild=interaction.guild, user=interaction.user):
+        await event_call("on-app-command-completion", interaction, command)
+
+
+@Client.event
+async def on_automod_rule_create(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-create", rule)
+
+
+@Client.event
+async def on_automod_rule_update(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-update", rule)
+
+
+@Client.event
+async def on_automod_rule_delete(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-delete", rule)
+
+
+@Client.event
+async def on_automod_action(execution: discord.AutoModAction) -> None:
+    if await safety_check(guild_id=execution.guild_id):
+        await event_call("on-automod-action", execution)
+
+
+@Client.event
+async def on_raw_member_remove(payload: discord.RawMemberRemoveEvent) -> None:
+    if await safety_check(guild_id=payload.guild_id):
+        await event_call("on-raw-member-remove", payload)
+
+
+async def on_presence_update(before: discord.Member, after: discord.Member) -> None:
+    if await safety_check(guild=before.guild, user=before):
+        await event_call("on-presence-update")
+
+
 def gentoken() -> str:
 
     TOKEN = getpass.getpass("Enter TOKEN: ")
@@ -1029,7 +1079,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2"
+version_info: str = "LeXdPyK 2-DEV"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
