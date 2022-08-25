@@ -41,7 +41,7 @@ from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, cast
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -273,7 +273,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
         asyncio.create_task(attempt_message_delete(message))
         execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx)
+        await catch_ce(message, warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
@@ -435,6 +435,17 @@ def warn_missing(command_dict: Dict[str, Any], argument: str, /) -> ExecutableCt
         return dummy
 
 
+async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
+
+    try:
+        await promise
+    except lib_sonnetcommands.CommandError as ce:
+        try:
+            await err_rsp.channel.send(str(ce))
+        except discord.errors.HTTPException:
+            pass
+
+
 @lexdpyk.ToKernelArgs
 async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
 
@@ -491,7 +502,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, automod_ctx))
+        asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, automod_ctx)))
 
     if spammer:
         message_deleted = True
@@ -499,7 +510,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(warn_missing(command_modules_dict, mconf["antispam-action"])(message, execargs, client, automod_ctx))
+                asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["antispam-action"])(message, execargs, client, automod_ctx)))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
