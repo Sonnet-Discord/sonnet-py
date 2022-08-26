@@ -1,38 +1,13 @@
 # Dynamic libraries (editable at runtime) for message handling
 # Ultrabear 2020
 
-import importlib
-
 import time, asyncio, os, hashlib, string, io, gzip
 import warnings
 import copy as pycopy
 
 import discord, lz4.frame
 
-import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
-import lib_parsers
-
-importlib.reload(lib_parsers)
-import lib_loaders
-
-importlib.reload(lib_loaders)
-import lib_encryption_wrapper
-
-importlib.reload(lib_encryption_wrapper)
-import lib_lexdpyk_h
-
-importlib.reload(lib_lexdpyk_h)
-import lib_constants
-
-importlib.reload(lib_constants)
-import lib_compatibility
-
-importlib.reload(lib_compatibility)
 import lib_sonnetcommands
-
-importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
