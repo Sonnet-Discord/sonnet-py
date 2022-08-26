@@ -474,9 +474,10 @@ def regenerate_kernel_ramfs(args: List[str] = []) -> Optional[Tuple[str, List[Ex
 def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     log_kernel_info("Reloading Kernel Modules")
     # Init vars
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, dynamiclib_modules_exec_dict
     command_modules_dict = {}
     dynamiclib_modules_dict = {}
+    dynamiclib_modules_exec_dict = {}
 
     start_reload_modules = time.monotonic()
 
@@ -1114,7 +1115,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2"
+version_info: str = "LeXdPyK 2.0.1"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
