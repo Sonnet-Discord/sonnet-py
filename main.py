@@ -297,6 +297,12 @@ dynamiclib_modules_dict: Dict[str, Any] = {}
 #  this allows flexibility with multiple modules that just "must run after command processor init"
 dynamiclib_modules_exec_dict: Dict[str, List[List[Any]]] = {}
 
+# LeXdPyK 2.0: optional lib reloads
+# lexdpyk 2.0 ships with the new feature of not needing to reload library modules in sonnet,
+# as the kernel handles reloading them at module load and reload time
+# this comes with the side effect of all library modules being init by the kernel
+loaded_libraries: List[Any] = []
+
 
 def add_module_to_exec_dict(module_dlibs: Dict[str, Any]) -> None:
 
@@ -374,6 +380,31 @@ def log_kernel_info(s: object) -> None:
     logger.info(f"{version_info}: {s}")
 
 
+def reload_libraries() -> List[Tuple[Exception, str]]:
+    """
+    Reloads all lib_ libraries
+    """
+    global loaded_libraries
+    loaded_libraries = []
+
+    err = []
+
+    # import libraries
+    for f in filter(lambda f: f.startswith("lib_") and f.endswith(".py"), os.listdir('./libs')):
+        try:
+            loaded_libraries.append(importlib.import_module(f[:-3]))
+        except Exception as e:
+            err.append((e, f[:-3]), )
+
+    for i in range(len(loaded_libraries)):
+        try:
+            loaded_libraries[i] = importlib.reload(loaded_libraries[i])
+        except Exception as e:
+            err.append((e, loaded_libraries[i].__name__), )
+
+    return err
+
+
 def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     log_kernel_info("Loading Kernel Modules")
     start_load_modules = time.monotonic()
@@ -388,6 +419,8 @@ def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, Lis
 
     # Init return state
     err: List[Tuple[Exception, str]] = []
+
+    err.extend(reload_libraries())
 
     # Init imports
     for f in filter(lambda f: f.startswith("cmd_") and f.endswith(".py"), os.listdir('./cmds')):
@@ -450,30 +483,32 @@ def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, L
     # Init ret state
     err = []
 
+    err.extend(reload_libraries())
+
     # Update set
     for i in range(len(command_modules)):
         try:
             command_modules[i] = (importlib.reload(command_modules[i]))
         except Exception as e:
-            err.append([e, command_modules[i].__name__])
+            err.append((e, command_modules[i].__name__))
     for i in range(len(dynamiclib_modules)):
         try:
             dynamiclib_modules[i] = (importlib.reload(dynamiclib_modules[i]))
         except Exception as e:
-            err.append([e, dynamiclib_modules[i].__name__])
+            err.append((e, dynamiclib_modules[i].__name__))
 
     # Update hashmaps
     for module in command_modules:
         try:
             command_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__))
     for module in dynamiclib_modules:
         try:
             add_module_to_exec_dict(module.commands)
             dynamiclib_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__))
 
     # Regen tempramfs
     regenerate_ramfs()
