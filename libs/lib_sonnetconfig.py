@@ -40,8 +40,7 @@ def _load_cfg(attr: str, default: Typ, typ: Type[Typ], testfunc: Optional[Callab
     if testfunc is not None and not testfunc(conf):
         raise TypeError(f"Sonnet Config {attr}: {errmsg}")
 
-    # pyright thinks that it can still be Any despite isinstance check
-    return conf  # pyright: ignore[reportGeneralTypeIssues]
+    return conf
 
 
 # Prints a warning if not using re2
