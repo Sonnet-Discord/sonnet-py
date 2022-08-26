@@ -1,36 +1,12 @@
 # Moderation commands
 # bredo, 2020
 
-import importlib
-
 from datetime import timedelta
 import discord, asyncio, json
 from dataclasses import dataclass
 
-import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
-import lib_loaders
-
-importlib.reload(lib_loaders)
 import lib_parsers
-
-importlib.reload(lib_parsers)
-import lib_constants
-
-importlib.reload(lib_constants)
-import lib_goparsers
-
-importlib.reload(lib_goparsers)
-import lib_compatibility
-
-importlib.reload(lib_compatibility)
-import lib_sonnetconfig
-
-importlib.reload(lib_sonnetconfig)
 import lib_sonnetcommands
-
-importlib.reload(lib_sonnetcommands)
 
 from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
