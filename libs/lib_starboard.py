@@ -8,14 +8,8 @@ import importlib
 import discord
 
 import lib_sonnetconfig
-
-importlib.reload(lib_sonnetconfig)
 import lib_parsers
-
-importlib.reload(lib_parsers)
 import lib_compatibility
-
-importlib.reload(lib_compatibility)
 
 from lib_parsers import generate_reply_field
 from lib_sonnetconfig import STARBOARD_EMOJI, STARBOARD_COUNT, REGEX_VERSION

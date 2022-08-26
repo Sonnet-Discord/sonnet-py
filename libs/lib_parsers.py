@@ -8,23 +8,11 @@ import importlib
 import lz4.frame, discord, os, json, hashlib, io, warnings, math
 
 import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
 import lib_encryption_wrapper
-
-importlib.reload(lib_encryption_wrapper)
 import lib_sonnetconfig
-
-importlib.reload(lib_sonnetconfig)
 import lib_constants
-
-importlib.reload(lib_constants)
 import lib_sonnetcommands
-
-importlib.reload(lib_sonnetcommands)
 import lib_compatibility
-
-importlib.reload(lib_compatibility)
 
 from lib_sonnetconfig import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi

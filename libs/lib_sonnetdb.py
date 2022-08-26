@@ -9,8 +9,6 @@ import io
 
 import lib_sonnetconfig
 
-importlib.reload(lib_sonnetconfig)
-
 from lib_sonnetconfig import DB_TYPE, SQLITE3_LOCATION
 
 from typing import Union, Dict, List, Tuple, Optional, Any, Type, cast
