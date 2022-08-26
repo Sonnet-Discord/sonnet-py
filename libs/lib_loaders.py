@@ -9,12 +9,6 @@ import random, ctypes, time, io, json, pickle, threading, warnings
 import datetime
 import subprocess
 
-import lib_db_obfuscator
-import lib_sonnetconfig
-import lib_goparsers
-import lib_datetimeplus
-
-
 from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
 from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
