@@ -9,7 +9,9 @@ import io
 
 from lib_sonnetconfig import DB_TYPE, SQLITE3_LOCATION
 
-from typing import Union, Dict, List, Tuple, Optional, Any, Type, cast
+from typing import Union, Dict, List, Tuple, Optional, Any, Type, Protocol, cast
+
+db_handler: Type["_DataBaseHandler"]
 
 # Get db handling library
 if DB_TYPE == "mariadb":
@@ -30,6 +32,63 @@ else:
     raise RuntimeError("Could not load database backend (non valid specifier)")
 
 
+class _DataBaseHandler(Protocol):
+    @property
+    def TEXT_KEY(self) -> bool:
+        ...
+
+    def __init__(self, db_connection: Any, /) -> None:
+        ...
+
+    def __enter__(self, /) -> "_DataBaseHandler":
+        ...
+
+    def make_new_index(self, tablename: str, indexname: str, columns: List[str], /) -> None:
+        ...
+
+    def make_new_table(self, tablename: str, data: Union[List[Any], Tuple[Any, ...]], /) -> None:
+        ...
+
+    def add_to_table(self, table: str, data: Union[List[Any], Tuple[Any, ...]], /) -> None:
+        ...
+
+    def multicount_rows_from_table(self, table: str, searchparms: List[List[Any]], /) -> int:
+        ...
+
+    def fetch_rows_from_table(self, table: str, search: List[Any], /) -> Tuple[Any, ...]:
+        ...
+
+    def multifetch_rows_from_table(self, table: str, searchparms: List[List[Any]], /) -> Tuple[Any, ...]:
+        ...
+
+    def delete_rows_from_table(self, table: str, column_search: List[Any], /) -> None:
+        ...
+
+    def delete_table(self, table: str, /) -> None:
+        ...
+
+    def fetch_table(self, table: str, /) -> Tuple[Any, ...]:
+        ...
+
+    def list_tables(self, searchterm: str, /) -> Tuple[Tuple[str], ...]:
+        ...
+
+    def ping(self, /) -> None:
+        ...
+
+    def commit(self, /) -> None:
+        ...
+
+    def close(self, /) -> None:
+        ...
+
+    def __del__(self, /) -> None:
+        ...
+
+    def __exit__(self, err_type: Any, err_value: Any, err_traceback: Any, /) -> None:
+        ...
+
+
 class DATABASE_FATAL_CONNECTION_LOSS(Exception):
     __slots__ = ()
 
@@ -41,7 +100,7 @@ except db_error.Error:
     raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
 
 
-def db_grab_connection() -> db_handler:  # pytype: disable=invalid-annotation
+def db_grab_connection() -> _DataBaseHandler:  # pytype: disable=invalid-annotation
     global db_connection
     try:
         db_connection.ping()
