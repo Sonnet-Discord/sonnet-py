@@ -115,6 +115,9 @@ class encrypted_writer:
         self.rawfile.close()
         self.encryptor_module.finalize()
 
+    def flush(self) -> None:
+        return
+
     def close(self) -> None:
 
         self.finalize()
