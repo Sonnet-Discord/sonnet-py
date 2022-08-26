@@ -419,6 +419,9 @@ async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
             await err_rsp.channel.send(str(ce))
         except discord.errors.HTTPException:
             pass
+    except discord.errors.Forbidden:
+        # ignore permission errors
+        pass
 
 
 @lexdpyk.ToKernelArgs
