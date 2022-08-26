@@ -130,7 +130,7 @@ def to_snowflake(v: _WeakSnowflake, /) -> discord.abc.Snowflake:
     return v  # type: ignore[return-value]
 
 
-GuildMessageable = Union[discord.TextChannel, discord.Thread]
+GuildMessageable = Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]
 
 _concrete_channels = Union[discord.TextChannel, discord.VoiceChannel, discord.CategoryChannel, discord.StageChannel, discord.ForumChannel, discord.Thread, discord.DMChannel, discord.GroupChannel,
                            discord.PartialMessageable]
@@ -142,4 +142,4 @@ def is_guild_messageable(v: Union[_concrete_channels, _abstract_base_class_chann
     Returns True if the channel type passed is within a guild and messageable
     """
 
-    return isinstance(v, (discord.TextChannel, discord.Thread))
+    return isinstance(v, (discord.TextChannel, discord.Thread, discord.VoiceChannel))
