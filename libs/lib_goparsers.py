@@ -15,7 +15,7 @@ import ctypes as _ctypes
 import subprocess as _subprocess
 from functools import lru_cache
 
-from typing import Optional
+from typing import Optional, List
 
 from lib_sonnetconfig import GOLIB_LOAD, GOLIB_VERSION
 from lib_datetimeplus import Duration as _Duration
@@ -118,7 +118,7 @@ def GenerateCacheFile(fin: str, fout: str) -> None:
 
         with open(fin, "rb") as words:
             maxval = 0
-            structured_data = []
+            structured_data: List[bytes] = []
             for byte in words.read().split(b"\n"):
                 if byte and not len(byte) > 85 and not b"\xc3" in byte:
 

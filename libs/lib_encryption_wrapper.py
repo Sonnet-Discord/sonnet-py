@@ -6,7 +6,7 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import hashes, hmac
 
-from typing import Generator, Union, Protocol
+from typing import Generator, Union, List, Protocol
 
 
 class errors:
@@ -204,7 +204,7 @@ class encrypted_reader:
         if size == -1:
             if self.pointer == 0:
                 # Return entire file if pointer is at 0
-                datamap = []
+                datamap: List[bytes] = []
                 while a := self.rawfile.read(2):
                     datamap.append(self._grab_amount(int.from_bytes(a, "little")))
                 return b"".join(datamap)

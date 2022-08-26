@@ -61,6 +61,8 @@ _PAT = TypeVar("_PAT")
 _ParserT = TypeVar("_ParserT")
 # C Iterator Type
 _CIT = TypeVar("_CIT")
+# Generic T
+_T = TypeVar("_T")
 
 
 class _IteratorCtx:
@@ -194,13 +196,16 @@ class Parser:
 
         garbage: List[int] = []
 
+        def store_private(promise: Promise[_T], v: _T) -> None:
+            promise._data = v  # pyright: ignore[reportPrivateUsage]
+
         for idx, val in _CIterator(args):
             if val in self._arghash:
                 garbage.append(idx.i)
                 arg = self._arghash[val]
 
                 if arg.flag is True:
-                    arg.store._data = arg.func("")
+                    store_private(arg.store, arg.func(""))
                 else:
                     idx.i += 1
                     garbage.append(idx.i)
@@ -208,7 +213,7 @@ class Parser:
                         self._error(f"Failure to parse argument {val}, expected parameter, reached EOL", exit_on_fail, stderr)
 
                     try:
-                        arg.store._data = arg.func(args[idx.i])
+                        store_private(arg.store, arg.func(args[idx.i]))
                     except ValueError as ve:
                         self._error(f"Failed to parse argument {val}; ValueError: {ve}", exit_on_fail, stderr)
 
@@ -221,7 +226,7 @@ class Parser:
                 del args[di]
 
         for i in self._arguments:
-            i.store._parsed = True
+            i.store._parsed = True  # pyright: ignore[reportPrivateUsage]
 
 
 def store_true(s: str) -> Literal[True]:
