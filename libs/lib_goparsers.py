@@ -11,20 +11,11 @@ __all__ = [
     "GetVersion",
     ]
 
-import importlib
-
 import ctypes as _ctypes
 import subprocess as _subprocess
 from functools import lru_cache
 
 from typing import Optional
-
-import lib_sonnetconfig
-
-importlib.reload(lib_sonnetconfig)
-import lib_datetimeplus
-
-importlib.reload(lib_datetimeplus)
 
 from lib_sonnetconfig import GOLIB_LOAD, GOLIB_VERSION
 from lib_datetimeplus import Duration as _Duration

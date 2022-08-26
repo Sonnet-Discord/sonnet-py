@@ -7,26 +7,14 @@ import importlib
 
 import lz4.frame, discord, os, json, hashlib, io, warnings, math
 
-import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
-import lib_encryption_wrapper
-
-importlib.reload(lib_encryption_wrapper)
-import lib_sonnetconfig
-
-importlib.reload(lib_sonnetconfig)
-import lib_constants
-
-importlib.reload(lib_constants)
 import lib_sonnetcommands
-
-importlib.reload(lib_sonnetcommands)
+import lib_encryption_wrapper
 
 from lib_sonnetconfig import REGEX_VERSION
 from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_reader
 import lib_constants as constants
+from lib_compatibility import is_guild_messageable, GuildMessageable
 
 from typing import Callable, Iterable, Optional, Any, Tuple, Dict, Union, List, TypeVar, Literal, overload, cast
 import lib_lexdpyk_h as lexdpyk
@@ -199,8 +187,9 @@ def parse_skip_message(Client: discord.Client, message: discord.Message, *, allo
     """
 
     # Make sure we don't start a feedback loop.
-    if message.author.id == Client.user.id:
-        return True
+    if Client.user:
+        if message.author.id == Client.user.id:
+            return True
 
     # only check if we are not allowing bots
     if not allow_bots:
@@ -262,7 +251,7 @@ async def update_log_channel(message: discord.Message, args: list[str], client: 
     if not message.guild:
         raise errors.log_channel_update_error("ERROR: No guild")
 
-    if not isinstance(message.channel, discord.TextChannel):
+    if not is_guild_messageable(message.channel):
         raise errors.log_channel_update_error("ERROR: Wrong channel context")
 
     if args:
@@ -294,9 +283,10 @@ async def update_log_channel(message: discord.Message, args: list[str], client: 
         await message.channel.send(constants.sonnet.error_channel.invalid)
         raise errors.log_channel_update_error("Channel is not a valid channel")
 
+    # we may only log to textchannels, not threads as they may be deleted automatically
     if not isinstance(discord_channel, discord.TextChannel):
         await message.channel.send(constants.sonnet.error_channel.wrongType)
-        raise errors.log_channel_update_error("Channel is not a valid channel")
+        raise errors.log_channel_update_error("Channel is not a TextChannel")
 
     if discord_channel.guild.id != message.channel.guild.id:
         await message.channel.send(constants.sonnet.error_channel.scope)
@@ -317,21 +307,21 @@ Permtype = Union[str, Tuple[str, Callable[[discord.Message], bool]]]
 
 
 @overload
-def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["everyone"]) -> Literal[True]:
+def parse_core_permissions(channel: GuildMessageable, member: discord.Member, mconf: Dict[str, str], perms: Literal["everyone"]) -> Literal[True]:
     ...
 
 
 @overload
-def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: Literal["moderator", "administrator", "owner"]) -> bool:
+def parse_core_permissions(channel: GuildMessageable, member: discord.Member, mconf: Dict[str, str], perms: Literal["moderator", "administrator", "owner"]) -> bool:
     ...
 
 
 @overload
-def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+def parse_core_permissions(channel: GuildMessageable, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
     ...
 
 
-def parse_core_permissions(channel: discord.TextChannel, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
+def parse_core_permissions(channel: GuildMessageable, member: discord.Member, mconf: Dict[str, str], perms: str) -> Optional[bool]:
     """
     Parse permissions of a given TextChannel and Member, only parses core permissions (everyone,moderator,administrator,owner) and does not have verbosity
     This is a lightweight alternative to parse_permissions for parsing simple permissions, while not sufficient for full command permission parsing.
@@ -366,7 +356,7 @@ async def parse_permissions(message: discord.Message, mconf: Dict[str, str], per
     :returns: bool
     """
 
-    if not isinstance(message.channel, discord.TextChannel):
+    if not is_guild_messageable(message.channel):
         # Perm check called outside a guild
         return False
 
@@ -597,7 +587,7 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
     if not discord_channel:
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
 
-    if not isinstance(discord_channel, discord.TextChannel):
+    if not is_guild_messageable(discord_channel):
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.scope)
 
     if discord_channel.guild.id != message.guild.id:
@@ -624,7 +614,7 @@ async def parse_channel_message(message: discord.Message, args: List[str], clien
     try:
         return await parse_channel_message_noexcept(message, args, client)
     except lib_sonnetcommands.CommandError as ce:
-        await message.channel.send(ce)
+        await message.channel.send(str(ce))
         raise errors.message_parse_failure(ce)
 
 
@@ -632,10 +622,10 @@ UserInterface = Union[discord.User, discord.Member]
 
 
 # should return a union of many types but for now only handle discord.Message
-async def _guess_id_type(message: discord.Message, mystery_id: int) -> Optional[Union[discord.Message, discord.Role, discord.TextChannel]]:
+async def _guess_id_type(message: discord.Message, mystery_id: int) -> Optional[Union[discord.Message, discord.Role, GuildMessageable]]:
 
     # hot path current channel id
-    if message.channel.id == mystery_id and isinstance(message.channel, discord.TextChannel):
+    if message.channel.id == mystery_id and is_guild_messageable(message.channel):
         return message.channel
 
     # asserts guild
@@ -647,11 +637,11 @@ async def _guess_id_type(message: discord.Message, mystery_id: int) -> Optional[
         return role
 
     if (chan := message.guild.get_channel(mystery_id)) is not None:
-        if isinstance(chan, discord.TextChannel):
+        if is_guild_messageable(chan):
             return chan
 
     # asserts channel
-    if not isinstance(message.channel, discord.TextChannel):
+    if not is_guild_messageable(message.channel):
         return None
 
     # requires channel
@@ -701,12 +691,13 @@ async def parse_user_member_noexcept(message: discord.Message,
     except (discord.errors.NotFound, discord.errors.HTTPException):
         if (pot := await _guess_id_type(message, uid)) is not None:
             errappend = "Note: While this ID is not a valid user ID, it is "
-            if isinstance(pot, discord.TextChannel):
-                errappend += f"a valid channel ID: <#{pot.id}>"
+            if isinstance(pot, discord.Role):
+                errappend += "a valid role"
             elif isinstance(pot, discord.Message):
                 errappend += f"a valid message by a user with ID {pot.author.id}\n(did you mean to select this user?)"
-            elif isinstance(pot, discord.Role):
-                errappend += "a valid role"
+            else:
+                chan_name = "channel" if isinstance(pot, discord.TextChannel) else "thread"
+                errappend += f"a valid {chan_name} ID: <#{pot.id}>"
 
             raise lib_sonnetcommands.CommandError(f"User does not exist\n{errappend}")
 
@@ -727,7 +718,7 @@ async def parse_user_member(message: discord.Message, args: List[str], client: d
     try:
         return await parse_user_member_noexcept(message, args, client, argindex=argindex, default_self=default_self)
     except lib_sonnetcommands.CommandError as ce:
-        await message.channel.send(ce)
+        await message.channel.send(str(ce))
         raise errors.user_parse_error(ce)
 
 

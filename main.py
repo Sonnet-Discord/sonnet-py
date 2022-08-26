@@ -41,6 +41,7 @@ intents.presences = True
 intents.guilds = True
 intents.members = True
 intents.reactions = True
+intents.message_content = True
 
 # Initialize Discord Client.
 Client = discord.Client(status=discord.Status.online, intents=intents)
@@ -296,6 +297,12 @@ dynamiclib_modules_dict: Dict[str, Any] = {}
 #  this allows flexibility with multiple modules that just "must run after command processor init"
 dynamiclib_modules_exec_dict: Dict[str, List[List[Any]]] = {}
 
+# LeXdPyK 2.0: optional lib reloads
+# lexdpyk 2.0 ships with the new feature of not needing to reload library modules in sonnet,
+# as the kernel handles reloading them at module load and reload time
+# this comes with the side effect of all library modules being init by the kernel
+loaded_libraries: List[Any] = []
+
 
 def add_module_to_exec_dict(module_dlibs: Dict[str, Any]) -> None:
 
@@ -373,6 +380,31 @@ def log_kernel_info(s: object) -> None:
     logger.info(f"{version_info}: {s}")
 
 
+def reload_libraries() -> List[Tuple[Exception, str]]:
+    """
+    Reloads all lib_ libraries
+    """
+    global loaded_libraries
+    loaded_libraries = []
+
+    err = []
+
+    # import libraries
+    for f in filter(lambda f: f.startswith("lib_") and f.endswith(".py"), os.listdir('./libs')):
+        try:
+            loaded_libraries.append(importlib.import_module(f[:-3]))
+        except Exception as e:
+            err.append((e, f[:-3]), )
+
+    for i in range(len(loaded_libraries)):
+        try:
+            loaded_libraries[i] = importlib.reload(loaded_libraries[i])
+        except Exception as e:
+            err.append((e, loaded_libraries[i].__name__), )
+
+    return err
+
+
 def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     log_kernel_info("Loading Kernel Modules")
     start_load_modules = time.monotonic()
@@ -387,6 +419,8 @@ def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, Lis
 
     # Init return state
     err: List[Tuple[Exception, str]] = []
+
+    err.extend(reload_libraries())
 
     # Init imports
     for f in filter(lambda f: f.startswith("cmd_") and f.endswith(".py"), os.listdir('./cmds')):
@@ -449,30 +483,32 @@ def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, L
     # Init ret state
     err = []
 
+    err.extend(reload_libraries())
+
     # Update set
     for i in range(len(command_modules)):
         try:
             command_modules[i] = (importlib.reload(command_modules[i]))
         except Exception as e:
-            err.append([e, command_modules[i].__name__])
+            err.append((e, command_modules[i].__name__))
     for i in range(len(dynamiclib_modules)):
         try:
             dynamiclib_modules[i] = (importlib.reload(dynamiclib_modules[i]))
         except Exception as e:
-            err.append([e, dynamiclib_modules[i].__name__])
+            err.append((e, dynamiclib_modules[i].__name__))
 
     # Update hashmaps
     for module in command_modules:
         try:
             command_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__))
     for module in dynamiclib_modules:
         try:
             add_module_to_exec_dict(module.commands)
             dynamiclib_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__))
 
     # Regen tempramfs
     regenerate_ramfs()
@@ -683,6 +719,10 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
         return None
 
 
+def lexdpyk_to_snowflake(v: Union[discord.User, discord.Member]) -> discord.abc.Snowflake:
+    return v  # type: ignore[return-value]
+
+
 async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional[int] = None, user: Optional[Union[discord.User, discord.Member]] = None, user_id: Optional[int] = None) -> bool:
 
     if guild: guild_id = guild.id
@@ -702,7 +742,7 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
             return False
 
         try:
-            await non_null_guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
+            await non_null_guild.ban(lexdpyk_to_snowflake(user), reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
         except discord.errors.Forbidden:
 
             # call kernel_blacklist_guild to add to json db, blacklist guild
@@ -773,7 +813,7 @@ async def on_message(message: discord.Message) -> None:
 
     # If bot owner run a debug command
     if len(args) >= 2 and args[0] in debug_commands:
-        if message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
+        if Client.user and message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
             if e := debug_commands[args[0]](args[2:]):
                 await message.channel.send(e[0])
                 for i in e[1]:
@@ -931,6 +971,56 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
         await event_call("on-member-unban", guild, user)
 
 
+# new in 2.0:
+
+
+@Client.event
+async def on_raw_app_command_permissions_update(payload: discord.RawAppCommandPermissionsUpdateEvent) -> None:
+    if await safety_check(guild=payload.guild):
+        await event_call("on-raw-app-command-permissions-update", payload)
+
+
+@Client.event
+async def on_app_command_completion(interaction: discord.Interaction, command: Union[discord.app_commands.Command[Any, Any, Any], discord.app_commands.ContextMenu]) -> None:
+    if await safety_check(guild=interaction.guild, user=interaction.user):
+        await event_call("on-app-command-completion", interaction, command)
+
+
+@Client.event
+async def on_automod_rule_create(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-create", rule)
+
+
+@Client.event
+async def on_automod_rule_update(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-update", rule)
+
+
+@Client.event
+async def on_automod_rule_delete(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-delete", rule)
+
+
+@Client.event
+async def on_automod_action(execution: discord.AutoModAction) -> None:
+    if await safety_check(guild_id=execution.guild_id):
+        await event_call("on-automod-action", execution)
+
+
+@Client.event
+async def on_raw_member_remove(payload: discord.RawMemberRemoveEvent) -> None:
+    if await safety_check(guild_id=payload.guild_id):
+        await event_call("on-raw-member-remove", payload)
+
+
+async def on_presence_update(before: discord.Member, after: discord.Member) -> None:
+    if await safety_check(guild=before.guild, user=before):
+        await event_call("on-presence-update")
+
+
 def gentoken() -> str:
 
     TOKEN = getpass.getpass("Enter TOKEN: ")
@@ -1000,7 +1090,7 @@ def main(args: List[str]) -> int:
     # Start bot
     if TOKEN:
         try:
-            Client.run(TOKEN, reconnect=True)
+            Client.run(TOKEN, reconnect=True, log_handler=None)
         except discord.errors.LoginFailure:
             print("Invalid token passed")
             return 1
@@ -1024,7 +1114,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.5"
+version_info: str = "LeXdPyK 2"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":

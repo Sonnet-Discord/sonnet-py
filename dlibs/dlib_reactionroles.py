@@ -11,9 +11,13 @@ importlib.reload(lib_loaders)
 import lib_lexdpyk_h
 
 importlib.reload(lib_lexdpyk_h)
+import lib_compatibility
+
+importlib.reload(lib_compatibility)
 
 from lib_loaders import load_message_config, inc_statistics_better
 from lib_lexdpyk_h import ToKernelArgs, KernelArgs
+from lib_compatibility import to_snowflake
 
 from typing import Dict, Any, Union, Optional, Tuple
 
@@ -65,16 +69,17 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent, kargs: Ke
     client: discord.Client = kargs.client
     rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs.ramfs, datatypes=reactionrole_types)["reaction-role-data"]
 
-    # do not give reactionroles to self
-    if payload.user_id == client.user.id:
-        return
+    if client.user:
+        # do not give reactionroles to self
+        if payload.user_id == client.user.id:
+            return
 
     if rrconf:
         opt = await get_role_from_emojiname(payload, client, rrconf)
         if opt is not None:
             try:
                 member, role = opt
-                await member.add_roles(role)
+                await member.add_roles(to_snowflake(role))
             except discord.errors.Forbidden:
                 pass
 
@@ -89,16 +94,17 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent, kargs:
     client: discord.Client = kargs.client
     rrconf: Optional[Dict[str, Dict[str, int]]] = load_message_config(payload.guild_id, kargs.ramfs, datatypes=reactionrole_types)["reaction-role-data"]
 
-    # do not remove reactionroles from self
-    if payload.user_id == client.user.id:
-        return
+    if client.user:
+        # do not remove reactionroles from self
+        if payload.user_id == client.user.id:
+            return
 
     if rrconf:
         opt = await get_role_from_emojiname(payload, client, rrconf)
         if opt is not None:
             try:
                 member, role = opt
-                await member.remove_roles(role)
+                await member.remove_roles(to_snowflake(role))
             except discord.errors.Forbidden:
                 pass
 
@@ -110,4 +116,4 @@ commands = {
     "on-raw-reaction-remove": on_raw_reaction_remove,
     }
 
-version_info = "1.2.14"
+version_info = "2.0.0-DEV"

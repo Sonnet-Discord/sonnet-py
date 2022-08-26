@@ -5,7 +5,8 @@
 import discord
 import datetime
 
-from typing import Union, Dict, Callable, cast
+from typing import Union, Dict, Callable, Protocol, cast
+from typing_extensions import TypeGuard
 
 _releaselevel: int = discord.version_info[0]
 
@@ -15,6 +16,9 @@ __all__ = [
     "default_avatar_url",
     "has_default_avatar",
     "discord_datetime_now",
+    "to_snowflake",
+    "GuildMessageable",
+    "is_guild_messageable",
     ]
 
 
@@ -69,7 +73,7 @@ def user_avatar_url(user: Union[discord.User, discord.Member]) -> str:
     # 1.7: user.avatar_url -> Asset (supports __str__())
     # 2.0: user.display_avatar.url -> str
 
-    return _avatar_url_func(user)
+    return user.display_avatar.url
 
 
 def default_avatar_url(user: Union[discord.User, discord.Member]) -> str:
@@ -81,7 +85,7 @@ def default_avatar_url(user: Union[discord.User, discord.Member]) -> str:
     :raises: AttributeError - Failed to get the avatar url (programming error)
     """
 
-    return _default_avatar_url_func(user)
+    return user.default_avatar.url
 
 
 def has_default_avatar(user: Union[discord.User, discord.Member]) -> bool:
@@ -92,7 +96,7 @@ def has_default_avatar(user: Union[discord.User, discord.Member]) -> bool:
     :returns: bool - if the user has a default avatar
     """
 
-    return _default_avatar_url_func(user) == _avatar_url_func(user)
+    return user.avatar is None
 
 
 # Returns either an aware or unaware
@@ -108,4 +112,34 @@ def discord_datetime_now() -> datetime.datetime:
     # 1.7: datetime naive
     # 2.0: datetime aware
 
-    return _datetime_now_func()
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+class _WeakSnowflake(Protocol):
+    id: int
+
+
+def to_snowflake(v: _WeakSnowflake, /) -> discord.abc.Snowflake:
+    """
+    Casts any snowflake compatible type into something satisfying the discord.py Showflake interface, bypassing a interface bug with mypy
+    When discord.py/mypy is updated this method will be changed to a bounded identity function
+    """
+    # FIXME(ultrabear):
+    # we ignore interface errors here because dpy/mypy 2.0 has a bug where snowflakes interface includes slots
+    # when this bug is patched mypy should raise an error for unused type ignores and this should be patched
+    return v  # type: ignore[return-value]
+
+
+GuildMessageable = Union[discord.TextChannel, discord.Thread]
+
+_concrete_channels = Union[discord.TextChannel, discord.VoiceChannel, discord.CategoryChannel, discord.StageChannel, discord.ForumChannel, discord.Thread, discord.DMChannel, discord.GroupChannel,
+                           discord.PartialMessageable]
+_abstract_base_class_channels = Union[discord.abc.PrivateChannel, discord.abc.GuildChannel]
+
+
+def is_guild_messageable(v: Union[_concrete_channels, _abstract_base_class_channels], /) -> TypeGuard[GuildMessageable]:
+    """
+    Returns True if the channel type passed is within a guild and messageable
+    """
+
+    return isinstance(v, (discord.TextChannel, discord.Thread))

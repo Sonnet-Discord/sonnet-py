@@ -1,38 +1,13 @@
 # Dynamic libraries (editable at runtime) for message handling
 # Ultrabear 2020
 
-import importlib
-
 import time, asyncio, os, hashlib, string, io, gzip
 import warnings
 import copy as pycopy
 
 import discord, lz4.frame
 
-import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
-import lib_parsers
-
-importlib.reload(lib_parsers)
-import lib_loaders
-
-importlib.reload(lib_loaders)
-import lib_encryption_wrapper
-
-importlib.reload(lib_encryption_wrapper)
-import lib_lexdpyk_h
-
-importlib.reload(lib_lexdpyk_h)
-import lib_constants
-
-importlib.reload(lib_constants)
-import lib_compatibility
-
-importlib.reload(lib_compatibility)
 import lib_sonnetcommands
-
-importlib.reload(lib_sonnetcommands)
 
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
@@ -41,7 +16,7 @@ from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, cast
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -50,7 +25,7 @@ ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^
 
 async def catch_logging_error(channel: discord.TextChannel, contents: discord.Embed, files: Optional[List[discord.File]] = None) -> None:
     try:
-        await channel.send(embed=contents, files=files)
+        await channel.send(embed=contents, files=(files or []))
     except discord.errors.Forbidden:
         pass
     except discord.errors.HTTPException:
@@ -273,7 +248,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
 
         asyncio.create_task(attempt_message_delete(message))
         execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx)
+        await catch_ce(message, warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
@@ -435,6 +410,17 @@ def warn_missing(command_dict: Dict[str, Any], argument: str, /) -> ExecutableCt
         return dummy
 
 
+async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
+
+    try:
+        await promise
+    except lib_sonnetcommands.CommandError as ce:
+        try:
+            await err_rsp.channel.send(str(ce))
+        except discord.errors.HTTPException:
+            pass
+
+
 @lexdpyk.ToKernelArgs
 async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
 
@@ -449,6 +435,8 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     if parse_skip_message(client, message, allow_bots=True):
         return
     elif not message.guild:
+        return
+    elif not client.user:
         return
 
     inc_statistics_better(message.guild.id, "on-message", kernel_args.kernel_ramfs)
@@ -489,7 +477,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
         execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, automod_ctx))
+        asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, automod_ctx)))
 
     if spammer:
         message_deleted = True
@@ -497,7 +485,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         with db_hlapi(message.guild.id) as db:
             if not db.is_muted(userid=message.author.id):
                 execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(warn_missing(command_modules_dict, "mute")(message, execargs, client, automod_ctx))
+                asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["antispam-action"])(message, execargs, client, automod_ctx)))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
@@ -561,7 +549,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
                 await cmd.execute_ctx(message, arguments, client, command_ctx)
             except lib_sonnetcommands.CommandError as ce:
                 try:
-                    await message.channel.send(ce)
+                    await message.channel.send(str(ce))
                 except discord.errors.Forbidden:
                     pass
 
@@ -594,4 +582,4 @@ commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: Final = "1.2.14"
+version_info: Final = "2.0.0-DEV"
