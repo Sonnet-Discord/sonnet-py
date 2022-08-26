@@ -10,7 +10,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
-from typing import List, Literal, Final, Dict
+from typing import List, Literal, Final, Dict, AsyncIterator
 
 
 @dataclass
@@ -153,12 +153,12 @@ async def run_single_yapf(mode: Literal["diff", "inplace"], filename: str) -> Pr
     return ProcessedData(filename, stdout, stderr, proc.returncode or 0)
 
 
-async def run_yapf_async(mode: Literal["diff", "inplace"], files: List[str]) -> List[ProcessedData]:
+async def run_yapf_async(mode: Literal["diff", "inplace"], files: List[str]) -> AsyncIterator[ProcessedData]:
     """
     Runs multiple yapf instances in async subprocesses  and provides returncode and info for each
     """
     tasks = [asyncio.create_task(run_single_yapf(mode, i)) for i in files]
-    return [await task for task in tasks]
+    return (await task for task in tasks)
 
 
 def run_yapf_once(mode: Literal["diff", "inplace"], files: List[str]) -> "subprocess.CompletedProcess[bytes]":
@@ -184,12 +184,12 @@ def process_inplace(cache: Dict[str, CacheEntry], files: List[str]) -> int:
     return proc.returncode
 
 
-def process_diff(cache: Dict[str, CacheEntry], files: List[str]) -> int:
+async def process_diff(cache: Dict[str, CacheEntry], files: List[str]) -> int:
     returncode = 0
 
     safe_cached = []
 
-    for proc in asyncio.run(run_yapf_async("diff", files)):
+    async for proc in await run_yapf_async("diff", files):
 
         if proc.stdout:
             print(proc.stdout.decode("utf8"))
@@ -231,7 +231,7 @@ def main(args: List[str]) -> int:
     if parsed.mode == "inplace":
         return process_inplace(cache, process)
     else:
-        return process_diff(cache, process)
+        return asyncio.run(process_diff(cache, process))
 
 
 if __name__ == "__main__":
