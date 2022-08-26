@@ -1114,7 +1114,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2-DEV"
+version_info: str = "LeXdPyK 2"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
