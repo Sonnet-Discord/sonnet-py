@@ -555,8 +555,6 @@ class db_hlapi:
 
     def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
         self._db.commit()
-        if err_type:
-            raise err_type(err_value)
 
 
 class _enum_context:
@@ -571,8 +569,7 @@ class _enum_context:
         return self
 
     def __exit__(self, err_type: Optional[Type[Exception]], err_value: Optional[str], err_traceback: Any) -> None:
-        if err_type:
-            raise err_type(err_value)
+        return
 
     def grab(self, name: Union[str, int]) -> Optional[List[Union[str, int]]]:
         self._hlapi.grab_enum.__doc__
