@@ -592,9 +592,10 @@ def kernel_logout(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]
 
 def kernel_drop_dlibs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     log_kernel_info("Dropping dynamiclib modules")
-    global dynamiclib_modules, dynamiclib_modules_dict
+    global dynamiclib_modules, dynamiclib_modules_dict, dynamiclib_modules_exec_dict
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
+    dynamiclib_modules_exec_dict = {}
     return None
 
 
@@ -1115,7 +1116,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2.0.1"
+version_info: str = "LeXdPyK 2.0.2"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
