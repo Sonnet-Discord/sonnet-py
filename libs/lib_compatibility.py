@@ -5,7 +5,7 @@
 import discord
 import datetime
 
-from typing import Union, Dict, Callable, Protocol, cast
+from typing import Union, Dict, Callable, Protocol, TypeVar, cast
 from typing_extensions import TypeGuard
 
 _releaselevel: int = discord.version_info[0]
@@ -119,15 +119,15 @@ class _WeakSnowflake(Protocol):
     id: int
 
 
-def to_snowflake(v: _WeakSnowflake, /) -> discord.abc.Snowflake:
+SF = TypeVar("SF", bound=_WeakSnowflake)
+
+
+def to_snowflake(v: SF, /) -> SF:
     """
-    Casts any snowflake compatible type into something satisfying the discord.py Showflake interface, bypassing a interface bug with mypy
-    When discord.py/mypy is updated this method will be changed to a bounded identity function
+    ~~Casts any snowflake compatible type into something satisfying the discord.py Showflake interface, bypassing a interface bug with mypy~~
+    This is patched as of dpy2.0.1, it now returns the type passed in as long as it satisfies the bound of a snowflake
     """
-    # FIXME(ultrabear):
-    # we ignore interface errors here because dpy/mypy 2.0 has a bug where snowflakes interface includes slots
-    # when this bug is patched mypy should raise an error for unused type ignores and this should be patched
-    return v  # type: ignore[return-value]
+    return v
 
 
 GuildMessageable = Union[discord.TextChannel, discord.Thread, discord.VoiceChannel]
