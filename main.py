@@ -18,7 +18,7 @@ import os, importlib, sys, io, traceback
 import glob, json, hashlib, logging, getpass, datetime, argparse, random
 
 # Import typing support
-from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol
+from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol, TypeVar
 
 # Start Discord.py
 import discord, asyncio
@@ -721,8 +721,11 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
         return None
 
 
-def lexdpyk_to_snowflake(v: Union[discord.User, discord.Member]) -> discord.abc.Snowflake:
-    return v  # type: ignore[return-value]
+UT = TypeVar("UT", bound=Union[discord.User, discord.Member])
+
+
+def lexdpyk_to_snowflake(v: UT) -> UT:
+    return v
 
 
 async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional[int] = None, user: Optional[Union[discord.User, discord.Member]] = None, user_id: Optional[int] = None) -> bool:
@@ -1116,7 +1119,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2.0.2"
+version_info: str = "LeXdPyK 2.0.3"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
