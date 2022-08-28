@@ -116,4 +116,4 @@ commands = {
     "on-raw-reaction-remove": on_raw_reaction_remove,
     }
 
-version_info = "2.0.0-DEV"
+version_info = "2.0.0"

@@ -88,4 +88,4 @@ category_info: Dict[str, str] = {'name': 'Initializers'}
 
 commands: Dict[str, Callable[..., Any]] = {"on-ready": on_ready, "on-guild-join": on_guild_join}
 
-version_info: str = "2.0.0-DEV"
+version_info: str = "2.0.0"
