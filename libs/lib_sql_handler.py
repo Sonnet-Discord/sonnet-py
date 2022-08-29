@@ -225,5 +225,3 @@ class db_handler:
         self.con.commit()
         self.con.close()
         self.closed = True
-        if err_type:
-            raise err_type(err_value)

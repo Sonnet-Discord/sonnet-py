@@ -15,10 +15,10 @@ print("Booting LeXdPyK")
 import os, importlib, sys, io, traceback
 
 # Import sub dependencies
-import glob, json, hashlib, logging, getpass, datetime, argparse
+import glob, json, hashlib, logging, getpass, datetime, argparse, random
 
 # Import typing support
-from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol
+from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol, TypeVar
 
 # Start Discord.py
 import discord, asyncio
@@ -41,6 +41,7 @@ intents.presences = True
 intents.guilds = True
 intents.members = True
 intents.reactions = True
+intents.message_content = True
 
 # Initialize Discord Client.
 Client = discord.Client(status=discord.Status.online, intents=intents)
@@ -289,6 +290,60 @@ command_modules: List[Any] = []
 command_modules_dict: Dict[str, Any] = {}
 dynamiclib_modules: List[Any] = []
 dynamiclib_modules_dict: Dict[str, Any] = {}
+# LeXdPyK 1.5: undefined exec order feature
+# on-message is now Dict[on-message: [[on-message items], [on-message-0 items], [on-message-1 items]]
+# this feature means you can have multiple on-message calls that will exec in an undefined order, but on-message-0 will always
+#  exec after on-message and on-message-1 after that etc
+#  this allows flexibility with multiple modules that just "must run after command processor init"
+dynamiclib_modules_exec_dict: Dict[str, List[List[Any]]] = {}
+
+# LeXdPyK 2.0: optional lib reloads
+# lexdpyk 2.0 ships with the new feature of not needing to reload library modules in sonnet,
+# as the kernel handles reloading them at module load and reload time
+# this comes with the side effect of all library modules being init by the kernel
+loaded_libraries: List[Any] = []
+
+
+def add_module_to_exec_dict(module_dlibs: Dict[str, Any]) -> None:
+
+    global dynamiclib_modules_exec_dict
+
+    for k, v in module_dlibs.items():
+
+        if (maybe_num := k.split("-")[-1]).isnumeric():
+            true_key = "-".join(k.split("-")[:-1])
+            idx = int(maybe_num) + 1
+
+        else:
+            true_key = k
+            idx = 0
+
+        if idx >= 2048:
+            raise RuntimeError("Command execution order request exceeds 2048 (oom safety limit reached)")
+
+        try:
+            data_list = dynamiclib_modules_exec_dict[true_key]
+        except KeyError:
+            data_list = dynamiclib_modules_exec_dict[true_key] = []
+
+        if len(data_list) < (idx + 1):
+            data_list.extend([] for _ in range((idx + 1) - len(data_list)))
+
+        data_list[idx].append(v)
+
+
+def compress_exec_dict() -> None:
+
+    global dynamiclib_modules_exec_dict
+
+    for k in dynamiclib_modules_exec_dict:
+
+        dynamiclib_modules_exec_dict[k] = [i for i in dynamiclib_modules_exec_dict[k] if i]
+
+        # randomize inner ordering to prevent people relying on it
+        for unordered in dynamiclib_modules_exec_dict[k]:
+            random.shuffle(unordered)
+
 
 # Initialize ramfs, kernel ramfs
 ramfs = ram_filesystem()
@@ -325,19 +380,47 @@ def log_kernel_info(s: object) -> None:
     logger.info(f"{version_info}: {s}")
 
 
+def reload_libraries() -> List[Tuple[Exception, str]]:
+    """
+    Reloads all lib_ libraries
+    """
+    global loaded_libraries
+    loaded_libraries = []
+
+    err = []
+
+    # import libraries
+    for f in filter(lambda f: f.startswith("lib_") and f.endswith(".py"), os.listdir('./libs')):
+        try:
+            loaded_libraries.append(importlib.import_module(f[:-3]))
+        except Exception as e:
+            err.append((e, f[:-3]), )
+
+    for i in range(len(loaded_libraries)):
+        try:
+            loaded_libraries[i] = importlib.reload(loaded_libraries[i])
+        except Exception as e:
+            err.append((e, loaded_libraries[i].__name__), )
+
+    return err
+
+
 def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     log_kernel_info("Loading Kernel Modules")
     start_load_modules = time.monotonic()
     # Globalize variables
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, dynamiclib_modules_exec_dict
     command_modules = []
     command_modules_dict = {}
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
+    dynamiclib_modules_exec_dict = {}
     importlib.invalidate_caches()
 
     # Init return state
     err: List[Tuple[Exception, str]] = []
+
+    err.extend(reload_libraries())
 
     # Init imports
     for f in filter(lambda f: f.startswith("cmd_") and f.endswith(".py"), os.listdir('./cmds')):
@@ -361,9 +444,12 @@ def kernel_load_command_modules(args: List[str] = []) -> Optional[Tuple[str, Lis
             err.append((KernelSyntaxError("Missing commands"), module.__name__), )
     for module in dynamiclib_modules:
         try:
+            add_module_to_exec_dict(module.commands)
             dynamiclib_modules_dict.update(module.commands)
         except AttributeError:
             err.append((KernelSyntaxError("Missing commands"), module.__name__), )
+
+    compress_exec_dict()
 
     log_kernel_info(f"Loaded Kernel Modules in {(time.monotonic()-start_load_modules)*1000:.1f}ms")
 
@@ -388,41 +474,47 @@ def regenerate_kernel_ramfs(args: List[str] = []) -> Optional[Tuple[str, List[Ex
 def kernel_reload_command_modules(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     log_kernel_info("Reloading Kernel Modules")
     # Init vars
-    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict
+    global command_modules, command_modules_dict, dynamiclib_modules, dynamiclib_modules_dict, dynamiclib_modules_exec_dict
     command_modules_dict = {}
     dynamiclib_modules_dict = {}
+    dynamiclib_modules_exec_dict = {}
 
     start_reload_modules = time.monotonic()
 
     # Init ret state
     err = []
 
+    err.extend(reload_libraries())
+
     # Update set
     for i in range(len(command_modules)):
         try:
             command_modules[i] = (importlib.reload(command_modules[i]))
         except Exception as e:
-            err.append([e, command_modules[i].__name__])
+            err.append((e, command_modules[i].__name__))
     for i in range(len(dynamiclib_modules)):
         try:
             dynamiclib_modules[i] = (importlib.reload(dynamiclib_modules[i]))
         except Exception as e:
-            err.append([e, dynamiclib_modules[i].__name__])
+            err.append((e, dynamiclib_modules[i].__name__))
 
     # Update hashmaps
     for module in command_modules:
         try:
             command_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__))
     for module in dynamiclib_modules:
         try:
+            add_module_to_exec_dict(module.commands)
             dynamiclib_modules_dict.update(module.commands)
         except AttributeError:
-            err.append([KernelSyntaxError("Missing commands"), module.__name__])
+            err.append((KernelSyntaxError("Missing commands"), module.__name__))
 
     # Regen tempramfs
     regenerate_ramfs()
+
+    compress_exec_dict()
 
     log_kernel_info(f"Reloaded Kernel Modules in {(time.monotonic()-start_reload_modules)*1000:.1f}ms")
 
@@ -500,9 +592,10 @@ def kernel_logout(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]
 
 def kernel_drop_dlibs(args: List[str] = []) -> Optional[Tuple[str, List[Exception]]]:
     log_kernel_info("Dropping dynamiclib modules")
-    global dynamiclib_modules, dynamiclib_modules_dict
+    global dynamiclib_modules, dynamiclib_modules_dict, dynamiclib_modules_exec_dict
     dynamiclib_modules = []
     dynamiclib_modules_dict = {}
+    dynamiclib_modules_exec_dict = {}
     return None
 
 
@@ -582,21 +675,25 @@ async def on_error(event: str, *args: Any, **kwargs: Any) -> None:
     raise
 
 
-async def do_event(event: Any, args: Tuple[Any, ...]) -> None:
-    await event(
-        *args,
-        client=Client,
-        ramfs=ramfs,
-        bot_start=bot_start_time,
-        command_modules=[command_modules, command_modules_dict],
-        dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
-        kernel_version=version_info,
-        kernel_ramfs=kernel_ramfs
-        )
+async def do_event_return_error(event: Any, args: Tuple[Any, ...]) -> Optional[Exception]:
+    try:
+
+        await event(
+            *args,
+            client=Client,
+            ramfs=ramfs,
+            bot_start=bot_start_time,
+            command_modules=[command_modules, command_modules_dict],
+            dynamiclib_modules=[dynamiclib_modules, dynamiclib_modules_dict],
+            kernel_version=version_info,
+            kernel_ramfs=kernel_ramfs
+            )
+        return None
+    except Exception as e:
+        return e
 
 
 async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
-    # TODO(ultrabear): refactor to use undefined dispatch loop (on-message-0 will not call after on-message/may call at same time etc, module dispatches automatically namespaced)
 
     # used by dev mode
     tstartexec = time.monotonic()
@@ -604,47 +701,31 @@ async def event_call(argtype: str, *args: Any) -> Optional[errtype]:
     etypes = []
 
     try:
+        functions = dynamiclib_modules_exec_dict[argtype]
+    except KeyError:
+        functions = []
 
-        # Do hash lookup with KeyError
-        # Separate from running function so we do not catch a KeyError deeper in the stack
-        try:
-            func = dynamiclib_modules_dict[argtype]
-        except KeyError:
-            raise KernelKeyError
+    for ftable in functions:
+        tasks = [asyncio.create_task(do_event_return_error(func, args)) for func in ftable]
 
-        await do_event(func, args)
-
-    # Check for KernelKeyError before checking for Exception (inherits from)
-    except KernelKeyError:
-        pass
-    except Exception as e:
-        etypes.append(errtype(e, argtype))
-
-    call = 0
-    while True:
-
-        exname = f"{argtype}-{call}"
-
-        # If there is no hash then break the loop
-        try:
-            func = dynamiclib_modules_dict[exname]
-        except KeyError:
-            break
-
-        try:
-            await do_event(func, args)
-        except Exception as e:
-            etypes.append(errtype(e, exname))
-
-        call += 1
+        for i in tasks:
+            if e := (await i):
+                etypes.append(errtype(e, argtype))
 
     if DEVELOPMENT_MODE:
-        log_kernel_info(f"EVENT {argtype} : {round((time.monotonic()-tstartexec)*100000)/100}ms CC {call+1}")
+        log_kernel_info(f"EVENT {argtype} : {round((time.monotonic()-tstartexec)*100000)/100}ms CC {len(functions)}")
 
     if etypes:
         return etypes[0]
     else:
         return None
+
+
+UT = TypeVar("UT", bound=Union[discord.User, discord.Member])
+
+
+def lexdpyk_to_snowflake(v: UT) -> UT:
+    return v
 
 
 async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional[int] = None, user: Optional[Union[discord.User, discord.Member]] = None, user_id: Optional[int] = None) -> bool:
@@ -666,7 +747,7 @@ async def safety_check(guild: Optional[discord.Guild] = None, guild_id: Optional
             return False
 
         try:
-            await non_null_guild.ban(user, reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
+            await non_null_guild.ban(lexdpyk_to_snowflake(user), reason="LeXdPyK: SYSTEM LEVEL BLACKLIST", delete_message_days=0)
         except discord.errors.Forbidden:
 
             # call kernel_blacklist_guild to add to json db, blacklist guild
@@ -737,7 +818,7 @@ async def on_message(message: discord.Message) -> None:
 
     # If bot owner run a debug command
     if len(args) >= 2 and args[0] in debug_commands:
-        if message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
+        if Client.user and message.author.id in BOT_OWNER and args[1].strip("<@!>") == str(Client.user.id):
             if e := debug_commands[args[0]](args[2:]):
                 await message.channel.send(e[0])
                 for i in e[1]:
@@ -895,6 +976,56 @@ async def on_member_unban(guild: discord.Guild, user: discord.User) -> None:
         await event_call("on-member-unban", guild, user)
 
 
+# new in 2.0:
+
+
+@Client.event
+async def on_raw_app_command_permissions_update(payload: discord.RawAppCommandPermissionsUpdateEvent) -> None:
+    if await safety_check(guild=payload.guild):
+        await event_call("on-raw-app-command-permissions-update", payload)
+
+
+@Client.event
+async def on_app_command_completion(interaction: discord.Interaction, command: Union[discord.app_commands.Command[Any, Any, Any], discord.app_commands.ContextMenu]) -> None:
+    if await safety_check(guild=interaction.guild, user=interaction.user):
+        await event_call("on-app-command-completion", interaction, command)
+
+
+@Client.event
+async def on_automod_rule_create(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-create", rule)
+
+
+@Client.event
+async def on_automod_rule_update(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-update", rule)
+
+
+@Client.event
+async def on_automod_rule_delete(rule: discord.AutoModRule) -> None:
+    if await safety_check(guild=rule.guild):
+        await event_call("on-automod-rule-delete", rule)
+
+
+@Client.event
+async def on_automod_action(execution: discord.AutoModAction) -> None:
+    if await safety_check(guild_id=execution.guild_id):
+        await event_call("on-automod-action", execution)
+
+
+@Client.event
+async def on_raw_member_remove(payload: discord.RawMemberRemoveEvent) -> None:
+    if await safety_check(guild_id=payload.guild_id):
+        await event_call("on-raw-member-remove", payload)
+
+
+async def on_presence_update(before: discord.Member, after: discord.Member) -> None:
+    if await safety_check(guild=before.guild, user=before):
+        await event_call("on-presence-update")
+
+
 def gentoken() -> str:
 
     TOKEN = getpass.getpass("Enter TOKEN: ")
@@ -964,7 +1095,7 @@ def main(args: List[str]) -> int:
     # Start bot
     if TOKEN:
         try:
-            Client.run(TOKEN, reconnect=True)
+            Client.run(TOKEN, reconnect=True, log_handler=None)
         except discord.errors.LoginFailure:
             print("Invalid token passed")
             return 1
@@ -988,7 +1119,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 1.4.15"
+version_info: str = "LeXdPyK 2.0.3"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":

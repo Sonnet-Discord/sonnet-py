@@ -284,6 +284,29 @@ async def set_blacklist_infraction_level(message: discord.Message, args: List[st
     if ctx.verbose: await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
+async def set_antispam_command(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    if args:
+        action = args[0].lower()
+    else:
+        await message.channel.send(f"antispam action is `{ctx.conf_cache['antispam-action']}`")
+        return 0
+
+    if action not in ["timeout", "mute"]:
+        await message.channel.send("ERROR: Antispam action is not valid\nValid Actions: `timeout` and `mute`")
+        return 1
+
+    with db_hlapi(message.guild.id) as database:
+        database.add_config("antispam-action", action)
+
+    if ctx.verbose:
+        await message.channel.send(f"Updated antispam action to `{action}`")
+
+    return 0
+
+
 async def change_rolewhitelist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     return await parse_role(message, args, "blacklist-whitelist", verbose=ctx.verbose)
@@ -376,21 +399,21 @@ async def antispam_time_set(message: discord.Message, args: List[str], client: d
             return 1
     else:
         mutetime = int(ctx.conf_cache["antispam-time"])
-        await message.channel.send(f"Antispam mute time is {mutetime} seconds")
+        await message.channel.send(f"Antispam timeout is {format_duration(mutetime)}")
         return 0
 
     if mutetime < 0:
-        await message.channel.send("ERROR: Mutetime cannot be negative")
+        await message.channel.send("ERROR: timeout cannot be negative")
         return 1
 
     elif mutetime >= 60 * 60 * 256:
-        await message.channel.send("ERROR: Mutetime cannot be greater than 256 hours")
+        await message.channel.send("ERROR: timeout cannot be greater than 256 hours")
         return 1
 
     with db_hlapi(message.guild.id) as db:
         db.add_config("antispam-time", str(mutetime))
 
-    if ctx.verbose: await message.channel.send(f"Set antispam mute time to {format_duration(mutetime)}")
+    if ctx.verbose: await message.channel.send(f"Set antispam timeout to {format_duration(mutetime)}")
 
 
 class NoGuildError(Exception):
@@ -669,15 +692,26 @@ commands = {
             'execute': antispam_set
             },
     'mutetime-set': {
-        'alias': 'set-mutetime'
+        'alias': 'set-antispam-timeout'
         },
-    'set-mutetime':
+    'set-mutetime': {
+        'alias': 'set-antispam-timeout'
+        },
+    'set-antispam-timeout':
         {
-            'pretty_name': 'set-mutetime <time[h|m|S]>',
-            'description': 'Set how many seconds a person should be muted for with antispam automute',
+            'pretty_name': 'set-antispam-timeout <time[h|m|S]>',
+            'description': 'Set how many seconds a person should be out for with antispam auto mute/timeout',
             'permission': 'administrator',
             'cache': 'regenerate',
-            'execute': antispam_time_set
+            'execute': antispam_time_set,
+            },
+    'set-antispam-action':
+        {
+            'pretty_name': 'set-antispam-action [timeout|mute]',
+            'description': 'set whether to use mute or timeout for antispam triggers',
+            'permission': 'administrator',
+            'cache': 'regenerate',
+            'execute': set_antispam_command,
             },
     'add-regexnotifier':
         {
@@ -697,4 +731,4 @@ commands = {
             },
     }
 
-version_info: str = "1.2.14"
+version_info: str = "2.0.0"

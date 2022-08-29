@@ -1,41 +1,18 @@
 # Moderation commands
 # bredo, 2020
 
-import importlib
-
+from datetime import timedelta
 import discord, asyncio, json
 from dataclasses import dataclass
 
-import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
-import lib_loaders
-
-importlib.reload(lib_loaders)
 import lib_parsers
-
-importlib.reload(lib_parsers)
-import lib_constants
-
-importlib.reload(lib_constants)
-import lib_goparsers
-
-importlib.reload(lib_goparsers)
-import lib_compatibility
-
-importlib.reload(lib_compatibility)
-import lib_sonnetconfig
-
-importlib.reload(lib_sonnetconfig)
 import lib_sonnetcommands
-
-importlib.reload(lib_sonnetcommands)
 
 from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
 from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean_strict
-from lib_compatibility import user_avatar_url
+from lib_compatibility import user_avatar_url, to_snowflake, GuildMessageable
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
 import lib_constants as constants
@@ -182,7 +159,8 @@ async def process_infraction(
     ramfs: lexdpyk.ram_filesystem,
     infraction: bool = True,
     automod: bool = False,
-    modifiers: Optional[List[InfractionModifier]] = None
+    modifiers: Optional[List[InfractionModifier]] = None,
+    require_in_guild: bool = False
     ) -> InfractionInfo:
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
@@ -199,6 +177,10 @@ async def process_infraction(
     except lib_parsers.errors.user_parse_error:
         raise InfractionGenerationError("Could not parse user")
 
+    if require_in_guild and member is None:
+        await message.channel.send(f"User is not in guild (required to {i_type} user)")
+        raise InfractionGenerationError(f"Attempted to {i_type} a user but they were not a member")
+
     local_conf_cache = load_message_config(message.guild.id, ramfs)
 
     # Test if user is a moderator
@@ -212,7 +194,7 @@ async def process_infraction(
         if bool(int(local_conf_cache["moderator-protect"])):
             await message.channel.send(f"Cannot {i_type} specified user, user is a moderator+\n"
                                        f"(to disable this behavior see {get_help})")
-            raise InfractionGenerationError("Attempted to warn a moderator+ but mprotect was on")
+            raise InfractionGenerationError(f"Attempted to {i_type} a moderator+ but mprotect was on")
 
     # Test if user is self
     if member and moderator.id == member.id:
@@ -306,7 +288,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
     modifiers = parse_infraction_modifiers(message.guild, args)
 
     try:
-        member, _, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers)
+        member, _, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
     except InfractionGenerationError:
         return 1
 
@@ -315,7 +297,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
         try:
             if dm_sent:
                 await dm_sent  # Wait for dm to be sent before kicking
-            await message.guild.kick((member), reason=reason[:512])
+            await message.guild.kick(to_snowflake(member), reason=reason[:512])
 
             if warn_text is not None:
                 await message.channel.send(warn_text)
@@ -365,7 +347,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     try:
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
+        await message.guild.ban(to_snowflake(user), delete_message_days=delete_days, reason=reason[:512])
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
 
@@ -405,7 +387,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
 
     # Attempt to unban user
     try:
-        await message.guild.unban(user, reason=reason[:512])
+        await message.guild.unban(to_snowflake(user), reason=reason[:512])
     except discord.errors.Forbidden:
         await message.channel.send(f"{BOT_NAME} does not have permission to unban this user.")
         return 1
@@ -446,13 +428,13 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
     try:
         if member and dm_sent:
             await dm_sent  # Wait for dm to be sent before banning
-        await message.guild.ban(user, delete_message_days=delete_days, reason=reason[:512])
+        await message.guild.ban(to_snowflake(user), delete_message_days=delete_days, reason=reason[:512])
 
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to ban this user.")
 
     try:
-        await message.guild.unban(user, reason=reason[:512])
+        await message.guild.unban(to_snowflake(user), reason=reason[:513])
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to unban this user.")
     except discord.errors.NotFound:
@@ -498,20 +480,16 @@ async def sleep_and_unmute(guild: discord.Guild, member: discord.Member, infract
             db.unmute_user(infractionid=infractionID)
 
             try:
-                await member.remove_roles(mute_role)
+                await member.remove_roles(to_snowflake(mute_role))
             except discord.errors.HTTPException:
                 pass
 
 
-async def mute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
-    if not message.guild:
-        return 1
-
-    ramfs = ctx.ramfs
-    automod = ctx.automod
-    verbose = ctx.verbose
-
-    modifiers = parse_infraction_modifiers(message.guild, args)
+def parse_duration_for_mutes(args: List[str], inf_name: str, /) -> Tuple[int, Optional[str]]:
+    """
+    Parses a duration from args to get mutetime/timeouttime and returns string if a duration was not passed in the correct place but is valid
+    abstracts logic for mutes/timeouts
+    """
 
     # Grab mute time
     if len(args) >= 2:
@@ -531,6 +509,23 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     if mutetime is None:
         mutetime = 0
 
+    duration_str = f"\n(No {inf_name} length was specified, but one of the reason items `{misplaced_duration}` is a valid duration, did you mean to {inf_name} for this length?)" if misplaced_duration is not None else None
+
+    return mutetime, duration_str
+
+
+async def mute_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    ramfs = ctx.ramfs
+    automod = ctx.automod
+    verbose = ctx.verbose
+
+    mutetime, duration_str = parse_duration_for_mutes(args, "mute")
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
     # This ones for you, curl
     if not 0 <= mutetime < 60 * 60 * 256:
         mutetime = 0
@@ -543,7 +538,7 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, infractionID, _, warn_text = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers)
+        member, _, reason, infractionID, _, warn_text = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
     except (NoMuteRole, InfractionGenerationError):
         return 1
 
@@ -554,16 +549,15 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     # Attempt to mute user
     try:
-        await member.add_roles(mute_role)
+        await member.add_roles(to_snowflake(mute_role))
     except discord.errors.Forbidden:
         await message.channel.send(f"{BOT_NAME} does not have permission to mute this user.")
         return 1
 
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
-    duration_str = f"\n(No mute length was specified, but one of the reason items `{misplaced_duration}` is a valid duration, did you mean to mute for this length?)" if misplaced_duration is not None else ""
 
     if verbose and not mutetime:
-        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}{duration_str}", allowed_mentions=discord.AllowedMentions.none())
+        await message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {reason}{duration_str or ''}", allowed_mentions=discord.AllowedMentions.none())
 
         if warn_text is not None:
             await message.channel.send(warn_text)
@@ -607,7 +601,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, _, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod)
+        member, _, reason, _, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod, require_in_guild=True)
     except (InfractionGenerationError, NoMuteRole):
         return 1
 
@@ -617,7 +611,7 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
     # Attempt to unmute user
     try:
-        await member.remove_roles(mute_role)
+        await member.remove_roles(to_snowflake(mute_role))
     except discord.errors.Forbidden:
         await message.channel.send(f"{BOT_NAME} does not have permission to unmute this user.")
         return 1
@@ -627,6 +621,66 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
         db.unmute_user(userid=member.id)
 
     if verbose: await message.channel.send(f"Unmuted {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    return 0
+
+
+async def timeout_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    mutetime, duration_str = parse_duration_for_mutes(args, "timeout")
+
+    if mutetime >= ((60 * 60) * 24) * 28 or mutetime == 0:
+        mutetime = ((60 * 60) * 24) * 28
+
+    modifiers = parse_infraction_modifiers(message.guild, args)
+
+    try:
+        member, _, reason, _, _, warn_text = await process_infraction(message, args, client, "timeout", ctx.ramfs, automod=ctx.automod, modifiers=modifiers, require_in_guild=True)
+    except InfractionGenerationError:
+        return 1
+
+    if not member:
+        raise lib_sonnetcommands.CommandError("ERROR: User not in guild")
+
+    try:
+        await member.timeout(timedelta(seconds=mutetime), reason=reason[:512])
+    except discord.errors.Forbidden:
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to timeout this user.")
+
+    mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
+
+    if ctx.verbose:
+        await message.channel.send(
+            f"Timed out {member.mention} with ID {member.id}{mod_str} for {format_duration(mutetime)} for {reason}{duration_str or ''}", allowed_mentions=discord.AllowedMentions.none()
+            )
+
+        if warn_text is not None:
+            await message.channel.send(warn_text)
+
+    return 0
+
+
+async def un_timeout_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    try:
+        member, _, reason, _, _, _ = await process_infraction(message, args, client, "untimeout", ctx.ramfs, infraction=False, automod=ctx.automod, require_in_guild=True)
+    except InfractionGenerationError:
+        return 1
+
+    if not member:
+        raise lib_sonnetcommands.CommandError("ERROR: User is not a member")
+
+    # Attempt to untimeout user
+    try:
+        await member.timeout(None, reason=reason[:512])
+    except discord.errors.Forbidden:
+        raise lib_sonnetcommands.CommandError(f"{BOT_NAME} does not have permission to untimeout this user.")
+
+    if ctx.verbose:
+        await message.channel.send(f"Removed timeout for {member.mention} with ID {member.id} for {reason}", allowed_mentions=discord.AllowedMentions.none())
     return 0
 
 
@@ -674,7 +728,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         raise lib_sonnetcommands.CommandError("User does not exist")
 
     try:
-        purged = await cast(discord.TextChannel, message.channel).purge(limit=limit, check=ucheck)
+        purged = await cast(GuildMessageable, message.channel).purge(limit=limit, check=ucheck)
         await message.channel.send(f"Purged {len(purged)} message{'s' * (len(purged)!=1)}, initiated by {message.author.mention}", allowed_mentions=discord.AllowedMentions.none())
     except discord.errors.Forbidden:
         raise lib_sonnetcommands.CommandError("ERROR: Bot lacks perms to purge")
@@ -708,7 +762,7 @@ commands = {
         'execute': ban_user
         },
     'unban': {
-        'pretty_name': 'unban <uid>',
+        'pretty_name': 'unban <uid> [reason]',
         'description': 'Unban a user, does not dm user',
         'permission': 'moderator',
         'execute': unban_user
@@ -727,10 +781,26 @@ commands = {
         'execute': mute_user
         },
     'unmute': {
-        'pretty_name': 'unmute <uid>',
+        'pretty_name': 'unmute <uid> [reason]',
         'description': 'Unmute a user, does not dm user',
         'permission': 'moderator',
         'execute': unmute_user
+        },
+    "timeout":
+        {
+            'pretty_name': 'timeout [+modifiers] <uid> [time[h|m|S]] [reason]',
+            'description': 'Timeout a member, defaults to longest timeout possible (28 days)',
+            'permission': "moderator",
+            "execute": timeout_user,
+            },
+    "untimeout": {
+        'alias': "remove-timeout",
+        },
+    "remove-timeout": {
+        'pretty_name': 'remove-timeout <uid> [reason]',
+        'description': 'Remove a timeout on a member',
+        'permission': "moderator",
+        "execute": un_timeout_user,
         },
     'purge':
         {
@@ -744,4 +814,4 @@ commands = {
             }
     }
 
-version_info: str = "1.2.14"
+version_info: str = "2.0.0"

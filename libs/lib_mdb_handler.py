@@ -199,5 +199,3 @@ class db_handler:  # Im sorry I OOP'd it :c -ultrabear
         self.con.commit()
         self.con.close()
         self.closed = True
-        if err_type:
-            raise err_type(err_value)

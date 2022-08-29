@@ -100,16 +100,14 @@ def ToKernelArgs(f: _FuncType) -> _FuncType:
 class _BotOwners:
     __slots__ = "owners",
 
-    def __init__(self, unknown: object) -> None:
+    def __init__(self, unknown: Union[List[Union[str, int]], Tuple[Union[str, int], ...], str, int]) -> None:
 
         self.owners: Set[int]
 
         if isinstance(unknown, (int, str)):
             self.owners = set([int(unknown)]) if unknown else set()
-        elif isinstance(unknown, (list, tuple)):
-            self.owners = set(map(int, unknown))
         else:
-            self.owners = set()
+            self.owners = set(map(int, unknown))
 
     def is_owner(self, user: Union[discord.User, discord.Member]) -> bool:
         """

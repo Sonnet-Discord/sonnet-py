@@ -6,7 +6,7 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import hashes, hmac
 
-from typing import Generator, Union, Protocol
+from typing import Generator, Union, List, Protocol, runtime_checkable
 
 
 class errors:
@@ -44,6 +44,12 @@ class _WriteSeekCloser(Protocol):
         ...
 
     def close(self) -> None:
+        ...
+
+
+@runtime_checkable
+class _Flushable(Protocol):
+    def flush(self) -> None:
         ...
 
 
@@ -114,6 +120,10 @@ class encrypted_writer:
         # Close objects
         self.rawfile.close()
         self.encryptor_module.finalize()
+
+    def flush(self) -> None:
+        if isinstance(self.rawfile, _Flushable):
+            self.rawfile.flush()
 
     def close(self) -> None:
 
@@ -201,7 +211,7 @@ class encrypted_reader:
         if size == -1:
             if self.pointer == 0:
                 # Return entire file if pointer is at 0
-                datamap = []
+                datamap: List[bytes] = []
                 while a := self.rawfile.read(2):
                     datamap.append(self._grab_amount(int.from_bytes(a, "little")))
                 return b"".join(datamap)

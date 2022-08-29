@@ -2,5 +2,17 @@
   "extraPaths": ["libs/", "common/"],
   "pythonVersion": "3.8",
   "pythonPlatform": "Linux",
-  "reportMissingImports": false
+  "reportMissingImports": false,
+  "strict": [
+    "libs/lib_compatibility.py", 
+    "libs/lib_datetimeplus.py", 
+    "libs/lib_tparse.py", 
+    "libs/lib_constants.py", 
+    "libs/lib_db_obfuscator.py", 
+    "libs/lib_encryption_wrapper.py", 
+    "libs/lib_goparsers.py", 
+    "libs/lib_lexdpyk_h.py", 
+    "libs/lib_sonnetconfig.py", 
+    "libs/lib_starboard.py"
+  ]
 }
