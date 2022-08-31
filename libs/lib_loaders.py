@@ -64,7 +64,7 @@ def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
 
 
 defaultcache: dict[Union[str, int], Any] = {
-    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["url-blacklist", ""], ["antispam", "3,2"], ["char-antispam", "2,2,1000"]],
+    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["url-blacklist", ""], ["antispam", "2,0"], ["char-antispam", "2,0,500"]],
     "text":
         [
             ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["antispam-action", "mute"], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""],
