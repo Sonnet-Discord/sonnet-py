@@ -320,7 +320,10 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
         try:
             messages, seconds = [float(i) for i in args[0].split(",")]
         except ValueError:
-            raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
+            if args[0] == "off":
+                messages, seconds = 2, 0
+            else:
+                raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
 
     elif len(args) > 1:
         try:
@@ -331,7 +334,10 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
 
     else:
         antispam = ctx.conf_cache["antispam"]
-        await message.channel.send(f"Antispam timings are M:{antispam[0]},S:{antispam[1]}")
+        if float(antispam[1]) == 0.0:
+            await message.channel.send("Antispam is disabled")
+        else:
+            await message.channel.send(f"Antispam timings are M:{antispam[0]},S:{antispam[1]}")
         return 0
 
     # Prevent bullshit
@@ -344,7 +350,11 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{int(messages)},{seconds}")
 
-    if ctx.verbose: await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
+    if ctx.verbose:
+        if float(seconds) != 0.0:
+            await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
+        else:
+            await message.channel.send("Disabled antispam")
     return 0
 
 
@@ -356,6 +366,8 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
         try:
             messages, seconds, chars = [float(i) for i in args[0].split(",")]
         except ValueError:
+            if args[0] == "off":
+                messages, seconds, chars = 2, 0, 500
             raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
 
     elif len(args) > 1:
@@ -368,7 +380,10 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
 
     else:
         antispam = ctx.conf_cache["char-antispam"]
-        await message.channel.send(f"CharAntispam timings are M:{antispam[0]},S:{antispam[1]},C:{antispam[2]}")
+        if float(antispam[1]) == 0.0:
+            await message.channel.send("CharAntispam is off")
+        else:
+            await message.channel.send(f"CharAntispam timings are M:{antispam[0]},S:{antispam[1]},C:{antispam[2]}")
         return 0
 
     # Prevent bullshit
@@ -383,7 +398,11 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
     with db_hlapi(message.guild.id) as database:
         database.add_config("char-antispam", f"{int(messages)},{seconds},{int(chars)}")
 
-    if ctx.verbose: await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
+    if ctx.verbose:
+        if float(seconds) != 0.0:
+            await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
+        else:
+            await message.channel.send("Disabled char antispam")
     return 0
 
 
@@ -679,6 +698,7 @@ commands = {
         {
             'pretty_name': 'set-charantispam <messages> <seconds> <chars>',
             'description': 'Set how many messages in seconds exceeding total chars to trigger antispam automute',
+            'rich_description': 'Pass `off` to disable CharAntispam',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': char_antispam_set
@@ -687,6 +707,7 @@ commands = {
         {
             'pretty_name': 'set-antispam <messages> <seconds>',
             'description': 'Set how many messages in seconds to trigger antispam automute',
+            'rich_description': 'Pass `off` to disable Antispam',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': antispam_set
@@ -731,4 +752,4 @@ commands = {
             },
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.1-DEV"
