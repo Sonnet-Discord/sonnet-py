@@ -396,7 +396,17 @@ def reload_libraries() -> List[Tuple[Exception, str]]:
         except Exception as e:
             err.append((e, f[:-3]), )
 
+    # this circumvents errors where a new item is defined in a library but it has not been reloaded
+    # and other libraries try and fail to import it
+    retry = []
+
     for i in range(len(loaded_libraries)):
+        try:
+            loaded_libraries[i] = importlib.reload(loaded_libraries[i])
+        except Exception:
+            retry.append(i)
+
+    for i in retry:
         try:
             loaded_libraries[i] = importlib.reload(loaded_libraries[i])
         except Exception as e:
@@ -1119,7 +1129,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2.0.3"
+version_info: str = "LeXdPyK 2.0.4"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
