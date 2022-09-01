@@ -574,18 +574,18 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
     except ValueError:
         if reply_message is not None:
             return reply_message, 0
-        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid, private_message=f"`{log_channel}` is not a valid channel id")
 
     try:
         message_id_int = int(message_id)
     except ValueError:
         if reply_message is not None:
             return reply_message, 0
-        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid, private_message=f"`{message_id}` is not a valid message id")
 
     discord_channel = client.get_channel(log_channel)
     if not discord_channel:
-        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid)
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.invalid, private_message=f"`{log_channel}` is not a known discord channel id")
 
     if not is_guild_messageable(discord_channel):
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_channel.scope)
@@ -596,10 +596,10 @@ async def parse_channel_message_noexcept(message: discord.Message, args: list[st
     try:
         discord_message = await discord_channel.fetch_message(message_id_int)
     except discord.errors.HTTPException:
-        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid, private_message=f"`{message_id_int}` is not a known discord message id")
 
     if not discord_message:
-        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid)
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_message.invalid, private_message=f"`{message_id_int}` is not a known discord message id")
 
     return (discord_message, nargs)
 
@@ -674,7 +674,7 @@ async def parse_user_member_noexcept(message: discord.Message,
     try:
         uid = int(args[argindex].strip("<@!>"))
     except ValueError:
-        raise lib_sonnetcommands.CommandError("Invalid UserID")
+        raise lib_sonnetcommands.CommandError("Invalid UserID", private_message=f"`{args[argindex]}` is not a valid user id")
     except IndexError:
         if default_self:
             return message.author, message.author
