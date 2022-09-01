@@ -110,8 +110,10 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
             # Add to command queue
             commandsparse.append((total[0], argout), )
         else:
-            await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatibility\nAnd {self_name} is not runnable inside itself")
-            return 1
+            raise lib_sonnetcommands.CommandError(
+                f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatibility\nAnd {self_name} is not runnable inside itself",
+                private_message=f"`{total[0]}` is not a valid command"
+                )
 
     # Keep reference to original message content
     keepref: str = message.content
@@ -186,8 +188,8 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
 
     try:
         targs: List[str] = shlex.split(" ".join(args))
-    except ValueError:
-        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): shlex parser could not parse args")
+    except ValueError as ve:
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): shlex parser could not parse args", private_message=f"ValueError: `{ve}`")
 
     if not targs:
         raise lib_sonnetcommands.CommandError(f"ERROR({cname}): No command specified")
@@ -398,7 +400,7 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         command = args[0]
 
         if command not in ctx.cmds_dict:
-            raise lib_sonnetcommands.CommandError("ERROR(sub): Command does not exist")
+            raise lib_sonnetcommands.CommandError("ERROR(sub): Command does not exist", private_message=f"Command `{command}` does not exist")
 
         sonnetc = SonnetCommand(ctx.cmds_dict[command], ctx.cmds_dict)
 
