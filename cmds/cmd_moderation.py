@@ -165,6 +165,8 @@ async def process_infraction(
     if not message.guild or not isinstance(message.author, discord.Member):
         raise InfractionGenerationError("User is not member, or no guild")
 
+    # TODO(ultrabear) make this function raise CommandError
+
     reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
     # Potential BUG: discord.abc.User != discord.user.User under mypy
