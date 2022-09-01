@@ -210,7 +210,7 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
     command = targs.pop(0)
 
     if command not in cmds_dict:
-        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found")
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found", private_message=f"The command `{command}` does not exist")
 
     # get total length of -s and -e arguments multiplied by iteration count, projected memory use
     memory_size = sum(len(item) for arglist in exargs for item in arglist) * len(targs)
