@@ -2,7 +2,8 @@
 # Ultrabear 2021
 
 import inspect
-from typing import (Any, Callable, Coroutine, Dict, List, Protocol, Tuple, Union, cast, Optional)
+import asyncio
+from typing import (Any, Callable, Coroutine, Dict, List, Protocol, Tuple, Union, cast, Optional, Set)
 from typing_extensions import TypeGuard  # pytype: disable=not-supported-yet
 
 import discord
@@ -25,6 +26,32 @@ _allowpool = {
     "cache": "keep",
     "permission": "everyone",
     }
+
+
+class _ContextButton(discord.ui.Button[Any]):
+    __slots__ = "private_message", "user_id", "called_out_ids"
+
+    def __init__(self, label: str, private_message: str, user_id: int) -> None:
+        super().__init__(style=discord.ButtonStyle.danger, label=label)
+        self.private_message = private_message
+        self.user_id = user_id
+        self.called_out_ids: Set[int] = set()
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+
+        if interaction.user.id == self.user_id:
+
+            send = asyncio.create_task(interaction.response.send_message(self.private_message, ephemeral=True))
+            if interaction.message is not None:
+                await interaction.message.edit(view=None)
+
+            # make events happen at same time
+            await send
+
+        else:
+            if interaction.user.id not in self.called_out_ids:
+                await interaction.response.send_message("Only the sender of the command may read error details.", ephemeral=True)
+                self.called_out_ids.add(interaction.user.id)
 
 
 class CommandError(Exception):
@@ -50,6 +77,27 @@ class CommandError(Exception):
 
         super().__init__(*args)
         self.private_message = private_message
+
+    async def send(self, message: discord.Message) -> None:
+        """
+        Sends the CommandError to the provided message channel and author
+        
+        ignores permission errors on message sending
+        """
+
+        try:
+            if self.private_message is None:
+                await message.channel.send(str(self))
+            else:
+                view = discord.ui.View(timeout=60)
+
+                view.add_item(_ContextButton("Details", self.private_message, message.author.id))
+
+                msg = await message.channel.send(str(self), view=view)
+                await view.wait()
+                await msg.edit(view=None)
+        except discord.errors.Forbidden:
+            pass
 
 
 class CommandCtx:

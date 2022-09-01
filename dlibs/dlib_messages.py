@@ -424,48 +424,6 @@ async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
         pass
 
 
-class ContextButton(discord.ui.Button[Any]):
-    __slots__ = "private_message", "user_id", "called_out_ids"
-
-    def __init__(self, label: str, private_message: str, user_id: int) -> None:
-        super().__init__(style=discord.ButtonStyle.danger, label=label)
-        self.private_message = private_message
-        self.user_id = user_id
-        self.called_out_ids: Set[int] = set()
-
-    async def callback(self, interaction: discord.Interaction) -> None:
-
-        if interaction.user.id == self.user_id:
-
-            send = asyncio.create_task(interaction.response.send_message(self.private_message, ephemeral=True))
-            if interaction.message is not None:
-                await interaction.message.edit(view=None)
-
-            # make events happen at same time
-            await send
-
-        else:
-            if interaction.user.id not in self.called_out_ids:
-                await interaction.response.send_message("Only the sender of the command may read error details.", ephemeral=True)
-                self.called_out_ids.add(interaction.user.id)
-
-
-async def send_commanderror(message: discord.Message, ce: lib_sonnetcommands.CommandError) -> None:
-
-    try:
-        if ce.private_message is None:
-            await message.channel.send(str(ce))
-        else:
-            view = discord.ui.View(timeout=60)
-
-            view.add_item(ContextButton("Details", ce.private_message, message.author.id))
-
-            msg = await message.channel.send(str(ce), view=view)
-            await view.wait()
-            await msg.edit(view=None)
-    except discord.errors.Forbidden:
-        pass
-
 
 @lexdpyk.ToKernelArgs
 async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
@@ -594,7 +552,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
             try:
                 await cmd.execute_ctx(message, arguments, client, command_ctx)
             except lib_sonnetcommands.CommandError as ce:
-                asyncio.create_task(send_commanderror(message, ce))
+                asyncio.create_task(ce.send(message))
 
             cmd.sweep_cache(ramfs, message.guild)
 
