@@ -148,7 +148,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                     try:
                         suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
                     except lib_sonnetcommands.CommandError as ce:
-                        await ce.send(message)
+                        asyncio.create_task(ce.send(message))
                         suc = 1
 
                     # Stop processing if error
@@ -270,7 +270,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
             try:
                 suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
             except lib_sonnetcommands.CommandError as ce:
-                await ce.send(message)
+                asyncio.create_task(ce.send(message))
                 suc = 1
 
             if suc != 0:
