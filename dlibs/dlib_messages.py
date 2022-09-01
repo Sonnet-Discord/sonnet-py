@@ -16,7 +16,7 @@ from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, Set, cast
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -422,7 +422,6 @@ async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
     except discord.errors.Forbidden:
         # ignore permission errors
         pass
-
 
 
 @lexdpyk.ToKernelArgs
