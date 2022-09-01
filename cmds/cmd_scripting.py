@@ -148,7 +148,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                     try:
                         suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
                     except lib_sonnetcommands.CommandError as ce:
-                        await message.channel.send(str(ce))
+                        await ce.send(message)
                         suc = 1
 
                     # Stop processing if error
@@ -270,12 +270,11 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
             try:
                 suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
             except lib_sonnetcommands.CommandError as ce:
-                await message.channel.send(str(ce))
+                await ce.send(message)
                 suc = 1
 
             if suc != 0:
-                await message.channel.send(f"ERROR(map): command `{command}` exited with non success status")
-                return 1
+                raise lib_sonnetcommands.CommandError(f"ERROR(map): command `{command}` exited with non success status")
 
         # Do cache sweep on command
         cmd.sweep_cache(ctx.ramfs, message.guild)
@@ -297,10 +296,7 @@ async def wrapasyncerror(cmd: SonnetCommand, message: discord.Message, args: Lis
     try:
         await cmd.execute_ctx(message, args, client, ctx)
     except lib_sonnetcommands.CommandError as ce:  # catch CommandError to print message
-        try:
-            await message.channel.send(str(ce))
-        except discord.errors.Forbidden:
-            pass
+        await ce.send(message)
     except asyncio.CancelledError:
         pass
 
