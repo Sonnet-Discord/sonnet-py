@@ -245,8 +245,8 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
         mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
         await message.channel.send(f"Warned {user.mention} with ID {user.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
@@ -280,9 +280,6 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
                 await dm_sent  # Wait for dm to be sent before kicking
             await message.guild.kick(to_snowflake(member), reason=reason[:512])
 
-            if warn_text is not None:
-                await message.channel.send(warn_text)
-
         except discord.errors.Forbidden:
             await message.channel.send(f"{BOT_NAME} does not have permission to kick this user.")
             return 1
@@ -292,10 +289,11 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
 
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if verbose:
+        await message.channel.send(f"Kicked {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
@@ -342,10 +340,11 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     delete_str = f",{' and' * (not unmute_user)} deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str}{unmuted_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose:
+        await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str}{unmuted_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
@@ -415,10 +414,11 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
     delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Softbanned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose:
+        await message.channel.send(f"Softbanned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
@@ -543,8 +543,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
                 message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none())
                 )
 
-        if warn_text is not None:
-            asyncio.create_task(message.channel.send(warn_text))
+            if warn_text is not None:
+                asyncio.create_task(message.channel.send(warn_text))
 
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
