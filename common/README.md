@@ -10,3 +10,4 @@
 - `GOLIB_LOAD: bool` whether to compile and load the golib or not
 - `GOLIB_VERSION: str` the go binary to use (if you dont know about go versioning then ignore this)
 - `BOT_NAME: str` the name the bot will use to refer to itself, previously used "Sonnet"
+- `STATELESS: bool` whether the bot should run in a stateless mode that does not cache configs, by default this is False and should stay off unless you are using shards
