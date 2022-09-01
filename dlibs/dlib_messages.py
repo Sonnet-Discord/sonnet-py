@@ -16,7 +16,7 @@ from lib_encryption_wrapper import encrypted_writer
 from lib_compatibility import user_avatar_url
 from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
 
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, cast
+from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, Set, cast
 import lib_lexdpyk_h as lexdpyk
 import lib_constants as constants
 
@@ -425,12 +425,13 @@ async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
 
 
 class ContextButton(discord.ui.Button[Any]):
-    __slots__ = "private_message", "user_id"
+    __slots__ = "private_message", "user_id", "called_out_ids"
 
     def __init__(self, label: str, private_message: str, user_id: int) -> None:
         super().__init__(style=discord.ButtonStyle.danger, label=label)
         self.private_message = private_message
         self.user_id = user_id
+        self.called_out_ids: Set[int] = set()
 
     async def callback(self, interaction: discord.Interaction) -> None:
 
@@ -444,7 +445,9 @@ class ContextButton(discord.ui.Button[Any]):
             await send
 
         else:
-            await interaction.response.send_message("Only the sender of the command may read error details.", ephemeral=True)
+            if interaction.user.id not in self.called_out_ids:
+                await interaction.response.send_message("Only the sender of the command may read error details.", ephemeral=True)
+                self.called_out_ids.add(interaction.user.id)
 
 
 async def send_commanderror(message: discord.Message, ce: lib_sonnetcommands.CommandError) -> None:
@@ -453,13 +456,13 @@ async def send_commanderror(message: discord.Message, ce: lib_sonnetcommands.Com
         if ce.private_message is None:
             await message.channel.send(str(ce))
         else:
-            view = discord.ui.View()
+            view = discord.ui.View(timeout=60)
 
             view.add_item(ContextButton("Details", ce.private_message, message.author.id))
 
-            msg = asyncio.create_task(message.channel.send(str(ce), view=view))
+            msg = await message.channel.send(str(ce), view=view)
             await view.wait()
-            await (await msg).edit(view=None)
+            await msg.edit(view=None)
     except discord.errors.Forbidden:
         pass
 
