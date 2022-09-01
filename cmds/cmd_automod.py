@@ -51,6 +51,17 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
     if not message.guild:
         raise blacklist_input_error("No Guild Attached")
 
+    if not args:
+        with db_hlapi(message.guild.id) as db:
+            blacklist = db.grab_config(name)
+
+        if blacklist:
+            await message.channel.send(f"{name} is set to {blacklist}")
+        else:
+            await message.channel.send(f"{name} is unset in the database")
+
+        return
+
     if len(args) >= 2 and args[1] in ["rm", "remove"]:
         with db_hlapi(message.guild.id) as db:
             db.delete_config(name)
@@ -58,8 +69,8 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
         await message.channel.send(f"Removed {name} config from database")
         return
 
-    if not args or len(args) != 1:
-        await message.channel.send(f"Malformed {name}")
+    if len(args) != 1:
+        await message.channel.send(f"Malformed {name} (passed more than 1 argument, spaces are not allowed in {name})")
         raise blacklist_input_error(f"Malformed {name}")
 
     blacklist = args[0]
@@ -138,7 +149,7 @@ async def add_regex_type(message: discord.Message, args: List[str], db_entry: st
                 await message.channel.send("ERROR: RegEx operations not supported in re2")
                 raise blacklist_input_error("Malformed regex")
         else:
-            await message.channel.send("ERROR: Malformed RegEx")
+            await message.channel.send("ERROR: Malformed RegEx (ensure your regex is formed like so: /`regex`/g)")
             raise blacklist_input_error("Malformed regex")
 
         database.add_config(db_entry, json.dumps(curlist))
