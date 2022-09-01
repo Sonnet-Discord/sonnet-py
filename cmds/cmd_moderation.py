@@ -236,7 +236,7 @@ def parse_infraction_modifiers(guild: discord.Guild, args: List[str]) -> List[In
                 if i in data:
                     mlist.append(InfractionModifier(i, data[i][0], data[i][1]))
                 else:
-                    raise lib_sonnetcommands.CommandError("ERROR: No infraction modifier with name specified")
+                    raise lib_sonnetcommands.CommandError("ERROR: No infraction modifier with name specified", private_message=f"A modifier called `{i}` does not exist")
 
         return mlist
 
@@ -707,7 +707,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         try:
             limit = int(args[0])
         except ValueError:
-            raise lib_sonnetcommands.CommandError("ERROR: Limit is not valid int")
+            raise lib_sonnetcommands.CommandError("ERROR: Limit is not valid int", private_message=f"`{args[0]}` is not a valid int")
     else:
         raise lib_sonnetcommands.CommandError("ERROR: No limit specified")
 
@@ -721,7 +721,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
             user = await client.fetch_user(int(args[1].strip("<@!>")))
         ucheck = purger(user.id, message).check
     except ValueError:
-        raise lib_sonnetcommands.CommandError("Invalid UserID")
+        raise lib_sonnetcommands.CommandError("Invalid UserID", private_message=f"`{args[1]}` is not a valid user id")
     except IndexError:
         ucheck = purger(None, message).check
     except (discord.errors.NotFound, discord.errors.HTTPException):
@@ -814,4 +814,4 @@ commands = {
             }
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.1-DEV"
