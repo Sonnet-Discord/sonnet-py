@@ -108,16 +108,27 @@ class CommandCtx:
     This class is not meant to be init by commands, doing so is undefined behaviour.
     """
     __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod"
+    # Stats about the time it took to do various tasks in message handling, only kept around for ping command
     stats: Dict[str, int]
+    # List of command modules passed by kernel
     cmds: List[lexdpyk.cmd_module]
+    # Temp ramfs passed by kernel
     ramfs: lexdpyk.ram_filesystem
+    # Permanent ramfs passed by kernel
     kernel_ramfs: lexdpyk.ram_filesystem
+    # Time in unix seconds that the bot started at
     bot_start: float
+    # List of dlib modules passed by kernel
     dlibs: List[lexdpyk.dlib_module]
+    # Version info of the kernel
     main_version: str
+    # An instance of the default guild cache, contains automod data
     conf_cache: Dict[str, Any]
+    # Whether this command should be verbose in its output, also serves to signal when a command is a subcommand
     verbose: bool
+    # Global dict of commands passed by kernel
     cmds_dict: lexdpyk.cmd_modules_dict
+    # Whether the command was triggered by automod
     automod: bool
 
     def to_dict(self) -> Dict[str, Any]:
