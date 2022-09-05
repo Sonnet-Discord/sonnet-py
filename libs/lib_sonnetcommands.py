@@ -3,6 +3,7 @@
 
 import inspect
 import asyncio
+from dataclasses import dataclass
 from typing import (Any, Callable, Coroutine, Dict, List, Protocol, Tuple, Union, cast, Optional, Set)
 from typing_extensions import TypeGuard  # pytype: disable=not-supported-yet
 
@@ -100,27 +101,24 @@ class CommandError(Exception):
             pass
 
 
+@dataclass
 class CommandCtx:
     """
-    A Context dataclass for a command, contains useful data to pull from for various running commands
+    A Context dataclass for a command, contains useful data to pull from for various running commands.
+    This class is not meant to be init by commands, doing so is undefined behaviour.
     """
     __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod"
-
-    def __init__(self, CtxToKwargdata: Dict[str, Any] = {}, **askwargs: Any) -> None:
-
-        kwargdata = askwargs if askwargs else CtxToKwargdata
-
-        self.stats: Dict[str, int] = kwargdata["stats"]
-        self.cmds: List[lexdpyk.cmd_module] = kwargdata["cmds"]
-        self.ramfs: lexdpyk.ram_filesystem = kwargdata["ramfs"]
-        self.kernel_ramfs: lexdpyk.ram_filesystem = kwargdata["kernel_ramfs"]
-        self.bot_start: float = kwargdata["bot_start"]
-        self.dlibs: List[lexdpyk.dlib_module] = kwargdata["dlibs"]
-        self.main_version: str = kwargdata["main_version"]
-        self.conf_cache: Dict[str, Any] = kwargdata["conf_cache"]
-        self.verbose: bool = kwargdata["verbose"]
-        self.cmds_dict: lexdpyk.cmd_modules_dict = kwargdata["cmds_dict"]
-        self.automod: bool = kwargdata["automod"]
+    stats: Dict[str, int]
+    cmds: List[lexdpyk.cmd_module]
+    ramfs: lexdpyk.ram_filesystem
+    kernel_ramfs: lexdpyk.ram_filesystem
+    bot_start: float
+    dlibs: List[lexdpyk.dlib_module]
+    main_version: str
+    conf_cache: Dict[str, Any]
+    verbose: bool
+    cmds_dict: lexdpyk.cmd_modules_dict
+    automod: bool
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -185,7 +183,7 @@ def CallKwargs(func: Union[ExecutableT, ExecutableCtxT]) -> ExecutableT:
     elif _isctxcallable(func):
         # Closures go brr
         def KwargsToCtx(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Coroutine[None, None, Any]:
-            ctx = CommandCtx(kwargs)
+            ctx = CommandCtx(**kwargs)
             # we need to cast here because mypy??
             return cast(ExecutableCtxT, func)(message, args, client, ctx)
 
