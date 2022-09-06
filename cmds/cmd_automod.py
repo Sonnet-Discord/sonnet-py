@@ -25,9 +25,9 @@ importlib.reload(lib_sonnetcommands)
 
 from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
-from lib_sonnetconfig import REGEX_VERSION
+from lib_sonnetconfig import REGEX_VERSION, AUTOMOD_ENABLED
 from lib_parsers import parse_role, parse_boolean_strict, parse_user_member, format_duration
-from lib_sonnetcommands import CommandCtx
+from lib_sonnetcommands import CommandCtx, ExecutableCtxT
 
 from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional, Literal
 from typing import Final  # pytype: disable=import-error
@@ -45,6 +45,18 @@ urlb_allowedrunes = string.ascii_lowercase + string.digits + "-,."
 
 class blacklist_input_error(Exception):
     __slots__ = ()
+
+
+def automod_enabled_only(f: ExecutableCtxT) -> ExecutableCtxT:
+
+    if AUTOMOD_ENABLED:
+        return f
+    else:
+
+        async def dummy(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
+            raise lib_sonnetcommands.CommandError("ERROR: Automod and related commands are disabled on this sonnet instance, if you believe this is an error contact the bot owner.")
+
+        return dummy
 
 
 async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True, allowed: Optional[str] = None) -> None:
@@ -89,6 +101,7 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
     if verbose: await message.channel.send(f"Updated {name} successfully")
 
 
+@automod_enabled_only
 async def wb_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -97,6 +110,7 @@ async def wb_change(message: discord.Message, args: List[str], client: discord.C
         return 1
 
 
+@automod_enabled_only
 async def word_in_word_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -105,6 +119,7 @@ async def word_in_word_change(message: discord.Message, args: List[str], client:
         return 1
 
 
+@automod_enabled_only
 async def ftb_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -113,6 +128,7 @@ async def ftb_change(message: discord.Message, args: List[str], client: discord.
         return 1
 
 
+@automod_enabled_only
 async def urlblacklist_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -203,6 +219,7 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
     if verbose: await message.channel.send("Successfully Updated RegEx")
 
 
+@automod_enabled_only
 async def regexblacklist_add(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await add_regex_type(message, args, "regex-blacklist", verbose=ctx.verbose)
@@ -210,6 +227,7 @@ async def regexblacklist_add(message: discord.Message, args: List[str], client: 
         return 1
 
 
+@automod_enabled_only
 async def regexblacklist_remove(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await remove_regex_type(message, args, "regex-blacklist", verbose=ctx.verbose)
@@ -217,6 +235,7 @@ async def regexblacklist_remove(message: discord.Message, args: List[str], clien
         return 1
 
 
+@automod_enabled_only
 async def regex_notifier_add(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await add_regex_type(message, args, "regex-notifier", verbose=ctx.verbose)
@@ -224,6 +243,7 @@ async def regex_notifier_add(message: discord.Message, args: List[str], client: 
         return 1
 
 
+@automod_enabled_only
 async def regex_notifier_remove(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await remove_regex_type(message, args, "regex-notifier", verbose=ctx.verbose)
@@ -231,6 +251,7 @@ async def regex_notifier_remove(message: discord.Message, args: List[str], clien
         return 1
 
 
+@automod_enabled_only
 async def list_blacklist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     mconf: Dict[str, Any] = ctx.conf_cache
@@ -275,6 +296,7 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
         await message.channel.send(errmsg, file=fileobj)
 
 
+@automod_enabled_only
 async def set_blacklist_infraction_level(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
@@ -295,6 +317,7 @@ async def set_blacklist_infraction_level(message: discord.Message, args: List[st
     if ctx.verbose: await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
+@automod_enabled_only
 async def set_antispam_command(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
@@ -318,11 +341,13 @@ async def set_antispam_command(message: discord.Message, args: List[str], client
     return 0
 
 
+@automod_enabled_only
 async def change_rolewhitelist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     return await parse_role(message, args, "blacklist-whitelist", verbose=ctx.verbose)
 
 
+@automod_enabled_only
 async def antispam_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
@@ -369,6 +394,7 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
     return 0
 
 
+@automod_enabled_only
 async def char_antispam_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Optional[Literal[0, 1]]:
     if not message.guild:
         return 1
@@ -417,6 +443,7 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
     return 0
 
 
+@automod_enabled_only
 async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
@@ -591,6 +618,7 @@ class joinrules:
         return 0
 
 
+@automod_enabled_only
 async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
