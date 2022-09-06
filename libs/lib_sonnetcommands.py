@@ -107,7 +107,7 @@ class CommandCtx:
     A Context dataclass for a command, contains useful data to pull from for various running commands.
     This class is not meant to be init by commands, doing so is undefined behaviour.
     """
-    __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod"
+    __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod", "command_name"
     # Stats about the time it took to do various tasks in message handling, only kept around for ping command
     stats: Dict[str, int]
     # List of command modules passed by kernel
@@ -130,6 +130,8 @@ class CommandCtx:
     cmds_dict: lexdpyk.cmd_modules_dict
     # Whether the command was triggered by automod
     automod: bool
+    # The name of the command invoked
+    command_name: str
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -144,7 +146,14 @@ class CommandCtx:
             "verbose": self.verbose,
             "cmds_dict": self.cmds_dict,
             "automod": self.automod,
+            "command_name": self.command_name,
             }
+
+    def prefix(self) -> str:
+        """
+        Returns the prefix derived from the conf_cache entry
+        """
+        return str(self.conf_cache["prefix"])
 
 
 def cache_sweep(cdata: Union[str, "SonnetCommand"], ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
