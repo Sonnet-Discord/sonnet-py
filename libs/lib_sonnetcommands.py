@@ -149,6 +149,7 @@ class CommandCtx:
             "command_name": self.command_name,
             }
 
+    @property
     def prefix(self) -> str:
         """
         Returns the prefix derived from the conf_cache entry
