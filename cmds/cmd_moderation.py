@@ -499,7 +499,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     modifiers = parse_infraction_modifiers(message.guild, args)
 
     # This ones for you, curl
-    if not 0 <= mutetime < 60 * 60 * 256:
+    # Replaced with 28 day limit from 256 hours to match new timeout api
+    if not 0 <= mutetime < (60 * 60 * 24) * 28:
         mutetime = 0
 
     with db_hlapi(message.guild.id) as db:
@@ -604,7 +605,7 @@ async def timeout_user(message: discord.Message, args: List[str], client: discor
 
     mutetime, duration_str = parse_duration_for_mutes(args, "timeout")
 
-    if mutetime >= ((60 * 60) * 24) * 28 or mutetime == 0:
+    if mutetime >= ((60 * 60) * 24) * 28 or mutetime <= 0:
         mutetime = ((60 * 60) * 24) * 28
 
     modifiers = parse_infraction_modifiers(message.guild, args)
