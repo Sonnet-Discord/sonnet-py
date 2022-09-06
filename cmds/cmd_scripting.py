@@ -76,7 +76,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
 
-    self_name: str = shellargs[0][len(ctx.conf_cache["prefix"]):]
+    self_name: str = ctx.command_name
 
     if verbose == False:
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
@@ -146,6 +146,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                 if permission:
 
                     try:
+                        newctx.command_name = command
                         suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
                     except lib_sonnetcommands.CommandError as ce:
                         asyncio.create_task(ce.send(message))
@@ -253,6 +254,7 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
         newctx = pycopy.copy(ctx)
         newctx.verbose = False
+        newctx.command_name = command
 
         timeout = time.monotonic_ns()
         cancelled = False
@@ -317,6 +319,7 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
 
     newctx = pycopy.copy(ctx)
     newctx.verbose = False
+    newctx.command_name = command
 
     timeout = time.monotonic_ns()
 
@@ -409,6 +412,7 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         # set to subcommand
         newctx = pycopy.copy(ctx)
         newctx.verbose = False
+        newctx.command_name = command
         newmsg = pycopy.copy(message)
         newmsg.content = ctx.conf_cache["prefix"] + " ".join(args)
 

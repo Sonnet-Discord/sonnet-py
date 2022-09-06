@@ -1,24 +1,28 @@
 # Dynamic libraries (editable at runtime) for message handling
 # Ultrabear 2020
 
-import time, asyncio, os, hashlib, string, io, gzip
-import warnings
+import asyncio
 import copy as pycopy
+import gzip
+import hashlib
+import io
+import os
+import string
+import time
+import warnings
+from typing import (Any, Awaitable, Callable, Dict, Final, List, Literal, NewType, Optional, Tuple, TypedDict, Union, cast)
 
-import discord, lz4.frame
-
-import lib_sonnetcommands
-
-from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field, parse_boolean_strict
-from lib_encryption_wrapper import encrypted_writer
-from lib_compatibility import user_avatar_url
-from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
-
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, cast
-import lib_lexdpyk_h as lexdpyk
+import discord
 import lib_constants as constants
+import lib_lexdpyk_h as lexdpyk
+import lib_sonnetcommands
+import lz4.frame
+from lib_compatibility import user_avatar_url
+from lib_db_obfuscator import db_hlapi
+from lib_encryption_wrapper import encrypted_writer
+from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
+from lib_parsers import (generate_reply_field, grab_files, parse_blacklist, parse_boolean_strict, parse_permissions, parse_skip_message)
+from lib_sonnetcommands import (CallCtx, CommandCtx, ExecutableCtxT, SonnetCommand)
 
 ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]= ")
 
@@ -243,7 +247,8 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             conf_cache={},
             verbose=False,
             cmds_dict=kctx.command_modules[1],
-            automod=True
+            automod=True,
+            command_name=mconf["blacklist-action"]
             )
 
         asyncio.create_task(attempt_message_delete(message))
@@ -467,7 +472,8 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         conf_cache=mconf,
         verbose=True,
         cmds_dict=command_modules_dict,
-        automod=False
+        automod=False,
+        command_name=""
         )
 
     automod_ctx: Final = pycopy.copy(command_ctx)
@@ -479,16 +485,37 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
+
+        blacklist_ctx = pycopy.copy(automod_ctx)
+        blacklist_ctx.command_name = mconf["blacklist-action"]
+
         execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, automod_ctx)))
+        asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, blacklist_ctx)))
 
     if spammer:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
-        with db_hlapi(message.guild.id) as db:
-            if not db.is_muted(userid=message.author.id):
-                execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["antispam-action"])(message, execargs, client, automod_ctx)))
+
+        antispam_ctx = pycopy.copy(automod_ctx)
+        antispam_ctx.command_name = action = mconf["antispam-action"]
+
+        execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
+
+        timeout = False
+
+        if action == "mute":
+
+            with db_hlapi(message.guild.id) as db:
+                if not db.is_muted(userid=message.author.id):
+                    timeout = True
+
+        elif action == "timeout":
+
+            if isinstance(message.author, discord.Member) and not message.author.is_timed_out():
+                timeout = True
+
+        if timeout:
+            asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, action)(message, execargs, client, antispam_ctx)))
 
     if notify:
         asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
@@ -539,6 +566,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
 
     # Process commands
     if command in command_modules_dict:
+        command_ctx.command_name = command
 
         cmd: Final = SonnetCommand(command_modules_dict[command], command_modules_dict)
 
