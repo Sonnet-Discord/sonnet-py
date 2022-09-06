@@ -23,6 +23,7 @@ from lib_encryption_wrapper import encrypted_writer
 from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
 from lib_parsers import (generate_reply_field, grab_files, parse_blacklist, parse_boolean_strict, parse_permissions, parse_skip_message)
 from lib_sonnetcommands import (CallCtx, CommandCtx, ExecutableCtxT, SonnetCommand)
+from lib_sonnetconfig import AUTOMOD_ENABLED
 
 ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]= ")
 
@@ -230,33 +231,34 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             message_embed.timestamp = datetime_now()
             asyncio.create_task(catch_logging_error(message_log, message_embed, files))
 
-    # Check against blacklist
-    mconf: Final = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
+    if AUTOMOD_ENABLED:
+        # Check against blacklist
+        mconf: Final = load_message_config(message.guild.id, ramfs)
+        broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
 
-    if broke_blacklist:
+        if broke_blacklist:
 
-        command_ctx: Final = CommandCtx(
-            stats={},
-            cmds=kctx.command_modules[0],
-            ramfs=ramfs,
-            bot_start=kctx.bot_start,
-            dlibs=kctx.dynamiclib_modules[0],
-            main_version=kctx.kernel_version,
-            kernel_ramfs=kernel_ramfs,
-            conf_cache={},
-            verbose=False,
-            cmds_dict=kctx.command_modules[1],
-            automod=True,
-            command_name=mconf["blacklist-action"]
-            )
+            command_ctx: Final = CommandCtx(
+                stats={},
+                cmds=kctx.command_modules[0],
+                ramfs=ramfs,
+                bot_start=kctx.bot_start,
+                dlibs=kctx.dynamiclib_modules[0],
+                main_version=kctx.kernel_version,
+                kernel_ramfs=kernel_ramfs,
+                conf_cache={},
+                verbose=False,
+                cmds_dict=kctx.command_modules[1],
+                automod=True,
+                command_name=mconf["blacklist-action"]
+                )
 
-        asyncio.create_task(attempt_message_delete(message))
-        execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await catch_ce(message, warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx))
+            asyncio.create_task(attempt_message_delete(message))
+            execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+            await catch_ce(message, warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx))
 
-    if notify:
-        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
+        if notify:
+            asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
 
 
 class BaseAntispamMeta(TypedDict):
@@ -532,7 +534,10 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     automod_ctx.automod = True
 
     # Check message against automod
-    message_deleted = await do_automod_pass(message, client, mconf, ramfs, automod_ctx)
+    if AUTOMOD_ENABLED:
+        message_deleted = await do_automod_pass(message, client, mconf, ramfs, automod_ctx)
+    else:
+        message_deleted = False
 
     stats["end-automod"] = round(time.time() * 100000)
 
