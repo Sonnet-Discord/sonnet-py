@@ -54,7 +54,7 @@ def automod_enabled_only(f: ExecutableCtxT) -> ExecutableCtxT:
     else:
 
         async def dummy(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
-            raise lib_sonnetcommands.CommandError("ERROR: Automod and related commands are disabled on this sonnet instance, if you believe this is an error contact the bot owner.")
+            raise lib_sonnetcommands.CommandError("ERROR: Automod and related commands are disabled on this sonnet instance, if you believe this is an error please contact the bot owner.")
 
         return dummy
 
