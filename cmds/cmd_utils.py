@@ -211,13 +211,13 @@ class Instant(int):
 class HelpHelper:
     __slots__ = "guild", "args", "client", "ctx", "prefix", "helpname", "message", "start_time"
 
-    def __init__(self, message: discord.Message, guild: discord.Guild, args: List[str], client: discord.Client, ctx: CommandCtx, prefix: str, helpname: str, start_time: Instant):
+    def __init__(self, message: discord.Message, guild: discord.Guild, args: List[str], client: discord.Client, ctx: CommandCtx, helpname: str, start_time: Instant):
         self.message = message
         self.guild = guild
         self.args = args
         self.client = client
         self.ctx = ctx
-        self.prefix = prefix
+        self.prefix = ctx.prefix
         self.helpname = helpname
         self.start_time = start_time
 
@@ -352,8 +352,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
     page = pageP.get(0)
     commandonly = commandonlyP.get() is True
 
-    prefix = ctx.conf_cache["prefix"]
-    help_helper = HelpHelper(message, message.guild, args, client, ctx, prefix, helpname, start_time)
+    help_helper = HelpHelper(message, message.guild, args, client, ctx, helpname, start_time)
 
     if args:
 
@@ -402,7 +401,7 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             no_command_text: str = f"No command {'or command module '*(not commandonly)}with that name"
 
             if probably_tried_paging:
-                raise lib_sonnetcommands.CommandError(f"{no_command_text} (did you mean `{prefix}help -p {int(args[0])}`?)")
+                raise lib_sonnetcommands.CommandError(f"{no_command_text} (did you mean `{ctx.prefix}help -p {int(args[0])}`?)")
 
             raise lib_sonnetcommands.CommandError(no_command_text)
 
@@ -649,4 +648,4 @@ commands = {
         }
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.1-DEV"
