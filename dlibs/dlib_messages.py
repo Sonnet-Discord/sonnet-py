@@ -429,6 +429,62 @@ async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
         pass
 
 
+async def do_automod_pass(message: discord.Message, client: discord.Client, mconf: Dict[str, Any], ramfs: lexdpyk.ram_filesystem, automod_ctx: CommandCtx) -> bool:
+    """
+    Does blacklist, antispam, and notifier pass for on_message
+
+    :returns: bool - Indication of whether any automod filter was tripped and the message was deleted
+    """
+
+    assert message.guild is not None, "Guild should exist, as the caller asserted this previously"
+
+    spammer, spamstr = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
+
+    message_deleted: bool = False
+
+    # If blacklist broken generate infraction
+    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
+    if broke_blacklist:
+        message_deleted = True
+        asyncio.create_task(attempt_message_delete(message))
+
+        blacklist_ctx = pycopy.copy(automod_ctx)
+        blacklist_ctx.command_name = mconf["blacklist-action"]
+
+        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        asyncio.create_task(catch_ce(message, warn_missing(automod_ctx.cmds_dict, mconf["blacklist-action"])(message, execargs, client, blacklist_ctx)))
+
+    if spammer:
+        message_deleted = True
+        asyncio.create_task(attempt_message_delete(message))
+
+        antispam_ctx = pycopy.copy(automod_ctx)
+        antispam_ctx.command_name = action = mconf["antispam-action"]
+
+        execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
+
+        timeout = False
+
+        if action == "mute":
+
+            with db_hlapi(message.guild.id) as db:
+                if not db.is_muted(userid=message.author.id):
+                    timeout = True
+
+        elif action == "timeout":
+
+            if isinstance(message.author, discord.Member) and not message.author.is_timed_out():
+                timeout = True
+
+        if timeout:
+            asyncio.create_task(catch_ce(message, warn_missing(automod_ctx.cmds_dict, action)(message, execargs, client, antispam_ctx)))
+
+    if notify:
+        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
+
+    return message_deleted
+
+
 @lexdpyk.ToKernelArgs
 async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
 
@@ -454,12 +510,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     mconf: Final = load_message_config(message.guild.id, ramfs)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
-    # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
-
-    spammer, spamstr = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
-
-    message_deleted: bool = False
 
     command_ctx: Final = CommandCtx(
         stats=stats,
@@ -480,45 +531,8 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     automod_ctx.verbose = False
     automod_ctx.automod = True
 
-    # If blacklist broken generate infraction
-    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
-    if broke_blacklist:
-        message_deleted = True
-        asyncio.create_task(attempt_message_delete(message))
-
-        blacklist_ctx = pycopy.copy(automod_ctx)
-        blacklist_ctx.command_name = mconf["blacklist-action"]
-
-        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, blacklist_ctx)))
-
-    if spammer:
-        message_deleted = True
-        asyncio.create_task(attempt_message_delete(message))
-
-        antispam_ctx = pycopy.copy(automod_ctx)
-        antispam_ctx.command_name = action = mconf["antispam-action"]
-
-        execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-
-        timeout = False
-
-        if action == "mute":
-
-            with db_hlapi(message.guild.id) as db:
-                if not db.is_muted(userid=message.author.id):
-                    timeout = True
-
-        elif action == "timeout":
-
-            if isinstance(message.author, discord.Member) and not message.author.is_timed_out():
-                timeout = True
-
-        if timeout:
-            asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, action)(message, execargs, client, antispam_ctx)))
-
-    if notify:
-        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
+    # Check message against automod
+    message_deleted = await do_automod_pass(message, client, mconf, ramfs, automod_ctx)
 
     stats["end-automod"] = round(time.time() * 100000)
 
