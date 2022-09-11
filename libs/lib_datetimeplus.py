@@ -468,9 +468,10 @@ class Time:
         """
         return self.in_timezone(self.LOCAL_TZ)
 
-    def in_timezone(self, tz: datetime.tzinfo) -> "Time":
+    def in_timezone(self, tz: Optional[datetime.tzinfo]) -> "Time":
         """
         Returns a new Time object with the timezone set to the new timezone specified.
+        If the passed timezone is None it will default to UTC
 
         Preserves monotonic clock, as this operation does not change the time itself
         """
@@ -574,10 +575,7 @@ class Time:
         """
         Returns a new time object with the timezone set to UTC, preserving monotonic
         """
-        new = self.from_nanos(self._unix)
-        # Preserve monotonic as timezone is not related
-        new._monotonic = self._monotonic
-        return new
+        return self.in_timezone(None)
 
     def unix(self) -> int:
         """
