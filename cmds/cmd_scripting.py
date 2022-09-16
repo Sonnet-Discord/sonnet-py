@@ -187,8 +187,16 @@ class MapProcessError(Exception):
 async def map_preprocessor_someexcept(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict, conf_cache: Dict[str, Any],
                                       cname: str) -> Tuple[List[str], SonnetCommand, str, Tuple[List[str], List[str]]]:
 
+    strargs = " ".join(args)
+
+    # various slanted quotes, some are default for iOS keyboards (I think)
+    slanted_quotes = ("\u201d", "\u201c", "\u2019", "\u2018")
+
+    argset = set(strargs)
+    has_weird_quotes = any(i in argset for i in slanted_quotes)
+
     try:
-        targs: List[str] = shlex.split(" ".join(args))
+        targs: List[str] = shlex.split(strargs)
     except ValueError as ve:
         raise lib_sonnetcommands.CommandError(f"ERROR({cname}): shlex parser could not parse args", private_message=f"ValueError: `{ve}`")
 
@@ -213,7 +221,12 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
     command = targs.pop(0)
 
     if command not in cmds_dict:
-        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found", private_message=f"The command `{command}` does not exist")
+        if has_weird_quotes:
+            note = f"\n(you used slanted quotes in the args (`{'`, `'.join(slanted_quotes)}`), did you mean to use normal quotes (`'`, `\"`) instead?) (slanted quotes are not parsed by the argparser)"
+        else:
+            note = ""
+
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found{note}", private_message=f"The command `{command}` does not exist")
 
     # get total length of -s and -e arguments multiplied by iteration count, projected memory use
     memory_size = sum(len(item) for arglist in exargs for item in arglist) * len(targs)
