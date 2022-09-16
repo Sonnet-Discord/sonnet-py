@@ -181,6 +181,28 @@ async def avatar_function(message: discord.Message, args: List[str], client: dis
         raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
+async def banner_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if message.guild is None:
+        return 1
+
+    user, _ = await parse_user_member_noexcept(message, args, client, default_self=True)
+
+    if user.banner is not None:
+        embed = discord.Embed(description=f"{user.mention}'s Banner", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
+
+        embed.set_image(url=user.banner.url)
+        embed.timestamp = Time.now().as_datetime()
+
+        try:
+            await message.channel.send(embed=embed)
+        except discord.errors.Forbidden:
+            raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+    else:
+        await message.channel.send("This user has no banner image")
+
+    return 0
+
+
 class Duration(int):
     """
     A duration represented as nanoseconds with helper methods for conversions
@@ -613,6 +635,11 @@ commands = {
         'pretty_name': 'avatar [user] [--global]',
         'description': 'Get avatar of a user, returns guild avatar if it exists unless --global is specified',
         'execute': avatar_function
+        },
+    'banner': {
+        'pretty_name': 'banner [user]',
+        'description': 'Get the profile banner of a user',
+        'execute': banner_function,
         },
     'server-info': {
         'alias': 'serverinfo'
