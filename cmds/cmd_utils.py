@@ -197,8 +197,13 @@ async def banner_function(message: discord.Message, args: List[str], client: dis
             await message.channel.send(embed=embed)
         except discord.errors.Forbidden:
             raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+
+    elif user.accent_color is not None:
+
+        await message.channel.send(f"This user has no banner, but has an accent color of {user.accent_color}")
+
     else:
-        await message.channel.send("This user has no banner image")
+        await message.channel.send("This user has no banner or accent color")
 
     return 0
 
