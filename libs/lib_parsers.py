@@ -658,11 +658,15 @@ async def parse_user_member_noexcept(message: discord.Message,
                                      args: List[str],
                                      client: discord.Client,
                                      argindex: int = 0,
-                                     default_self: bool = False) -> Tuple[UserInterface, Optional[discord.Member]]:
+                                     default_self: bool = False,
+                                     require_fetch_user: bool = False) -> Tuple[UserInterface, Optional[discord.Member]]:
     """
     Parse a user and member object from a potential user string
     Always returns a user, only returns member if the user is in the guild
-    User returned might be a member, do not rely on this.
+
+    User returned might be a member, do not rely on this. Except:
+    If it is required that the User object is gathered through Client::fetch_user then require_fetch_user will guarantee a User is fetched and returned
+    This may be necessary for gaining uncached data
 
     :returns: Tuple[Union[discord.User, discord.Member], Optional[discord.Member]] -- A discord user and optional member
     :raises: lib_sonnetcommands.CommandError -- Could not find the user or input invalid
@@ -677,7 +681,13 @@ async def parse_user_member_noexcept(message: discord.Message,
         raise lib_sonnetcommands.CommandError("Invalid UserID", private_message=f"`{args[argindex]}` is not a valid user id")
     except IndexError:
         if default_self:
-            return message.author, message.author
+            if require_fetch_user:
+                try:
+                    return await client.fetch_user(message.author.id), message.author
+                except discord.errors.NotFound:
+                    raise lib_sonnetcommands.CommandError("INTERNAL ERROR: Tried to grab the User of the Member who sent this message, but the api returned NotFound")
+            else:
+                return message.author, message.author
         else:
             raise lib_sonnetcommands.CommandError("No user specified")
 
@@ -686,8 +696,13 @@ async def parse_user_member_noexcept(message: discord.Message,
 
     try:
         member = message.guild.get_member(uid)
-        if not (user := client.get_user(uid)):
+
+        if require_fetch_user:
             user = await client.fetch_user(uid)
+        else:
+            if not (user := client.get_user(uid)):
+                user = await client.fetch_user(uid)
+
     except (discord.errors.NotFound, discord.errors.HTTPException):
         if (pot := await _guess_id_type(message, uid)) is not None:
             errappend = "Note: While this ID is not a valid user ID, it is "
@@ -706,7 +721,12 @@ async def parse_user_member_noexcept(message: discord.Message,
     return user, member
 
 
-async def parse_user_member(message: discord.Message, args: List[str], client: discord.Client, argindex: int = 0, default_self: bool = False) -> Tuple[UserInterface, Optional[discord.Member]]:
+async def parse_user_member(message: discord.Message,
+                            args: List[str],
+                            client: discord.Client,
+                            argindex: int = 0,
+                            default_self: bool = False,
+                            require_fetch_user: bool = False) -> Tuple[UserInterface, Optional[discord.Member]]:
     """
     Parse a user and member object from a potential user string
     Always returns a user, only returns member if the user is in the guild
@@ -716,7 +736,7 @@ async def parse_user_member(message: discord.Message, args: List[str], client: d
     :raises: errors.user_parse_error -- Could not find the user or input invalid
     """
     try:
-        return await parse_user_member_noexcept(message, args, client, argindex=argindex, default_self=default_self)
+        return await parse_user_member_noexcept(message, args, client, argindex=argindex, default_self=default_self, require_fetch_user=require_fetch_user)
     except lib_sonnetcommands.CommandError as ce:
         await message.channel.send(str(ce))
         raise errors.user_parse_error(ce)
