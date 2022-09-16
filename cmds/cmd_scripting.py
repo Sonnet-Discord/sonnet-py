@@ -222,7 +222,7 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
 
     if command not in cmds_dict:
         if has_weird_quotes:
-            note = f"\n(you used slanted quotes in the args (`{'`, `'.join(slanted_quotes)}`), did you mean to use normal quotes (`'`, `\"`) instead?) (slanted quotes are not parsed by the argparser)"
+            note = f"\n(you used slanted quotes in the args (`{'`, `'.join(slanted_quotes)}`), did you mean to use normal quotes (`'`, `\"`) instead?)\n(slanted quotes are not parsed by the argparser)"
         else:
             note = ""
 
