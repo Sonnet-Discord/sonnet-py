@@ -185,7 +185,8 @@ async def banner_function(message: discord.Message, args: List[str], client: dis
     if message.guild is None:
         return 1
 
-    user, _ = await parse_user_member_noexcept(message, args, client, default_self=True)
+    # need a fetch_user call to access banner/accent_color information fsr, this is really stupid but its gotta work somehow
+    user, _ = await parse_user_member_noexcept(message, args, client, default_self=True, require_fetch_user=True)
 
     if user.banner is not None:
         embed = discord.Embed(description=f"{user.mention}'s Banner", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
