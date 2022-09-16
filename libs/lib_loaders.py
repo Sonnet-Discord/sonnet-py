@@ -102,7 +102,7 @@ def _get_cached_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: 
     """
     try:
         # Loads fileio object
-        blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
+        blacklist_cache = ramfs.read_f(dirlist=[str(guild_id), "caches", str(datatypes[0])])
     except FileNotFoundError:
         raise
 
@@ -182,7 +182,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
                 message_config[i[0]] = v.lower().split(",")
 
         # Generate SNOWFLAKE DBCACHE
-        blacklist_cache = ramfs.create_f(f"{guild_id}/caches/{datatypes[0]}")
+        blacklist_cache = ramfs.create_f(dirlist=[str(guild_id), "caches", str(datatypes[0])])
         # Add csv based configs
         for i in datatypes["csv"]:
             if message_config[i[0]]:
@@ -255,16 +255,16 @@ def generate_infractionid() -> str:
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
-        statistics = kernel_ramfs.read_f(f"{guild}/stats")
+        statistics = kernel_ramfs.read_f(dirlist=[str(guild), "stats"])
         assert isinstance(statistics, dict)
     except FileNotFoundError:
-        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(Type[Dict[str, int]], dict))
+        statistics = kernel_ramfs.create_f(dirlist=[str(guild), "stats"], f_type=cast(Type[Dict[str, int]], dict))
 
     try:
-        global_statistics = kernel_ramfs.read_f("global/stats")
+        global_statistics = kernel_ramfs.read_f(dirlist=["global", "stats"])
         assert isinstance(global_statistics, dict)
     except FileNotFoundError:
-        global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(Type[Dict[str, int]], dict))
+        global_statistics = kernel_ramfs.create_f(dirlist=["global", "stats"], f_type=cast(Type[Dict[str, int]], dict))
 
     if inctype in statistics:
         statistics[inctype] += 1
