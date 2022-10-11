@@ -6,6 +6,7 @@ import importlib
 import io
 import random
 import time
+import contextlib
 from datetime import datetime
 
 import discord
@@ -40,11 +41,11 @@ import lib_datetimeplus
 
 importlib.reload(lib_datetimeplus)
 
-from typing import Any, Final, List, Optional, Tuple, Dict
+from typing import Any, Final, List, Optional, Tuple, Dict, Literal, Callable, Union
 
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
-from lib_compatibility import discord_datetime_now, user_avatar_url, is_guild_messageable
+from lib_compatibility import discord_datetime_now, user_avatar_url, is_guild_messageable, GuildMessageable
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import embed_colors, load_embed_color
 from lib_parsers import (parse_boolean_strict, parse_permissions, parse_core_permissions, parse_user_member_noexcept, parse_channel_message_noexcept, generate_reply_field, grab_files)
@@ -89,18 +90,22 @@ def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
         basetime = format(indata, '%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
-        return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
+        if days >= 0:
+            return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
+        else:
+            days *= -1
+            return f"{basetime} (in {days} day{'s' * (days != 1)})"
     else:
         return "ERROR: Could not fetch this date"
 
 
-def _get_highest_perm(message: discord.Message, member: discord.Member, conf_cache: Dict[str, Any]) -> str:
-    if not is_guild_messageable(message.channel):
+def _get_highest_perm(channel: Any, member: discord.Member, conf_cache: Dict[str, Any]) -> str:
+    if not is_guild_messageable(channel):
         return "everyone"
 
     highest = "everyone"
     for i in ["moderator", "administrator", "owner"]:
-        if parse_core_permissions(message.channel, member, conf_cache, i):
+        if parse_core_permissions(channel, member, conf_cache, i):
             highest = i
         else:
             break
@@ -108,11 +113,7 @@ def _get_highest_perm(message: discord.Message, member: discord.Member, conf_cac
     return highest
 
 
-async def profile_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
-    if not message.guild:
-        return 1
-
-    user, member = await parse_user_member_noexcept(message, args, client, default_self=True)
+def profile_embed(message: discord.Message, user: Union[discord.User, discord.Member], member: Optional[discord.Member], embed_color: int, ctx: CommandCtx) -> discord.Embed:
 
     # Status hashmap
     status_map: Final = {
@@ -126,7 +127,7 @@ async def profile_function(message: discord.Message, args: List[str], client: di
 
     avatar_asset = user.display_avatar if member is None else member.display_avatar
 
-    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=load_embed_color(message.guild, embed_colors.primary, ctx.ramfs))
+    embed: Final = discord.Embed(title="User Information", description=f"User information for {user.mention}:", color=embed_color)
     embed.set_thumbnail(url=avatar_asset.url)
     embed.add_field(name="Username", value=str(user), inline=True)
     embed.add_field(name="User ID", value=str(user.id), inline=True)
@@ -136,16 +137,34 @@ async def profile_function(message: discord.Message, args: List[str], client: di
     embed.add_field(name="Created", value=parsedate(user.created_at), inline=True)
     if member:
         embed.add_field(name="Joined", value=parsedate(member.joined_at), inline=True)
-        embed.add_field(name="Guild Perm Level", value=_get_highest_perm(message, member, ctx.conf_cache))
+        embed.add_field(name="Guild Perm Level", value=_get_highest_perm(message.channel, member, ctx.conf_cache))
 
     # Parse adding infraction count
-    with db_hlapi(message.guild.id) as db:
-        viewinfs = parse_boolean_strict(db.grab_config("member-view-infractions") or "0")
-        moderator = await parse_permissions(message, ctx.conf_cache, "moderator", verbose=False)
-        if moderator or (viewinfs and user.id == message.author.id):
-            embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
+
+    if message.guild:
+        with db_hlapi(message.guild.id) as db:
+            viewinfs = parse_boolean_strict(db.grab_config("member-view-infractions") or "0")
+
+            moderator = False
+            if isinstance(message.author, discord.Member) and is_guild_messageable(message.channel):
+                moderator = parse_core_permissions(message.channel, message.author, ctx.conf_cache, "moderator")
+
+            if moderator or (viewinfs and user.id == message.author.id):
+                embed.add_field(name="Infractions", value=f"{db.grab_filter_infractions(user=user.id, count=True)}")
 
     embed.timestamp = Time.now().as_datetime()
+
+    return embed
+
+
+async def profile_function(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+    if not message.guild:
+        return 1
+
+    user, member = await parse_user_member_noexcept(message, args, client, default_self=True)
+
+    embed = profile_embed(message, user, member, load_embed_color(message.guild, embed_colors.primary, ctx.ramfs), ctx)
+
     try:
         await message.channel.send(embed=embed)
     except discord.errors.Forbidden:
@@ -442,17 +461,13 @@ async def help_function(message: discord.Message, args: List[str], client: disco
             raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
 
 
-async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Any:
-    if not message.guild:
-        return 1
-
-    guild = message.guild
-
-    embed_col = load_embed_color(guild, embed_colors.primary, kwargs["ramfs"])
+def guild_info_embed(guild: discord.Guild, embed_col: int) -> discord.Embed:
 
     guild_embed = discord.Embed(title=f"Information on {guild}", color=embed_col)
+
     if guild.owner:
         guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
+
     guild_embed.add_field(name="# of Roles:", value=f"{len(guild.roles)} Roles")
     guild_embed.add_field(name="Top Role:", value=guild.roles[-1].mention)
     guild_embed.add_field(name="Member Count:", value=str(guild.member_count))
@@ -461,6 +476,19 @@ async def grab_guild_info(message: discord.Message, args: List[str], client: dis
     guild_embed.set_footer(text=f"gid: {guild.id}")
     if guild.icon:
         guild_embed.set_thumbnail(url=guild.icon.url)
+
+    return guild_embed
+
+
+async def grab_guild_info(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+    if not message.guild:
+        return 1
+
+    guild = message.guild
+
+    embed_col = load_embed_color(guild, embed_colors.primary, ctx.ramfs)
+
+    guild_embed = guild_info_embed(guild, embed_col)
 
     try:
         await message.channel.send(embed=guild_embed)
@@ -482,6 +510,18 @@ def perms_to_str(p: discord.Permissions) -> str:
         return "None"
 
 
+def role_info_embed(role: discord.Role, embed_color: int) -> discord.Embed:
+
+    r_embed = discord.Embed(title="Role Info", description=f"Information on {role.mention}", color=embed_color)
+    r_embed.add_field(name="User Count", value=str(len(role.members)), inline=False)
+    r_embed.add_field(name=f"Permissions ({role.permissions.value})", value=perms_to_str(role.permissions))
+
+    r_embed.set_footer(text=f"id: {role.id}")
+    r_embed.timestamp = Time.now().as_datetime()
+
+    return r_embed
+
+
 async def grab_role_info(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
@@ -496,12 +536,7 @@ async def grab_role_info(message: discord.Message, args: List[str], client: disc
 
     if (role := message.guild.get_role(role_id)) is not None:
 
-        r_embed = discord.Embed(title="Role Info", description=f"Information on {role.mention}", color=load_embed_color(message.guild, "primary", ctx.ramfs))
-        r_embed.add_field(name="User Count", value=str(len(role.members)), inline=False)
-        r_embed.add_field(name=f"Permissions ({role.permissions.value})", value=perms_to_str(role.permissions))
-
-        r_embed.set_footer(text=f"id: {role.id}")
-        r_embed.timestamp = Time.now().as_datetime()
+        r_embed = role_info_embed(role, load_embed_color(message.guild, "primary", ctx.ramfs))
 
         try:
             await message.channel.send(embed=r_embed)
@@ -595,9 +630,185 @@ async def coinflip(message: discord.Message, args: List[str], client: discord.Cl
         await message.channel.send(out)
 
 
+def build_channel_embed(channel: GuildMessageable, embed_color: int) -> discord.Embed:
+
+    embed = discord.Embed(title="Channel Info", description=f"Information on {channel.mention} in {channel.guild}", color=embed_color)
+
+    embed.add_field(name="Created", value=parsedate(channel.created_at))
+    if channel.last_message_id is not None:
+        embed.add_field(name="Last Message Sent", value=parsedate(discord.utils.snowflake_time(channel.last_message_id)))
+
+    embed.timestamp = Time.now().as_datetime()
+
+    return embed
+
+
+def build_emoji_embed(emoji: discord.Emoji, embed_color: int) -> discord.Embed:
+
+    embed = discord.Embed(title="Emoji Info", description=f"Information on {emoji}", color=embed_color)
+    embed.add_field(name="Created", value=parsedate(discord.utils.snowflake_time(emoji.id)), inline=False)
+    embed.add_field(name="Animated", value=str(emoji.animated), inline=False)
+    embed.timestamp = Time.now().as_datetime()
+
+    return embed
+
+
+def reason_about_id_noexcept(args: List[str]) -> Tuple[int, Optional[Literal["User", "Role", "Channel", "Emoji", "Guild", "Timestamp"]]]:
+    """
+    Parses an id from args and returns what it is *most likely* based on the id syntax used
+    ex <@!ID> is used for user mentions while <#ID> is used for channel mentions
+    It may also return None if there was no syntax or the syntax was not recognized
+
+    This will always return an int id || raise a CommandError
+    """
+
+    try:
+        str_snowflake = args[0]
+    except IndexError:
+        raise lib_sonnetcommands.CommandError("ERROR: No snowflake passed for parsing")
+
+    with contextlib.suppress(ValueError):
+        return int(str_snowflake), None
+
+    parse_with: Callable[[str], int] = lambda s: int(str_snowflake.strip(s))
+
+    with contextlib.suppress(ValueError):
+        return parse_with("<@!>"), "User"
+
+    with contextlib.suppress(ValueError):
+        return parse_with("<#>"), "Channel"
+
+    with contextlib.suppress(ValueError):
+        return parse_with("<@&>"), "Role"
+
+    with contextlib.suppress(ValueError):
+        return parse_with("G"), "Guild"
+
+    # special case stuff :sob:
+    groups = str_snowflake.strip("<>").split(":")
+
+    # why did they pass a timestamp
+    if groups[0] == "t":
+        try:
+            # we only know item 0 exists due to split
+            return int(groups[1]), "Timestamp"
+        except (ValueError, IndexError):
+            raise lib_sonnetcommands.CommandError("ERROR: Timestamp type passed but no valid timestamp integer")
+
+    with contextlib.suppress(ValueError):
+        return int(groups[-1]), "Emoji"
+
+    raise lib_sonnetcommands.CommandError("ERROR: Could not parse snowflake to an integer id")
+
+
+async def what_is_this_id(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
+    if not message.guild:
+        return 1
+
+    # hack around mypy function scoping idk
+    guild = message.guild
+
+    # most_likely tells us what id to scan for first, this can save hot path request time
+    # and we special case timestamps because they are not snowflakes
+    unknown_id, most_likely = reason_about_id_noexcept(args)
+
+    embed_color = load_embed_color(message.guild, embed_colors.primary, ctx.ramfs)
+
+    def build_generic_embed(title: str, description: Optional[str]) -> discord.Embed:
+        embed = discord.Embed(title=title, description=description, color=embed_color)
+        embed.timestamp = Time.now().as_datetime()
+
+        return embed
+
+    if most_likely == "Timestamp":
+        embed = build_generic_embed("Formatted timestamp", f"<t:{unknown_id}>")
+        await message.channel.send(embed=embed)
+        return 0
+
+    async def try_user(snowflake: int) -> Optional[discord.Embed]:
+        if (member := guild.get_member(snowflake)) is not None:
+            return profile_embed(message, member, member, embed_color, ctx)
+        if (user := client.get_user(snowflake)) is not None:
+            return profile_embed(message, user, None, embed_color, ctx)
+
+        try:
+            user = await client.fetch_user(snowflake)
+            return profile_embed(message, user, None, embed_color, ctx)
+        except discord.errors.HTTPException:
+            return None
+
+    async def try_channel(snowflake: int) -> Optional[discord.Embed]:
+        if (ch := guild.get_channel(snowflake)) is not None and is_guild_messageable(ch):
+            return build_channel_embed(ch, embed_color)
+
+        try:
+            cha = await guild.fetch_channel(snowflake)
+            if is_guild_messageable(cha):
+                return build_channel_embed(cha, embed_color)
+            return None
+        except discord.errors.NotFound:
+            return None
+
+    async def try_role(snowflake: int) -> Optional[discord.Embed]:
+        if (role := guild.get_role(snowflake)) is not None:
+
+            return role_info_embed(role, embed_color)
+
+        return None
+
+    async def try_emoji(snowflake: int) -> Optional[discord.Embed]:
+        try:
+            return build_emoji_embed(await guild.fetch_emoji(snowflake), embed_color)
+        except discord.errors.NotFound:
+            return None
+
+    async def try_guild(snowflake: int) -> Optional[discord.Embed]:
+        if snowflake == guild.id:
+            return guild_info_embed(guild, embed_color)
+
+        return None
+
+    try_cases = {
+        "User": try_user,
+        "Channel": try_channel,
+        "Role": try_role,
+        "Emoji": try_emoji,
+        "Guild": try_guild,
+        }
+
+    fin_embed: Optional[discord.Embed] = None
+
+    if most_likely is not None and (em := await try_cases[most_likely](unknown_id)) is not None:
+        fin_embed = em
+
+    else:
+        for k, v in try_cases.items():
+            if k != most_likely and (em := await v(unknown_id)) is not None:
+                fin_embed = em
+                break
+
+    if fin_embed is None:
+
+        date = parsedate(discord.utils.snowflake_time(unknown_id))
+        fin_embed = build_generic_embed("Unknown Snowflake", "Snowflake of unknown type")
+        fin_embed.add_field(name="Created", value=date)
+
+    try:
+        await message.channel.send(embed=fin_embed)
+    except discord.errors.Forbidden:
+        raise lib_sonnetcommands.CommandError(constants.sonnet.error_embed)
+
+    return 0
+
+
 category_info = {'name': 'utilities', 'pretty_name': 'Utilities', 'description': 'Utility commands.'}
 
 commands = {
+    'what-is': {
+        'pretty_name': 'what-is <snowflake>',
+        'description': 'Attempts to parse a generic discord snowflake and provide information on it',
+        'execute': what_is_this_id,
+        },
     'roleinfo': {
         'alias': 'role-info'
         },
