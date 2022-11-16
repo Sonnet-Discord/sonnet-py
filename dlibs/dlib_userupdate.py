@@ -39,10 +39,15 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
         if before.nick == after.nick:
             return
 
+        def nick_or_unset(s: Optional[str]) -> str:
+            if s is None:
+                return "_ _"
+            return s
+
         message_embed = discord.Embed(title="Nickname updated", color=load_embed_color(before.guild, embed_colors.edit, kargs["ramfs"]))
         message_embed.set_author(name=f"{before} ({before.id})", icon_url=user_avatar_url(before))
-        message_embed.add_field(name=("Before" + " | False" * (not before.nick)), value=str(before.nick))
-        message_embed.add_field(name=("After" + " | False" * (not after.nick)), value=str(after.nick))
+        message_embed.add_field(name=("Before" + " (Not set)" * (not before.nick)), value=nick_or_unset(before.nick))
+        message_embed.add_field(name=("After" + " (Not set)" * (not after.nick)), value=nick_or_unset(after.nick))
 
         message_embed.timestamp = ts = datetime_now()
         message_embed.set_footer(text=f"unix: {int(ts.timestamp())}")
