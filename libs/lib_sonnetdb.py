@@ -25,7 +25,7 @@ if DB_TYPE == "mariadb":
 elif DB_TYPE == "sqlite3":
     import lib_sql_handler
     importlib.reload(lib_sql_handler)
-    from lib_sql_handler import db_handler, db_error  # type: ignore[misc]
+    from lib_sql_handler import db_handler, db_error  # type: ignore[assignment]
     db_connection_parameters = SQLITE3_LOCATION
 
 else:
