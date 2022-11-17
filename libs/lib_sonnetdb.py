@@ -97,7 +97,7 @@ try:
     db_connection = db_handler(db_connection_parameters)
 except db_error.Error:
     print("FATAL: DATABASE CONNECTION ERROR")
-    raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
+    raise DATABASE_FATAL_CONNECTION_LOSS("Database connection failure")
 
 
 def db_grab_connection() -> _DataBaseHandler:  # pytype: disable=invalid-annotation
@@ -111,7 +111,7 @@ def db_grab_connection() -> _DataBaseHandler:  # pytype: disable=invalid-annotat
             return db_connection
         except db_error.Error:
             print("FATAL: DATABASE CONNECTION ERROR")
-            raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
+            raise DATABASE_FATAL_CONNECTION_LOSS("Database connection failure")
 
 
 # Define base infraction type
@@ -119,7 +119,7 @@ InfractionT = Tuple[str, str, str, str, str, int]
 # Unused currently, will roll into new apis as DBV1.1 rolls out
 TaggedInfractionT = Tuple[str, str, str, str, str, int, int]
 
-__all__ = ["db_hlapi"]
+__all__ = ["db_hlapi", "DATABASE_FATAL_CONNECTION_LOSS"]
 
 
 # Because being lazy writes good code
