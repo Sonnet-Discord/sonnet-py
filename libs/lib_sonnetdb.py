@@ -168,7 +168,7 @@ class db_hlapi:
                 return False
         return True
 
-    def inject_enum(self, enumname: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> None:
+    def inject_enum(self, enumname: str, schema: List[Tuple[str, Type[Union[str, int]]]], *, use_primary: bool = True) -> None:
         """
         Add a custom table schema to the database
 
@@ -180,9 +180,15 @@ class db_hlapi:
         # Inject Primary key
         PK, T = schema[0]
         if T == str:
-            pks: Any = (PK, tuple, 1)
+            if use_primary:
+                pks: Any = (PK, tuple, 1)
+            else:
+                pks = (PK, tuple)
         elif T == int:
-            pks = (PK, int(64), 1)
+            if use_primary:
+                pks = (PK, int(64), 1)
+            else:
+                pks = (PK, int(64))
         else:
             raise TypeError("Invalid schema passed")
 
@@ -202,7 +208,7 @@ class db_hlapi:
 
     def grab_enum(self, name: str, cname: Union[str, int]) -> Optional[List[Union[str, int]]]:
         """
-        Grab an item from the database table based on the first value
+        Grab one item from the database table based on the first value
 
         This does not create a new enum, there are zero ways to modify an enum after it has been registered
         And an enum may only be registered through inject_enum
@@ -295,13 +301,13 @@ class db_hlapi:
         """
         return _enum_context(self, enumName)
 
-    def inject_enum_context(self, enumName: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> "_enum_context":
+    def inject_enum_context(self, enumName: str, schema: List[Tuple[str, Type[Union[str, int]]]], *, use_primary: bool = True) -> "_enum_context":
         """
         A combination of inject_enum and enum_context that returns an enum context of the just injected enum
 
         :returns: _enum_context - An enum context manager
         """
-        self.inject_enum(enumName, schema)
+        self.inject_enum(enumName, schema, use_primary=use_primary)
         return _enum_context(self, enumName)
 
     def create_guild_db(self) -> None:
