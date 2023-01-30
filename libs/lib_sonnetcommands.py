@@ -2,7 +2,9 @@
 # Ultrabear 2021
 
 import inspect
-from typing import (Any, Callable, Coroutine, Dict, List, Protocol, Tuple, Union, cast, Optional)
+import asyncio
+from dataclasses import dataclass
+from typing import (Any, Callable, Coroutine, Dict, List, Protocol, Tuple, Union, cast, Optional, Set)
 from typing_extensions import TypeGuard  # pytype: disable=not-supported-yet
 
 import discord
@@ -25,6 +27,32 @@ _allowpool = {
     "cache": "keep",
     "permission": "everyone",
     }
+
+
+class _ContextButton(discord.ui.Button[Any]):
+    __slots__ = "private_message", "user_id", "called_out_ids"
+
+    def __init__(self, label: str, private_message: str, user_id: int) -> None:
+        super().__init__(style=discord.ButtonStyle.danger, label=label)
+        self.private_message = private_message
+        self.user_id = user_id
+        self.called_out_ids: Set[int] = set()
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+
+        if interaction.user.id == self.user_id:
+
+            send = asyncio.create_task(interaction.response.send_message(self.private_message, ephemeral=True))
+            if interaction.message is not None:
+                await interaction.message.edit(view=None)
+
+            # make events happen at same time
+            await send
+
+        else:
+            if interaction.user.id not in self.called_out_ids:
+                await interaction.response.send_message("Only the sender of the command may read error details.", ephemeral=True)
+                self.called_out_ids.add(interaction.user.id)
 
 
 class CommandError(Exception):
@@ -51,28 +79,59 @@ class CommandError(Exception):
         super().__init__(*args)
         self.private_message = private_message
 
+    async def send(self, message: discord.Message) -> None:
+        """
+        Sends the CommandError to the provided message channel and author
+        
+        ignores permission errors on message sending
+        """
 
+        try:
+            if self.private_message is None:
+                await message.channel.send(str(self))
+            else:
+                view = discord.ui.View(timeout=60)
+
+                view.add_item(_ContextButton("Details", self.private_message, message.author.id))
+
+                msg = await message.channel.send(str(self), view=view)
+                await view.wait()
+                await msg.edit(view=None)
+        except discord.errors.Forbidden:
+            pass
+
+
+@dataclass
 class CommandCtx:
     """
-    A Context dataclass for a command, contains useful data to pull from for various running commands
+    A Context dataclass for a command, contains useful data to pull from for various running commands.
+    This class is not meant to be init by commands, doing so is undefined behaviour.
     """
-    __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod"
-
-    def __init__(self, CtxToKwargdata: Dict[str, Any] = {}, **askwargs: Any) -> None:
-
-        kwargdata = askwargs if askwargs else CtxToKwargdata
-
-        self.stats: Dict[str, int] = kwargdata["stats"]
-        self.cmds: List[lexdpyk.cmd_module] = kwargdata["cmds"]
-        self.ramfs: lexdpyk.ram_filesystem = kwargdata["ramfs"]
-        self.kernel_ramfs: lexdpyk.ram_filesystem = kwargdata["kernel_ramfs"]
-        self.bot_start: float = kwargdata["bot_start"]
-        self.dlibs: List[lexdpyk.dlib_module] = kwargdata["dlibs"]
-        self.main_version: str = kwargdata["main_version"]
-        self.conf_cache: Dict[str, Any] = kwargdata["conf_cache"]
-        self.verbose: bool = kwargdata["verbose"]
-        self.cmds_dict: lexdpyk.cmd_modules_dict = kwargdata["cmds_dict"]
-        self.automod: bool = kwargdata["automod"]
+    __slots__ = "stats", "cmds", "ramfs", "kernel_ramfs", "bot_start", "dlibs", "main_version", "conf_cache", "verbose", "cmds_dict", "automod", "command_name"
+    # Stats about the time it took to do various tasks in message handling, only kept around for ping command
+    stats: Dict[str, int]
+    # List of command modules passed by kernel
+    cmds: List[lexdpyk.cmd_module]
+    # Temp ramfs passed by kernel
+    ramfs: lexdpyk.ram_filesystem
+    # Permanent ramfs passed by kernel
+    kernel_ramfs: lexdpyk.ram_filesystem
+    # Time in unix seconds that the bot started at
+    bot_start: float
+    # List of dlib modules passed by kernel
+    dlibs: List[lexdpyk.dlib_module]
+    # Version info of the kernel
+    main_version: str
+    # An instance of the default guild cache, contains automod data
+    conf_cache: Dict[str, Any]
+    # Whether this command should be verbose in its output, also serves to signal when a command is a subcommand
+    verbose: bool
+    # Global dict of commands passed by kernel
+    cmds_dict: lexdpyk.cmd_modules_dict
+    # Whether the command was triggered by automod
+    automod: bool
+    # The name of the command invoked
+    command_name: str
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -87,7 +146,15 @@ class CommandCtx:
             "verbose": self.verbose,
             "cmds_dict": self.cmds_dict,
             "automod": self.automod,
+            "command_name": self.command_name,
             }
+
+    @property
+    def prefix(self) -> str:
+        """
+        Returns the prefix derived from the conf_cache entry
+        """
+        return str(self.conf_cache["prefix"])
 
 
 def cache_sweep(cdata: Union[str, "SonnetCommand"], ramfs: lexdpyk.ram_filesystem, guild: discord.Guild) -> None:
@@ -137,7 +204,7 @@ def CallKwargs(func: Union[ExecutableT, ExecutableCtxT]) -> ExecutableT:
     elif _isctxcallable(func):
         # Closures go brr
         def KwargsToCtx(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Coroutine[None, None, Any]:
-            ctx = CommandCtx(kwargs)
+            ctx = CommandCtx(**kwargs)
             # we need to cast here because mypy??
             return cast(ExecutableCtxT, func)(message, args, client, ctx)
 

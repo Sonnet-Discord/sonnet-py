@@ -2,25 +2,9 @@
 # Ultrabear 2021
 
 import asyncio
-import importlib
 from datetime import datetime
 
 import discord
-import lib_loaders
-
-importlib.reload(lib_loaders)
-import lib_lexdpyk_h
-
-importlib.reload(lib_lexdpyk_h)
-import lib_compatibility
-
-importlib.reload(lib_compatibility)
-import lib_db_obfuscator
-
-importlib.reload(lib_db_obfuscator)
-import lib_parsers
-
-importlib.reload(lib_parsers)
 
 from typing import Any, Dict, List, Optional, Union
 
@@ -29,6 +13,7 @@ from lib_compatibility import (discord_datetime_now, has_default_avatar, user_av
 from lib_db_obfuscator import db_hlapi
 from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
 from lib_parsers import parse_boolean_strict
+from lib_sonnetconfig import AUTOMOD_ENABLED
 
 
 async def catch_logging_error(channel: discord.TextChannel, embed: discord.Embed) -> None:
@@ -54,10 +39,15 @@ async def on_member_update(before: discord.Member, after: discord.Member, **karg
         if before.nick == after.nick:
             return
 
+        def nick_or_unset(s: Optional[str]) -> str:
+            if s is None:
+                return "_ _"
+            return s
+
         message_embed = discord.Embed(title="Nickname updated", color=load_embed_color(before.guild, embed_colors.edit, kargs["ramfs"]))
         message_embed.set_author(name=f"{before} ({before.id})", icon_url=user_avatar_url(before))
-        message_embed.add_field(name=("Before" + " | False" * (not before.nick)), value=str(before.nick))
-        message_embed.add_field(name=("After" + " | False" * (not after.nick)), value=str(after.nick))
+        message_embed.add_field(name=("Before" + " (Not set)" * (not before.nick)), value=nick_or_unset(before.nick))
+        message_embed.add_field(name=("After" + " (Not set)" * (not after.nick)), value=nick_or_unset(after.nick))
 
         message_embed.timestamp = ts = datetime_now()
         message_embed.set_footer(text=f"unix: {int(ts.timestamp())}")
@@ -138,16 +128,17 @@ async def on_member_join(member: discord.Member, **kargs: Any) -> None:
 
     issues: List[str] = []
 
-    # Handle notifier logging
-    if member.id in notifier_cache["notifier-log-users"]:
-        issues.append("User")
-    if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
-        issues.append("Timestamp")
-    if int(notifier_cache["notifier-log-defaultpfp"]) and has_default_avatar(member):
-        issues.append("Default pfp")
+    if AUTOMOD_ENABLED:
+        # Handle notifier logging
+        if member.id in notifier_cache["notifier-log-users"]:
+            issues.append("User")
+        if abs(discord_datetime_now().timestamp() - member.created_at.timestamp()) < int(notifier_cache["notifier-log-timestamp"]):
+            issues.append("Timestamp")
+        if int(notifier_cache["notifier-log-defaultpfp"]) and has_default_avatar(member):
+            issues.append("Default pfp")
 
-    if issues:
-        asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], client, ramfs))
+        if issues:
+            asyncio.create_task(notify_problem(member, issues, notifier_cache["regex-notifier-log"], client, ramfs))
 
     joinlog = load_message_config(member.guild.id, ramfs, datatypes=join_leave_user_logs)["join-log"]
 
@@ -205,4 +196,4 @@ commands = {
     "on-member-remove": on_member_remove,
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.1-DEV"

@@ -1,24 +1,29 @@
 # Dynamic libraries (editable at runtime) for message handling
 # Ultrabear 2020
 
-import time, asyncio, os, hashlib, string, io, gzip
-import warnings
+import asyncio
 import copy as pycopy
+import gzip
+import hashlib
+import io
+import os
+import string
+import time
+import warnings
+from typing import (Any, Awaitable, Callable, Dict, Final, List, Literal, NewType, Optional, Tuple, TypedDict, Union, cast)
 
-import discord, lz4.frame
-
-import lib_sonnetcommands
-
-from lib_db_obfuscator import db_hlapi
-from lib_loaders import load_message_config, inc_statistics_better, load_embed_color, embed_colors, datetime_now
-from lib_parsers import parse_blacklist, parse_skip_message, parse_permissions, grab_files, generate_reply_field, parse_boolean_strict
-from lib_encryption_wrapper import encrypted_writer
-from lib_compatibility import user_avatar_url
-from lib_sonnetcommands import SonnetCommand, CommandCtx, CallCtx, ExecutableCtxT
-
-from typing import List, Any, Dict, Optional, Callable, Tuple, Final, Literal, TypedDict, NewType, Union, Awaitable, cast
-import lib_lexdpyk_h as lexdpyk
+import discord
 import lib_constants as constants
+import lib_lexdpyk_h as lexdpyk
+import lib_sonnetcommands
+import lz4.frame
+from lib_compatibility import user_avatar_url
+from lib_db_obfuscator import db_hlapi
+from lib_encryption_wrapper import encrypted_writer
+from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
+from lib_parsers import (generate_reply_field, grab_files, parse_blacklist, parse_boolean_strict, parse_permissions, parse_skip_message)
+from lib_sonnetcommands import (CallCtx, CommandCtx, ExecutableCtxT, SonnetCommand)
+from lib_sonnetconfig import AUTOMOD_ENABLED
 
 ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]= ")
 
@@ -226,32 +231,34 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
             message_embed.timestamp = datetime_now()
             asyncio.create_task(catch_logging_error(message_log, message_embed, files))
 
-    # Check against blacklist
-    mconf: Final = load_message_config(message.guild.id, ramfs)
-    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
+    if AUTOMOD_ENABLED:
+        # Check against blacklist
+        mconf: Final = load_message_config(message.guild.id, ramfs)
+        broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
 
-    if broke_blacklist:
+        if broke_blacklist:
 
-        command_ctx: Final = CommandCtx(
-            stats={},
-            cmds=kctx.command_modules[0],
-            ramfs=ramfs,
-            bot_start=kctx.bot_start,
-            dlibs=kctx.dynamiclib_modules[0],
-            main_version=kctx.kernel_version,
-            kernel_ramfs=kernel_ramfs,
-            conf_cache={},
-            verbose=False,
-            cmds_dict=kctx.command_modules[1],
-            automod=True
-            )
+            command_ctx: Final = CommandCtx(
+                stats={},
+                cmds=kctx.command_modules[0],
+                ramfs=ramfs,
+                bot_start=kctx.bot_start,
+                dlibs=kctx.dynamiclib_modules[0],
+                main_version=kctx.kernel_version,
+                kernel_ramfs=kernel_ramfs,
+                conf_cache={},
+                verbose=False,
+                cmds_dict=kctx.command_modules[1],
+                automod=True,
+                command_name=mconf["blacklist-action"]
+                )
 
-        asyncio.create_task(attempt_message_delete(message))
-        execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        await catch_ce(message, warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx))
+            asyncio.create_task(attempt_message_delete(message))
+            execargs: Final = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+            await catch_ce(message, warn_missing(kctx.command_modules[1], mconf["blacklist-action"])(message, execargs, client, command_ctx))
 
-    if notify:
-        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
+        if notify:
+            asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, kctx.ramfs))
 
 
 class BaseAntispamMeta(TypedDict):
@@ -424,6 +431,62 @@ async def catch_ce(err_rsp: discord.Message, promise: Awaitable[Any]) -> None:
         pass
 
 
+async def do_automod_pass(message: discord.Message, client: discord.Client, mconf: Dict[str, Any], ramfs: lexdpyk.ram_filesystem, automod_ctx: CommandCtx) -> bool:
+    """
+    Does blacklist, antispam, and notifier pass for on_message
+
+    :returns: bool - Indication of whether any automod filter was tripped and the message was deleted
+    """
+
+    assert message.guild is not None, "Guild should exist, as the caller asserted this previously"
+
+    spammer, spamstr = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
+
+    message_deleted: bool = False
+
+    # If blacklist broken generate infraction
+    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
+    if broke_blacklist:
+        message_deleted = True
+        asyncio.create_task(attempt_message_delete(message))
+
+        blacklist_ctx = pycopy.copy(automod_ctx)
+        blacklist_ctx.command_name = mconf["blacklist-action"]
+
+        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
+        asyncio.create_task(catch_ce(message, warn_missing(automod_ctx.cmds_dict, mconf["blacklist-action"])(message, execargs, client, blacklist_ctx)))
+
+    if spammer:
+        message_deleted = True
+        asyncio.create_task(attempt_message_delete(message))
+
+        antispam_ctx = pycopy.copy(automod_ctx)
+        antispam_ctx.command_name = action = mconf["antispam-action"]
+
+        execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
+
+        timeout = False
+
+        if action == "mute":
+
+            with db_hlapi(message.guild.id) as db:
+                if not db.is_muted(userid=message.author.id):
+                    timeout = True
+
+        elif action == "timeout":
+
+            if isinstance(message.author, discord.Member) and not message.author.is_timed_out():
+                timeout = True
+
+        if timeout:
+            asyncio.create_task(catch_ce(message, warn_missing(automod_ctx.cmds_dict, action)(message, execargs, client, antispam_ctx)))
+
+    if notify:
+        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
+
+    return message_deleted
+
+
 @lexdpyk.ToKernelArgs
 async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) -> None:
 
@@ -449,12 +512,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
     mconf: Final = load_message_config(message.guild.id, ramfs)
     stats["end-load-blacklist"] = round(time.time() * 100000)
 
-    # Check message against automod
     stats["start-automod"] = round(time.time() * 100000)
-
-    spammer, spamstr = antispam_check(message, ramfs, mconf["antispam"], mconf["char-antispam"])
-
-    message_deleted: bool = False
 
     command_ctx: Final = CommandCtx(
         stats=stats,
@@ -467,31 +525,19 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
         conf_cache=mconf,
         verbose=True,
         cmds_dict=command_modules_dict,
-        automod=False
+        automod=False,
+        command_name=""
         )
 
     automod_ctx: Final = pycopy.copy(command_ctx)
     automod_ctx.verbose = False
     automod_ctx.automod = True
 
-    # If blacklist broken generate infraction
-    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
-    if broke_blacklist:
-        message_deleted = True
-        asyncio.create_task(attempt_message_delete(message))
-        execargs = [str(message.author.id), "[AUTOMOD]", ", ".join(infraction_type), "Blacklist"]
-        asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["blacklist-action"])(message, execargs, client, automod_ctx)))
-
-    if spammer:
-        message_deleted = True
-        asyncio.create_task(attempt_message_delete(message))
-        with db_hlapi(message.guild.id) as db:
-            if not db.is_muted(userid=message.author.id):
-                execargs = [str(message.author.id), mconf["antispam-time"], "[AUTOMOD]", spamstr]
-                asyncio.create_task(catch_ce(message, warn_missing(command_modules_dict, mconf["antispam-action"])(message, execargs, client, automod_ctx)))
-
-    if notify:
-        asyncio.create_task(grab_an_adult(message, message.guild, client, mconf, ramfs))
+    # Check message against automod
+    if AUTOMOD_ENABLED:
+        message_deleted = await do_automod_pass(message, client, mconf, ramfs, automod_ctx)
+    else:
+        message_deleted = False
 
     stats["end-automod"] = round(time.time() * 100000)
 
@@ -539,6 +585,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
 
     # Process commands
     if command in command_modules_dict:
+        command_ctx.command_name = command
 
         cmd: Final = SonnetCommand(command_modules_dict[command], command_modules_dict)
 
@@ -551,10 +598,7 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
             try:
                 await cmd.execute_ctx(message, arguments, client, command_ctx)
             except lib_sonnetcommands.CommandError as ce:
-                try:
-                    await message.channel.send(str(ce))
-                except discord.errors.Forbidden:
-                    pass
+                asyncio.create_task(ce.send(message))
 
             cmd.sweep_cache(ramfs, message.guild)
 
@@ -585,4 +629,4 @@ commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: Final = "2.0.0"
+version_info: Final = "2.0.1-DEV"

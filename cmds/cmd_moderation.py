@@ -5,13 +5,12 @@ from datetime import timedelta
 import discord, asyncio, json
 from dataclasses import dataclass
 
-import lib_parsers
 import lib_sonnetcommands
 
 from lib_goparsers import ParseDurationSuper
 from lib_loaders import generate_infractionid, load_embed_color, load_message_config, embed_colors, datetime_now
 from lib_db_obfuscator import db_hlapi
-from lib_parsers import parse_user_member, format_duration, parse_core_permissions, parse_boolean_strict
+from lib_parsers import parse_user_member_noexcept, format_duration, parse_core_permissions, parse_boolean_strict
 from lib_compatibility import user_avatar_url, to_snowflake, GuildMessageable
 from lib_sonnetconfig import BOT_NAME
 from lib_sonnetcommands import CommandCtx
@@ -137,10 +136,6 @@ async def log_infraction(
     return (generated_id, dm_sent)
 
 
-class InfractionGenerationError(Exception):
-    __slots__ = ()
-
-
 class InfractionInfo(NamedTuple):
     member: Optional[discord.Member]
     user: InterfacedUser
@@ -151,7 +146,7 @@ class InfractionInfo(NamedTuple):
 
 
 # General processor for infractions
-async def process_infraction(
+async def process_infraction_noexcept(
     message: discord.Message,
     args: List[str],
     client: discord.Client,
@@ -162,8 +157,11 @@ async def process_infraction(
     modifiers: Optional[List[InfractionModifier]] = None,
     require_in_guild: bool = False
     ) -> InfractionInfo:
+    """
+    Does infraction processing, raises CommandError on failure
+    """
     if not message.guild or not isinstance(message.author, discord.Member):
-        raise InfractionGenerationError("User is not member, or no guild")
+        raise lib_sonnetcommands.CommandError("User is not member, or no guild")
 
     reason: str = " ".join(args[1:])[:1024] if len(args) > 1 else "No Reason Specified"
 
@@ -172,14 +170,10 @@ async def process_infraction(
     moderator = cast(discord.User, client.user if automod else message.author)
 
     # Test if user is valid
-    try:
-        user, member = await parse_user_member(message, args, client)
-    except lib_parsers.errors.user_parse_error:
-        raise InfractionGenerationError("Could not parse user")
+    user, member = await parse_user_member_noexcept(message, args, client)
 
     if require_in_guild and member is None:
-        await message.channel.send(f"User is not in guild (required to {i_type} user)")
-        raise InfractionGenerationError(f"Attempted to {i_type} a user but they were not a member")
+        raise lib_sonnetcommands.CommandError(f"User is not in guild (required to {i_type} user)", private_message=f"{user.mention} is not in this guild")
 
     local_conf_cache = load_message_config(message.guild.id, ramfs)
 
@@ -192,27 +186,23 @@ async def process_infraction(
         warn_moderator = f"Note: The user selected is a moderator+ (did you mean to {i_type} this user anyways?)\n(to disallow infractions on a moderator+ see {get_help})"
 
         if bool(int(local_conf_cache["moderator-protect"])):
-            await message.channel.send(f"Cannot {i_type} specified user, user is a moderator+\n"
-                                       f"(to disable this behavior see {get_help})")
-            raise InfractionGenerationError(f"Attempted to {i_type} a moderator+ but mprotect was on")
+            raise lib_sonnetcommands.CommandError(f"Cannot {i_type} specified user, user is a moderator+\n"
+                                                  f"(to disable this behavior see {get_help})")
 
     # Test if user is self
     if member and moderator.id == member.id:
-        await message.channel.send(f"Cannot {i_type} yourself")
-        raise InfractionGenerationError(f"Attempted self {i_type}")
+        raise lib_sonnetcommands.CommandError(f"Cannot {i_type} yourself")
 
     # Do a permission sweep
     if not automod and member and message.guild.roles.index(message.author.roles[-1]) <= message.guild.roles.index(member.roles[-1]):
-        await message.channel.send(f"Cannot {i_type} a user with the same or higher role as yourself")
-        raise InfractionGenerationError(f"Attempted nonperm {i_type}")
+        raise lib_sonnetcommands.CommandError(f"Cannot {i_type} a user with the same or higher role as yourself", private_message=f"{member.mention} has the same role as you or a higher one")
 
     modifiers = [] if modifiers is None else modifiers
 
     # bound modifiers to max of 3 (prevents embed size overflow)
     modlimit: Final = 3
     if len(modifiers) > modlimit:
-        await message.channel.send(f"Too many infraction modifiers passed (limit {modlimit}, given {len(modifiers)})")
-        raise InfractionGenerationError("Too many modifiers")
+        raise lib_sonnetcommands.CommandError(f"Too many infraction modifiers passed (limit {modlimit}, given {len(modifiers)})")
 
     # Log infraction
     infraction_id, dm_sent = await log_infraction(message, client, user, moderator, reason, i_type, infraction, ramfs, modifiers)
@@ -236,7 +226,7 @@ def parse_infraction_modifiers(guild: discord.Guild, args: List[str]) -> List[In
                 if i in data:
                     mlist.append(InfractionModifier(i, data[i][0], data[i][1]))
                 else:
-                    raise lib_sonnetcommands.CommandError("ERROR: No infraction modifier with name specified")
+                    raise lib_sonnetcommands.CommandError("ERROR: No infraction modifier with name specified", private_message=f"A modifier called `{i}` does not exist")
 
         return mlist
 
@@ -249,27 +239,21 @@ async def warn_user(message: discord.Message, args: List[str], client: discord.C
 
     modifiers = parse_infraction_modifiers(message.guild, args)
 
-    try:
-        _, user, reason, _, _, warn_text = await process_infraction(message, args, client, "warn", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
-    except InfractionGenerationError:
-        return 1
+    _, user, reason, _, _, warn_text = await process_infraction_noexcept(message, args, client, "warn", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
 
     if ctx.verbose:
         mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
         await message.channel.send(f"Warned {user.mention} with ID {user.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
 
 async def note_user(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
 
-    try:
-        _, user, reason, _, _, _ = await process_infraction(message, args, client, "note", ctx.ramfs, infraction=False, automod=ctx.automod)
-    except InfractionGenerationError:
-        return 1
+    _, user, reason, _, _, _ = await process_infraction_noexcept(message, args, client, "note", ctx.ramfs, infraction=False, automod=ctx.automod)
 
     if ctx.verbose:
         await message.channel.send(f"Put a note on {user.mention} with ID {user.id}: {reason}", allowed_mentions=discord.AllowedMentions.none())
@@ -287,10 +271,7 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
 
     modifiers = parse_infraction_modifiers(message.guild, args)
 
-    try:
-        member, _, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
-    except InfractionGenerationError:
-        return 1
+    member, _, reason, _, dm_sent, warn_text = await process_infraction_noexcept(message, args, client, "kick", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
 
     # Attempt to kick user
     if member:
@@ -298,9 +279,6 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
             if dm_sent:
                 await dm_sent  # Wait for dm to be sent before kicking
             await message.guild.kick(to_snowflake(member), reason=reason[:512])
-
-            if warn_text is not None:
-                await message.channel.send(warn_text)
 
         except discord.errors.Forbidden:
             await message.channel.send(f"{BOT_NAME} does not have permission to kick this user.")
@@ -311,10 +289,11 @@ async def kick_user(message: discord.Message, args: List[str], client: discord.C
 
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if verbose: await message.channel.send(f"Kicked {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if verbose:
+        await message.channel.send(f"Kicked {member.mention} with ID {member.id}{mod_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
@@ -339,10 +318,7 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     if delete_days > 7: delete_days = 7
     elif delete_days < 0: delete_days = 0
 
-    try:
-        member, user, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "ban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
-    except InfractionGenerationError:
-        return 1
+    member, user, reason, _, dm_sent, warn_text = await process_infraction_noexcept(message, args, client, "ban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
 
     try:
         if member and dm_sent:
@@ -364,10 +340,11 @@ async def ban_user(message: discord.Message, args: List[str], client: discord.Cl
     delete_str = f",{' and' * (not unmute_user)} deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str}{unmuted_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose:
+        await message.channel.send(f"Banned {user.mention} with ID {user.id}{mod_str}{delete_str}{unmuted_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
@@ -380,10 +357,7 @@ async def unban_user(message: discord.Message, args: List[str], client: discord.
     automod = ctx.automod
     verbose = ctx.verbose
 
-    try:
-        _, user, reason, _, _, _ = await process_infraction(message, args, client, "unban", ramfs, infraction=False, automod=automod)
-    except InfractionGenerationError:
-        return 1
+    _, user, reason, _, _, _ = await process_infraction_noexcept(message, args, client, "unban", ramfs, infraction=False, automod=automod)
 
     # Attempt to unban user
     try:
@@ -420,10 +394,7 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
     if delete_days > 7: delete_days = 7
     elif delete_days < 0: delete_days = 0
 
-    try:
-        member, user, reason, _, dm_sent, warn_text = await process_infraction(message, args, client, "softban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
-    except InfractionGenerationError:
-        return 1
+    member, user, reason, _, dm_sent, warn_text = await process_infraction_noexcept(message, args, client, "softban", ctx.ramfs, automod=ctx.automod, modifiers=modifiers)
 
     try:
         if member and dm_sent:
@@ -443,10 +414,11 @@ async def softban_user(message: discord.Message, args: List[str], client: discor
     delete_str = f", and deleted {delete_days} day{'s'*(delete_days!=1)} of messages," if delete_days else ""
     mod_str = f" with {','.join(m.title for m in modifiers)}" if modifiers else ""
 
-    if ctx.verbose: await message.channel.send(f"Softbanned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
+    if ctx.verbose:
+        await message.channel.send(f"Softbanned {user.mention} with ID {user.id}{mod_str}{delete_str} for {reason}", allowed_mentions=discord.AllowedMentions.none())
 
-    if warn_text is not None:
-        await message.channel.send(warn_text)
+        if warn_text is not None:
+            await message.channel.send(warn_text)
 
     return 0
 
@@ -527,7 +499,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
     modifiers = parse_infraction_modifiers(message.guild, args)
 
     # This ones for you, curl
-    if not 0 <= mutetime < 60 * 60 * 256:
+    # Replaced with 28 day limit from 256 hours to match new timeout api
+    if not 0 <= mutetime < (60 * 60 * 24) * 28:
         mutetime = 0
 
     with db_hlapi(message.guild.id) as db:
@@ -538,9 +511,10 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, infractionID, _, warn_text = await process_infraction(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
-    except (NoMuteRole, InfractionGenerationError):
+    except NoMuteRole:
         return 1
+
+    member, _, reason, infractionID, _, warn_text = await process_infraction_noexcept(message, args, client, "mute", ramfs, automod=automod, modifiers=modifiers, require_in_guild=True)
 
     # Check they are in the guild
     if not member:
@@ -570,8 +544,8 @@ async def mute_user(message: discord.Message, args: List[str], client: discord.C
                 message.channel.send(f"Muted {member.mention} with ID {member.id}{mod_str} for {format_duration(mutetime)} for {reason}", allowed_mentions=discord.AllowedMentions.none())
                 )
 
-        if warn_text is not None:
-            asyncio.create_task(message.channel.send(warn_text))
+            if warn_text is not None:
+                asyncio.create_task(message.channel.send(warn_text))
 
         # Stop other mute timers and add to mutedb
         with db_hlapi(message.guild.id) as db:
@@ -601,9 +575,10 @@ async def unmute_user(message: discord.Message, args: List[str], client: discord
 
     try:
         mute_role = await grab_mute_role(message, ramfs)
-        member, _, reason, _, _, _ = await process_infraction(message, args, client, "unmute", ramfs, infraction=False, automod=automod, require_in_guild=True)
-    except (InfractionGenerationError, NoMuteRole):
+    except NoMuteRole:
         return 1
+
+    member, _, reason, _, _, _ = await process_infraction_noexcept(message, args, client, "unmute", ramfs, infraction=False, automod=automod, require_in_guild=True)
 
     if not member:
         await message.channel.send("User is not in this guild")
@@ -630,15 +605,12 @@ async def timeout_user(message: discord.Message, args: List[str], client: discor
 
     mutetime, duration_str = parse_duration_for_mutes(args, "timeout")
 
-    if mutetime >= ((60 * 60) * 24) * 28 or mutetime == 0:
+    if mutetime >= ((60 * 60) * 24) * 28 or mutetime <= 0:
         mutetime = ((60 * 60) * 24) * 28
 
     modifiers = parse_infraction_modifiers(message.guild, args)
 
-    try:
-        member, _, reason, _, _, warn_text = await process_infraction(message, args, client, "timeout", ctx.ramfs, automod=ctx.automod, modifiers=modifiers, require_in_guild=True)
-    except InfractionGenerationError:
-        return 1
+    member, _, reason, _, _, warn_text = await process_infraction_noexcept(message, args, client, "timeout", ctx.ramfs, automod=ctx.automod, modifiers=modifiers, require_in_guild=True)
 
     if not member:
         raise lib_sonnetcommands.CommandError("ERROR: User not in guild")
@@ -665,10 +637,7 @@ async def un_timeout_user(message: discord.Message, args: List[str], client: dis
     if not message.guild:
         return 1
 
-    try:
-        member, _, reason, _, _, _ = await process_infraction(message, args, client, "untimeout", ctx.ramfs, infraction=False, automod=ctx.automod, require_in_guild=True)
-    except InfractionGenerationError:
-        return 1
+    member, _, reason, _, _, _ = await process_infraction_noexcept(message, args, client, "untimeout", ctx.ramfs, infraction=False, automod=ctx.automod, require_in_guild=True)
 
     if not member:
         raise lib_sonnetcommands.CommandError("ERROR: User is not a member")
@@ -707,7 +676,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
         try:
             limit = int(args[0])
         except ValueError:
-            raise lib_sonnetcommands.CommandError("ERROR: Limit is not valid int")
+            raise lib_sonnetcommands.CommandError("ERROR: Limit is not valid int", private_message=f"`{args[0]}` is not a valid int")
     else:
         raise lib_sonnetcommands.CommandError("ERROR: No limit specified")
 
@@ -721,7 +690,7 @@ async def purge_cli(message: discord.Message, args: List[str], client: discord.C
             user = await client.fetch_user(int(args[1].strip("<@!>")))
         ucheck = purger(user.id, message).check
     except ValueError:
-        raise lib_sonnetcommands.CommandError("Invalid UserID")
+        raise lib_sonnetcommands.CommandError("Invalid UserID", private_message=f"`{args[1]}` is not a valid user id")
     except IndexError:
         ucheck = purger(None, message).check
     except (discord.errors.NotFound, discord.errors.HTTPException):
@@ -814,4 +783,4 @@ commands = {
             }
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.1-DEV"

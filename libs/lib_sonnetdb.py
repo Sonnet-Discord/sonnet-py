@@ -25,7 +25,7 @@ if DB_TYPE == "mariadb":
 elif DB_TYPE == "sqlite3":
     import lib_sql_handler
     importlib.reload(lib_sql_handler)
-    from lib_sql_handler import db_handler, db_error  # type: ignore[misc]
+    from lib_sql_handler import db_handler, db_error  # type: ignore[assignment]
     db_connection_parameters = SQLITE3_LOCATION
 
 else:
@@ -97,7 +97,7 @@ try:
     db_connection = db_handler(db_connection_parameters)
 except db_error.Error:
     print("FATAL: DATABASE CONNECTION ERROR")
-    raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
+    raise DATABASE_FATAL_CONNECTION_LOSS("Database connection failure")
 
 
 def db_grab_connection() -> _DataBaseHandler:  # pytype: disable=invalid-annotation
@@ -111,7 +111,7 @@ def db_grab_connection() -> _DataBaseHandler:  # pytype: disable=invalid-annotat
             return db_connection
         except db_error.Error:
             print("FATAL: DATABASE CONNECTION ERROR")
-            raise DATABASE_FATAL_CONNECTION_LOSS("Database failure")
+            raise DATABASE_FATAL_CONNECTION_LOSS("Database connection failure")
 
 
 # Define base infraction type
@@ -119,7 +119,7 @@ InfractionT = Tuple[str, str, str, str, str, int]
 # Unused currently, will roll into new apis as DBV1.1 rolls out
 TaggedInfractionT = Tuple[str, str, str, str, str, int, int]
 
-__all__ = ["db_hlapi"]
+__all__ = ["db_hlapi", "DATABASE_FATAL_CONNECTION_LOSS"]
 
 
 # Because being lazy writes good code
@@ -168,7 +168,7 @@ class db_hlapi:
                 return False
         return True
 
-    def inject_enum(self, enumname: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> None:
+    def inject_enum(self, enumname: str, schema: List[Tuple[str, Type[Union[str, int]]]], *, use_primary: bool = True) -> None:
         """
         Add a custom table schema to the database
 
@@ -180,9 +180,15 @@ class db_hlapi:
         # Inject Primary key
         PK, T = schema[0]
         if T == str:
-            pks: Any = (PK, tuple, 1)
+            if use_primary:
+                pks: Any = (PK, tuple, 1)
+            else:
+                pks = (PK, tuple)
         elif T == int:
-            pks = (PK, int(64), 1)
+            if use_primary:
+                pks = (PK, int(64), 1)
+            else:
+                pks = (PK, int(64))
         else:
             raise TypeError("Invalid schema passed")
 
@@ -202,7 +208,7 @@ class db_hlapi:
 
     def grab_enum(self, name: str, cname: Union[str, int]) -> Optional[List[Union[str, int]]]:
         """
-        Grab an item from the database table based on the first value
+        Grab one item from the database table based on the first value
 
         This does not create a new enum, there are zero ways to modify an enum after it has been registered
         And an enum may only be registered through inject_enum
@@ -295,13 +301,13 @@ class db_hlapi:
         """
         return _enum_context(self, enumName)
 
-    def inject_enum_context(self, enumName: str, schema: List[Tuple[str, Type[Union[str, int]]]]) -> "_enum_context":
+    def inject_enum_context(self, enumName: str, schema: List[Tuple[str, Type[Union[str, int]]]], *, use_primary: bool = True) -> "_enum_context":
         """
         A combination of inject_enum and enum_context that returns an enum context of the just injected enum
 
         :returns: _enum_context - An enum context manager
         """
-        self.inject_enum(enumName, schema)
+        self.inject_enum(enumName, schema, use_primary=use_primary)
         return _enum_context(self, enumName)
 
     def create_guild_db(self) -> None:

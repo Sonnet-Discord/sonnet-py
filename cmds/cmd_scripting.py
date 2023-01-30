@@ -3,32 +3,61 @@
 # And a lot of boredom :]
 # Ultrabear 2021
 
-import importlib
-
-import shlex, discord, time, asyncio, io
+import asyncio
 import copy as pycopy
+import io
+import shlex
+import time
 
-import lib_parsers
+import discord
 
-importlib.reload(lib_parsers)
-import lib_lexdpyk_h
-
-importlib.reload(lib_lexdpyk_h)
 import lib_sonnetcommands
 
-importlib.reload(lib_sonnetcommands)
+from typing import Any, Dict, List, Set, Tuple
 
-from lib_parsers import parse_permissions
-from lib_sonnetcommands import SonnetCommand, CommandCtx, cache_sweep
-
-from typing import List, Any, Tuple, Awaitable, Dict
 import lib_lexdpyk_h as lexdpyk
+from lib_parsers import parse_permissions, parse_channel_message_noexcept
+from lib_sonnetcommands import CommandCtx, SonnetCommand, cache_sweep
+from lib_datetimeplus import Time
 
 # This was placed after the exponential expansion exploit was found
 # to help reduce severity if future exploits are found
 #
-# A limit of 1000 will reasonably never be reached by a normal user
-exec_lim = 1000
+# A limit of 200 will reasonably never be reached by a normal user
+# It was previously 1000, but that is too high
+exec_lim = 200
+
+# This was placed after children were given moderator perms
+# If sonnetsh/map/amap exceeds a runtime of around 3 minutes it will stop processing
+#
+# This limit may be reached, but it is unlikely in normal operations
+runtime_lim_secs = 60 * 3
+
+# Set of message ids scheduled to end task
+killed_message_ids: Set[int] = set()
+
+
+def kill_this_task(message: discord.Message, monotonic_ns: int) -> bool:
+    """
+    Informs a running script on whether it should kill itself from a timeout or kill commands
+    """
+
+    if message.id in killed_message_ids:
+        killed_message_ids.remove(message.id)
+        return True
+
+    nanos = time.monotonic_ns() - monotonic_ns
+    secs = nanos // 1000 // 1000 // 1000
+
+    return secs > runtime_lim_secs
+
+
+def old_discord_id(d_id: int) -> bool:
+    """
+    Returns true if the passed discord id was created more than a week ago
+    """
+    delta = (Time.now().as_datetime() - discord.utils.snowflake_time(d_id))
+    return delta.days > 7
 
 
 async def sonnet_sh(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
@@ -47,14 +76,14 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         await message.channel.send("ERROR: shlex parser could not parse args")
         return 1
 
-    self_name: str = shellargs[0][len(ctx.conf_cache["prefix"]):]
+    self_name: str = ctx.command_name
 
     if verbose == False:
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
         return 1
 
-    if len(arguments[1:]) > exec_lim:
-        await message.channel.send(f"ERROR: {self_name}: Exceeded limit of {exec_lim} commands to run")
+    if len(arguments[1:]) > 40:  # previously exec_lim, now custom
+        await message.channel.send(f"ERROR: {self_name}: Exceeded limit of {40} commands to run")
         return 1
 
     # List of commands to execute and their args
@@ -81,8 +110,10 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
             # Add to command queue
             commandsparse.append((total[0], argout), )
         else:
-            await message.channel.send(f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatibility\nAnd {self_name} is not runnable inside itself")
-            return 1
+            raise lib_sonnetcommands.CommandError(
+                f"Could not parse command #{hlindex}\nScript commands have no prefix for cross compatibility\nAnd {self_name} is not runnable inside itself",
+                private_message=f"`{total[0]}` is not a valid command"
+                )
 
     # Keep reference to original message content
     keepref: str = message.content
@@ -93,7 +124,14 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
         newctx = pycopy.copy(ctx)
         newctx.verbose = False
 
+        timeout = time.monotonic_ns()
+        cancelled = False
+
         for totalcommand in commandsparse:
+
+            if kill_this_task(message, timeout):
+                cancelled = True
+                break
 
             command = totalcommand[0]
             arguments = totalcommand[1]
@@ -108,9 +146,10 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
                 if permission:
 
                     try:
+                        newctx.command_name = command
                         suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
                     except lib_sonnetcommands.CommandError as ce:
-                        await message.channel.send(str(ce))
+                        asyncio.create_task(ce.send(message))
                         suc = 1
 
                     # Stop processing if error
@@ -127,6 +166,9 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
         for i in cache_args:
             cache_sweep(i, ramfs, message.guild)
+
+        if cancelled:
+            raise lib_sonnetcommands.CommandError(f"ERROR: Exceeded runtime limit of {runtime_lim_secs} seconds to execute commands or was killed by kill-script")
 
         tend: int = time.monotonic_ns()
 
@@ -145,10 +187,18 @@ class MapProcessError(Exception):
 async def map_preprocessor_someexcept(message: discord.Message, args: List[str], client: discord.Client, cmds_dict: lexdpyk.cmd_modules_dict, conf_cache: Dict[str, Any],
                                       cname: str) -> Tuple[List[str], SonnetCommand, str, Tuple[List[str], List[str]]]:
 
+    strargs = " ".join(args)
+
+    # various slanted quotes, some are default for iOS keyboards (I think)
+    slanted_quotes = ("\u201d", "\u201c", "\u2019", "\u2018")
+
+    argset = set(strargs)
+    has_weird_quotes = any(i in argset for i in slanted_quotes)
+
     try:
-        targs: List[str] = shlex.split(" ".join(args))
-    except ValueError:
-        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): shlex parser could not parse args")
+        targs: List[str] = shlex.split(strargs)
+    except ValueError as ve:
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): shlex parser could not parse args", private_message=f"ValueError: `{ve}`")
 
     if not targs:
         raise lib_sonnetcommands.CommandError(f"ERROR({cname}): No command specified")
@@ -171,7 +221,12 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
     command = targs.pop(0)
 
     if command not in cmds_dict:
-        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found")
+        if has_weird_quotes:
+            note = f"\n(you used slanted quotes in the args (`{'`, `'.join(slanted_quotes)}`), did you mean to use normal quotes (`'`, `\"`) instead?)\n(slanted quotes are not parsed by the argparser)"
+        else:
+            note = ""
+
+        raise lib_sonnetcommands.CommandError(f"ERROR({cname}): Command not found{note}", private_message=f"The command `{command}` does not exist")
 
     # get total length of -s and -e arguments multiplied by iteration count, projected memory use
     memory_size = sum(len(item) for arglist in exargs for item in arglist) * len(targs)
@@ -212,8 +267,16 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
 
         newctx = pycopy.copy(ctx)
         newctx.verbose = False
+        newctx.command_name = command
+
+        timeout = time.monotonic_ns()
+        cancelled = False
 
         for i in targs:
+
+            if kill_this_task(message, timeout):
+                cancelled = True
+                break
 
             arguments = exargs[0] + i.split() + exargs[1]
 
@@ -222,15 +285,17 @@ async def sonnet_map(message: discord.Message, args: List[str], client: discord.
             try:
                 suc = (await cmd.execute_ctx(message, arguments, client, newctx)) or 0
             except lib_sonnetcommands.CommandError as ce:
-                await message.channel.send(str(ce))
+                asyncio.create_task(ce.send(message))
                 suc = 1
 
             if suc != 0:
-                await message.channel.send(f"ERROR(map): command `{command}` exited with non success status")
-                return 1
+                raise lib_sonnetcommands.CommandError(f"ERROR(map): command `{command}` exited with non success status")
 
         # Do cache sweep on command
         cmd.sweep_cache(ctx.ramfs, message.guild)
+
+        if cancelled:
+            raise lib_sonnetcommands.CommandError(f"ERROR: Exceeded runtime limit of {runtime_lim_secs} seconds to execute commands or was killed by kill-script")
 
         tend: int = time.monotonic_ns()
 
@@ -246,10 +311,9 @@ async def wrapasyncerror(cmd: SonnetCommand, message: discord.Message, args: Lis
     try:
         await cmd.execute_ctx(message, args, client, ctx)
     except lib_sonnetcommands.CommandError as ce:  # catch CommandError to print message
-        try:
-            await message.channel.send(str(ce))
-        except discord.errors.Forbidden:
-            pass
+        await ce.send(message)
+    except asyncio.CancelledError:
+        pass
 
 
 async def sonnet_async_map(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
@@ -264,10 +328,13 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
     except MapProcessError:
         return 1
 
-    promises: List[Awaitable[Any]] = []
+    promises = []
 
     newctx = pycopy.copy(ctx)
     newctx.verbose = False
+    newctx.command_name = command
+
+    timeout = time.monotonic_ns()
 
     for i in targs:
 
@@ -281,11 +348,22 @@ async def sonnet_async_map(message: discord.Message, args: List[str], client: di
         # Call error handler over command to allow catching CommandError in async
         promises.append(asyncio.create_task(wrapasyncerror(cmd, newmsg, arguments, client, newctx)))
 
-    for p in promises:
-        await p
+    cancelled = False
+
+    for idx in range(len(promises)):
+        if kill_this_task(message, timeout):
+            for p in promises[idx:]:
+                p.cancel()
+            cancelled = True
+            break
+
+        await promises[idx]
 
     # Do a cache sweep after running
     cmd.sweep_cache(ctx.ramfs, message.guild)
+
+    if cancelled:
+        raise lib_sonnetcommands.CommandError(f"ERROR: Exceeded runtime limit of {runtime_lim_secs} seconds to execute commands or was killed by kill-script")
 
     tend: int = time.monotonic_ns()
 
@@ -334,7 +412,7 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         command = args[0]
 
         if command not in ctx.cmds_dict:
-            raise lib_sonnetcommands.CommandError("ERROR(sub): Command does not exist")
+            raise lib_sonnetcommands.CommandError("ERROR(sub): Command does not exist", private_message=f"Command `{command}` does not exist")
 
         sonnetc = SonnetCommand(ctx.cmds_dict[command], ctx.cmds_dict)
 
@@ -347,6 +425,7 @@ async def run_as_subcommand(message: discord.Message, args: List[str], client: d
         # set to subcommand
         newctx = pycopy.copy(ctx)
         newctx.verbose = False
+        newctx.command_name = command
         newmsg = pycopy.copy(message)
         newmsg.content = ctx.conf_cache["prefix"] + " ".join(args)
 
@@ -372,6 +451,19 @@ async def sleep_for(message: discord.Message, args: List[str], client: discord.C
         raise lib_sonnetcommands.CommandError("ERROR(sleep): Cannot sleep for more than 30 seconds or less than 0 seconds")
 
     await asyncio.sleep(sleep_time)
+
+
+async def kill_task(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
+
+    kill_message, _ = await parse_channel_message_noexcept(message, args, client)
+
+    killed_message_ids.add(kill_message.id)
+
+    for i in list(killed_message_ids):
+        if old_discord_id(i):
+            killed_message_ids.remove(i)
+
+    await message.channel.send(f"Added message with ID {kill_message.id} to task kill queue")
 
 
 category_info = {'name': 'scripting', 'pretty_name': 'Scripting', 'description': 'Scripting tools for all your shell like needs'}
@@ -428,6 +520,13 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
         'permission': 'moderator',
         'execute': sleep_for,
         },
+    'kill-script':
+        {
+            'pretty_name': 'kill-script <message>',
+            "description": "Kills a instance of sonnetsh/map/amap that came from the command sent by the indicated message",
+            'permission': 'administrator',
+            'execute': kill_task,
+            }
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.1-DEV"

@@ -11,7 +11,7 @@ import subprocess
 
 from lib_goparsers import GenerateCacheFile
 from lib_db_obfuscator import db_hlapi
-from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION
+from lib_sonnetconfig import CLIB_LOAD, GLOBAL_PREFIX, BLACKLIST_ACTION, STATELESS
 from lib_datetimeplus import Time
 
 from typing import Any, Tuple, Optional, Union, cast, Type, Dict, Protocol, Final, Literal
@@ -64,7 +64,7 @@ def directBinNumber(inData: int, length: int) -> Tuple[int, ...]:
 
 
 defaultcache: dict[Union[str, int], Any] = {
-    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["url-blacklist", ""], ["antispam", "3,2"], ["char-antispam", "2,2,1000"]],
+    "csv": [["word-blacklist", ""], ["filetype-blacklist", ""], ["word-in-word-blacklist", ""], ["url-blacklist", ""], ["antispam", "2,0"], ["char-antispam", "2,0,500"]],
     "text":
         [
             ["prefix", GLOBAL_PREFIX], ["blacklist-action", BLACKLIST_ACTION], ["antispam-action", "mute"], ["blacklist-whitelist", ""], ["regex-notifier-log", ""], ["admin-role", ""],
@@ -96,8 +96,53 @@ def write_vnum(fileobj: Writer, number: int) -> None:
     fileobj.write(bytes(directBinNumber(number, vnum_count)))
 
 
+def _get_cached_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Dict[Union[str, int], Any]) -> Dict[str, Any]:
+    """
+    Loads config from cache or raises FileNotFoundError on cache not existing
+    """
+    try:
+        # Loads fileio object
+        blacklist_cache = ramfs.read_f(dirlist=[str(guild_id), "caches", str(datatypes[0])])
+    except FileNotFoundError:
+        raise
+
+    assert isinstance(blacklist_cache, io.BytesIO)
+    blacklist_cache.seek(0)
+    message_config: Dict[str, Any] = {}
+
+    # Imports csv style data
+    for i in datatypes["csv"]:  # csv types are List[str]
+        csvpre = blacklist_cache.read(read_vnum(blacklist_cache))
+        if csvpre:
+            message_config[i[0]] = csvpre.decode("utf8").split(",")
+        else:
+            message_config[i[0]] = i[1].split(",") if i[1] else []
+
+    # Imports text style data
+    for i in datatypes["text"]:  # text types are str
+        textpre = blacklist_cache.read(read_vnum(blacklist_cache))
+        if textpre:
+            message_config[i[0]] = textpre.decode("utf8")
+        else:
+            message_config[i[0]] = i[1]
+
+    # Imports JSON type data
+    for i in datatypes["json"]:  # json types are Union[Dict[str, Any], List[Any]]
+        jsonpre = blacklist_cache.read(read_vnum(blacklist_cache))
+        if jsonpre:
+            message_config[i[0]] = pickle.loads(jsonpre)
+        else:
+            message_config[i[0]] = i[1]
+
+    return message_config
+
+
 # Load config from cache, or load from db if cache isn't existent
 def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes: Optional[dict[Union[str, int], Any]] = None) -> dict[str, Any]:
+    """
+    Load config from cache, or load from db if cache isn't existent
+    will always load from db if stateless mode is enabled
+    """
 
     datatypes = defaultcache if datatypes is None else datatypes
 
@@ -106,41 +151,14 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
             datatypes[i] = []
 
     try:
+        # Prevents cache from being loaded
+        if STATELESS:
+            raise FileNotFoundError
 
-        # Loads fileio object
-        blacklist_cache = ramfs.read_f(f"{guild_id}/caches/{datatypes[0]}")
-        assert isinstance(blacklist_cache, io.BytesIO)
-        blacklist_cache.seek(0)
-        message_config: Dict[str, Any] = {}
-
-        # Imports csv style data
-        for i in datatypes["csv"]:  # csv types are List[str]
-            csvpre = blacklist_cache.read(read_vnum(blacklist_cache))
-            if csvpre:
-                message_config[i[0]] = csvpre.decode("utf8").split(",")
-            else:
-                message_config[i[0]] = i[1].split(",") if i[1] else []
-
-        # Imports text style data
-        for i in datatypes["text"]:  # text types are str
-            textpre = blacklist_cache.read(read_vnum(blacklist_cache))
-            if textpre:
-                message_config[i[0]] = textpre.decode("utf8")
-            else:
-                message_config[i[0]] = i[1]
-
-        # Imports JSON type data
-        for i in datatypes["json"]:  # json types are Union[Dict[str, Any], List[Any]]
-            jsonpre = blacklist_cache.read(read_vnum(blacklist_cache))
-            if jsonpre:
-                message_config[i[0]] = pickle.loads(jsonpre)
-            else:
-                message_config[i[0]] = i[1]
-
-        return message_config
+        return _get_cached_config(guild_id, ramfs, datatypes)
 
     except FileNotFoundError:
-        message_config = {}  # type defined in try block
+        message_config: Dict[str, Any] = {}
 
         # Loads base db
         with db_hlapi(guild_id) as db:
@@ -151,20 +169,20 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
 
         # Load json datatype
         for i in datatypes["json"]:
-            if message_config[i[0]]:
+            if (v := message_config[i[0]]):
                 try:
-                    message_config[i[0]] = json.loads(message_config[i[0]])
+                    message_config[i[0]] = json.loads(v)
                 except json.JSONDecodeError:
                     # Corrupted db objects default to defaults
                     message_config[i[0]] = None
 
         # Load CSV datatype
         for i in datatypes["csv"]:
-            if message_config[i[0]]:
-                message_config[i[0]] = message_config[i[0]].lower().split(",")
+            if (v := message_config[i[0]]):
+                message_config[i[0]] = v.lower().split(",")
 
         # Generate SNOWFLAKE DBCACHE
-        blacklist_cache = ramfs.create_f(f"{guild_id}/caches/{datatypes[0]}")
+        blacklist_cache = ramfs.create_f(dirlist=[str(guild_id), "caches", str(datatypes[0])])
         # Add csv based configs
         for i in datatypes["csv"]:
             if message_config[i[0]]:
@@ -192,7 +210,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
             else:
                 write_vnum(blacklist_cache, 0)
 
-        return load_message_config(guild_id, ramfs, datatypes=datatypes)
+        return _get_cached_config(guild_id, ramfs, datatypes)
 
 
 # Generate an infraction id from the wordlist cache format
@@ -237,16 +255,16 @@ def generate_infractionid() -> str:
 def inc_statistics_better(guild: int, inctype: str, kernel_ramfs: lexdpyk.ram_filesystem) -> None:
 
     try:
-        statistics = kernel_ramfs.read_f(f"{guild}/stats")
+        statistics = kernel_ramfs.read_f(dirlist=[str(guild), "stats"])
         assert isinstance(statistics, dict)
     except FileNotFoundError:
-        statistics = kernel_ramfs.create_f(f"{guild}/stats", f_type=cast(Type[Dict[str, int]], dict))
+        statistics = kernel_ramfs.create_f(dirlist=[str(guild), "stats"], f_type=cast(Type[Dict[str, int]], dict))
 
     try:
-        global_statistics = kernel_ramfs.read_f("global/stats")
+        global_statistics = kernel_ramfs.read_f(dirlist=["global", "stats"])
         assert isinstance(global_statistics, dict)
     except FileNotFoundError:
-        global_statistics = kernel_ramfs.create_f("global/stats", f_type=cast(Type[Dict[str, int]], dict))
+        global_statistics = kernel_ramfs.create_f(dirlist=["global", "stats"], f_type=cast(Type[Dict[str, int]], dict))
 
     if inctype in statistics:
         statistics[inctype] += 1

@@ -25,9 +25,9 @@ importlib.reload(lib_sonnetcommands)
 
 from lib_goparsers import MustParseDuration
 from lib_db_obfuscator import db_hlapi
-from lib_sonnetconfig import REGEX_VERSION
+from lib_sonnetconfig import REGEX_VERSION, AUTOMOD_ENABLED
 from lib_parsers import parse_role, parse_boolean_strict, parse_user_member, format_duration
-from lib_sonnetcommands import CommandCtx
+from lib_sonnetcommands import CommandCtx, ExecutableCtxT
 
 from typing import Any, Dict, List, Callable, Coroutine, Tuple, Optional, Literal
 from typing import Final  # pytype: disable=import-error
@@ -47,9 +47,32 @@ class blacklist_input_error(Exception):
     __slots__ = ()
 
 
+def automod_enabled_only(f: ExecutableCtxT) -> ExecutableCtxT:
+
+    if AUTOMOD_ENABLED:
+        return f
+    else:
+
+        async def dummy(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> None:
+            raise lib_sonnetcommands.CommandError("ERROR: Automod and related commands are disabled on this sonnet instance, if you believe this is an error please contact the bot owner.")
+
+        return dummy
+
+
 async def update_csv_blacklist(message: discord.Message, args: List[str], name: str, verbose: bool = True, allowed: Optional[str] = None) -> None:
     if not message.guild:
         raise blacklist_input_error("No Guild Attached")
+
+    if not args:
+        with db_hlapi(message.guild.id) as db:
+            blacklist = db.grab_config(name)
+
+        if blacklist:
+            await message.channel.send(f"{name} is set to {blacklist}")
+        else:
+            await message.channel.send(f"{name} is unset in the database")
+
+        return
 
     if len(args) >= 2 and args[1] in ["rm", "remove"]:
         with db_hlapi(message.guild.id) as db:
@@ -58,8 +81,8 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
         await message.channel.send(f"Removed {name} config from database")
         return
 
-    if not args or len(args) != 1:
-        await message.channel.send(f"Malformed {name}")
+    if len(args) != 1:
+        await message.channel.send(f"Malformed {name} (passed more than 1 argument, spaces are not allowed in {name})")
         raise blacklist_input_error(f"Malformed {name}")
 
     blacklist = args[0]
@@ -78,6 +101,7 @@ async def update_csv_blacklist(message: discord.Message, args: List[str], name: 
     if verbose: await message.channel.send(f"Updated {name} successfully")
 
 
+@automod_enabled_only
 async def wb_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -86,6 +110,7 @@ async def wb_change(message: discord.Message, args: List[str], client: discord.C
         return 1
 
 
+@automod_enabled_only
 async def word_in_word_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -94,6 +119,7 @@ async def word_in_word_change(message: discord.Message, args: List[str], client:
         return 1
 
 
+@automod_enabled_only
 async def ftb_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -102,6 +128,7 @@ async def ftb_change(message: discord.Message, args: List[str], client: discord.
         return 1
 
 
+@automod_enabled_only
 async def urlblacklist_change(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -138,7 +165,7 @@ async def add_regex_type(message: discord.Message, args: List[str], db_entry: st
                 await message.channel.send("ERROR: RegEx operations not supported in re2")
                 raise blacklist_input_error("Malformed regex")
         else:
-            await message.channel.send("ERROR: Malformed RegEx")
+            await message.channel.send("ERROR: Malformed RegEx (ensure your regex is formed like so: /`regex`/g)")
             raise blacklist_input_error("Malformed regex")
 
         database.add_config(db_entry, json.dumps(curlist))
@@ -192,6 +219,7 @@ async def remove_regex_type(message: discord.Message, args: List[str], db_entry:
     if verbose: await message.channel.send("Successfully Updated RegEx")
 
 
+@automod_enabled_only
 async def regexblacklist_add(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await add_regex_type(message, args, "regex-blacklist", verbose=ctx.verbose)
@@ -199,6 +227,7 @@ async def regexblacklist_add(message: discord.Message, args: List[str], client: 
         return 1
 
 
+@automod_enabled_only
 async def regexblacklist_remove(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await remove_regex_type(message, args, "regex-blacklist", verbose=ctx.verbose)
@@ -206,6 +235,7 @@ async def regexblacklist_remove(message: discord.Message, args: List[str], clien
         return 1
 
 
+@automod_enabled_only
 async def regex_notifier_add(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await add_regex_type(message, args, "regex-notifier", verbose=ctx.verbose)
@@ -213,6 +243,7 @@ async def regex_notifier_add(message: discord.Message, args: List[str], client: 
         return 1
 
 
+@automod_enabled_only
 async def regex_notifier_remove(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     try:
         await remove_regex_type(message, args, "regex-notifier", verbose=ctx.verbose)
@@ -220,6 +251,7 @@ async def regex_notifier_remove(message: discord.Message, args: List[str], clien
         return 1
 
 
+@automod_enabled_only
 async def list_blacklist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     mconf: Dict[str, Any] = ctx.conf_cache
@@ -264,6 +296,7 @@ async def list_blacklist(message: discord.Message, args: List[str], client: disc
         await message.channel.send(errmsg, file=fileobj)
 
 
+@automod_enabled_only
 async def set_blacklist_infraction_level(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
@@ -284,6 +317,7 @@ async def set_blacklist_infraction_level(message: discord.Message, args: List[st
     if ctx.verbose: await message.channel.send(f"Updated blacklist action to `{action}`")
 
 
+@automod_enabled_only
 async def set_antispam_command(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
@@ -307,11 +341,13 @@ async def set_antispam_command(message: discord.Message, args: List[str], client
     return 0
 
 
+@automod_enabled_only
 async def change_rolewhitelist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     return await parse_role(message, args, "blacklist-whitelist", verbose=ctx.verbose)
 
 
+@automod_enabled_only
 async def antispam_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> int:
     if not message.guild:
         return 1
@@ -320,7 +356,10 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
         try:
             messages, seconds = [float(i) for i in args[0].split(",")]
         except ValueError:
-            raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
+            if args[0] == "off":
+                messages, seconds = 2, 0
+            else:
+                raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
 
     elif len(args) > 1:
         try:
@@ -331,7 +370,10 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
 
     else:
         antispam = ctx.conf_cache["antispam"]
-        await message.channel.send(f"Antispam timings are M:{antispam[0]},S:{antispam[1]}")
+        if float(antispam[1]) == 0.0:
+            await message.channel.send("Antispam is disabled")
+        else:
+            await message.channel.send(f"Antispam timings are M:{antispam[0]},S:{antispam[1]}")
         return 0
 
     # Prevent bullshit
@@ -344,10 +386,15 @@ async def antispam_set(message: discord.Message, args: List[str], client: discor
     with db_hlapi(message.guild.id) as database:
         database.add_config("antispam", f"{int(messages)},{seconds}")
 
-    if ctx.verbose: await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
+    if ctx.verbose:
+        if float(seconds) != 0.0:
+            await message.channel.send(f"Updated antispam timings to M:{int(messages)},S:{seconds}")
+        else:
+            await message.channel.send("Disabled antispam")
     return 0
 
 
+@automod_enabled_only
 async def char_antispam_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Optional[Literal[0, 1]]:
     if not message.guild:
         return 1
@@ -356,6 +403,8 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
         try:
             messages, seconds, chars = [float(i) for i in args[0].split(",")]
         except ValueError:
+            if args[0] == "off":
+                messages, seconds, chars = 2, 0, 500
             raise lib_sonnetcommands.CommandError("ERROR: Incorrect args supplied")
 
     elif len(args) > 1:
@@ -368,7 +417,10 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
 
     else:
         antispam = ctx.conf_cache["char-antispam"]
-        await message.channel.send(f"CharAntispam timings are M:{antispam[0]},S:{antispam[1]},C:{antispam[2]}")
+        if float(antispam[1]) == 0.0:
+            await message.channel.send("CharAntispam is off")
+        else:
+            await message.channel.send(f"CharAntispam timings are M:{antispam[0]},S:{antispam[1]},C:{antispam[2]}")
         return 0
 
     # Prevent bullshit
@@ -383,10 +435,15 @@ async def char_antispam_set(message: discord.Message, args: List[str], client: d
     with db_hlapi(message.guild.id) as database:
         database.add_config("char-antispam", f"{int(messages)},{seconds},{int(chars)}")
 
-    if ctx.verbose: await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
+    if ctx.verbose:
+        if float(seconds) != 0.0:
+            await message.channel.send(f"Updated char antispam timings to M:{int(messages)},S:{seconds},C:{int(chars)}")
+        else:
+            await message.channel.send("Disabled char antispam")
     return 0
 
 
+@automod_enabled_only
 async def antispam_time_set(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
     if not message.guild:
         return 1
@@ -561,6 +618,7 @@ class joinrules:
         return 0
 
 
+@automod_enabled_only
 async def add_joinrule(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
 
     try:
@@ -679,6 +737,7 @@ commands = {
         {
             'pretty_name': 'set-charantispam <messages> <seconds> <chars>',
             'description': 'Set how many messages in seconds exceeding total chars to trigger antispam automute',
+            'rich_description': 'Pass `off` to disable CharAntispam',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': char_antispam_set
@@ -687,6 +746,7 @@ commands = {
         {
             'pretty_name': 'set-antispam <messages> <seconds>',
             'description': 'Set how many messages in seconds to trigger antispam automute',
+            'rich_description': 'Pass `off` to disable Antispam',
             'permission': 'administrator',
             'cache': 'regenerate',
             'execute': antispam_set
@@ -731,4 +791,4 @@ commands = {
             },
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.1-DEV"
