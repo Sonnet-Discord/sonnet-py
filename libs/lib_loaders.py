@@ -41,8 +41,8 @@ class DotHeaders:
         self.lib.__getitem__(funcname[5:]).restype = self.__getattribute__(funcname).restype
 
 
-clib_exists = True
 clib_name = f"./libs/compiled/sonnet.{DotHeaders.version}.so"
+loader: Optional[ctypes.CDLL] = None
 if CLIB_LOAD:
     try:
         loader = DotHeaders(ctypes.CDLL(clib_name)).lib
@@ -50,12 +50,10 @@ if CLIB_LOAD:
         try:
             if subprocess.run(["make", "all"]).returncode == 0:
                 loader = DotHeaders(ctypes.CDLL(clib_name)).lib
-            else:
-                clib_exists = False
         except OSError:
-            clib_exists = False
-else:
-    clib_exists = False
+            pass
+# we need this for back compat elsewhere
+clib_exists = loader is not None
 
 
 # LCIF system ported for blacklist loader, converted to little endian
@@ -217,7 +215,7 @@ def load_message_config(guild_id: int, ramfs: lexdpyk.ram_filesystem, datatypes:
 def generate_infractionid() -> str:
 
     try:
-        if clib_exists:
+        if loader:
 
             buf = bytes(256 * 3)
             safe = loader.load_words(b"datastore/wordlist.cache.db\x00", 3, (int(time.time() * 1000000) % (2**32)), buf, len(buf))

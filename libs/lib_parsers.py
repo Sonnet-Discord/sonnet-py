@@ -80,6 +80,11 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
     if not message.guild:
         return False, False, []
 
+    # Special exception for setting the blacklist whitelist to avoid softlocking
+    if message.guild.owner and message.author.id == message.guild.owner.id:
+        if message.content.startswith(f"{blacklist['prefix']}set-whitelist"):
+            return False, False, []
+
     # Preset values
     broke_blacklist = False
     notifier = False

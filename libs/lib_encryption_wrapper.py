@@ -105,7 +105,8 @@ class encrypted_writer:
         self.encryptor_module.update_into(unencrypted, self.buf)
         memptr = memoryview(self.buf)
 
-        self.rawfile.write(memptr[:dlen])
+        # for some reason we cant pass a memoryview to rawfile, oh well
+        self.rawfile.write(self.buf[:dlen])
         # Update HMAC
         self.HMACencrypt.update(memptr[:dlen])
 

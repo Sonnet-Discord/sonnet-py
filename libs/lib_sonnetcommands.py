@@ -38,7 +38,7 @@ class _ContextButton(discord.ui.Button[Any]):
         self.user_id = user_id
         self.called_out_ids: Set[int] = set()
 
-    async def callback(self, interaction: discord.Interaction) -> None:
+    async def callback(self, interaction: discord.Interaction) -> None:  # type: ignore[type-arg]
 
         if interaction.user.id == self.user_id:
 
@@ -205,8 +205,7 @@ def CallKwargs(func: Union[ExecutableT, ExecutableCtxT]) -> ExecutableT:
         # Closures go brr
         def KwargsToCtx(message: discord.Message, args: List[str], client: discord.Client, **kwargs: Any) -> Coroutine[None, None, Any]:
             ctx = CommandCtx(**kwargs)
-            # we need to cast here because mypy??
-            return cast(ExecutableCtxT, func)(message, args, client, ctx)
+            return func(message, args, client, ctx)
 
         return KwargsToCtx
 
