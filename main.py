@@ -996,7 +996,7 @@ async def on_raw_app_command_permissions_update(payload: discord.RawAppCommandPe
 
 
 @Client.event
-async def on_app_command_completion(interaction: discord.Interaction, command: Union[discord.app_commands.Command[Any, Any, Any], discord.app_commands.ContextMenu]) -> None:
+async def on_app_command_completion(interaction: discord.Interaction, command: Union[discord.app_commands.Command[Any, Any, Any], discord.app_commands.ContextMenu]) -> None:  # type: ignore[type-arg]
     if await safety_check(guild=interaction.guild, user=interaction.user):
         await event_call("on-app-command-completion", interaction, command)
 
@@ -1129,7 +1129,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2.0.4"
+version_info: str = "LeXdPyK 2.0.5"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
