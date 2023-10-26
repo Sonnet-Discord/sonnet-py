@@ -799,4 +799,4 @@ commands = {
             },
     }
 
-version_info: str = "2.0.1"
+version_info: str = "2.0.2-DEV"
