@@ -164,7 +164,7 @@ class db_hlapi:
 
     def _validate_enum(self, schema: List[Tuple[str, Type[Union[str, int]]]]) -> bool:
         for i in schema:
-            if not isinstance(i[0], str) or not isinstance(i[1], (str, int)):
+            if not isinstance(i[0], str) or i[1] not in [str, int]:
                 return False
         return True
 
