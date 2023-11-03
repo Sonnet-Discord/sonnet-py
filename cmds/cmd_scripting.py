@@ -78,7 +78,7 @@ async def sonnet_sh(message: discord.Message, args: List[str], client: discord.C
 
     self_name: str = ctx.command_name
 
-    if verbose == False:
+    if verbose is False:
         await message.channel.send(f"ERROR: {self_name}: detected anomalous command execution")
         return 1
 
@@ -222,7 +222,8 @@ async def map_preprocessor_someexcept(message: discord.Message, args: List[str],
 
     if command not in cmds_dict:
         if has_weird_quotes:
-            note = f"\n(you used slanted quotes in the args (`{'`, `'.join(slanted_quotes)}`), did you mean to use normal quotes (`'`, `\"`) instead?)\n(slanted quotes are not parsed by the argparser)"
+            note = f"\n(you used slanted quotes in the args (`{'`, `'.join(slanted_quotes)}`), did you mean to use " \
+                    "normal quotes (`'`, `\"`) instead?)\n(slanted quotes are not parsed by the argparser)"
         else:
             note = ""
 
@@ -529,4 +530,4 @@ For example `map -e "raiding and spam" ban <user> <user> <user>` would ban 3 use
             }
     }
 
-version_info: str = "2.0.1"
+version_info: str = "2.0.2-DEV"

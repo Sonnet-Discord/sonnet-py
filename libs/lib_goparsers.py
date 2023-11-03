@@ -120,7 +120,7 @@ def GenerateCacheFile(fin: str, fout: str) -> None:
             maxval = 0
             structured_data: List[bytes] = []
             for byte in words.read().split(b"\n"):
-                if byte and not len(byte) > 85 and not b"\xc3" in byte:
+                if byte and not len(byte) > 85 and b"\xc3" not in byte:
 
                     stv = byte.rstrip(b"\r").decode("utf8")
                     byte = (stv[0].upper() + stv[1:].lower()).encode("utf8")

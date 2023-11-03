@@ -45,7 +45,7 @@ def _load_cfg(attr: str, default: Typ, typ: Type[Typ], testfunc: Optional[Callab
 
 # Prints a warning if not using re2
 def _assertre2(s: str) -> bool:
-    if not s in {"re", "re2"}:
+    if s not in {"re", "re2"}:
         return False
 
     if s == "re":

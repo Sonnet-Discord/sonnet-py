@@ -1,0 +1,4 @@
+line-length = 200
+
+ignore = ["E401", "E402"]
+

@@ -797,7 +797,7 @@ def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfu
     """
 
     if fmtfunc is None:
-        fmtfunc = lambda s: str(s)
+        fmtfunc = str
 
     cpagecount = math.ceil(len(vals) / per_page)
 

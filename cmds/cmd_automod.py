@@ -307,7 +307,7 @@ async def set_blacklist_infraction_level(message: discord.Message, args: List[st
         await message.channel.send(f"blacklist action is `{ctx.conf_cache['blacklist-action']}`")
         return
 
-    if not action in ["warn", "kick", "mute", "ban"]:
+    if action not in ["warn", "kick", "mute", "ban"]:
         await message.channel.send("ERROR: Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
         return 1
 
@@ -730,7 +730,8 @@ commands = {
             'description':
                 'Set a role that grants immunity from blacklisting',
             'rich_description':
-                'This command is special in that it is always callable by the guild owner, regardless of blacklist settings. This prevents softlocking. Only the true name of the command will work, not the aliases, in such a case however.',
+                'This command is special in that it is always callable by the guild owner, regardless of blacklist settings. ' \
+                'This prevents softlocking. Only the true name of the command will work, not the aliases, in such a case however.',
             'permission':
                 'administrator',
             'cache':

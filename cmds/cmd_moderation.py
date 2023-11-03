@@ -481,7 +481,12 @@ def parse_duration_for_mutes(args: List[str], inf_name: str, /) -> Tuple[int, Op
     if mutetime is None:
         mutetime = 0
 
-    duration_str = f"\n(No {inf_name} length was specified, but one of the reason items `{misplaced_duration}` is a valid duration, did you mean to {inf_name} for this length?)" if misplaced_duration is not None else None
+    duration_str: Optional[str]
+
+    if misplaced_duration is not None:
+        duration_str = f"\n(No {inf_name} length was specified, but one of the reason items `{misplaced_duration}` is a valid duration, did you mean to {inf_name} for this length?)"
+    else:
+        duration_str = None
 
     return mutetime, duration_str
 
@@ -783,4 +788,4 @@ commands = {
             }
     }
 
-version_info: str = "2.0.1"
+version_info: str = "2.0.2-DEV"

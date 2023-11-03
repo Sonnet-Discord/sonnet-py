@@ -41,7 +41,7 @@ import lib_datetimeplus
 
 importlib.reload(lib_datetimeplus)
 
-from typing import Any, Final, List, Optional, Tuple, Dict, Literal, Callable, Union
+from typing import Any, Final, List, Optional, Tuple, Dict, Literal, Union
 
 import lib_constants as constants
 import lib_lexdpyk_h as lexdpyk
@@ -670,7 +670,8 @@ def reason_about_id_noexcept(args: List[str]) -> Tuple[int, Optional[Literal["Us
     with contextlib.suppress(ValueError):
         return int(str_snowflake), None
 
-    parse_with: Callable[[str], int] = lambda s: int(str_snowflake.strip(s))
+    def parse_with(s: str) -> int:
+        return int(str_snowflake.strip(s))
 
     with contextlib.suppress(ValueError):
         return parse_with("<@!>"), "User"
@@ -892,4 +893,4 @@ commands = {
         }
     }
 
-version_info: str = "2.0.1"
+version_info: str = "2.0.2-DEV"

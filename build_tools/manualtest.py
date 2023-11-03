@@ -10,7 +10,7 @@ sys.path.insert(1, os.getcwd())
 from typing import Callable, TypeVar, List, Optional, Final, Iterable, Type, Any
 
 T = TypeVar("T")
-O = TypeVar("O")
+OUT = TypeVar("OUT")
 
 
 def must_raise(expr: Callable[[], Any], exc: Type[Exception]) -> None:
@@ -27,7 +27,7 @@ def must_raise(expr: Callable[[], Any], exc: Type[Exception]) -> None:
     raise AssertionError("No value was raised")
 
 
-def test_func_io(func: Callable[[T], O], arg: T, expect: O) -> None:
+def test_func_io(func: Callable[[T], OUT], arg: T, expect: OUT) -> None:
     assert func(arg) == expect, f"func({arg=})={func(arg)} != {expect=}"
 
 
