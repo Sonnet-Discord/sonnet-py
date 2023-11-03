@@ -51,8 +51,8 @@ async def build_starboard_embed(message: discord.Message) -> discord.Embed:
         starboard_embed.set_image(url=link.group())
 
     for i in message.attachments:
-        if any(i.url.endswith(ext) for ext in _image_filetypes):
-            starboard_embed.set_image(url=i.url)
+        if link := _urlregex.match(i.url):
+            starboard_embed.set_image(url=link.group())
 
     starboard_embed.set_author(name=str(message.author), icon_url=user_avatar_url(message.author))
     starboard_embed.timestamp = message.created_at
