@@ -85,16 +85,26 @@ async def ping_function(message: discord.Message, args: List[str], client: disco
     await sent_message.edit(embed=ping_embed)
 
 
+def pluralize(num: int, name: str) -> str:
+    """
+    Pluralizes a number display with an s if it is not equal to 1
+    """
+    if num != 1:
+        return f"{num} {name}s"
+    else:
+        return f"{num} {name}"
+
+
 # Must use datetime due to discord.py being naive
 def parsedate(indata: Optional[datetime]) -> str:
     if indata is not None:
         basetime = format(indata, '%a, %d %b %Y %H:%M:%S')
         days = (discord_datetime_now() - indata).days
         if days >= 0:
-            return f"{basetime} ({days} day{'s' * (days != 1)} ago)"
+            return f"{basetime} ({pluralize(days, 'day')} ago)"
         else:
             days *= -1
-            return f"{basetime} (in {days} day{'s' * (days != 1)})"
+            return f"{basetime} (in {pluralize(days, 'day')})"
     else:
         return "ERROR: Could not fetch this date"
 
@@ -468,7 +478,7 @@ def guild_info_embed(guild: discord.Guild, embed_col: int) -> discord.Embed:
     if guild.owner:
         guild_embed.add_field(name="Server Owner:", value=guild.owner.mention)
 
-    guild_embed.add_field(name="# of Roles:", value=f"{len(guild.roles)} Roles")
+    guild_embed.add_field(name="# of Roles:", value=pluralize(len(guild.roles), 'Role'))
     guild_embed.add_field(name="Top Role:", value=guild.roles[-1].mention)
     guild_embed.add_field(name="Member Count:", value=str(guild.member_count))
     guild_embed.add_field(name="Creation Date:", value=parsedate(guild.created_at))
