@@ -234,6 +234,7 @@ async def on_message_edit(old_message: discord.Message, message: discord.Message
     if AUTOMOD_ENABLED:
         # Check against blacklist
         mconf: Final = load_message_config(message.guild.id, ramfs)
+        # we could pass the clientuser here to enable the set-whitelist escape, but that codepath shouldn't be on on a message edit
         broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
 
         if broke_blacklist:
@@ -445,7 +446,7 @@ async def do_automod_pass(message: discord.Message, client: discord.Client, mcon
     message_deleted: bool = False
 
     # If blacklist broken generate infraction
-    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), )
+    broke_blacklist, notify, infraction_type = parse_blacklist((message, mconf, ramfs), client.user)
     if broke_blacklist:
         message_deleted = True
         asyncio.create_task(attempt_message_delete(message))
