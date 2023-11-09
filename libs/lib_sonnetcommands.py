@@ -230,6 +230,32 @@ def CallCtx(func: Union[ExecutableCtxT, ExecutableT]) -> ExecutableCtxT:
         raise TypeError(f"Func {func} parameters are neither a ctx callable or kwargs callable")
 
 
+def parse_command_novalidate(m: discord.Message, client_user: discord.ClientUser, prefix: str) -> Optional[Tuple[str, List[str]]]:
+    mention_prefix = m.content.startswith(f"<@{client_user.id}>") or m.content.startswith(f"<@!{client_user.id}>")
+
+    # Check if this is meant for us.
+    if not (m.content.startswith(prefix) or mention_prefix):
+        return None
+
+    # Split into cmd and arguments.
+    arguments = m.content.split()
+
+    if mention_prefix:
+        try:
+            # delete mention
+            del arguments[0]
+            command = arguments[0]
+        except IndexError:
+            return None
+    else:
+        command = arguments[0][len(prefix):]
+
+    # Remove command from the arguments.
+    del arguments[0]
+
+    return (command, arguments)
+
+
 # type ignore needed because mypy expects something only possible in 3.9+
 class SonnetCommand(dict):  # type: ignore[type-arg]
     __slots__ = ()
