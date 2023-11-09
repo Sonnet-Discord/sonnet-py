@@ -22,7 +22,7 @@ from lib_db_obfuscator import db_hlapi
 from lib_encryption_wrapper import encrypted_writer
 from lib_loaders import (datetime_now, embed_colors, inc_statistics_better, load_embed_color, load_message_config)
 from lib_parsers import (generate_reply_field, grab_files, parse_blacklist, parse_boolean_strict, parse_permissions, parse_skip_message)
-from lib_sonnetcommands import (CallCtx, CommandCtx, ExecutableCtxT, SonnetCommand)
+from lib_sonnetcommands import (CallCtx, CommandCtx, ExecutableCtxT, SonnetCommand, parse_command_novalidate)
 from lib_sonnetconfig import AUTOMOD_ENABLED
 
 ALLOWED_CHARS: Final = set(string.ascii_letters + string.digits + "-+;:'\"!@#$%^&()/.,?[{}]= ")
@@ -555,33 +555,22 @@ async def on_message(message: discord.Message, kernel_args: lexdpyk.KernelArgs) 
 
     # START command processing loop
 
-    mention_prefix: Final = message.content.startswith(f"<@{client.user.id}>") or message.content.startswith(f"<@!{client.user.id}>")
+    ret = parse_command_novalidate(message, client.user, mconf["prefix"])
 
-    # Check if this is meant for us.
-    if not (message.content.startswith(mconf["prefix"])) or message_deleted:
+    if ret is not None and not message_deleted:
+        command, arguments = ret
+    else:
+        # if the message is not a command then we try mention checks
         if client.user.mentioned_in(message) and str(client.user.id) == message.content.strip("<@!>"):
             try:
-                await message.channel.send(f"My prefix for this guild is {mconf['prefix']}")
+
+                msg = f"My prefix for this guild is {mconf['prefix']} as in `{mconf['prefix']}help`\n" \
+                        f"You can also mention as a prefix; `@{client.user} help`"
+
+                await message.channel.send(msg)
             except discord.errors.Forbidden:
                 pass  # Nothing we can do if we lack perms to speak
-            return
-        elif not mention_prefix:
-            return
-
-    # Split into cmds and arguments.
-    arguments: Final = message.content.split()
-    if mention_prefix:
-        try:
-            # delete mention
-            del arguments[0]
-            command = arguments[0]
-        except IndexError:
-            return
-    else:
-        command = arguments[0][len(mconf["prefix"]):]
-
-    # Remove command from the arguments.
-    del arguments[0]
+        return
 
     # Process commands
     if command in command_modules_dict:
