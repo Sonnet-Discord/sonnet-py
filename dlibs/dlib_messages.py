@@ -619,4 +619,4 @@ commands: Final[Dict[str, Callable[..., Any]]] = {
     "on-message-delete": on_message_delete,
     }
 
-version_info: Final = "2.0.1"
+version_info: Final = "2.0.2"
