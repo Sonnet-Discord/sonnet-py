@@ -16,7 +16,7 @@ def assertfile(f: str, ferrors: List[str]) -> None:
     with open(f, "r") as fp:
         for line, linev in enumerate(fp):
             for col, v in enumerate(linev):
-                if not v in VALID_FCHARS:
+                if v not in VALID_FCHARS:
                     ferrors.append(f"{f}:{line+1}:{col+1}: Unicode rune {hex(ord(v))} is not in allowed pool")
 
 

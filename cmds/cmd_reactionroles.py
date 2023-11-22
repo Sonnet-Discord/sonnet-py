@@ -228,7 +228,7 @@ async def list_reactionroles(message: discord.Message, args: List[str], client: 
         return 1
 
     with db_hlapi(message.guild.id) as db:
-        data = json.loads(db.grab_config("reaction-role-data") or "{}")
+        data: Dict[str, Dict[str, int]] = json.loads(db.grab_config("reaction-role-data") or "{}")
 
     reactionrole_embed = discord.Embed(title=f"ReactionRoles in {message.guild}", color=load_embed_color(message.guild, embed_colors.primary, kwargs["ramfs"]))
 
@@ -376,4 +376,4 @@ commands = {
             },
     }
 
-version_info: str = "2.0.0"
+version_info: str = "2.0.2"

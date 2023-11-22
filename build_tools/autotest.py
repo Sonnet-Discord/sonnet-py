@@ -96,6 +96,7 @@ def main() -> int:
         "yapf": "python ./build_tools/cached_yapf.py -d",
         "pylint": Shell("pylint **/*.py -E -j4 --py-version=3.8"),
         "pyright": "pyright",
+        "ruff": "ruff .",
         #"pytype": "pytype .",
         }
 

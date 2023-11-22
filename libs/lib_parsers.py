@@ -68,7 +68,7 @@ def returnsNone() -> None:
 
 
 # Run a blacklist pass over a messages content and files
-def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[str]]:
+def parse_blacklist(indata: _parse_blacklist_inputs, client_user: Optional[discord.ClientUser] = None) -> tuple[bool, bool, list[str]]:
     """
     Deprecated, this should be in dlib_messages.py
     Parse the blacklist over a message object
@@ -79,6 +79,12 @@ def parse_blacklist(indata: _parse_blacklist_inputs) -> tuple[bool, bool, list[s
 
     if not message.guild:
         return False, False, []
+
+    # Special exception for setting the blacklist whitelist to avoid softlocking
+    if message.guild.owner and message.author.id == message.guild.owner.id and client_user is not None:
+        parsed = lib_sonnetcommands.parse_command_novalidate(message, client_user, blacklist["prefix"])
+        if parsed is not None and parsed[0] == "set-whitelist":
+            return False, False, []
 
     # Preset values
     broke_blacklist = False
@@ -792,7 +798,7 @@ def paginate_noexcept(vals: List[_PT], page: int, per_page: int, lim: int, fmtfu
     """
 
     if fmtfunc is None:
-        fmtfunc = lambda s: str(s)
+        fmtfunc = str
 
     cpagecount = math.ceil(len(vals) / per_page)
 

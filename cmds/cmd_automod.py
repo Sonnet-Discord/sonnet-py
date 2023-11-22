@@ -307,7 +307,7 @@ async def set_blacklist_infraction_level(message: discord.Message, args: List[st
         await message.channel.send(f"blacklist action is `{ctx.conf_cache['blacklist-action']}`")
         return
 
-    if not action in ["warn", "kick", "mute", "ban"]:
+    if action not in ["warn", "kick", "mute", "ban"]:
         await message.channel.send("ERROR: Blacklist action is not valid\nValid Actions: `warn` `mute` `kick` `ban`")
         return 1
 
@@ -343,6 +343,7 @@ async def set_antispam_command(message: discord.Message, args: List[str], client
 
 @automod_enabled_only
 async def change_rolewhitelist(message: discord.Message, args: List[str], client: discord.Client, ctx: CommandCtx) -> Any:
+    # this command is special, if it is called by the guild owner then it will bypass blacklisting to prevent softlocking
 
     return await parse_role(message, args, "blacklist-whitelist", verbose=ctx.verbose)
 
@@ -724,11 +725,19 @@ commands = {
         },
     'set-whitelist':
         {
-            'pretty_name': 'set-whitelist <role>',
-            'description': 'Set a role that grants immunity from blacklisting',
-            'permission': 'administrator',
-            'cache': 'regenerate',
-            'execute': change_rolewhitelist
+            'pretty_name':
+                'set-whitelist <role>',
+            'description':
+                'Set a role that grants immunity from blacklisting',
+            'rich_description':
+                'This command is special in that it is always callable by the guild owner, regardless of blacklist settings. ' \
+                'This prevents softlocking. Only the true name of the command will work, not the aliases, in such a case however.',
+            'permission':
+                'administrator',
+            'cache':
+                'regenerate',
+            'execute':
+                change_rolewhitelist
             },
     'antispam-set': {
         'alias': 'set-antispam'
@@ -791,4 +800,4 @@ commands = {
             },
     }
 
-version_info: str = "2.0.1"
+version_info: str = "2.0.2"

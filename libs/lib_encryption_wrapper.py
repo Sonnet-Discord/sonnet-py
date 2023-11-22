@@ -74,7 +74,7 @@ class encrypted_writer:
         self.rawfile.write(bytes(64))
 
         # Initialize writable buffer
-        self.buf = bytes(2**16 + 256)
+        self.buf = bytearray(2**16 + 256)
 
     def _generate_chunks(self, data: bytes) -> Generator[memoryview, None, None]:
 
@@ -105,7 +105,8 @@ class encrypted_writer:
         self.encryptor_module.update_into(unencrypted, self.buf)
         memptr = memoryview(self.buf)
 
-        self.rawfile.write(memptr[:dlen])
+        # for some reason we can't pass a memoryview to rawfile, oh well
+        self.rawfile.write(bytes(self.buf[:dlen]))
         # Update HMAC
         self.HMACencrypt.update(memptr[:dlen])
 

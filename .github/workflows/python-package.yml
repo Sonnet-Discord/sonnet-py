@@ -61,6 +61,7 @@ jobs:
     - name: run pyright type checking
       run: |
         pyright
-    - name: linting pass
+    - name: linting passes (pylint and ruff)
       run: |
         pylint **/*.py -E -j4
+        ruff .

@@ -4,7 +4,7 @@ import io
 import discord
 from dataclasses import dataclass
 
-from typing import Optional, List, Any, Tuple, Dict, Callable, Coroutine, Type, TypeVar, Protocol, overload, Set, Union
+from typing import Optional, List, Any, Tuple, Dict, Callable, Coroutine, TypeVar, Protocol, overload, Set, Union
 
 Obj = TypeVar("Obj")
 
@@ -31,10 +31,6 @@ class ram_filesystem(Protocol):
 
     @overload
     def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Callable[[], Obj]] = None) -> Obj:
-        ...
-
-    @overload
-    def create_f(self, dirstr: Optional[str] = None, dirlist: Optional[List[str]] = None, f_type: Optional[Type[Obj]] = None, f_args: Optional[List[Any]] = None) -> Obj:
         ...
 
     # pytype: enable=not-callable

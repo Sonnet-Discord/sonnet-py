@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [ "3.8", "3.10" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -26,14 +26,15 @@ jobs:
         cache: 'pip'
     - name: Install base deps
       run: |
-        python -m pip install pyflakes mypy
+        python -m pip install pyflakes mypy ruff
         python -m pip install -r requirements.txt
     - name: run unicode safety checker (ensures no malicious unicode codepoints)
       run: |
         python build_tools/unisafe.py
-    - name: run pyflakes before running expensive tests
+    - name: run pyflakes and ruff before running expensive tests
       run: |
         pyflakes .
+        ruff .
     - name: use lite config
       run: |
         cp -f common/sonnet_cfg_lite.py common/sonnet_cfg.py
