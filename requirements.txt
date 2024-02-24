@@ -1,4 +1,4 @@
 discord.py[speed] >=2.3.2, <3
-cryptography >=41.0.5, <42.0.0
+cryptography >=42.0.4, <43.0.0
 lz4 >=3.1.10, <5.0.0
 typing-extensions >=4.3, <5
