@@ -140,7 +140,7 @@ class encrypted_writer:
 
 
 class _ReadSeekCloser(Protocol):
-    def read(self, amnt: int) -> bytes:
+    def read(self, amnt: int, /) -> bytes:
         ...
 
     def seek(self, cookie: int, whence: int = 0, /) -> int:
