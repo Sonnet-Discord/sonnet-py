@@ -5,7 +5,7 @@
 import discord
 import datetime
 
-from typing import Union, Dict, Callable, Protocol, TypeVar, cast
+from typing import Union, Protocol, TypeVar
 from typing_extensions import TypeGuard
 
 _releaselevel: int = discord.version_info[0]
@@ -30,35 +30,6 @@ class compatErrors:
 
     class VersionError(Exception):
         __slots__ = ()
-
-
-_avatar_url_funcs: Dict[int, Callable[[Union[discord.User, discord.Member]], str]] = {
-    # 1.0: User.avatar_url
-    1: (lambda user: str(getattr(user, "avatar_url"))),
-    # 2.0: User.display_avatar.url
-    2: (lambda user: cast(str, getattr(getattr(user, "display_avatar"), "url"))),
-    }
-
-_default_avatar_url_funcs: Dict[int, Callable[[Union[discord.User, discord.Member]], str]] = {
-    # 1.0: User.default_avatar_url
-    1: (lambda user: str(getattr(user, "default_avatar_url"))),
-    # 2.0: User.default_avatar.url
-    2: (lambda user: cast(str, getattr(getattr(user, "default_avatar"), "url"))),
-    }
-
-_datetime_now_funcs: Dict[int, Callable[[], datetime.datetime]] = {
-    # 1.0: naive datetime
-    1: (lambda: datetime.datetime.utcnow()),
-    # 2.0: aware datetime
-    2: (lambda: datetime.datetime.now(datetime.timezone.utc)),
-    }
-
-if _releaselevel in [1, 2]:
-    _avatar_url_func = _avatar_url_funcs[_releaselevel]
-    _default_avatar_url_func = _default_avatar_url_funcs[_releaselevel]
-    _datetime_now_func = _datetime_now_funcs[_releaselevel]
-else:
-    raise compatErrors.VersionError("Could not get the library version")
 
 
 def user_avatar_url(user: Union[discord.User, discord.Member]) -> str:

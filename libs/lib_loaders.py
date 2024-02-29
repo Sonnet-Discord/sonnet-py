@@ -73,7 +73,7 @@ defaultcache: dict[Union[str, int], Any] = {
 
 
 class Reader(Protocol):
-    def read(self, size: int = -1) -> bytes:
+    def read(self, size: int = -1, /) -> bytes:
         ...
 
 

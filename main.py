@@ -23,6 +23,11 @@ from typing import List, Optional, Any, Tuple, Dict, Union, Type, Protocol, Type
 # Start Discord.py
 import discord, asyncio
 
+# Check python version is at least 3.10, this will become a hard error in the future
+if sys.version_info.minor < 10:
+    import warnings
+    warnings.warn("In the near future, Sonnet will no longer support Python 3.8 or 3.9, please upgrade to at least Python 3.10", DeprecationWarning)
+
 # Initialize logger
 logger = logging.getLogger('discord')
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
@@ -1129,7 +1134,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2.0.5"
+version_info: str = "LeXdPyK 2.0.6"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
