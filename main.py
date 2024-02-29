@@ -1088,20 +1088,34 @@ def main(args: List[str]) -> int:
 
     # Generate tokenfile
     if parsed.generate_token:
+        if TOKEN is not None:
+            print("NOTE: Token was set by SONNET_TOKEN or RHEA_TOKEN env vars, these are loaded first and will skip reading .tokenfile")
         try:
-            TOKEN = gentoken()
+            if os.path.isfile(".tokenfile"):
+                overwrite = input("\033[93mWARN:\033[0m passed --generate-token but .tokenfile is already present, would you like to overwrite? [y/N]: ").lower() or "n"
+                if overwrite in {"yes", "y"}:
+                    TOKEN = gentoken()
+                elif overwrite in {"no", "n"}:
+                    print("OK! Cancelled --generate-token request, resuming normal procedure")
+                else:
+                    print("Answer inconclusive, please enter y/n or yes/no, Sonnet will exit now")
+                    return 1
+            else:
+                TOKEN = gentoken()
         except ValueError:
             return 1
 
     # Load token
-    if TOKEN is None and os.path.isfile(".tokenfile"):
-        tokenfile = open(".tokenfile", "rb")
-        encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
-        TOKEN = encryptor.decrypt(tokenfile.read())
-        tokenfile.close()
-        if TOKEN is None:
-            print("Invalid TOKEN password")
-            return 1
+    if TOKEN is None:
+        try:
+            with open(".tokenfile", "rb") as tokenfile:
+                encryptor = miniflip(getpass.getpass("Enter TOKEN password: "))
+                TOKEN = encryptor.decrypt(tokenfile.read())
+            if TOKEN is None:
+                print("Invalid TOKEN password")
+                return 1
+        except FileNotFoundError:
+            pass
 
     # Load command modules
     if e := kernel_load_command_modules():
@@ -1134,7 +1148,7 @@ def main(args: List[str]) -> int:
 
 
 # Define version info and start time
-version_info: str = "LeXdPyK 2.0.6"
+version_info: str = "LeXdPyK 2.0.7"
 bot_start_time: float = time.time()
 
 if __name__ == "__main__":
